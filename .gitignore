@@ -1,1 +1,5 @@
 /target
+dep
+main_schedule.dot
+main_schedule.png
+output.png
