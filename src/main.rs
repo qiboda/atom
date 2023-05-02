@@ -1,90 +1,258 @@
-use bevy::prelude::*;
+pub mod camera;
+pub mod debug;
+pub mod material;
+pub mod renderdoc;
+
+use crate::renderdoc::RenderDocPlugin;
+use bevy::{
+    app::AppExit,
+    core_pipeline::{
+        bloom::{BloomCompositeMode, BloomSettings},
+        clear_color::ClearColorConfig,
+        tonemapping::Tonemapping,
+    },
+    // log::LogPlugin,
+    prelude::*,
+    render::camera::Viewport,
+    window::WindowResized,
+};
+use camera::CameraControllerPlugin;
+use debug::AtomDebugPlugin;
+use material::CoolMaterial;
 
 fn main() {
-    App::new()
+    let mut app = App::new();
+
+    app.add_plugin(RenderDocPlugin)
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_system(keyboard_change_color)
-        .add_system(animate_sprite)
+        .add_plugin(CameraControllerPlugin::default())
+        .add_plugin(MaterialPlugin::<CoolMaterial>::default())
+        .add_plugin(AtomDebugPlugin)
+        .add_systems(Startup, startup)
+        .add_systems(Update, exit_game)
+        .add_systems(Update, set_camera_viewports)
         .run();
+
+    // app.add_plugins(DefaultPlugins.build().disable::<LogPlugin>());
+    // bevy_mod_debugdump::print_main_schedule(&mut app);
+    // bevy_mod_debugdump::print_render_graph(&mut app);
 }
 
-fn keyboard_change_color(keyboard_input: Res<Input<KeyCode>>, mut sprite: Query<&mut Sprite>) {
-    if keyboard_input.just_pressed(KeyCode::A) {
-        for mut s in sprite.iter_mut() {
-            s.color = Color::RED;
-        }
-    }
+// #[bevycheck::system]
+fn startup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut cool_materials: ResMut<Assets<CoolMaterial>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.1)));
+    commands.insert_resource(Msaa::Off);
+    commands.insert_resource(AmbientLight {
+        color: Color::Rgba {
+            red: 0.3,
+            green: 0.3,
+            blue: 0.3,
+            alpha: 1.0,
+        },
+        brightness: 1.0,
+    });
 
-    if keyboard_input.just_released(KeyCode::A) {
-        for mut s in sprite.iter_mut() {
-            s.color = Color::WHITE;
-        }
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+        material: materials.add(StandardMaterial {
+            emissive: Color::rgb_linear(10.0, 1.0, 1.0),
+            ..default()
+        }),
+        ..default()
+    });
+
+    // commands.spawn(PbrBundle {
+    //     mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+    //     material: materials.add(StandardMaterial::default()),
+    //     transform: Transform::from_xyz(1.5, 0.0, 0.0),
+    //     ..default()
+    // });
+
+    commands.spawn(MaterialMeshBundle::<CoolMaterial> {
+        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+        material: cool_materials.add(CoolMaterial {
+            color: Color::rgb(0.0, 1.0, 0.0),
+            normal: Vec3::new(1.0, 0.0, 0.0),
+            color_texture: asset_server.load("screenshot_jiumeizi.png"),
+        }),
+        transform: Transform::from_xyz(3.0, 0.0, 0.0),
+        ..default()
+    });
+
+    commands.spawn(DirectionalLightBundle {
+        transform: Transform::from_xyz(10.0, 10.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..Default::default()
+    });
+
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(4.0, 4.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+            camera: Camera {
+                hdr: true,
+                order: 0,
+                msaa_writeback: false,
+                ..default()
+            },
+            tonemapping: Tonemapping::TonyMcMapface,
+            ..default()
+        },
+        BloomSettings {
+            intensity: 0.9,
+            composite_mode: BloomCompositeMode::Additive,
+            ..Default::default()
+        },
+        LeftCamera,
+    ));
+
+    // // Right Camera
+    // commands.spawn((
+    //     Camera3dBundle {
+    //         transform: Transform::from_xyz(-4.0, 4.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+    //         camera: Camera {
+    //             hdr: true,
+    //             // Renders the right camera after the left camera, which has a default priority of 0
+    //             msaa_writeback: false,
+    //             order: 1,
+    //             ..default()
+    //         },
+    //         // tonemapping: Tonemapping::TonyMcMapface,
+    //         camera_3d: Camera3d {
+    //             // don't clear on the second camera because the first camera already cleared the window
+    //             clear_color: ClearColorConfig::None,
+    //             ..default()
+    //         },
+    //         ..default()
+    //     },
+    //     // BloomSettings {
+    //     //     intensity: 0.2,
+    //     //     composite_mode: BloomCompositeMode::Additive,
+    //     //     ..Default::default()
+    //     // },
+    //     RightCamera,
+    // ));
+    //
+    // commands.spawn((
+    //     Camera3dBundle {
+    //         transform: Transform::from_xyz(-4.0, 4.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+    //         camera: Camera {
+    //             hdr: true,
+    //             // Renders the right camera after the left camera, which has a default priority of 0
+    //             msaa_writeback: false,
+    //             order: 1,
+    //             ..default()
+    //         },
+    //         // tonemapping: Tonemapping::TonyMcMapface,
+    //         camera_3d: Camera3d {
+    //             // don't clear on the second camera because the first camera already cleared the window
+    //             clear_color: ClearColorConfig::None,
+    //             ..default()
+    //         },
+    //         ..default()
+    //     },
+    //     // BloomSettings {
+    //     //     intensity: 0.2,
+    //     //     composite_mode: BloomCompositeMode::Additive,
+    //     //     ..Default::default()
+    //     // },
+    //     TopCamera,
+    // ));
+    //
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(-4.0, 4.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+            camera: Camera {
+                hdr: true,
+                // Renders the right camera after the left camera, which has a default priority of 0
+                msaa_writeback: false,
+                order: 1,
+                ..default()
+            },
+            // tonemapping: Tonemapping::TonyMcMapface,
+            camera_3d: Camera3d {
+                // don't clear on the second camera because the first camera already cleared the window
+                clear_color: ClearColorConfig::None,
+                ..default()
+            },
+            ..default()
+        },
+        // BloomSettings {
+        //     intensity: 0.2,
+        //     composite_mode: BloomCompositeMode::Additive,
+        //     ..Default::default()
+        // },
+        DownCamera,
+    ));
+}
+
+fn exit_game(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
+    if keyboard_input.just_released(KeyCode::Escape) {
+        app_exit_events.send(AppExit);
     }
 }
 
 #[derive(Component)]
-struct AnimationIndices {
-    first: usize,
-    last: usize,
-}
+struct LeftCamera;
 
-#[derive(Component, Deref, DerefMut)]
-struct AnimationTimer(Timer);
+#[derive(Component)]
+struct RightCamera;
 
-fn animate_sprite(
-    time: Res<Time>,
-    mut query: Query<(
-        &AnimationIndices,
-        &mut AnimationTimer,
-        &mut TextureAtlasSprite,
-        // &mut Transform,
-        // &mut GlobalTransform,
-    )>,
+#[derive(Component)]
+struct TopCamera;
+
+#[derive(Component)]
+struct DownCamera;
+
+fn set_camera_viewports(
+    windows: Query<&Window>,
+    mut resize_events: EventReader<WindowResized>,
+    mut left_camera: Query<
+        &mut Camera,
+        (
+            With<LeftCamera>,
+            Without<RightCamera>,
+            Without<TopCamera>,
+            Without<DownCamera>,
+        ),
+    >,
+    mut right_camera: Query<
+        &mut Camera,
+        (
+            With<RightCamera>,
+            Without<LeftCamera>,
+            Without<TopCamera>,
+            Without<DownCamera>,
+        ),
+    >,
+    mut top_camera: Query<
+        &mut Camera,
+        (
+            With<TopCamera>,
+            Without<LeftCamera>,
+            Without<RightCamera>,
+            Without<DownCamera>,
+        ),
+    >,
+    mut down_camera: Query<&mut Camera, With<DownCamera>>,
 ) {
-    // for (indices, mut timer, mut sprite, mut transform, mut global_transform) in &mut query {
-    //     println!(
-    //         "index: {}, transform {:?}, global_transform: {:?}",
-    //         sprite.index, transform, global_transform
-    //     );
-    // }
-    for (indices, mut timer, mut sprite) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished() {
-            sprite.index = if sprite.index == indices.last {
-                indices.first
-            } else {
-                sprite.index + 1
-            };
-        }
-    }
-}
-
-fn setup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-) {
-    let texture_handle = asset_server.load("output.png");
-    let texture_atlas =
-        TextureAtlas::from_grid(texture_handle, Vec2::new(600.0, 586.0), 1, 48, None, None);
-    let texture_atlas_handle = texture_atlases.add(texture_atlas);
-    // Use only the subset of sprites in the sheet that make up the run animation
-    let animation_indices = AnimationIndices { first: 0, last: 47 };
-
-    commands.spawn(Camera2dBundle::default());
-    commands.spawn((
-        SpriteSheetBundle {
-            texture_atlas: texture_atlas_handle,
-            sprite: TextureAtlasSprite::new(animation_indices.first),
-            // transform: Transform::from_scale(Vec3::splat(6.0)),
+    // We need to dynamically resize the camera's viewports whenever the window size changes
+    // so then each camera always takes up half the screen.
+    // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
+    for resize_event in resize_events.iter() {
+        let window = windows.get(resize_event.window).unwrap();
+        let mut left_camera = left_camera.single_mut();
+        left_camera.viewport = Some(Viewport {
+            physical_position: UVec2::new(0, window.resolution.physical_height() / 10),
+            physical_size: UVec2::new(
+                window.resolution.physical_width() / 2,
+                window.resolution.physical_height() / 4,
+            ),
             ..default()
-        },
-        animation_indices,
-        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-    ));
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("screenshot_jiumeizi.png"),
-        ..default()
-    });
+        });
+    }
 }
