@@ -14,21 +14,30 @@ fn camera_movement(
     time: Res<Time>,
     mut query: Query<&mut Transform, With<Camera3d>>,
 ) {
+    const MOVE_SPEED: f32 = 10.0;
     for mut trans in query.iter_mut() {
         if keyboard_input.pressed(KeyCode::W) {
-            trans.translation += Vec3::new(1.0, 0.0, 0.0) * time.delta_seconds();
+            trans.translation += MOVE_SPEED * Vec3::new(1.0, 0.0, 0.0) * time.delta_seconds();
         }
 
         if keyboard_input.pressed(KeyCode::S) {
-            trans.translation += Vec3::new(-1.0, 0.0, 0.0) * time.delta_seconds();
+            trans.translation += MOVE_SPEED * Vec3::new(-1.0, 0.0, 0.0) * time.delta_seconds();
         }
 
         if keyboard_input.pressed(KeyCode::A) {
-            trans.translation += Vec3::new(0.0, 0.0, -1.0) * time.delta_seconds();
+            trans.translation += MOVE_SPEED * Vec3::new(0.0, 0.0, -1.0) * time.delta_seconds();
         }
 
         if keyboard_input.pressed(KeyCode::D) {
-            trans.translation += Vec3::new(0.0, 0.0, 1.0) * time.delta_seconds();
+            trans.translation += MOVE_SPEED * Vec3::new(0.0, 0.0, 1.0) * time.delta_seconds();
+        }
+
+        if keyboard_input.pressed(KeyCode::LShift) {
+            trans.translation += MOVE_SPEED * Vec3::new(0.0, -1.0, 0.0) * time.delta_seconds();
+        }
+
+        if keyboard_input.pressed(KeyCode::RShift) {
+            trans.translation += MOVE_SPEED * Vec3::new(0.0, 1.0, 0.0) * time.delta_seconds();
         }
 
         if keyboard_input.pressed(KeyCode::Q) {
