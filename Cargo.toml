@@ -1,32 +1,10 @@
-[package]
-name = "atom"
-version = "0.1.0"
-edition = "2021"
+# [package]
+# name = "atom"
+# version = "0.1.0"
+# edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-# feature "wgpu_trace", "trace_chrome", "dynamic_linking", "wayland", 
-# bevy = { version = "0.10.1", features = ["trace", "trace_tracy"] }
-# bevy_mod_debugdump = "0.7.0"
-bevy = { path = "../dep/bevy", features = ["trace", "trace_tracy"] }
-
-# noisy_bevy = { path = "../dep/noisy_bevy" }
-marching-cubes = { path = "../dep/marching-cubes" }
-transvoxel = { path = "../dep/transvoxel_rs" }
-simdnoise = { path = "../dep/rust-simd-noise" }
-# bevy-inspector-egui = "0.18.0"
-# bevy_editor_pls = "0.3.0"
-# bevy_mod_debugdump = { path = "../dep/bevy_mod_debugdump" }
-# bevy_terrain = { path = "../dep/bevy_terrain" }
-bevycheck = "0.5.2"
-renderdoc = "0.10.1"
-sysinfo = "0.24.6"
-rand = "0.8.5"
-smallvec = "1.10.0"
-# bevy_ecs_ldtk = "0.5.0"
-# bevy_ecs_tilemap = "0.9.0"
-# bevy_rapier2d = "0.20.0"
+[workspace]
+members = ["crates/*"]
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]
@@ -40,12 +18,6 @@ opt-level = 3
 inherits = "release"
 debug = true
 
+
 [patch.crates-io]
 bevy = { path = '../dep/bevy' }
-#
-# [patch."https://github.com/bevyengine/bevy"]
-# bevy = { path = "../dep/bevy" }
-# bevy_ecs = { path = "../dep/bevy/crates/bevy_ecs" }
-# bevy_app = { path = "../dep/bevy/crates/bevy_app" }
-# bevy_utils = { path = "../dep/bevy/crates/bevy_utils" }
-# bevy_render = { path = "../dep/bevy/crates/bevy_render", optional = true }
