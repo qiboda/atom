@@ -1,6 +1,6 @@
 use nalgebra::Vector3;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct SampleRange3D<T> {
     data: Vec<T>,
 

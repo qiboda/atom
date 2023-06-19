@@ -16,6 +16,7 @@ pub enum CellType {
     Leaf,
 }
 
+#[derive(Debug)]
 pub struct Cell {
     id: usize,
 

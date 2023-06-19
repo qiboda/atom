@@ -14,6 +14,7 @@ pub enum FaceType {
     TransitFace,
 }
 
+#[derive(Debug)]
 pub struct Face {
     cell_id: usize,
 

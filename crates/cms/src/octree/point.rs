@@ -1,5 +1,6 @@
 use nalgebra::Vector3;
 
+#[derive(Debug)]
 pub struct Point {
     // position instead of coord
     position: Vector3<f32>,

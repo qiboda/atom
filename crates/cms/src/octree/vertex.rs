@@ -1,5 +1,6 @@
 use nalgebra::Vector3;
 
+#[derive(Debug)]
 pub struct Vertex {
     position: Vector3<f32>,
     normal: Vector3<f32>,

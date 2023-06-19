@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::{densy_function::DensyFunction, iso_surface::IsoSurface};
 
+#[derive(Debug)]
 pub struct ShapeSurface {
     pub shape: Rc<dyn DensyFunction>,
 

@@ -1,5 +1,13 @@
+use std::fmt::Debug;
+
 pub trait DensyFunction {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32;
+}
+
+impl Debug for dyn DensyFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DensyFunction").finish()
+    }
 }
 
 pub struct Sphere;

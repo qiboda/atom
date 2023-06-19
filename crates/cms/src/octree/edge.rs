@@ -1,5 +1,6 @@
 use nalgebra::Vector3;
 
+#[derive(Debug)]
 pub struct Edge {
     block: Vector3<f32>,
     dir: i32,
