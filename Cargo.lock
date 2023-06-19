@@ -1111,11 +1111,10 @@ dependencies = [
 name = "cms"
 version = "0.1.0"
 dependencies = [
+ "bevy",
  "nalgebra",
  "strum",
  "strum_macros",
- "tracing",
- "tracing-log",
 ]
 
 [[package]]

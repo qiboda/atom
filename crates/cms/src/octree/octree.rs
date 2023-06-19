@@ -1,8 +1,8 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+use bevy::prelude::*;
 use nalgebra::Vector3;
 use strum::{EnumCount, IntoEnumIterator};
-use tracing_log::log::info;
 
 use crate::{
     address::Address,
@@ -21,6 +21,7 @@ use super::{
     },
 };
 
+#[derive(Debug)]
 pub struct Octree {
     root: Option<Rc<RefCell<Cell>>>,
 
@@ -176,6 +177,11 @@ impl Octree {
                 .borrow_mut()
                 .set_child(i as usize, Some(Rc::clone(&cell)));
 
+            // info!(
+            //     "subdivide_cell: cell: {:?}",
+            //     cell.borrow().get_corner_sample_index()
+            // );
+
             match this_level {
                 _ if (0..MIN_OCTREE_RES).contains(&(this_level as usize)) => {
                     self.subdivide_cell(Rc::clone(&cell));
@@ -186,12 +192,10 @@ impl Octree {
                     } else {
                         // todo: 如此，如果不是在表面，就会忽略cell，这是否正确？
                         //
-                        println!(
-                            "check_for_surface: {}",
-                            self.check_for_surface(cell.clone())
-                        );
-                        if self.check_for_surface(cell.clone()) {
-                            println!("set leaf");
+                        let surface = self.check_for_surface(cell.clone());
+                        // info!("{this_level}:{i}: check_for_surface: {}", surface);
+                        if surface {
+                            // info!("{this_level}:{i}: set leaf");
                             cell.borrow_mut().set_cell_type(CellType::Leaf);
                             self.leaf_cells.push(cell.clone());
                         }
@@ -200,7 +204,7 @@ impl Octree {
                 _ => {
                     // todo: 如此，如果不是在表面，就会忽略cell，这是否正确？
                     if self.check_for_surface(cell.clone()) {
-                        println!("set leaf");
+                        // info!("{this_level}:{i}: set leaf");
                         cell.borrow_mut().set_cell_type(CellType::Leaf);
                         self.leaf_cells.push(cell.clone());
                     }
@@ -229,16 +233,19 @@ impl Octree {
             }
         }
 
+        // info!("check_for_surface: inside: {}", inside);
+
         inside != 0 && inside != 8
     }
 
     fn check_for_subdivision(&self, cell: Rc<RefCell<Cell>>) -> bool {
-        println!(
-            "check_for_subdivision: {}, {}",
-            self.check_for_edge_ambiguity(cell.clone()),
-            self.check_for_complex_surface(cell.clone())
-        );
-        self.check_for_edge_ambiguity(cell.clone()) && self.check_for_complex_surface(cell.clone())
+        let edge_ambiguity = self.check_for_edge_ambiguity(cell.clone());
+        let complex_surface = self.check_for_complex_surface(cell.clone());
+        // info!(
+        //     "check_for_subdivision: {}, {}",
+        //     edge_ambiguity, complex_surface
+        // );
+        edge_ambiguity || complex_surface
     }
 
     /// 检测是否(坐标位置)平坦
@@ -254,10 +261,14 @@ impl Octree {
 
             let edge_direction = EDGE_DIRECTION[i];
 
+            // info!("edge_direction: {:?}", edge_direction);
+
             // left coord
             let point_0 = points[vertex_index_0];
             // right coord
             let point_1 = points[vertex_index_1];
+
+            // info!("point0: {:?} point1: {:?}", point_0, point_1);
 
             // max right index
             let last_index = self
@@ -530,17 +541,26 @@ impl Octree {
 
             for face_index in FaceIndex::iter() {
                 let cell = leaf_cell.borrow();
-                let face_b = cell.get_face(face_index);
-                let face = face_b.borrow();
-                assert!(face.get_face_type() == &FaceType::LeafFace);
+                let face = cell.get_face(face_index);
 
-                if let Some(twin) = face.get_twin() {
-                    if let Some(children) = twin.borrow().get_children() {
-                        if children.len() > 0 {
-                            let mut face = face_b.borrow_mut();
-                            face.set_face_type(FaceType::TransitFace);
+                let mut setface = false;
+
+                {
+                    let face_b = face.borrow_mut();
+                    assert!(face_b.get_face_type() == &FaceType::LeafFace);
+
+                    if let Some(twin) = face_b.get_twin() {
+                        if let Some(children) = twin.borrow().get_children() {
+                            if children.len() > 0 {
+                                setface = true;
+                            }
                         }
                     }
+                }
+
+                if setface {
+                    let mut face_bm = face.borrow_mut();
+                    face_bm.set_face_type(FaceType::TransitFace);
                 }
             }
         }

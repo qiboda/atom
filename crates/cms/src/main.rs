@@ -3,6 +3,7 @@
 
 use std::{path::Path, rc::Rc};
 
+use bevy::{log::LogPlugin, prelude::App};
 use cms::CMS;
 use densy_function::Sphere;
 use mesh::Mesh;
@@ -28,6 +29,10 @@ const COMPLEX_SURFACE_THRESHOLD: f32 = 0.85;
 const ADDRESS_SIZE: usize = MAX_OCTREE_RES;
 
 fn main() {
+    let mut app = App::new();
+
+    app.add_plugin(LogPlugin::default()).run();
+
     let sphere = Rc::new(Sphere);
     let shape_surface = Rc::new(ShapeSurface {
         shape: sphere,
@@ -45,7 +50,7 @@ fn main() {
 
     cms.initialize();
 
-    return;
+    // return;
 
     let mut mesh = Mesh {
         vertices: Vec::new(),

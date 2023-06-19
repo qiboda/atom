@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 pub trait IsoSurface {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32;
 
@@ -13,4 +15,10 @@ pub trait IsoSurface {
     fn set_negative_inside(&mut self, negative_inside: bool);
 
     fn is_negative_inside(&self) -> bool;
+}
+
+impl Debug for dyn IsoSurface {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IsoSurface").finish()
+    }
 }

@@ -66,6 +66,19 @@ impl CMS {
         let mut sample_data = SampleRange3D::default();
         sample_data.resize(container, sample_size);
 
+        for i in 0..sample_size.x {
+            let x = container.x.0 + i as f32 * offset.x + iso_level;
+            for j in 0..sample_size.y {
+                let y = container.y.0 + j as f32 * offset.y + iso_level;
+                for k in 0..sample_size.z {
+                    let z = container.z.0 + k as f32 * offset.z + iso_level;
+
+                    let value = sample_fn.get_value(x, y, z);
+                    sample_data.set_value(i, j, k, value);
+                }
+            }
+        }
+
         let mut edge_data = SampleRange3D::default();
         edge_data.resize(container, sample_size);
 
@@ -95,19 +108,6 @@ impl CMS {
 
     pub fn initialize(&mut self) {
         // todo: add iso_level or not?
-
-        for i in 0..self.sample_size.x {
-            let x = self.container.x.0 + i as f32 * self.offset.x + self.iso_level;
-            for j in 0..self.sample_size.y {
-                let y = self.container.y.0 + j as f32 * self.offset.y + self.iso_level;
-                for k in 0..self.sample_size.z {
-                    let z = self.container.z.0 + k as f32 * self.offset.z + self.iso_level;
-
-                    let value = self.sample_fn.get_value(x, y, z);
-                    self.sample_data.set_value(i, j, k, value);
-                }
-            }
-        }
 
         self.octree.build_octree();
         self.octree_root = self.octree.get_root();

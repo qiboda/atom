@@ -1,6 +1,7 @@
 use crate::{octree::tables::SubCellIndex, ADDRESS_SIZE};
 
 /// Stores the address of a cell in an parent cell children array.
+#[derive(Debug)]
 pub struct Address {
     /// @brief Storing the actuall address
     raw_address: Vec<Option<SubCellIndex>>,
