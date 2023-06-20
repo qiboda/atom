@@ -1,7 +1,7 @@
 use std::{cell::RefCell, ops::Range, rc::Rc};
 
 use nalgebra::Vector3;
-use strum::IntoEnumIterator;
+use strum::{EnumCount, IntoEnumIterator};
 
 use crate::{
     iso_surface::IsoSurface,
@@ -14,8 +14,8 @@ use crate::{
         point::Point,
         strip::Strip,
         tables::{
-            Direction, Face2DVertex, FaceIndex, SubCellIndex, SubFaceIndex, EDGE_MAP, FACE_VERTEX,
-            VERTEX_MAP,
+            Direction, Face2DEdge, Face2DVertex, FaceIndex, SubCellIndex, SubFaceIndex, EDGE_MAP,
+            FACE_VERTEX, VERTEX_MAP,
         },
     },
     sample::sample_range_3d::SampleRange3D,
@@ -173,7 +173,7 @@ impl CMS {
                     }
                 }
                 CellType::Leaf => {
-                    let mut indices = [Vector3::zeros(); 4];
+                    let mut indices = [Vector3::zeros(); Face2DVertex::COUNT];
                     for face_index in FaceIndex::iter() {
                         for (i, face_vertex) in Face2DVertex::iter().enumerate() {
                             let vertex_pos = FACE_VERTEX[face_index as usize][face_vertex as usize];
@@ -209,27 +209,27 @@ impl CMS {
         let e0a = EDGE_MAP[edges as usize][0][0];
         let e0b = EDGE_MAP[edges as usize][0][1];
 
-        if e0a != 1 {
+        if e0a.is_some() {
             self.make_strip(e0a, e0b, indices, face.clone(), 0)
         }
 
         let e1a = EDGE_MAP[edges as usize][1][0];
         let e1b = EDGE_MAP[edges as usize][1][1];
 
-        if e1a != 1 {
+        if e1a.is_some() {
             self.make_strip(e1a, e1b, indices, face.clone(), 1);
         }
     }
 
     pub fn make_strip(
         &mut self,
-        edge0: i8,
-        edge1: i8,
+        edge0: Option<Face2DEdge>,
+        edge1: Option<Face2DEdge>,
         indices: &[Vector3<usize>; 4],
         face: Rc<RefCell<Face>>,
         strip_index: usize,
     ) {
-        assert!(edge0 != -1 && edge1 != -1);
+        assert!(edge0.is_some() && edge1.is_some());
 
         let mut s = Strip::new(false, edge0, edge1);
 
@@ -247,9 +247,10 @@ impl CMS {
         index: usize,
     ) {
         let edge = strip.get_edge(index);
+        assert!(edge.is_some());
 
-        let index0 = VERTEX_MAP[edge as usize][0];
-        let index1 = VERTEX_MAP[edge as usize][1];
+        let index0 = VERTEX_MAP[edge.unwrap() as usize][0];
+        let index1 = VERTEX_MAP[edge.unwrap() as usize][1];
 
         let index0 = indices[index0 as usize];
         let index1 = indices[index1 as usize];
