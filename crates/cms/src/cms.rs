@@ -244,33 +244,35 @@ impl CMS {
         &mut self,
         strip: &mut Strip,
         indices: &[Vector3<usize>; 4],
-        index: usize,
+        edge_index: usize,
     ) {
-        let edge = strip.get_edge(index);
+        let edge = strip.get_edge(edge_index);
         assert!(edge.is_some());
 
-        let index0 = VERTEX_MAP[edge.unwrap() as usize][0];
-        let index1 = VERTEX_MAP[edge.unwrap() as usize][1];
+        let vertex0 = VERTEX_MAP[edge.unwrap() as usize][0];
+        let vertex1 = VERTEX_MAP[edge.unwrap() as usize][1];
 
-        let index0 = indices[index0 as usize];
-        let index1 = indices[index1 as usize];
+        let vertex_coord0 = indices[vertex0 as usize];
+        let vertex_coord1 = indices[vertex1 as usize];
 
-        let mut range = Range { start: 0, end: 0 };
+        let mut vertex_range = Range::default();
 
-        let dir = self.get_edges_betwixt(&mut range, index0, index1);
-        let dir_index = dir as usize;
-        assert!((index0[dir_index] as i32 - index1[dir_index] as i32).abs() > 0);
-        assert!((index0[dir_index] == range.start) || (index0[dir_index] == range.end));
-        assert!((index1[dir_index] == range.start) || (index1[dir_index] == range.end));
+        let edge_dir = self.get_edges_betwixt(&mut vertex_range, vertex_coord0, vertex_coord1);
+        let edge_dir_index = edge_dir as usize;
 
-        let sign_change = self.exact_sign_change_index(range.clone(), dir, index0, index1);
-        assert!(range.contains(&sign_change));
+        let sign_change_dir_coord = self.exact_sign_change_index(
+            vertex_range.clone(),
+            edge_dir,
+            vertex_coord0,
+            vertex_coord1,
+        );
+        assert!(vertex_range.contains(&sign_change_dir_coord));
 
-        let mut crossing_index_0 = index0;
-        let mut crossing_index_1 = index1;
+        let mut crossing_index_0 = vertex_coord0;
+        let mut crossing_index_1 = vertex_coord1;
 
-        crossing_index_0[dir_index] = sign_change;
-        crossing_index_1[dir_index] = sign_change + 1;
+        crossing_index_0[edge_dir_index] = sign_change_dir_coord;
+        crossing_index_1[edge_dir_index] = sign_change_dir_coord + 1;
 
         assert!(
             self.sample_data
@@ -289,44 +291,54 @@ impl CMS {
             self.edge_data
                 .get_value(crossing_index_0.x, crossing_index_0.y, crossing_index_0.z);
         if value_0.is_empty() == false {
-            if value_0.get_edge_index().get(dir_index).is_some() {
+            if value_0.get_edge_index().get(edge_dir_index).is_some() {
                 strip.set_data(
-                    index,
-                    value_0.get_edge_index().get(dir_index).unwrap().unwrap() as i8,
+                    edge_index,
+                    value_0
+                        .get_edge_index()
+                        .get(edge_dir_index)
+                        .unwrap()
+                        .unwrap() as i8,
                 );
-                strip.set_block(index, crossing_index_0);
-                strip.set_dir(index, Some(dir));
+                strip.set_block(edge_index, crossing_index_0);
+                strip.set_dir(edge_index, Some(edge_dir));
                 dupli = true;
             }
         }
 
         if dupli == false {
-            self.make_vertex(strip, dir, crossing_index_0, crossing_index_1, index);
+            self.make_vertex(
+                strip,
+                edge_dir,
+                crossing_index_0,
+                crossing_index_1,
+                edge_index,
+            );
         }
     }
 
-    /// 获取边缘中间
+    /// 获取边的两个顶点的方向以及距离。
     pub fn get_edges_betwixt(
         &mut self,
         range: &mut Range<usize>,
-        index0: Vector3<usize>,
-        index1: Vector3<usize>,
+        vertex_coord0: Vector3<usize>,
+        vertex_coord1: Vector3<usize>,
     ) -> Direction {
         let mut direction = None;
 
-        let diff = (index0.cast::<i32>() - index1.cast::<i32>()).abs();
+        let diff = (vertex_coord0.cast::<i32>() - vertex_coord1.cast::<i32>()).abs();
 
         if diff.x > 0 {
-            range.start = index0.x.min(index1.x) as usize;
-            range.end = index0.x.max(index1.x) as usize;
+            range.start = vertex_coord0.x.min(vertex_coord1.x) as usize;
+            range.end = vertex_coord0.x.max(vertex_coord1.x) as usize;
             direction = Some(Direction::XAxis);
         } else if diff.y > 0 {
-            range.start = index0.y.min(index1.y) as usize;
-            range.end = index0.y.max(index1.y) as usize;
+            range.start = vertex_coord0.y.min(vertex_coord1.y) as usize;
+            range.end = vertex_coord0.y.max(vertex_coord1.y) as usize;
             direction = Some(Direction::YAxis);
         } else if diff.z > 0 {
-            range.start = index0.z.min(index1.z) as usize;
-            range.end = index0.z.max(index1.z) as usize;
+            range.start = vertex_coord0.z.min(vertex_coord1.z) as usize;
+            range.end = vertex_coord0.z.max(vertex_coord1.z) as usize;
             direction = Some(Direction::ZAxis);
         }
 
@@ -335,33 +347,37 @@ impl CMS {
         return direction.unwrap();
     }
 
+    /// 检测是否有精确的符号变化。
+    /// 返回值为符号变化的前一个索引。
     pub fn exact_sign_change_index(
         &mut self,
-        range: Range<usize>,
-        dir: Direction,
-        index0: Vector3<usize>,
-        index1: Vector3<usize>,
+        vertex_range: Range<usize>,
+        edge_dir: Direction,
+        vertex_coord0: Vector3<usize>,
+        vertex_coord1: Vector3<usize>,
     ) -> usize {
-        let mut first_index = Vector3::new(usize::MAX, usize::MAX, usize::MAX);
+        let mut start_vertex_coord = Vector3::new(usize::MAX, usize::MAX, usize::MAX);
 
-        if index0[dir as usize] == range.start {
-            first_index = index0;
-        } else if index1[dir as usize] == range.start {
-            first_index = index1;
+        if vertex_coord0[edge_dir as usize] == vertex_range.start {
+            start_vertex_coord = vertex_coord0;
+        } else if vertex_coord1[edge_dir as usize] == vertex_range.start {
+            start_vertex_coord = vertex_coord1;
         }
 
-        if range.end - range.start == 1 {
-            return first_index[dir as usize];
+        // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。
+        if vertex_range.end - vertex_range.start == 1 {
+            return start_vertex_coord[edge_dir as usize];
         }
 
-        let mut indexer = first_index;
+        let mut indexer = start_vertex_coord;
 
-        for i in range {
-            indexer[dir as usize] = i;
+        // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。
+        for i in vertex_range {
+            indexer[edge_dir as usize] = i;
 
             let this_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
 
-            indexer[dir as usize] = i + 1;
+            indexer[edge_dir as usize] = i + 1;
             let next_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
 
             if this_value * next_value < 0.0 {
@@ -369,6 +385,7 @@ impl CMS {
             }
         }
 
+        // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。此处代码不会执行。
         assert!(false);
 
         return usize::MAX;

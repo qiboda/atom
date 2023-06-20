@@ -75,9 +75,21 @@ pub const EDGE_MAP: [[[Option<Face2DEdge>; 2]; 2]; 16] = [
     [[None, None], [None, None]],                                                                          // 3210
 ];
 
+// pub enum Face2DVertex {
+//     LeftUp = 0,
+//     LeftDown = 1,
+//     RightUp = 2,
+//     RightDown = 3,
+// }
+
 // Indexed by edge number, returns vertex index
 //
-pub const VERTEX_MAP: [[i8; 2]; 4] = [[0, 2], [3, 1], [1, 0], [2, 3]];
+pub const VERTEX_MAP: [[Face2DVertex; 2]; Face2DEdge::COUNT] = [
+    [Face2DVertex::LeftUp, Face2DVertex::RightUp],
+    [Face2DVertex::RightDown, Face2DVertex::LeftDown],
+    [Face2DVertex::LeftDown, Face2DVertex::LeftUp],
+    [Face2DVertex::RightUp, Face2DVertex::RightDown],
+];
 
 /*
 
