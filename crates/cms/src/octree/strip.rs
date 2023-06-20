@@ -1,13 +1,13 @@
 use nalgebra::Vector3;
 
-use super::tables::Direction;
+use super::tables::{Direction, Face2DEdge};
 
 #[derive(Clone, Debug)]
 pub struct Strip {
     skip: bool,
     b_loop: bool,
 
-    edge: [i8; 2],
+    edge: [Option<Face2DEdge>; 2],
     data: [i8; 2],
 
     block: [Vector3<usize>; 2],
@@ -19,7 +19,7 @@ impl Default for Strip {
         Self {
             skip: true,
             b_loop: false,
-            edge: [-1; 2],
+            edge: [None; 2],
             data: [-1; 2],
             block: [Vector3::new(0, 0, 0); 2],
             dir: [None; 2],
@@ -28,7 +28,7 @@ impl Default for Strip {
 }
 
 impl Strip {
-    pub fn new(skip: bool, edge0: i8, edge1: i8) -> Strip {
+    pub fn new(skip: bool, edge0: Option<Face2DEdge>, edge1: Option<Face2DEdge>) -> Strip {
         Self {
             skip,
             b_loop: false,
@@ -41,7 +41,7 @@ impl Strip {
 }
 
 impl Strip {
-    pub fn get_edge(&self, index: usize) -> i8 {
+    pub fn get_edge(&self, index: usize) -> Option<Face2DEdge> {
         self.edge[index]
     }
 

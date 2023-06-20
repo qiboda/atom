@@ -44,26 +44,35 @@ pub enum Face2DEdge {
     Right = 3,
 }
 
+// 0        2
+//  --------
+//  |      |
+//  |      |       ^-Z
+//  |      |       |
+//  --------       --> X
+// 1        3
+//
+
 // For a given set of filled corners, this array defines
 // the cell edges from which we draw interior edges
-//
-pub const EDGE_MAP: [[[i8; 2]; 2]; 16] = [
-    [[-1, -1], [-1, -1]], // ----
-    [[0, 2], [-1, -1]],   // ---0
-    [[2, 1], [-1, -1]],   // --1-
-    [[0, 1], [-1, -1]],   // --10
-    [[3, 0], [-1, -1]],   // -2--
-    [[3, 2], [-1, -1]],   // -2-0
-    [[3, 0], [2, 1]],     // -21- //ambig
-    [[3, 1], [-1, -1]],   // -210
-    [[1, 3], [-1, -1]],   // 3---
-    [[1, 3], [0, 2]],     // 3--0 //ambig // 可以通过法线来判断
-    [[2, 3], [-1, -1]],   // 3-1-
-    [[0, 3], [-1, -1]],   // 3-10
-    [[1, 0], [-1, -1]],   // 32--
-    [[1, 2], [-1, -1]],   // 32-0
-    [[2, 0], [-1, -1]],   // 321-
-    [[-1, -1], [-1, -1]], // 3210
+#[rustfmt::skip]
+pub const EDGE_MAP: [[[Option<Face2DEdge>; 2]; 2]; 16] = [
+    [[None, None], [None, None]],                                                                          // ----
+    [[Some(Face2DEdge::Up), Some(Face2DEdge::Left)], [None, None]],                                        // ---0
+    [[Some(Face2DEdge::Left), Some(Face2DEdge::Down)], [None, None]],                                      // --1-
+    [[Some(Face2DEdge::Up), Some(Face2DEdge::Down)], [None, None]],                                        // --10
+    [[Some(Face2DEdge::Right), Some(Face2DEdge::Up)], [None, None]],                                       // -2--
+    [[Some(Face2DEdge::Right), Some(Face2DEdge::Left)], [None, None]],                                     // -2-0
+    [[Some(Face2DEdge::Right), Some(Face2DEdge::Up)], [Some(Face2DEdge::Left), Some(Face2DEdge::Down)]],   // -21- //ambig
+    [[Some(Face2DEdge::Right), Some(Face2DEdge::Down)], [None, None]],                                     // -210
+    [[Some(Face2DEdge::Down), Some(Face2DEdge::Right)], [None, None]],                                     // 3---
+    [[Some(Face2DEdge::Down), Some(Face2DEdge::Right)], [Some(Face2DEdge::Up), Some(Face2DEdge::Left)]],   // 3--0 //ambig // 可以通过法线来判断
+    [[Some(Face2DEdge::Left), Some(Face2DEdge::Right)], [None, None]],                                     // 3-1-
+    [[Some(Face2DEdge::Up), Some(Face2DEdge::Right)], [None, None]],                                       // 3-10
+    [[Some(Face2DEdge::Down), Some(Face2DEdge::Up)], [None, None]],                                        // 32--
+    [[Some(Face2DEdge::Down), Some(Face2DEdge::Left)], [None, None]],                                      // 32-0
+    [[Some(Face2DEdge::Left), Some(Face2DEdge::Up)], [None, None]],                                        // 321-
+    [[None, None], [None, None]],                                                                          // 3210
 ];
 
 // Indexed by edge number, returns vertex index
