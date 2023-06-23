@@ -5,7 +5,7 @@ use std::{path::Path, rc::Rc};
 
 use bevy::{log::LogPlugin, prelude::App};
 use cms::CMS;
-use densy_function::Sphere;
+use densy_function::*;
 use mesh::Mesh;
 use nalgebra::Vector3;
 use shape_surface::ShapeSurface;
@@ -19,7 +19,7 @@ pub mod octree;
 pub mod sample;
 pub mod shape_surface;
 
-const BBOX_SIZE: f32 = 2.0;
+const BBOX_SIZE: f32 = 4.0;
 
 const MIN_OCTREE_RES: usize = 2;
 const MAX_OCTREE_RES: usize = 8;
@@ -33,7 +33,9 @@ fn main() {
 
     app.add_plugin(LogPlugin::default()).run();
 
-    let sphere = Rc::new(Sphere);
+    // let sphere = Rc::new(Sphere);
+    // let sphere = Rc::new(Torus);
+    let sphere = Rc::new(Cube);
     let shape_surface = Rc::new(ShapeSurface {
         shape: sphere,
         iso_level: 0.0,

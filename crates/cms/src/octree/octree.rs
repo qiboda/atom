@@ -16,8 +16,8 @@ use super::{
     cell::{Cell, CellType},
     face::{Face, FaceType},
     tables::{
-        EdgeIndex, FaceIndex, SubCellIndex, VertexPoint, FACE_DIRECTION, FACE_RELATIONSHIP_TABLE,
-        FACE_TWIN_TABLE, NEIGHBOUR_ADDRESS_TABLE, SUB_FACE_TABLE,
+        EdgeIndex, FaceIndex, SubCellIndex, VertexPoint, FACE_DIRECTION, FACE_NEIGHBOUR,
+        FACE_RELATIONSHIP_TABLE, FACE_TWIN_TABLE, NEIGHBOUR_ADDRESS_TABLE, SUB_FACE_TABLE,
     },
 };
 
@@ -83,7 +83,6 @@ impl Octree {
         self.make_structure();
 
         self.populate_half_faces();
-
         self.set_face_relationship();
 
         self.mark_transitional_faces();
@@ -101,6 +100,8 @@ impl Octree {
             self.samples_size - Vector3::new(1, 1, 1),
             None,
         ))));
+
+        self.cells.push(self.root.as_ref().unwrap().clone());
 
         self.acquire_cell_info(self.root.clone().unwrap());
         self.subdivide_cell(self.root.clone().unwrap());
@@ -141,7 +142,7 @@ impl Octree {
     fn subdivide_cell(&mut self, parent_cell: Rc<RefCell<Cell>>) {
         let this_level = parent_cell.borrow().get_cur_subdiv_level() + 1;
 
-        info!("subdivide_cell: this level: {}", this_level);
+        // info!("subdivide_cell: this level: {}", this_level);
 
         let mut sample_size = Vector3::new(0, 0, 0);
 
@@ -149,7 +150,7 @@ impl Octree {
         sample_size[1] = (self.samples_size[1] - 1) >> this_level;
         sample_size[2] = (self.samples_size[2] - 1) >> this_level;
 
-        info!("subdivide_cell: sample size: {}", sample_size);
+        // info!("subdivide_cell: sample size: {}", sample_size);
 
         let parent_c000 = *parent_cell.borrow().get_c000();
 
@@ -163,7 +164,7 @@ impl Octree {
             let cell = Rc::new(RefCell::new(Cell::new(
                 self.cells.len(),
                 CellType::Branch,
-                Some(Rc::clone(&parent_cell)),
+                Some(parent_cell.clone()),
                 this_level,
                 c000,
                 sample_size,
@@ -173,9 +174,7 @@ impl Octree {
             self.acquire_cell_info(cell.clone());
             self.cells.push(cell.clone());
 
-            parent_cell
-                .borrow_mut()
-                .set_child(i as usize, Some(Rc::clone(&cell)));
+            parent_cell.borrow_mut().set_child(i, Some(cell.clone()));
 
             // info!(
             //     "subdivide_cell: cell: {:?}",
@@ -184,17 +183,15 @@ impl Octree {
 
             match this_level {
                 _ if (0..MIN_OCTREE_RES).contains(&(this_level as usize)) => {
-                    self.subdivide_cell(Rc::clone(&cell));
+                    self.subdivide_cell(cell.clone());
                 }
                 _ if (MIN_OCTREE_RES..MAX_OCTREE_RES).contains(&(this_level as usize)) => {
                     if self.check_for_subdivision(cell.clone()) {
                         self.subdivide_cell(cell.clone());
                     } else {
                         // todo: 如此，如果不是在表面，就会忽略cell，这是否正确？
-                        //
-                        let surface = self.check_for_surface(cell.clone());
                         // info!("{this_level}:{i}: check_for_surface: {}", surface);
-                        if surface {
+                        if self.check_for_surface(cell.clone()) {
                             // info!("{this_level}:{i}: set leaf");
                             cell.borrow_mut().set_cell_type(CellType::Leaf);
                             self.leaf_cells.push(cell.clone());
@@ -211,8 +208,10 @@ impl Octree {
                 }
             }
 
-            self.cell_addresses
+            let old_value = self
+                .cell_addresses
                 .insert(cell.borrow().get_address().get_formatted(), cell.clone());
+            assert!(old_value.is_none());
         }
     }
 
@@ -231,8 +230,24 @@ impl Octree {
             {
                 inside += 1;
             }
+
+            // if cell.borrow().get_address().get_formatted() == 57337070 {
+            //     info!(
+            //         "inside: {i} {} {}",
+            //         inside,
+            //         self.sample_data.get_value(
+            //             pos_in_parent[i].x,
+            //             pos_in_parent[i].y,
+            //             pos_in_parent[i].z,
+            //         )
+            //     );
+            // }
         }
 
+        // if cell.borrow().get_address().get_formatted() == 57337070 {
+        //     info!("inside: total {}", inside);
+        // }
+        //
         // info!("check_for_surface: inside: {}", inside);
 
         inside != 0 && inside != 8
@@ -328,7 +343,6 @@ impl Octree {
                 let point_1 = points[j];
 
                 let mut normal_point_1 = Default::default();
-
                 self.find_gradient(&mut normal_point_1, &point_1);
 
                 if normal_point_0.dot(&normal_point_1) < COMPLEX_SURFACE_THRESHOLD {
@@ -377,60 +391,17 @@ impl Octree {
             }
 
             for (i, face_index) in FaceIndex::iter().enumerate() {
-                let mut same_parent = false;
-                for j in (0..MAX_OCTREE_RES).rev() {
-                    if same_parent {
-                        // 只是为了减少计算地址。因为有相同的父级，更上层的地址肯定是一样的。
-                        temp_neightbour_address[i][j] = cell.borrow().get_address().get_raw()[j];
-                    } else {
-                        // 得到对应层级的在父级的位置。
-                        let value = cell.borrow().get_address().get_raw()[j];
-
-                        let axis = FACE_DIRECTION[i];
-
-                        match value {
-                            Some(v) => {
-                                temp_neightbour_address[i][j] =
-                                    Some(NEIGHBOUR_ADDRESS_TABLE[axis as usize][v as usize]);
-                            }
-                            None => {
-                                temp_neightbour_address[i][j] = None;
-                            }
+                for depth in (0..MAX_OCTREE_RES).rev() {
+                    // 得到对应层级的在父级的位置。
+                    let value = cell.borrow().get_address().get_raw()[depth];
+                    let axis = FACE_DIRECTION[i];
+                    match value {
+                        Some(v) => {
+                            temp_neightbour_address[i][depth] =
+                                Some(NEIGHBOUR_ADDRESS_TABLE[axis as usize][v as usize]);
                         }
-
-                        if let (Some(v), Some(t)) = (value, temp_neightbour_address[i][j]) {
-                            match face_index {
-                                FaceIndex::Back => {
-                                    if v as usize > t as usize {
-                                        same_parent = true;
-                                    }
-                                }
-                                FaceIndex::Front => {
-                                    if (v as usize) < (t as usize) {
-                                        same_parent = true;
-                                    }
-                                }
-                                FaceIndex::Bottom => {
-                                    if v as usize > t as usize {
-                                        same_parent = true;
-                                    }
-                                }
-                                FaceIndex::Top => {
-                                    if (v as usize) < (t as usize) {
-                                        same_parent = true;
-                                    }
-                                }
-                                FaceIndex::Left => {
-                                    if v as usize > t as usize {
-                                        same_parent = true;
-                                    }
-                                }
-                                FaceIndex::Right => {
-                                    if (v as usize) < (t as usize) {
-                                        same_parent = true;
-                                    }
-                                }
-                            }
+                        None => {
+                            temp_neightbour_address[i][depth] = None;
                         }
                     }
                 }
@@ -442,20 +413,21 @@ impl Octree {
                 let address_key = contact_cell_address[i].get_formatted();
 
                 let contact_cell = self.cell_addresses.get(&address_key);
-
                 if contact_cell.is_some() {
-                    let mut it = FaceIndex::iter();
-                    if i % 2 == 0 {
-                        cell.borrow_mut().set_neighbor(
-                            it.nth(i + 1).unwrap(),
-                            Some(contact_cell.unwrap().clone()),
-                        );
-                    } else {
-                        cell.borrow_mut().set_neighbor(
-                            it.nth(i - 1).unwrap(),
-                            Some(contact_cell.unwrap().clone()),
-                        );
-                    }
+                    // info!(
+                    //     "contact cell address: {} type: {:?}, cell address: {} type: {:?}",
+                    //     contact_cell_address[i].get_formatted(),
+                    //     contact_cell.unwrap().borrow().get_cell_type(),
+                    //     cell.borrow().get_address().get_formatted(),
+                    //     cell.borrow().get_cell_type(),
+                    // );
+                    assert!(
+                        contact_cell.unwrap().borrow().get_cur_subdiv_level()
+                            == cell.borrow().get_cur_subdiv_level()
+                    );
+                    // let neighbour_face_index = FACE_NEIGHBOUR[i];
+                    cell.borrow_mut()
+                        .set_neighbor(face_index, Some(contact_cell.unwrap().clone()));
 
                     self.set_face_twins(contact_cell.unwrap().clone(), cell.clone(), face_index);
                 }
@@ -465,26 +437,39 @@ impl Octree {
 
     fn set_face_twins(
         &self,
-        cell_1: Rc<RefCell<Cell>>,
-        cell_2: Rc<RefCell<Cell>>,
+        contact_cell: Rc<RefCell<Cell>>,
+        cell: Rc<RefCell<Cell>>,
         face_index: FaceIndex,
     ) {
-        let val_2 = FACE_TWIN_TABLE[face_index as usize][0];
-        let val_1 = FACE_TWIN_TABLE[face_index as usize][1];
+        assert!(
+            contact_cell.borrow().get_cur_subdiv_level() == cell.borrow().get_cur_subdiv_level()
+        );
+        // assert!(contact_cell.borrow().get_cell_type() != &CellType::Leaf);
 
-        cell_2
-            .borrow_mut()
-            .get_face(val_2)
-            .borrow_mut()
-            .set_twin(cell_1.borrow().get_face(val_1).clone());
+        let val = FACE_TWIN_TABLE[face_index as usize][0];
+        let val_contact = FACE_TWIN_TABLE[face_index as usize][1];
 
-        cell_1
+        cell.borrow_mut()
+            .get_face(val)
             .borrow_mut()
-            .get_face(val_1)
-            .borrow_mut()
-            .set_twin(cell_2.borrow().get_face(val_2).clone());
+            .set_twin(contact_cell.borrow().get_face(val_contact).clone());
 
-        let cell_2 = cell_2.borrow();
+        assert!(
+            contact_cell
+                .borrow()
+                .get_face(val_contact)
+                .borrow()
+                .get_face_type()
+                == cell.borrow().get_face(val).borrow().get_face_type()
+        );
+
+        contact_cell
+            .borrow_mut()
+            .get_face(val_contact)
+            .borrow_mut()
+            .set_twin(cell.borrow().get_face(val).clone());
+
+        let cell_2 = cell.borrow();
         let face = cell_2.get_face(face_index);
         let cell_2_face = face.borrow();
         let id = cell_2_face.get_face_index();
@@ -503,34 +488,83 @@ impl Octree {
         for cell in &self.cells {
             if let &Some(pos_in_parent) = cell.borrow().get_pos_in_parent() {
                 for side in 0..3 {
-                    let face_index = FACE_RELATIONSHIP_TABLE[pos_in_parent as usize][side];
+                    let face_index_in_parent =
+                        FACE_RELATIONSHIP_TABLE[pos_in_parent as usize][side];
                     let sub_face_index = SUB_FACE_TABLE[pos_in_parent as usize][side];
 
                     let cell_b = cell.borrow();
                     let parent = cell_b.get_parent().as_ref().unwrap();
 
-                    let face = parent.borrow().get_face(face_index);
+                    // info!(
+                    //     "parent id: {}, cell id : {}",
+                    //     parent.borrow().get_id(),
+                    //     cell_b.get_id()
+                    // );
+                    assert!(parent.borrow().get_id() != cell_b.get_id());
+
+                    let parent_face = parent.borrow().get_face(face_index_in_parent);
 
                     cell.borrow()
-                        .get_face(face_index)
+                        .get_face(face_index_in_parent)
                         .borrow_mut()
-                        .set_parent(face);
+                        .set_parent(parent_face);
+
+                    assert!(
+                        parent
+                            .borrow()
+                            .get_face(face_index_in_parent)
+                            .borrow()
+                            .get_face_type()
+                            != &FaceType::LeafFace
+                            && parent
+                                .borrow()
+                                .get_face(face_index_in_parent)
+                                .borrow()
+                                .get_face_type()
+                                != &FaceType::TransitFace
+                    );
 
                     parent
                         .borrow()
-                        .get_face(face_index)
+                        .get_face(face_index_in_parent)
                         .borrow_mut()
-                        .set_child(sub_face_index, cell.borrow().get_face(face_index).clone());
+                        .set_child(
+                            sub_face_index,
+                            cell.borrow().get_face(face_index_in_parent).clone(),
+                        );
                 }
 
                 if *cell.borrow().get_cell_type() == CellType::Leaf {
+                    // info!("cell level {}", cell.borrow().get_cur_subdiv_level());
                     for face_index in FaceIndex::iter() {
+                        assert!(cell
+                            .borrow()
+                            .get_face(face_index)
+                            .borrow()
+                            .get_children()
+                            .is_none());
+
                         cell.borrow()
                             .get_face(face_index)
                             .borrow_mut()
                             .set_face_type(FaceType::LeafFace);
                     }
                 }
+            }
+        }
+
+        for cell in &self.cells {
+            for face_index in FaceIndex::iter() {
+                let face = cell.borrow().get_face(face_index);
+
+                assert!(
+                    face.borrow().get_children().is_none()
+                        || (face.borrow().get_children().as_ref().unwrap().len() == 4
+                            && face.borrow().get_children().as_ref().unwrap()[0].is_some()
+                            && face.borrow().get_children().as_ref().unwrap()[1].is_some()
+                            && face.borrow().get_children().as_ref().unwrap()[2].is_some()
+                            && face.borrow().get_children().as_ref().unwrap()[3].is_some())
+                );
             }
         }
     }
@@ -548,19 +582,26 @@ impl Octree {
                 {
                     let face_b = face.borrow_mut();
                     assert!(face_b.get_face_type() == &FaceType::LeafFace);
+                    // assert!(face_b.get_children().as_ref().unwrap()[0].is_some());
 
                     if let Some(twin) = face_b.get_twin() {
-                        if let Some(children) = twin.borrow().get_children() {
-                            if children.len() > 0 {
-                                setface = true;
-                            }
+                        if twin.borrow().get_face_type() == &FaceType::BranchFace {
+                            setface = true;
                         }
                     }
                 }
 
                 if setface {
-                    let mut face_bm = face.borrow_mut();
-                    face_bm.set_face_type(FaceType::TransitFace);
+                    face.borrow_mut().set_face_type(FaceType::TransitFace);
+                    assert!(
+                        face.borrow()
+                            .get_twin()
+                            .as_ref()
+                            .unwrap()
+                            .borrow()
+                            .get_face_type()
+                            != &FaceType::LeafFace
+                    );
                 }
             }
         }

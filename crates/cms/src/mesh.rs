@@ -1,5 +1,6 @@
 use std::{io::Write, path::Path};
 
+use bevy::prelude::info;
 use nalgebra::Vector3;
 
 #[derive(Clone, Debug)]
@@ -84,6 +85,7 @@ impl Mesh {
 
 impl Mesh {
     pub fn export_obj(&self, path: &Path) {
+        info!("export_obj");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         let mut file = std::fs::File::create(path).unwrap();
 
