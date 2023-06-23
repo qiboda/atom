@@ -10,10 +10,10 @@ use nalgebra::Vector3;
 
 use strum::EnumCount;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CellType {
     Branch,
-    Leaf,
+    Leaf, // 没有在表面的都不是leaf。
 }
 
 #[derive(Debug)]

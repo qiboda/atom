@@ -27,7 +27,10 @@ impl Address {
                     // Avoid any further assignments
                     self.raw_address[i] = parent_address_ptr[i];
                 }
-                None => self.raw_address[i] = pos_in_parent,
+                None => {
+                    self.raw_address[i] = pos_in_parent;
+                    break;
+                }
             }
         }
     }
@@ -45,7 +48,7 @@ impl Address {
     /// We use an unsigned integers (uint) which is 32-bit on
     /// all* platforms and can store a range of 4 billion
     /// which is 10 digits. Thus can safely be used for up to
-    /// depth 9 (2^9 == 512 samples). Thus max address == 888888888
+    /// depth 9 (2^9 == 512 samples). Thus max address == 7777_7777
     pub fn get_formatted(&self) -> usize {
         self.format_address()
     }
@@ -62,7 +65,9 @@ impl Address {
                     formatted_address +=
                         (value as usize as f32 * 10f32.powf(i as f32)).ceil() as usize;
                 }
-                None => {}
+                None => {
+                    formatted_address += (8 as f32 * 10f32.powf(i as f32)).ceil() as usize;
+                }
             }
         }
 

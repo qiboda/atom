@@ -10,8 +10,8 @@ use super::{
 #[derive(Debug, PartialEq, Eq)]
 pub enum FaceType {
     BranchFace,
-    LeafFace,
-    TransitFace,
+    LeafFace,    // only cell's face can be leaf face.
+    TransitFace, // 如果两个相邻的cell的face不是同一级的，那么这个face就是transit face
 }
 
 #[derive(Debug)]
@@ -24,8 +24,10 @@ pub struct Face {
 
     face_type: FaceType,
 
+    /// todo: delete
     sharp_feature: bool,
 
+    /// todo: delete
     feature_position: Vector3<f32>,
 
     twin: Option<Rc<RefCell<Face>>>,
@@ -37,7 +39,7 @@ pub struct Face {
 
     strips: Vec<Strip>,
 
-    transit_segs: Vec<Vec<i8>>,
+    transit_segs: Vec<Vec<usize>>,
 }
 
 impl Face {
@@ -46,7 +48,7 @@ impl Face {
             cell_id,
             face_index,
             skip: false,
-            face_type: FaceType::LeafFace,
+            face_type: FaceType::BranchFace,
             sharp_feature: false,
             feature_position: Vector3::new(0.0, 0.0, 0.0),
             twin: None,
@@ -136,11 +138,11 @@ impl Face {
         self.feature_position
     }
 
-    pub fn set_transit_segs(&mut self, transit_segs: Vec<Vec<i8>>) {
+    pub fn set_transit_segs(&mut self, transit_segs: Vec<Vec<usize>>) {
         self.transit_segs = transit_segs;
     }
 
-    pub fn get_transit_segs(&self) -> &Vec<Vec<i8>> {
+    pub fn get_transit_segs(&self) -> &Vec<Vec<usize>> {
         &self.transit_segs
     }
 }

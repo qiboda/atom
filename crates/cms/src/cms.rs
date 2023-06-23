@@ -1,5 +1,6 @@
 use std::{cell::RefCell, ops::Range, rc::Rc};
 
+use bevy::prelude::info;
 use nalgebra::Vector3;
 use strum::{EnumCount, IntoEnumIterator};
 
@@ -8,7 +9,7 @@ use crate::{
     mesh::{Mesh, Vertex},
     octree::{
         cell::{Cell, CellType},
-        edge_block::EdgeBlock,
+        edge_block::VertexIndices,
         face::{Face, FaceType},
         octree::Octree,
         point::Point,
@@ -22,6 +23,7 @@ use crate::{
     MAX_OCTREE_RES,
 };
 
+/// Cubical Marching Squares
 pub struct CMS {
     iso_level: f32,
     negative_inside: bool,
@@ -34,7 +36,7 @@ pub struct CMS {
     sample_size: Vector3<usize>,
     sample_data: SampleRange3D<f32>,
 
-    edge_data: SampleRange3D<EdgeBlock>,
+    vertex_index_data: SampleRange3D<VertexIndices>,
 
     vertices: Vec<Vertex>,
 
@@ -97,7 +99,7 @@ impl CMS {
             sample_fn,
             sample_size,
             sample_data,
-            edge_data,
+            vertex_index_data: edge_data,
             octree,
             vertices: vec![],
             octree_root: None,
@@ -147,7 +149,9 @@ impl CMS {
         self.cubical_marching_sqaures_algorithm();
         match &self.octree_root {
             Some(root) => {
+                info!("tessellation_traversal");
                 self.tessellation_traversal(root.clone(), mesh);
+                info!("create_mesh");
                 self.create_mesh(mesh);
             }
             None => {}
@@ -164,6 +168,7 @@ impl CMS {
         self.trace_comonent();
     }
 
+    /// 生成每个面的边的顶点的位置信息。
     pub fn generate_segments(&mut self, cell: Option<Rc<RefCell<Cell>>>) {
         if let Some(cell) = cell {
             match cell.borrow().get_cell_type() {
@@ -211,6 +216,8 @@ impl CMS {
 
         if e0a.is_some() {
             self.make_strip(e0a, e0b, indices, face.clone(), 0)
+        } else {
+            // info!("edges {} indices: {:?}", edges, indices);
         }
 
         let e1a = EDGE_MAP[edges as usize][1][0];
@@ -240,6 +247,7 @@ impl CMS {
         face.borrow_mut().set_skip(false);
     }
 
+    /// 计算strip的一条边的顶点信息
     pub fn populate_strip(
         &mut self,
         strip: &mut Strip,
@@ -287,21 +295,28 @@ impl CMS {
 
         let mut dupli = false;
 
-        let value_0 =
-            self.edge_data
-                .get_value(crossing_index_0.x, crossing_index_0.y, crossing_index_0.z);
+        let value_0 = self.vertex_index_data.get_value(
+            crossing_index_0.x,
+            crossing_index_0.y,
+            crossing_index_0.z,
+        );
         if value_0.is_empty() == false {
-            if value_0.get_edge_index().get(edge_dir_index).is_some() {
-                strip.set_data(
+            if value_0
+                .get_vertex_index()
+                .get(edge_dir_index)
+                .unwrap()
+                .is_some()
+            {
+                strip.set_vertex_index(
                     edge_index,
                     value_0
-                        .get_edge_index()
+                        .get_vertex_index()
                         .get(edge_dir_index)
                         .unwrap()
-                        .unwrap() as i8,
+                        .unwrap(),
                 );
-                strip.set_block(edge_index, crossing_index_0);
-                strip.set_dir(edge_index, Some(edge_dir));
+                strip.set_crossing_left_coord(edge_index, crossing_index_0);
+                strip.set_edge_dir(edge_index, Some(edge_dir));
                 dupli = true;
             }
         }
@@ -366,12 +381,42 @@ impl CMS {
 
         // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。
         if vertex_range.end - vertex_range.start == 1 {
+            let this_value = self.sample_data.get_value(
+                start_vertex_coord.x,
+                start_vertex_coord.y,
+                start_vertex_coord.z,
+            );
+            let mut end_vertex_coord = start_vertex_coord;
+            end_vertex_coord[edge_dir as usize] = start_vertex_coord[edge_dir as usize] + 1;
+            let next_value = self.sample_data.get_value(
+                end_vertex_coord.x,
+                end_vertex_coord.y,
+                end_vertex_coord.z,
+            );
+            // info!(
+            //     "this value {}, next_value: {}, start {}, end {}",
+            //     this_value, next_value, start_vertex_coord, end_vertex_coord
+            // );
+            assert!(this_value * next_value <= 0.0);
             return start_vertex_coord[edge_dir as usize];
         }
 
         let mut indexer = start_vertex_coord;
 
         // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。
+        for i in vertex_range.clone() {
+            indexer[edge_dir as usize] = i;
+
+            let this_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
+
+            indexer[edge_dir as usize] = i + 1;
+            let next_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
+
+            if this_value * next_value <= 0.0 {
+                return i;
+            }
+        }
+
         for i in vertex_range {
             indexer[edge_dir as usize] = i;
 
@@ -380,11 +425,11 @@ impl CMS {
             indexer[edge_dir as usize] = i + 1;
             let next_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
 
-            if this_value * next_value < 0.0 {
+            info!("this value: {} next value {}", this_value, next_value);
+            if this_value * next_value <= 0.0 {
                 return i;
             }
         }
-
         // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。此处代码不会执行。
         assert!(false);
 
@@ -394,10 +439,10 @@ impl CMS {
     pub fn make_vertex(
         &mut self,
         strip: &mut Strip,
-        dir: Direction,
+        edge_dir: Direction,
         crossing_index_0: Vector3<usize>,
         crossing_index_1: Vector3<usize>,
-        index: usize,
+        edge_index: usize,
     ) {
         let pos0 =
             self.sample_data
@@ -422,20 +467,23 @@ impl CMS {
         let vert = Vertex::new_with_position_and_normals(&crossing_point, &normal);
         self.vertices.push(vert);
 
-        strip.set_data(index, (self.vertices.len() - 1) as i8);
-        strip.set_block(index, crossing_index_0);
-        strip.set_dir(index, Some(dir));
+        strip.set_vertex_index(edge_index, self.vertices.len() - 1);
+        strip.set_crossing_left_coord(edge_index, crossing_index_0);
+        strip.set_edge_dir(edge_index, Some(edge_dir));
 
-        let mut e =
-            self.edge_data
-                .get_value(crossing_index_0.x, crossing_index_0.y, crossing_index_0.z);
+        let mut e = self.vertex_index_data.get_value(
+            crossing_index_0.x,
+            crossing_index_0.y,
+            crossing_index_0.z,
+        );
 
-        if e.is_empty() {
-            e.set_empty();
-        }
-        assert!(e.get_edge_index().get(index).is_none());
-        e.set_dir_edge_index(dir, self.vertices.len() - 1);
-        self.edge_data.set_value(
+        assert!(e
+            .get_vertex_index()
+            .get(edge_dir as usize)
+            .unwrap()
+            .is_none());
+        e.set_dir_vertex_index(edge_dir, self.vertices.len() - 1);
+        self.vertex_index_data.set_value(
             crossing_index_0.x,
             crossing_index_0.y,
             crossing_index_0.z,
@@ -443,6 +491,7 @@ impl CMS {
         );
     }
 
+    /// @param quality iter count
     pub fn find_crossing_point(
         &mut self,
         quality: usize,
@@ -458,14 +507,13 @@ impl CMS {
         let v1 = point1.get_value();
 
         let alpha = (iso_value - v0) / (v1 - v0);
-
         let mut pos = p0 + (p1 - p0) * alpha;
-
         let val = self.sample_fn.get_value(pos.x, pos.y, pos.z);
 
         let point = Point::new_with_position_and_value(&pos, val);
 
-        if (iso_value - val).abs() < 0.0 || quality == 0 {
+        // 误差足够小，或者迭代次数足够多，就认为找到了交点。
+        if (iso_value - val).abs() < f32::EPSILON || quality == 0 {
             return pos;
         } else {
             if val < 0.0 {
@@ -511,18 +559,18 @@ impl CMS {
 
 impl CMS {
     pub fn edit_transitional_face(&mut self) {
+        info!("edit_transitional_face");
         let cells = self.octree.get_cells();
 
         for cell in cells.iter() {
             for face_index in FaceIndex::iter() {
                 let face = cell.borrow().get_face(face_index);
                 if face.borrow().get_face_type() == &FaceType::TransitFace {
-                    let face_borrow = face.borrow();
-                    assert!(face_borrow.get_twin().is_some());
+                    assert!(face.borrow().get_twin().is_some());
                     assert!(
                         self.octree
                             .get_cell(
-                                face_borrow
+                                face.borrow()
                                     .get_twin()
                                     .as_ref()
                                     .unwrap()
@@ -537,7 +585,7 @@ impl CMS {
                     );
 
                     assert!(
-                        face_borrow
+                        face.borrow()
                             .get_twin()
                             .as_ref()
                             .unwrap()
@@ -547,15 +595,22 @@ impl CMS {
                     );
 
                     let mut all_strips = Vec::new();
-
                     CMS::traverse_face(
                         &self,
-                        face_borrow.get_twin().as_ref().unwrap().clone(),
+                        face.borrow().get_twin().as_ref().unwrap().clone(),
                         &mut all_strips,
                     );
 
+                    // info!("all_strips len: {}", all_strips.len(),);
+                    // for strip in all_strips.iter() {
+                    //     info!("strip value: {:?}", strip);
+                    // }
+
+                    // todo: fix this
+                    // assert!(all_strips.len() != 0);
                     if all_strips.len() == 0 {
                         face.borrow_mut().set_face_type(FaceType::LeafFace);
+                        info!("all_strips: len is 0");
                         continue;
                     }
 
@@ -564,8 +619,12 @@ impl CMS {
                     loop {
                         let mut vertex_indices = Vec::new();
 
-                        vertex_indices.push(all_strips[0].get_data(0));
-                        vertex_indices.push(all_strips[0].get_data(1));
+                        if let Some(data) = all_strips[0].get_vertex_index(0) {
+                            vertex_indices.push(data);
+                        }
+                        if let Some(data) = all_strips[0].get_vertex_index(1) {
+                            vertex_indices.push(data);
+                        }
 
                         let mut long_strip = all_strips[0].clone();
 
@@ -576,34 +635,60 @@ impl CMS {
                         loop {
                             added_in_iteration = 0;
 
-                            for strip in all_strips.iter() {
-                                if vertex_indices[vertex_indices.len() - 1] == strip.get_data(0) {
-                                    vertex_indices.push(strip.get_data(1));
-                                    long_strip.change_back(strip, 1);
-                                    added_in_iteration += 1;
-                                } else if vertex_indices[vertex_indices.len() - 1]
-                                    == strip.get_data(1)
+                            all_strips.retain(|strip| {
+                                if vertex_indices.last() == strip.get_vertex_index(0).as_ref() {
+                                    if let Some(data) = strip.get_vertex_index(1) {
+                                        vertex_indices.push(data);
+                                        long_strip.change_back(strip, 1);
+                                        added_in_iteration += 1;
+                                    } else {
+                                        // info!("Some(data) != strip.get_vertex_index(1)");
+                                    }
+                                } else if vertex_indices.last()
+                                    == strip.get_vertex_index(1).as_ref()
                                 {
-                                    vertex_indices.push(strip.get_data(0));
-                                    long_strip.change_back(strip, 0);
-                                    added_in_iteration += 1;
+                                    if let Some(data) = strip.get_vertex_index(0) {
+                                        vertex_indices.push(data);
+                                        long_strip.change_back(strip, 0);
+                                        added_in_iteration += 1;
+                                    } else {
+                                        // info!("Some(data) != strip.get_vertex_index(0)");
+                                    }
                                 } else {
-                                    continue;
+                                    // info!("all_strips.retain first false");
+                                    // info!(
+                                    //     "strip: {:?} vertex_indices: {:?}",
+                                    //     strip, vertex_indices
+                                    // );
+                                    return true;
                                 }
 
-                                // all_strips.remove(i);
-
-                                if vertex_indices[0] == vertex_indices[vertex_indices.len() - 1] {
+                                if vertex_indices.first() == vertex_indices.last() {
                                     vertex_indices.remove(0);
                                     long_strip.set_loop(true);
+                                } else {
+                                    // info!(
+                                    //     "!= vertex index len {} vertex index {:?} added_in_iteration {}, long_strip is loop: {}",
+                                    //     vertex_indices.len(),
+                                    //     vertex_indices,
+                                    //     added_in_iteration,
+                                    //     long_strip.get_loop()
+                                    // );
                                 }
-                            }
+
+                                return false;
+                            });
+
+                            // info!("all_strips: num: {}", all_strips.len());
 
                             if all_strips.len() <= 0
                                 || added_in_iteration <= 0
                                 || long_strip.get_loop()
                             {
+                                // info!("all_strips.retain first break");
                                 break;
+                            } else {
+                                // info!("first all_strips: len {} added_in_iteration {}, long_strip is loop: {}", all_strips.len(), added_in_iteration, long_strip.get_loop());
                             }
                         }
 
@@ -611,39 +696,48 @@ impl CMS {
                             loop {
                                 added_in_iteration = 0;
 
-                                for strip in all_strips.iter() {
-                                    if vertex_indices[0] == strip.get_data(0) {
-                                        vertex_indices.insert(0, strip.get_data(1));
-                                        long_strip.change_front(strip, 1);
-                                        added_in_iteration += 1;
-                                    } else if vertex_indices[0] == strip.get_data(1) {
-                                        vertex_indices.insert(0, strip.get_data(0));
-                                        long_strip.change_front(strip, 0);
-                                        added_in_iteration += 1;
+                                all_strips.retain(|strip| {
+                                    if vertex_indices.first() == strip.get_vertex_index(0).as_ref()
+                                    {
+                                        if let Some(data) = strip.get_vertex_index(1) {
+                                            vertex_indices.insert(0, data);
+                                            long_strip.change_front(strip, 1);
+                                            added_in_iteration += 1;
+                                        }
+                                    } else if vertex_indices.first()
+                                        == strip.get_vertex_index(1).as_ref()
+                                    {
+                                        if let Some(data) = strip.get_vertex_index(0) {
+                                            vertex_indices.insert(0, data);
+                                            long_strip.change_front(strip, 0);
+                                            added_in_iteration += 1;
+                                        }
                                     } else {
-                                        continue;
+                                        // info!("all_strips.retain second false");
+                                        return true;
                                     }
-                                }
 
-                                // all_strips.remove(i);
-
-                                if vertex_indices[0] == vertex_indices[vertex_indices.len() - 1] {
-                                    vertex_indices.remove(0);
-                                    long_strip.set_loop(true);
-                                }
+                                    if vertex_indices.first() == vertex_indices.last() {
+                                        vertex_indices.remove(0);
+                                        long_strip.set_loop(true);
+                                    }
+                                    return false;
+                                });
 
                                 if all_strips.len() <= 0
                                     || added_in_iteration <= 0
                                     || long_strip.get_loop()
                                 {
                                     break;
+                                } else {
+                                    // info!("seconds all_strips: len {} added_in_iteration {}, long_strip is loop: {}", all_strips.len(), added_in_iteration, long_strip.get_loop());
                                 }
                             }
                         }
 
                         long_strip.set_skip(false);
 
-                        face_borrow
+                        face.borrow()
                             .get_twin()
                             .as_ref()
                             .unwrap()
@@ -653,8 +747,11 @@ impl CMS {
 
                         transit_segs.push(vertex_indices);
 
+                        // info!("all_strips len: {}", all_strips.len());
                         if all_strips.len() == 0 {
                             break;
+                        } else {
+                            // info!("three all_strips: len {} added_in_iteration {}, long_strip is loop: {}", all_strips.len(), added_in_iteration, long_strip.get_loop());
                         }
                     }
 
@@ -665,7 +762,7 @@ impl CMS {
                     }
 
                     if transit_segs.len() != 0 {
-                        face_borrow
+                        face.borrow()
                             .get_twin()
                             .as_ref()
                             .unwrap()
@@ -682,14 +779,32 @@ impl CMS {
     pub fn traverse_face(self: &Self, face: Rc<RefCell<Face>>, transit_strips: &mut Vec<Strip>) {
         match face.borrow().get_face_type() {
             FaceType::BranchFace => {
-                for i in SubFaceIndex::iter() {
-                    CMS::traverse_face(&self, face.clone(), transit_strips);
+                for (i, sub_face_index) in SubFaceIndex::iter().enumerate() {
+                    if let Some(children) = face.borrow().get_children() {
+                        if children[i].is_none() {
+                            continue;
+                        }
+                        CMS::traverse_face(
+                            &self,
+                            children[i].as_ref().unwrap().clone(),
+                            transit_strips,
+                        );
+                    }
                 }
             }
             FaceType::LeafFace => {
                 for strip in face.borrow().get_strips().iter() {
+                    // info!(
+                    //     "face id: {} leaf strip {:?}",
+                    //     face.borrow().get_cell_id(),
+                    //     strip
+                    // );
+                    assert!(strip.get_skip() == false);
                     if strip.get_skip() {
-                        assert!(strip.get_data(0) == -1);
+                        assert!(strip.get_vertex_index(0).is_none());
+                        continue;
+                    }
+                    if strip.get_vertex_index(0).is_none() {
                         continue;
                     }
                     transit_strips.push(strip.clone());
@@ -700,31 +815,53 @@ impl CMS {
     }
 
     pub fn trace_comonent(&mut self) {
+        info!("trace_comonent");
         let cells = self.octree.get_cells();
         for i in 0..MAX_OCTREE_RES {
             for cell in cells.iter() {
-                if cell.borrow().get_cell_type() == &CellType::Leaf {
-                    let mut cell_strips = Vec::new();
-                    let mut transit_segs = Vec::new();
-                    let mut components = Vec::new();
+                if *cell.borrow().get_cur_subdiv_level() as usize == MAX_OCTREE_RES - i - 1 {
+                    if cell.borrow().get_cell_type() == &CellType::Leaf {
+                        let mut cell_strips = Vec::new();
+                        let mut transit_segs = Vec::new();
+                        let mut components = Vec::new();
 
-                    CMS::collect_strips(&self, cell.clone(), &mut cell_strips, &mut transit_segs);
-
-                    loop {
-                        if cell_strips.len() == 0 {
-                            break;
-                        }
-
-                        CMS::link_strips(
+                        CMS::collect_strips(
                             &self,
-                            &mut components,
+                            cell.clone(),
                             &mut cell_strips,
                             &mut transit_segs,
                         );
-                        cell.borrow_mut()
-                            .get_componnets_mut()
-                            .push(components.clone());
-                        components.clear();
+
+                        // todo: transit segs number is not correct
+
+                        let mut debug = false;
+                        if cell_strips.len() > 0 {
+                            debug = cell_strips[0].get_vertex_index(0).unwrap() == 17;
+                        }
+
+                        info!("loop start");
+                        loop {
+                            if cell_strips.len() == 0 {
+                                break;
+                            }
+
+                            CMS::link_strips(
+                                &self,
+                                &mut components,
+                                &mut cell_strips,
+                                &mut transit_segs,
+                                debug,
+                            );
+
+                            if components.len() >= 3 {
+                                cell.borrow_mut()
+                                    .get_componnets_mut()
+                                    .push(components.clone());
+                                info!("final components: {:?}", components);
+                            }
+                            components.clear();
+                        }
+                        info!("loop end");
                     }
                 }
             }
@@ -735,7 +872,7 @@ impl CMS {
         self: &Self,
         cell: Rc<RefCell<Cell>>,
         cell_strips: &mut Vec<Strip>,
-        transit_segs: &mut Vec<Vec<i8>>,
+        transit_segs: &mut Vec<Vec<usize>>,
     ) {
         for face in FaceIndex::iter() {
             let cell_borrow = cell.borrow();
@@ -747,7 +884,7 @@ impl CMS {
                 }
                 FaceType::LeafFace => {
                     for strip in face_borrow.get_strips().iter() {
-                        if strip.get_data(0) != -1 {
+                        if strip.get_vertex_index(0).is_some() {
                             cell_strips.push(strip.clone());
                         }
                     }
@@ -755,7 +892,7 @@ impl CMS {
                 FaceType::TransitFace => {
                     let twin = face_borrow.get_twin();
                     if twin.is_none() {
-                        break;
+                        continue;
                     }
 
                     assert!(
@@ -771,12 +908,12 @@ impl CMS {
                         .iter()
                         .enumerate()
                     {
-                        if strip.get_data(0) != -1 {
+                        strip.get_vertex_index(0).map(|data| {
                             transit_segs.push(
                                 twin.as_ref().unwrap().borrow().get_transit_segs()[i].clone(),
                             );
                             cell_strips.push(strip.clone());
-                        }
+                        });
                     }
                 }
             }
@@ -789,24 +926,50 @@ impl CMS {
         self: &Self,
         components: &mut Vec<usize>,
         cell_strips: &mut Vec<Strip>,
-        transit_segs: &mut Vec<Vec<i8>>,
+        transit_segs: &mut Vec<Vec<usize>>,
+        debug: bool,
     ) {
         assert!(components.len() == 0);
+        assert!(cell_strips[0].get_vertex_index(0).is_some());
 
         let mut added_in_iteration;
-        let mut backwards;
+        let mut backwards = false;
 
-        components.push(cell_strips[0].get_data(0) as usize);
+        components.push(cell_strips[0].get_vertex_index(0).unwrap());
+
+        info!("len: {}", cell_strips.len());
+        for strip in cell_strips.iter() {
+            info!(
+                "component cell_strips: {:?} {:?}",
+                strip.get_vertex_index(0),
+                strip.get_vertex_index(1)
+            );
+        }
+        info!("transit segs: {:?}", transit_segs);
+
+        if debug {
+            info!("component start: {:?}", components);
+            for strip in cell_strips.iter() {
+                info!(
+                    "component cell_strips: {:?} {:?}",
+                    strip.get_vertex_index(0),
+                    strip.get_vertex_index(1)
+                );
+            }
+            info!("transit segs: {:?}", transit_segs);
+        }
 
         loop {
             added_in_iteration = 0;
 
-            for strip in cell_strips.iter() {
-                let s_data0 = strip.get_data(0);
-                let s_data1 = strip.get_data(1);
+            cell_strips.retain(|strip| {
+                assert!(strip.get_vertex_index(0).is_some() && strip.get_vertex_index(1).is_some());
+
+                let s_data0 = strip.get_vertex_index(0);
+                let s_data1 = strip.get_vertex_index(1);
 
                 match components.last() {
-                    Some(v) if *v == s_data0 as usize => {
+                    Some(v) if Some(*v) == s_data0 => {
                         backwards = false;
                         let mut transit = false;
 
@@ -818,15 +981,24 @@ impl CMS {
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
+                                debug,
                             );
+                            if debug {
+                                info!("component transit: {:?}", components);
+                            }
                         }
 
                         if transit == false {
-                            components.push(s_data1 as usize);
-                            added_in_iteration += 1;
+                            if let Some(data) = s_data1 {
+                                components.push(data);
+                                added_in_iteration += 1;
+                                if debug {
+                                    info!("component non transit: {:?}", components);
+                                }
+                            }
                         }
                     }
-                    Some(v) if *v == s_data1 as usize => {
+                    Some(v) if Some(*v) == s_data1 => {
                         backwards = true;
                         let mut transit = false;
 
@@ -838,20 +1010,38 @@ impl CMS {
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
+                                debug,
                             );
+                            if debug {
+                                info!("component transit 2: {:?}", components);
+                            }
                         }
 
                         if transit == false {
-                            components.push(s_data0 as usize);
-                            added_in_iteration += 1;
+                            if let Some(data) = s_data0 {
+                                components.push(data);
+                                added_in_iteration += 1;
+                                if debug {
+                                    info!("component non transit 2: {:?}", components);
+                                }
+                            }
                         }
                     }
-                    _ => {}
+                    _ => {
+                        if debug {
+                            info!("component not add");
+                        }
+                        return true;
+                    }
                 }
-                // strips.remove(i);
-            }
+                return false;
+            });
 
             if components.first() == components.last() {
+                components.remove(0);
+            }
+
+            if components.len() > 1 && components.first() == components.get(1) {
                 components.remove(0);
             }
 
@@ -867,12 +1057,14 @@ impl CMS {
         loop {
             added_in_iteration = 0;
 
-            for strip in cell_strips.iter() {
-                let s_data0 = strip.get_data(0);
-                let s_data1 = strip.get_data(1);
+            cell_strips.retain(|strip| {
+                assert!(strip.get_vertex_index(0).is_some() && strip.get_vertex_index(1).is_some());
+
+                let s_data0 = strip.get_vertex_index(0);
+                let s_data1 = strip.get_vertex_index(1);
 
                 match components.first() {
-                    Some(v) if *v == s_data0 as usize => {
+                    Some(v) if Some(*v) == s_data0 => {
                         backwards = false;
                         let mut transit = false;
 
@@ -884,15 +1076,24 @@ impl CMS {
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
+                                debug,
                             );
+                            if debug {
+                                info!("component transit 3: {:?}", components);
+                            }
                         }
 
                         if transit == false {
-                            components.insert(0, s_data1 as usize);
-                            added_in_iteration += 1;
+                            if let Some(data) = s_data1 {
+                                components.insert(0, data);
+                                added_in_iteration += 1;
+                                if debug {
+                                    info!("component non transit 3: {:?}", components);
+                                }
+                            }
                         }
                     }
-                    Some(v) if *v == s_data1 as usize => {
+                    Some(v) if Some(*v) == s_data1 => {
                         backwards = true;
                         let mut transit = false;
 
@@ -904,48 +1105,76 @@ impl CMS {
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
+                                debug,
                             );
+                            if debug {
+                                info!("component transit 4: {:?}", components);
+                            }
                         }
 
                         if transit == false {
-                            components.insert(0, s_data0 as usize);
-                            added_in_iteration += 1;
+                            if let Some(data) = s_data0 {
+                                components.insert(0, data);
+                                added_in_iteration += 1;
+                                if debug {
+                                    info!("component non transit 4: {:?}", components);
+                                }
+                            }
                         }
                     }
                     _ => {
-                        continue;
+                        if debug {
+                            info!("component 2 not add");
+                        }
+                        return true;
                     }
                 }
-                // strips.remove(i);
+                return false;
+            });
 
-                if components.first() == components.last() {
-                    components.remove(0);
-                }
-
-                for comp in components.iter() {
-                    assert!(comp < &self.vertices.len());
-                }
-
-                if added_in_iteration <= 0 {
-                    break;
-                }
+            if components.first() == components.last() {
+                components.remove(0);
             }
 
-            assert!(components.first() != components.last());
-            assert!(components.len() >= 3);
+            if components.len() > 1 && components.first() == components.get(1) {
+                components.remove(0);
+            }
+
+            for comp in components.iter() {
+                assert!(comp < &self.vertices.len());
+            }
+
+            if added_in_iteration <= 0 {
+                break;
+            }
         }
+
+        assert!(components.first() != components.last());
+        assert!(components.len() >= 3);
+        // if components.len() < 3 {
+        //     components.clear();
+        // }
     }
 
     fn insert_data_from_twin(
         components: &mut Vec<usize>,
-        transit_segs: &Vec<Vec<i8>>,
+        transit_segs: &Vec<Vec<usize>>,
         strip: &Strip,
         transit: &mut bool,
         added_in_iteration: &mut i32,
         backwards: &bool,
+        debug: bool,
     ) {
         for seg in transit_segs.iter() {
             if CMS::compare_strip_to_seg(strip, seg) {
+                if debug {
+                    info!(
+                        "success component cell_strips: {:?} {:?}",
+                        strip.get_vertex_index(0),
+                        strip.get_vertex_index(1)
+                    );
+                    info!("success component seg: {:?}", seg,);
+                }
                 if *backwards {
                     for i in (0..seg.len()).rev() {
                         components.push(seg[i] as usize);
@@ -959,25 +1188,35 @@ impl CMS {
                 *added_in_iteration += 1;
                 *transit = true;
                 break;
+            } else {
+                if debug {
+                    info!(
+                        "fail component cell_strips: {:?} {:?}",
+                        strip.get_vertex_index(0),
+                        strip.get_vertex_index(1)
+                    );
+                    info!("fail component seg: {:?}", seg,);
+                }
             }
         }
     }
 
-    fn compare_strip_to_seg(strip: &Strip, seg: &Vec<i8>) -> bool {
-        let s0 = strip.get_data(0);
-        let s1 = strip.get_data(1);
+    fn compare_strip_to_seg(strip: &Strip, seg: &Vec<usize>) -> bool {
+        let s0 = strip.get_vertex_index(0);
+        let s1 = strip.get_vertex_index(1);
 
-        (seg.first().unwrap() == &s0 && seg.last().unwrap() == &s1)
-            || (seg.first().unwrap() == &s1 && seg.last().unwrap() == &s0)
+        (seg.first() == s0.as_ref() && seg.last() == s1.as_ref())
+            || (seg.first() == s1.as_ref() && seg.last() == s0.as_ref())
     }
 }
 
 impl CMS {
     pub fn tessellation_traversal(&mut self, cell: Rc<RefCell<Cell>>, mesh: &mut Mesh) {
-        match cell.borrow().get_cell_type() {
+        let cell_type = cell.borrow().get_cell_type().clone();
+        match cell_type {
             CellType::Branch => {
                 for subcell_index in SubCellIndex::iter() {
-                    assert!(cell.borrow().get_child(subcell_index).is_some());
+                    // assert!(cell.borrow().get_child(subcell_index).is_some());
                     if let Some(cell) = cell.borrow().get_child(subcell_index) {
                         self.tessellation_traversal(cell, mesh);
                     }

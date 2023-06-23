@@ -36,6 +36,6 @@ pub struct Cube;
 
 impl DensyFunction for Cube {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        (x.abs() - 1.0).max((y.abs() - 1.0).max(z.abs() - 1.0))
+        (x.abs() - 2.0).max((y.abs() - 2.0).max(z.abs() - 2.0))
     }
 }

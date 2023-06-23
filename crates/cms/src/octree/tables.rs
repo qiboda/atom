@@ -57,6 +57,11 @@ pub enum Face2DEdge {
 // the cell edges from which we draw interior edges
 #[rustfmt::skip]
 pub const EDGE_MAP: [[[Option<Face2DEdge>; 2]; 2]; 16] = [
+
+    // Up = 0,
+    // Down = 1,
+    // Left = 2,
+    // Right = 3,
     [[None, None], [None, None]],                                                                          // ----
     [[Some(Face2DEdge::Up), Some(Face2DEdge::Left)], [None, None]],                                        // ---0
     [[Some(Face2DEdge::Left), Some(Face2DEdge::Down)], [None, None]],                                      // --1-
@@ -65,6 +70,7 @@ pub const EDGE_MAP: [[[Option<Face2DEdge>; 2]; 2]; 16] = [
     [[Some(Face2DEdge::Right), Some(Face2DEdge::Left)], [None, None]],                                     // -2-0
     [[Some(Face2DEdge::Right), Some(Face2DEdge::Up)], [Some(Face2DEdge::Left), Some(Face2DEdge::Down)]],   // -21- //ambig
     [[Some(Face2DEdge::Right), Some(Face2DEdge::Down)], [None, None]],                                     // -210
+    
     [[Some(Face2DEdge::Down), Some(Face2DEdge::Right)], [None, None]],                                     // 3---
     [[Some(Face2DEdge::Down), Some(Face2DEdge::Right)], [Some(Face2DEdge::Up), Some(Face2DEdge::Left)]],   // 3--0 //ambig // 可以通过法线来判断
     [[Some(Face2DEdge::Left), Some(Face2DEdge::Right)], [None, None]],                                     // 3-1-
@@ -308,28 +314,53 @@ pub const FACE_DIRECTION: [Direction; FaceIndex::COUNT] = [
 /// Twins是两个相邻的Cell的重叠的面，
 pub const FACE_TWIN_TABLE: [[FaceIndex; 2]; FaceIndex::COUNT] = [
     [FaceIndex::Back, FaceIndex::Front],
+    [FaceIndex::Front, FaceIndex::Back],
     [FaceIndex::Bottom, FaceIndex::Top],
+    [FaceIndex::Top, FaceIndex::Bottom],
     [FaceIndex::Left, FaceIndex::Right],
     [FaceIndex::Right, FaceIndex::Left],
-    [FaceIndex::Top, FaceIndex::Bottom],
-    [FaceIndex::Front, FaceIndex::Back],
 ];
 
+pub const FACE_NEIGHBOUR: [FaceIndex; FaceIndex::COUNT] = [
+    FaceIndex::Front,
+    FaceIndex::Back,
+    FaceIndex::Top,
+    FaceIndex::Bottom,
+    FaceIndex::Right,
+    FaceIndex::Left,
+];
+
+//  Cell Point and Subcell Layout
+//
+//      (2)o--------------o(6)
+//        /.             /|
+//       / .            / |
+//      /  .           /  |
+//     /   .          /   |     ^ Y
+// (3)o--------------o(7) |     |
+//    | (0). . . . . |. . o(4)  --> X
+//    |   .          |   /
+//    |  .           |  /
+//    | .            | /
+//    |.             |/
+// (1)o--------------o(5)
+//
+//
 /// @brief Cell neighbour table
 /// See: 'Cell Point and Subcell Layout' in tables header
 ///
 /// 在对应的方向上，当前Cell的ID，对应的相邻Cell的ID
 pub const NEIGHBOUR_ADDRESS_TABLE: [[SubCellIndex; SubCellIndex::COUNT]; Direction::COUNT] = [
     [
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftTopFront,
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::RightBottomFront,
         SubCellIndex::RightBottomBack,
-        SubCellIndex::RightTopFront,
+        SubCellIndex::RightBottomFront,
         SubCellIndex::RightTopBack,
-    ], // Z (BACK & FRONT) NEIGHBOUR
+        SubCellIndex::RightTopFront,
+        SubCellIndex::LeftBottomBack,
+        SubCellIndex::LeftBottomFront,
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::LeftTopFront,
+    ], // X (LEFT & RIGHT) NEIGHBOUR
     [
         SubCellIndex::LeftTopBack,
         SubCellIndex::LeftTopFront,
@@ -341,15 +372,15 @@ pub const NEIGHBOUR_ADDRESS_TABLE: [[SubCellIndex; SubCellIndex::COUNT]; Directi
         SubCellIndex::RightBottomFront,
     ], // Y (TOP & BOTTOM) NEIGHBOUR
     [
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightBottomFront,
-        SubCellIndex::RightTopBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::LeftBottomBack,
         SubCellIndex::LeftBottomFront,
-        SubCellIndex::LeftTopBack,
+        SubCellIndex::LeftBottomBack,
         SubCellIndex::LeftTopFront,
-    ], // X (LEFT & RIGHT) NEIGHBOUR
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::RightBottomFront,
+        SubCellIndex::RightBottomBack,
+        SubCellIndex::RightTopFront,
+        SubCellIndex::RightTopBack,
+    ], // Z (BACK & FRONT) NEIGHBOUR
 ];
 
 /// @brief neighbour face table between sub cell

@@ -8,21 +8,23 @@ pub struct Strip {
     b_loop: bool,
 
     edge: [Option<Face2DEdge>; 2],
-    data: [i8; 2],
-
-    block: [Vector3<usize>; 2],
-    dir: [Option<Direction>; 2],
+    /// every edge CMS::vertices index.
+    vertex_index: [Option<usize>; 2],
+    /// every edge crossing point
+    crossing_left_coord: [Option<Vector3<usize>>; 2],
+    /// every edge direction
+    edge_dir: [Option<Direction>; 2],
 }
 
 impl Default for Strip {
     fn default() -> Self {
         Self {
-            skip: true,
+            skip: false,
             b_loop: false,
             edge: [None; 2],
-            data: [-1; 2],
-            block: [Vector3::new(0, 0, 0); 2],
-            dir: [None; 2],
+            vertex_index: [None; 2],
+            crossing_left_coord: [None; 2],
+            edge_dir: [None; 2],
         }
     }
 }
@@ -33,9 +35,9 @@ impl Strip {
             skip,
             b_loop: false,
             edge: [edge0, edge1],
-            data: [-1; 2],
-            block: [Vector3::new(0, 0, 0); 2],
-            dir: [None; 2],
+            vertex_index: [None; 2],
+            crossing_left_coord: [None; 2],
+            edge_dir: [None; 2],
         }
     }
 }
@@ -45,28 +47,28 @@ impl Strip {
         self.edge[index]
     }
 
-    pub fn set_data(&mut self, index: usize, data: i8) {
-        self.data[index] = data;
+    pub fn set_vertex_index(&mut self, index: usize, vertex_index: usize) {
+        self.vertex_index[index] = Some(vertex_index);
     }
 
-    pub fn get_data(&self, index: usize) -> i8 {
-        self.data[index]
+    pub fn get_vertex_index(&self, index: usize) -> Option<usize> {
+        self.vertex_index[index]
     }
 
-    pub fn set_block(&mut self, index: usize, block: Vector3<usize>) {
-        self.block[index] = block;
+    pub fn set_crossing_left_coord(&mut self, index: usize, block: Vector3<usize>) {
+        self.crossing_left_coord[index] = Some(block);
     }
 
-    pub fn get_block(&self, index: usize) -> Vector3<usize> {
-        self.block[index]
+    pub fn get_crossing_left_coord(&self, index: usize) -> Option<Vector3<usize>> {
+        self.crossing_left_coord[index]
     }
 
-    pub fn set_dir(&mut self, index: usize, dir: Option<Direction>) {
-        self.dir[index] = dir;
+    pub fn set_edge_dir(&mut self, index: usize, dir: Option<Direction>) {
+        self.edge_dir[index] = dir;
     }
 
     pub fn get_dir(&self, index: usize) -> Option<Direction> {
-        self.dir[index]
+        self.edge_dir[index]
     }
 
     pub fn set_loop(&mut self, b_loop: bool) {
@@ -89,15 +91,15 @@ impl Strip {
 impl Strip {
     pub fn change_back(&mut self, s: &Strip, i: usize) {
         self.edge[1] = s.edge[i];
-        self.data[1] = s.data[i];
-        self.dir[1] = s.dir[i];
-        self.block[1] = s.block[i];
+        self.vertex_index[1] = s.vertex_index[i];
+        self.edge_dir[1] = s.edge_dir[i];
+        self.crossing_left_coord[1] = s.crossing_left_coord[i];
     }
 
     pub fn change_front(&mut self, s: &Strip, i: usize) {
         self.edge[0] = s.edge[i];
-        self.data[0] = s.data[i];
-        self.dir[0] = s.dir[i];
-        self.block[0] = s.block[i];
+        self.vertex_index[0] = s.vertex_index[i];
+        self.edge_dir[0] = s.edge_dir[i];
+        self.crossing_left_coord[0] = s.crossing_left_coord[i];
     }
 }
