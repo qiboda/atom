@@ -43,8 +43,6 @@ pub struct CMS {
     octree: Box<Octree>,
     octree_root: Option<Rc<RefCell<Cell>>>,
 
-    desired_cells: Vec<usize>,
-
     snap_centro_id: bool,
 }
 
@@ -103,7 +101,6 @@ impl CMS {
             octree,
             vertices: vec![],
             octree_root: None,
-            desired_cells: Vec::new(),
             snap_centro_id: false,
         }
     }
@@ -243,7 +240,7 @@ impl CMS {
         self.populate_strip(&mut s, indices, 0);
         self.populate_strip(&mut s, indices, 1);
 
-        face.borrow_mut().get_strips_mut()[strip_index] = s;
+        face.borrow_mut().get_strips_mut()[strip_index] = s.clone();
         face.borrow_mut().set_skip(false);
     }
 
@@ -819,7 +816,7 @@ impl CMS {
         let cells = self.octree.get_cells();
         for i in 0..MAX_OCTREE_RES {
             for cell in cells.iter() {
-                if *cell.borrow().get_cur_subdiv_level() as usize == MAX_OCTREE_RES - i - 1 {
+                if *cell.borrow().get_cur_subdiv_level() as usize == MAX_OCTREE_RES - i {
                     if cell.borrow().get_cell_type() == &CellType::Leaf {
                         let mut cell_strips = Vec::new();
                         let mut transit_segs = Vec::new();
@@ -839,7 +836,7 @@ impl CMS {
                             debug = cell_strips[0].get_vertex_index(0).unwrap() == 17;
                         }
 
-                        info!("loop start");
+                        // info!("loop start {}", cell.borrow().get_id());
                         loop {
                             if cell_strips.len() == 0 {
                                 break;
@@ -853,15 +850,12 @@ impl CMS {
                                 debug,
                             );
 
-                            if components.len() >= 3 {
-                                cell.borrow_mut()
-                                    .get_componnets_mut()
-                                    .push(components.clone());
-                                info!("final components: {:?}", components);
-                            }
+                            cell.borrow_mut()
+                                .get_componnets_mut()
+                                .push(components.clone());
                             components.clear();
                         }
-                        info!("loop end");
+                        // info!("loop end");
                     }
                 }
             }
@@ -886,10 +880,26 @@ impl CMS {
                     for strip in face_borrow.get_strips().iter() {
                         if strip.get_vertex_index(0).is_some() {
                             cell_strips.push(strip.clone());
+                            // info!(
+                            //     "leaf face: {:?} {:?}",
+                            //     strip.get_vertex_index(0),
+                            //     strip.get_vertex_index(1)
+                            // );
                         }
                     }
                 }
                 FaceType::TransitFace => {
+                    for strip in face_borrow.get_strips().iter() {
+                        if strip.get_vertex_index(0).is_some() {
+                            cell_strips.push(strip.clone());
+                            // info!(
+                            //     "TransitFace leaf face: {:?} {:?}",
+                            //     strip.get_vertex_index(0),
+                            //     strip.get_vertex_index(1)
+                            // );
+                        }
+                    }
+
                     let twin = face_borrow.get_twin();
                     if twin.is_none() {
                         continue;
@@ -912,7 +922,13 @@ impl CMS {
                             transit_segs.push(
                                 twin.as_ref().unwrap().borrow().get_transit_segs()[i].clone(),
                             );
+                            // info!("transit segs: {:?}", transit_segs);
                             cell_strips.push(strip.clone());
+                            // info!(
+                            //     "transit cell strips: {:?} {:?}",
+                            //     strip.get_vertex_index(0),
+                            //     strip.get_vertex_index(1)
+                            // );
                         });
                     }
                 }
@@ -937,27 +953,27 @@ impl CMS {
 
         components.push(cell_strips[0].get_vertex_index(0).unwrap());
 
-        info!("len: {}", cell_strips.len());
-        for strip in cell_strips.iter() {
-            info!(
-                "component cell_strips: {:?} {:?}",
-                strip.get_vertex_index(0),
-                strip.get_vertex_index(1)
-            );
-        }
-        info!("transit segs: {:?}", transit_segs);
+        // info!("len: {}", cell_strips.len());
+        // for strip in cell_strips.iter() {
+        //     info!(
+        //         "component cell_strips: {:?} {:?}",
+        //         strip.get_vertex_index(0),
+        //         strip.get_vertex_index(1)
+        //     );
+        // }
+        // info!("transit segs: {:?}", transit_segs);
 
-        if debug {
-            info!("component start: {:?}", components);
-            for strip in cell_strips.iter() {
-                info!(
-                    "component cell_strips: {:?} {:?}",
-                    strip.get_vertex_index(0),
-                    strip.get_vertex_index(1)
-                );
-            }
-            info!("transit segs: {:?}", transit_segs);
-        }
+        // if debug {
+        //     info!("component start: {:?}", components);
+        //     for strip in cell_strips.iter() {
+        //         info!(
+        //             "component cell_strips: {:?} {:?}",
+        //             strip.get_vertex_index(0),
+        //             strip.get_vertex_index(1)
+        //         );
+        //     }
+        //     info!("transit segs: {:?}", transit_segs);
+        // }
 
         loop {
             added_in_iteration = 0;
@@ -983,18 +999,18 @@ impl CMS {
                                 &backwards,
                                 debug,
                             );
-                            if debug {
-                                info!("component transit: {:?}", components);
-                            }
+                            // if debug {
+                            //     info!("component transit: {:?}", components);
+                            // }
                         }
 
                         if transit == false {
                             if let Some(data) = s_data1 {
                                 components.push(data);
                                 added_in_iteration += 1;
-                                if debug {
-                                    info!("component non transit: {:?}", components);
-                                }
+                                // if debug {
+                                //     info!("component non transit: {:?}", components);
+                                // }
                             }
                         }
                     }
@@ -1012,25 +1028,25 @@ impl CMS {
                                 &backwards,
                                 debug,
                             );
-                            if debug {
-                                info!("component transit 2: {:?}", components);
-                            }
+                            // if debug {
+                            //     info!("component transit 2: {:?}", components);
+                            // }
                         }
 
                         if transit == false {
                             if let Some(data) = s_data0 {
                                 components.push(data);
                                 added_in_iteration += 1;
-                                if debug {
-                                    info!("component non transit 2: {:?}", components);
-                                }
+                                // if debug {
+                                //     info!("component non transit 2: {:?}", components);
+                                // }
                             }
                         }
                     }
                     _ => {
-                        if debug {
-                            info!("component not add");
-                        }
+                        // if debug {
+                        //     info!("component not add");
+                        // }
                         return true;
                     }
                 }
@@ -1041,10 +1057,10 @@ impl CMS {
                 components.remove(0);
             }
 
-            if components.len() > 1 && components.first() == components.get(1) {
-                components.remove(0);
-            }
-
+            // if components.len() > 1 && components.first() == components.get(1) {
+            //     components.remove(0);
+            // }
+            //
             for comp in components.iter() {
                 assert!(comp < &self.vertices.len());
             }
@@ -1078,18 +1094,18 @@ impl CMS {
                                 &backwards,
                                 debug,
                             );
-                            if debug {
-                                info!("component transit 3: {:?}", components);
-                            }
+                            // if debug {
+                            //     info!("component transit 3: {:?}", components);
+                            // }
                         }
 
                         if transit == false {
                             if let Some(data) = s_data1 {
                                 components.insert(0, data);
                                 added_in_iteration += 1;
-                                if debug {
-                                    info!("component non transit 3: {:?}", components);
-                                }
+                                // if debug {
+                                //     info!("component non transit 3: {:?}", components);
+                                // }
                             }
                         }
                     }
@@ -1107,25 +1123,25 @@ impl CMS {
                                 &backwards,
                                 debug,
                             );
-                            if debug {
-                                info!("component transit 4: {:?}", components);
-                            }
+                            // if debug {
+                            //     info!("component transit 4: {:?}", components);
+                            // }
                         }
 
                         if transit == false {
                             if let Some(data) = s_data0 {
                                 components.insert(0, data);
                                 added_in_iteration += 1;
-                                if debug {
-                                    info!("component non transit 4: {:?}", components);
-                                }
+                                // if debug {
+                                //     info!("component non transit 4: {:?}", components);
+                                // }
                             }
                         }
                     }
                     _ => {
-                        if debug {
-                            info!("component 2 not add");
-                        }
+                        // if debug {
+                        //     info!("component 2 not add");
+                        // }
                         return true;
                     }
                 }
@@ -1136,9 +1152,9 @@ impl CMS {
                 components.remove(0);
             }
 
-            if components.len() > 1 && components.first() == components.get(1) {
-                components.remove(0);
-            }
+            // if components.len() > 1 && components.first() == components.get(1) {
+            //     components.remove(0);
+            // }
 
             for comp in components.iter() {
                 assert!(comp < &self.vertices.len());
@@ -1167,14 +1183,14 @@ impl CMS {
     ) {
         for seg in transit_segs.iter() {
             if CMS::compare_strip_to_seg(strip, seg) {
-                if debug {
-                    info!(
-                        "success component cell_strips: {:?} {:?}",
-                        strip.get_vertex_index(0),
-                        strip.get_vertex_index(1)
-                    );
-                    info!("success component seg: {:?}", seg,);
-                }
+                // if debug {
+                //     info!(
+                //         "success component cell_strips: {:?} {:?}",
+                //         strip.get_vertex_index(0),
+                //         strip.get_vertex_index(1)
+                //     );
+                //     info!("success component seg: {:?}", seg,);
+                // }
                 if *backwards {
                     for i in (0..seg.len()).rev() {
                         components.push(seg[i] as usize);
@@ -1189,14 +1205,14 @@ impl CMS {
                 *transit = true;
                 break;
             } else {
-                if debug {
-                    info!(
-                        "fail component cell_strips: {:?} {:?}",
-                        strip.get_vertex_index(0),
-                        strip.get_vertex_index(1)
-                    );
-                    info!("fail component seg: {:?}", seg,);
-                }
+                // if debug {
+                //     info!(
+                //         "fail component cell_strips: {:?} {:?}",
+                //         strip.get_vertex_index(0),
+                //         strip.get_vertex_index(1)
+                //     );
+                //     info!("fail component seg: {:?}", seg,);
+                // }
             }
         }
     }
@@ -1223,12 +1239,6 @@ impl CMS {
                 }
             }
             CellType::Leaf => {
-                if self.desired_cells.len() > 0 {
-                    if self.desired_cells.contains(cell.borrow().get_id()) == false {
-                        return;
-                    }
-                }
-
                 for component in cell.borrow_mut().get_componnets_mut().iter_mut() {
                     self.tessellate_component(mesh, component);
                 }

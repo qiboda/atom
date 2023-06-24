@@ -19,7 +19,7 @@ pub mod octree;
 pub mod sample;
 pub mod shape_surface;
 
-const BBOX_SIZE: f32 = 4.0;
+const BBOX_SIZE: f32 = 2.0;
 
 const MIN_OCTREE_RES: usize = 2;
 const MAX_OCTREE_RES: usize = 8;
