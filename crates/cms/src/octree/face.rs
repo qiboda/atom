@@ -20,8 +20,6 @@ pub struct Face {
 
     face_index: FaceIndex,
 
-    skip: bool,
-
     face_type: FaceType,
 
     /// todo: delete
@@ -47,7 +45,6 @@ impl Face {
         Self {
             cell_id,
             face_index,
-            skip: false,
             face_type: FaceType::BranchFace,
             sharp_feature: false,
             feature_position: Vector3::new(0.0, 0.0, 0.0),
@@ -112,14 +109,6 @@ impl Face {
 
     pub fn get_strips_mut(&mut self) -> &mut Vec<Strip> {
         &mut self.strips
-    }
-
-    pub fn set_skip(&mut self, skip: bool) {
-        self.skip = skip;
-    }
-
-    pub fn get_skip(&self) -> bool {
-        self.skip
     }
 
     pub fn set_sharp_feature(&mut self, sharp_feature: bool) {
