@@ -76,19 +76,26 @@ impl Octree {
     pub fn get_cell(&self, cell_id: usize) -> Option<Rc<RefCell<Cell>>> {
         self.cells.get(cell_id).cloned()
     }
+
+    pub fn get_leaf_cells(&self) -> &Vec<Rc<RefCell<Cell>>> {
+        &self.leaf_cells
+    }
 }
 
 impl Octree {
     pub fn build_octree(&mut self) {
+        info!("build_octree");
         self.make_structure();
 
         self.populate_half_faces();
         self.set_face_relationship();
 
         self.mark_transitional_faces();
+        info!("build_octree end");
     }
 
     fn make_structure(&mut self) {
+        info!("make_structure");
         let c000 = Vector3::new(0, 0, 0);
 
         self.root = Some(Rc::new(RefCell::new(Cell::new(
@@ -336,16 +343,16 @@ impl Octree {
         'outer: for i in 0..7 {
             let point_0 = points[i];
 
-            let mut normal_point_0 = Default::default();
-            self.find_gradient(&mut normal_point_0, &point_0);
+            let mut gradient_point_0 = Default::default();
+            self.find_gradient(&mut gradient_point_0, &point_0);
 
             for j in 1..8 {
                 let point_1 = points[j];
 
-                let mut normal_point_1 = Default::default();
-                self.find_gradient(&mut normal_point_1, &point_1);
+                let mut gradient_point_1 = Default::default();
+                self.find_gradient(&mut gradient_point_1, &point_1);
 
-                if normal_point_0.dot(&normal_point_1) < COMPLEX_SURFACE_THRESHOLD {
+                if gradient_point_0.dot(&gradient_point_1) < COMPLEX_SURFACE_THRESHOLD {
                     complex_surface = true;
                     break 'outer;
                 }
@@ -375,6 +382,7 @@ impl Octree {
     }
 
     fn populate_half_faces(&mut self) {
+        info!("populate_half_faces");
         for cell in &self.cells {
             let mut contact_cell_address = [
                 Address::new(),
@@ -485,6 +493,7 @@ impl Octree {
     }
 
     fn set_face_relationship(&self) {
+        info!("set_face_relationship");
         for cell in &self.cells {
             if let &Some(pos_in_parent) = cell.borrow().get_pos_in_parent() {
                 for side in 0..3 {
@@ -570,6 +579,7 @@ impl Octree {
     }
 
     fn mark_transitional_faces(&self) {
+        info!("mark_transitional_faces");
         for leaf_cell in &self.leaf_cells {
             assert!(leaf_cell.borrow().get_cell_type() == &CellType::Leaf);
 

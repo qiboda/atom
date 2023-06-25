@@ -4,7 +4,6 @@ use super::tables::{Direction, Face2DEdge};
 
 #[derive(Clone, Debug)]
 pub struct Strip {
-    skip: bool,
     b_loop: bool,
 
     edge: [Option<Face2DEdge>; 2],
@@ -19,7 +18,6 @@ pub struct Strip {
 impl Default for Strip {
     fn default() -> Self {
         Self {
-            skip: false,
             b_loop: false,
             edge: [None; 2],
             vertex_index: [None; 2],
@@ -30,9 +28,8 @@ impl Default for Strip {
 }
 
 impl Strip {
-    pub fn new(skip: bool, edge0: Option<Face2DEdge>, edge1: Option<Face2DEdge>) -> Strip {
+    pub fn new(edge0: Option<Face2DEdge>, edge1: Option<Face2DEdge>) -> Strip {
         Self {
-            skip,
             b_loop: false,
             edge: [edge0, edge1],
             vertex_index: [None; 2],
@@ -77,14 +74,6 @@ impl Strip {
 
     pub fn get_loop(&self) -> bool {
         self.b_loop
-    }
-
-    pub fn set_skip(&mut self, skip: bool) {
-        self.skip = skip;
-    }
-
-    pub fn get_skip(&self) -> bool {
-        self.skip
     }
 }
 

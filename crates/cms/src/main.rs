@@ -3,7 +3,10 @@
 
 use std::{path::Path, rc::Rc};
 
-use bevy::{log::LogPlugin, prelude::App};
+use bevy::{
+    log::LogPlugin,
+    prelude::{info, App},
+};
 use cms::CMS;
 use densy_function::*;
 use mesh::Mesh;
@@ -33,6 +36,8 @@ fn main() {
 
     app.add_plugin(LogPlugin::default()).run();
 
+    info!("start");
+
     // let sphere = Rc::new(Sphere);
     // let sphere = Rc::new(Torus);
     let sphere = Rc::new(Cube);
@@ -61,4 +66,6 @@ fn main() {
     cms.extract_surface(&mut mesh);
 
     mesh.export_obj(Path::new("sphere.obj"));
+
+    info!("end");
 }

@@ -6,6 +6,7 @@ use nalgebra::Vector3;
 #[derive(Clone, Debug)]
 pub struct Vertex {
     pub position: Vector3<f32>,
+    /// 仅用于扇形中心顶点
     pub normals: Vector3<f32>,
 }
 

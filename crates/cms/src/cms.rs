@@ -52,6 +52,7 @@ impl CMS {
         container: Vector3<(f32, f32)>,
         sample_fn: Rc<dyn IsoSurface>,
     ) -> Self {
+        info!("CMS::new");
         let mut sample_size = Vector3::new(0, 0, 0);
         sample_size.x = 2usize.pow(MAX_OCTREE_RES as u32) + 1;
         sample_size.y = sample_size.x;
@@ -66,6 +67,7 @@ impl CMS {
         let mut sample_data = SampleRange3D::default();
         sample_data.resize(container, sample_size);
 
+        info!("CMS::sample size start");
         for i in 0..sample_size.x {
             let x = container.x.0 + i as f32 * offset.x + iso_level;
             for j in 0..sample_size.y {
@@ -78,6 +80,7 @@ impl CMS {
                 }
             }
         }
+        info!("CMS::sample size end");
 
         let mut edge_data = SampleRange3D::default();
         edge_data.resize(container, sample_size);
@@ -165,7 +168,7 @@ impl CMS {
         self.trace_comonent();
     }
 
-    /// 生成每个面的边的顶点的位置信息。
+    /// 生成每个面的连线，以及边的顶点的位置信息。
     pub fn generate_segments(&mut self, cell: Option<Rc<RefCell<Cell>>>) {
         if let Some(cell) = cell {
             match cell.borrow().get_cell_type() {
@@ -213,8 +216,6 @@ impl CMS {
 
         if e0a.is_some() {
             self.make_strip(e0a, e0b, indices, face.clone(), 0)
-        } else {
-            // info!("edges {} indices: {:?}", edges, indices);
         }
 
         let e1a = EDGE_MAP[edges as usize][1][0];
@@ -235,13 +236,12 @@ impl CMS {
     ) {
         assert!(edge0.is_some() && edge1.is_some());
 
-        let mut s = Strip::new(false, edge0, edge1);
+        let mut s = Strip::new(edge0, edge1);
 
         self.populate_strip(&mut s, indices, 0);
         self.populate_strip(&mut s, indices, 1);
 
         face.borrow_mut().get_strips_mut()[strip_index] = s.clone();
-        face.borrow_mut().set_skip(false);
     }
 
     /// 计算strip的一条边的顶点信息
@@ -414,19 +414,19 @@ impl CMS {
             }
         }
 
-        for i in vertex_range {
-            indexer[edge_dir as usize] = i;
-
-            let this_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
-
-            indexer[edge_dir as usize] = i + 1;
-            let next_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
-
-            info!("this value: {} next value {}", this_value, next_value);
-            if this_value * next_value <= 0.0 {
-                return i;
-            }
-        }
+        // for i in vertex_range {
+        //     indexer[edge_dir as usize] = i;
+        //
+        //     let this_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
+        //
+        //     indexer[edge_dir as usize] = i + 1;
+        //     let next_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
+        //
+        //     info!("this value: {} next value {}", this_value, next_value);
+        //     if this_value * next_value <= 0.0 {
+        //         return i;
+        //     }
+        // }
         // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。此处代码不会执行。
         assert!(false);
 
@@ -458,10 +458,10 @@ impl CMS {
         let point1 = Point::new_with_position_and_value(&pos1, value1);
 
         let crossing_point = self.find_crossing_point(2, &point0, &point1);
-        let mut normal = Vector3::new(0.0, 0.0, 0.0);
-        self.find_gradient(&mut normal, self.offset, &crossing_point);
+        let mut gradient = Vector3::new(0.0, 0.0, 0.0);
+        self.find_gradient(&mut gradient, self.offset, &crossing_point);
 
-        let vert = Vertex::new_with_position_and_normals(&crossing_point, &normal);
+        let vert = Vertex::new_with_position_and_normals(&crossing_point, &gradient);
         self.vertices.push(vert);
 
         strip.set_vertex_index(edge_index, self.vertices.len() - 1);
@@ -555,6 +555,8 @@ impl CMS {
 }
 
 impl CMS {
+    /// 计算面的Twin的Strip的起点和重点，以及所经过的顶点。
+    /// todo: 如果twin是由多个leaf Cell的面组成的，会重复吧，需要添加检测
     pub fn edit_transitional_face(&mut self) {
         info!("edit_transitional_face");
         let cells = self.octree.get_cells();
@@ -606,8 +608,8 @@ impl CMS {
                     // todo: fix this
                     // assert!(all_strips.len() != 0);
                     if all_strips.len() == 0 {
-                        face.borrow_mut().set_face_type(FaceType::LeafFace);
-                        info!("all_strips: len is 0");
+                        // face.borrow_mut().set_face_type(FaceType::LeafFace);
+                        // info!("all_strips: len is 0");
                         continue;
                     }
 
@@ -732,8 +734,6 @@ impl CMS {
                             }
                         }
 
-                        long_strip.set_skip(false);
-
                         face.borrow()
                             .get_twin()
                             .as_ref()
@@ -773,7 +773,7 @@ impl CMS {
         }
     }
 
-    pub fn traverse_face(self: &Self, face: Rc<RefCell<Face>>, transit_strips: &mut Vec<Strip>) {
+    pub fn traverse_face(self: &Self, face: Rc<RefCell<Face>>, strips: &mut Vec<Strip>) {
         match face.borrow().get_face_type() {
             FaceType::BranchFace => {
                 for (i, sub_face_index) in SubFaceIndex::iter().enumerate() {
@@ -781,11 +781,7 @@ impl CMS {
                         if children[i].is_none() {
                             continue;
                         }
-                        CMS::traverse_face(
-                            &self,
-                            children[i].as_ref().unwrap().clone(),
-                            transit_strips,
-                        );
+                        CMS::traverse_face(&self, children[i].as_ref().unwrap().clone(), strips);
                     }
                 }
             }
@@ -796,15 +792,11 @@ impl CMS {
                     //     face.borrow().get_cell_id(),
                     //     strip
                     // );
-                    assert!(strip.get_skip() == false);
-                    if strip.get_skip() {
-                        assert!(strip.get_vertex_index(0).is_none());
-                        continue;
-                    }
+                    // assert!(strip.get_vertex_index(0).is_none());
                     if strip.get_vertex_index(0).is_none() {
                         continue;
                     }
-                    transit_strips.push(strip.clone());
+                    strips.push(strip.clone());
                 }
             }
             FaceType::TransitFace => assert!(false),
@@ -813,52 +805,39 @@ impl CMS {
 
     pub fn trace_comonent(&mut self) {
         info!("trace_comonent");
-        let cells = self.octree.get_cells();
-        for i in 0..MAX_OCTREE_RES {
-            for cell in cells.iter() {
-                if *cell.borrow().get_cur_subdiv_level() as usize == MAX_OCTREE_RES - i {
-                    if cell.borrow().get_cell_type() == &CellType::Leaf {
-                        let mut cell_strips = Vec::new();
-                        let mut transit_segs = Vec::new();
-                        let mut components = Vec::new();
+        let cells = self.octree.get_leaf_cells();
+        // for i in 0..MAX_OCTREE_RES {
+        for cell in cells.iter() {
+            // if *cell.borrow().get_cur_subdiv_level() as usize == MAX_OCTREE_RES - i {
+            if cell.borrow().get_cell_type() == &CellType::Leaf {
+                let mut cell_strips = Vec::new();
+                let mut transit_segs = Vec::new();
+                let mut components = Vec::new();
 
-                        CMS::collect_strips(
-                            &self,
-                            cell.clone(),
-                            &mut cell_strips,
-                            &mut transit_segs,
-                        );
+                // 获取一个cell的所有strip
+                CMS::collect_strips(&self, cell.clone(), &mut cell_strips, &mut transit_segs);
 
-                        // todo: transit segs number is not correct
+                // todo: transit segs number is not correct
 
-                        let mut debug = false;
-                        if cell_strips.len() > 0 {
-                            debug = cell_strips[0].get_vertex_index(0).unwrap() == 17;
-                        }
-
-                        // info!("loop start {}", cell.borrow().get_id());
-                        loop {
-                            if cell_strips.len() == 0 {
-                                break;
-                            }
-
-                            CMS::link_strips(
-                                &self,
-                                &mut components,
-                                &mut cell_strips,
-                                &mut transit_segs,
-                                debug,
-                            );
-
-                            cell.borrow_mut()
-                                .get_componnets_mut()
-                                .push(components.clone());
-                            components.clear();
-                        }
-                        // info!("loop end");
+                // info!("loop start {}", cell.borrow().get_id());
+                // 循环是为了建立多个Component
+                loop {
+                    if cell_strips.len() == 0 {
+                        break;
                     }
+
+                    CMS::link_strips(&self, &mut components, &mut cell_strips, &mut transit_segs);
+
+                    cell.borrow_mut()
+                        .get_componnets_mut()
+                        .push(components.clone());
+
+                    components.clear();
                 }
+                // info!("loop end");
             }
+            // }
+            // }
         }
     }
 
@@ -943,7 +922,6 @@ impl CMS {
         components: &mut Vec<usize>,
         cell_strips: &mut Vec<Strip>,
         transit_segs: &mut Vec<Vec<usize>>,
-        debug: bool,
     ) {
         assert!(components.len() == 0);
         assert!(cell_strips[0].get_vertex_index(0).is_some());
@@ -997,7 +975,6 @@ impl CMS {
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
-                                debug,
                             );
                             // if debug {
                             //     info!("component transit: {:?}", components);
@@ -1026,7 +1003,6 @@ impl CMS {
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
-                                debug,
                             );
                             // if debug {
                             //     info!("component transit 2: {:?}", components);
@@ -1092,7 +1068,6 @@ impl CMS {
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
-                                debug,
                             );
                             // if debug {
                             //     info!("component transit 3: {:?}", components);
@@ -1121,7 +1096,6 @@ impl CMS {
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
-                                debug,
                             );
                             // if debug {
                             //     info!("component transit 4: {:?}", components);
@@ -1179,7 +1153,6 @@ impl CMS {
         transit: &mut bool,
         added_in_iteration: &mut i32,
         backwards: &bool,
-        debug: bool,
     ) {
         for seg in transit_segs.iter() {
             if CMS::compare_strip_to_seg(strip, seg) {
@@ -1288,6 +1261,7 @@ impl CMS {
                     med_val,
                 );
 
+                // 沿着反方向偏移
                 med_vertex += -med_gradient * med_val;
             }
 
@@ -1305,6 +1279,8 @@ impl CMS {
         }
     }
 
+    /// 3d梯度等价于2d的法线, 3d梯度等于2d方向上最快的变化方向，也就是法线
+    /// 4d梯度等价于3d的法线, 4d梯度等于3d方向上最快的变化方向，也就是法线
     pub fn find_gradient_with_value(
         self: &Self,
         normal: &mut Vector3<f32>,
@@ -1318,11 +1294,11 @@ impl CMS {
 
         let dy = self
             .sample_fn
-            .get_value(position.x, position.y + dimensions.x, position.z);
+            .get_value(position.x, position.y + dimensions.y, position.z);
 
         let dz = self
             .sample_fn
-            .get_value(position.x, position.y, position.z + dimensions.x);
+            .get_value(position.x, position.y, position.z + dimensions.z);
 
         *normal = Vector3::new(dx - value, dy - value, dz - value);
 
@@ -1335,6 +1311,7 @@ impl CMS {
         }
     }
 
+    // 扇形三角面
     pub fn make_tri_fan(mesh: &mut Mesh, component: &Vec<usize>) {
         for i in 0..(component.len() - 2) {
             mesh.get_indices_mut()
