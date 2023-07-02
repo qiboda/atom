@@ -53,6 +53,10 @@ impl<T> SampleRange3D<T> {
 
         pos
     }
+
+    pub fn get_pos_size(&self) -> &Vector3<(f32, f32)> {
+        &self.pos_size
+    }
 }
 
 impl<T> SampleRange3D<T>

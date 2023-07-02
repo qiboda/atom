@@ -202,7 +202,7 @@ pub enum VertexPoint {
 }
 
 // x, y, z => xyz
-#[derive(Debug, Clone, Copy, PartialEq, EnumIter, EnumCount)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, EnumIter, EnumCount)]
 pub enum SubCellIndex {
     LeftBottomBack = 0,
     LeftBottomFront = 1,
@@ -216,7 +216,7 @@ pub enum SubCellIndex {
 
 // x, y, z => xyz
 #[derive(Debug, Clone, Copy, PartialEq, EnumIter, EnumCount)]
-pub enum Direction {
+pub enum EdgeDirection {
     XAxis = 0,
     YAxis = 1,
     ZAxis = 2,
@@ -286,28 +286,28 @@ pub const EDGE_VERTICES: [[VertexPoint; 2]; EdgeIndex::COUNT] = [
     [VertexPoint::RightTopBack, VertexPoint::RightTopFront], // edge 11
 ];
 
-pub const EDGE_DIRECTION: [Direction; EdgeIndex::COUNT] = [
-    Direction::XAxis,
-    Direction::XAxis,
-    Direction::YAxis,
-    Direction::YAxis,
-    Direction::XAxis,
-    Direction::XAxis,
-    Direction::YAxis,
-    Direction::YAxis,
-    Direction::ZAxis,
-    Direction::ZAxis,
-    Direction::ZAxis,
-    Direction::ZAxis,
+pub const EDGE_DIRECTION: [EdgeDirection; EdgeIndex::COUNT] = [
+    EdgeDirection::XAxis,
+    EdgeDirection::XAxis,
+    EdgeDirection::YAxis,
+    EdgeDirection::YAxis,
+    EdgeDirection::XAxis,
+    EdgeDirection::XAxis,
+    EdgeDirection::YAxis,
+    EdgeDirection::YAxis,
+    EdgeDirection::ZAxis,
+    EdgeDirection::ZAxis,
+    EdgeDirection::ZAxis,
+    EdgeDirection::ZAxis,
 ];
 
-pub const FACE_DIRECTION: [Direction; FaceIndex::COUNT] = [
-    Direction::ZAxis,
-    Direction::ZAxis,
-    Direction::YAxis,
-    Direction::YAxis,
-    Direction::XAxis,
-    Direction::XAxis,
+pub const FACE_DIRECTION: [EdgeDirection; FaceIndex::COUNT] = [
+    EdgeDirection::ZAxis,
+    EdgeDirection::ZAxis,
+    EdgeDirection::YAxis,
+    EdgeDirection::YAxis,
+    EdgeDirection::XAxis,
+    EdgeDirection::XAxis,
 ];
 
 /// The table for face twins.
@@ -330,6 +330,45 @@ pub const FACE_NEIGHBOUR: [FaceIndex; FaceIndex::COUNT] = [
     FaceIndex::Left,
 ];
 
+pub const FACE_2_SUBCELL: [[SubCellIndex; 4]; FaceIndex::COUNT] = [
+    [
+        SubCellIndex::LeftBottomBack,
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::RightBottomBack,
+        SubCellIndex::RightTopBack,
+    ],
+    [
+        SubCellIndex::LeftBottomFront,
+        SubCellIndex::LeftTopFront,
+        SubCellIndex::RightBottomFront,
+        SubCellIndex::RightTopFront,
+    ],
+    [
+        SubCellIndex::LeftBottomBack,
+        SubCellIndex::LeftBottomFront,
+        SubCellIndex::RightBottomBack,
+        SubCellIndex::RightBottomFront,
+    ],
+    [
+        SubCellIndex::RightTopBack,
+        SubCellIndex::RightTopFront,
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::LeftTopFront,
+    ],
+    [
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::LeftTopFront,
+        SubCellIndex::LeftBottomBack,
+        SubCellIndex::LeftBottomFront,
+    ],
+    [
+        SubCellIndex::RightBottomBack,
+        SubCellIndex::RightBottomFront,
+        SubCellIndex::RightTopBack,
+        SubCellIndex::RightTopFront,
+    ],
+];
+
 //  Cell Point and Subcell Layout
 //
 //      (2)o--------------o(6)
@@ -350,27 +389,8 @@ pub const FACE_NEIGHBOUR: [FaceIndex; FaceIndex::COUNT] = [
 /// See: 'Cell Point and Subcell Layout' in tables header
 ///
 /// 在对应的方向上，当前Cell的ID，对应的相邻Cell的ID
-pub const NEIGHBOUR_ADDRESS_TABLE: [[SubCellIndex; SubCellIndex::COUNT]; Direction::COUNT] = [
-    [
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightBottomFront,
-        SubCellIndex::RightTopBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::LeftTopFront,
-    ], // X (LEFT & RIGHT) NEIGHBOUR
-    [
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::LeftTopFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::RightTopBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightBottomFront,
-    ], // Y (TOP & BOTTOM) NEIGHBOUR
+///
+pub const NEIGHBOUR_ADDRESS_TABLE: [[SubCellIndex; SubCellIndex::COUNT]; FaceIndex::COUNT] = [
     [
         SubCellIndex::LeftBottomFront,
         SubCellIndex::LeftBottomBack,
@@ -380,7 +400,57 @@ pub const NEIGHBOUR_ADDRESS_TABLE: [[SubCellIndex; SubCellIndex::COUNT]; Directi
         SubCellIndex::RightBottomBack,
         SubCellIndex::RightTopFront,
         SubCellIndex::RightTopBack,
-    ], // Z (BACK & FRONT) NEIGHBOUR
+    ], // BACK NEIGHBOUR
+    [
+        SubCellIndex::LeftBottomFront,
+        SubCellIndex::LeftBottomBack,
+        SubCellIndex::LeftTopFront,
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::RightBottomFront,
+        SubCellIndex::RightBottomBack,
+        SubCellIndex::RightTopFront,
+        SubCellIndex::RightTopBack,
+    ], // FRONT NEIGHBOUR
+    [
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::LeftTopFront,
+        SubCellIndex::LeftBottomBack,
+        SubCellIndex::LeftBottomFront,
+        SubCellIndex::RightTopBack,
+        SubCellIndex::RightTopFront,
+        SubCellIndex::RightBottomBack,
+        SubCellIndex::RightBottomFront,
+    ], // BOTTOM NEIGHBOUR
+    [
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::LeftTopFront,
+        SubCellIndex::LeftBottomBack,
+        SubCellIndex::LeftBottomFront,
+        SubCellIndex::RightTopBack,
+        SubCellIndex::RightTopFront,
+        SubCellIndex::RightBottomBack,
+        SubCellIndex::RightBottomFront,
+    ], // TOP NEIGHBOUR
+    [
+        SubCellIndex::RightBottomBack,
+        SubCellIndex::RightBottomFront,
+        SubCellIndex::RightTopBack,
+        SubCellIndex::RightTopFront,
+        SubCellIndex::LeftBottomBack,
+        SubCellIndex::LeftBottomFront,
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::LeftTopFront,
+    ], // LEFT NEIGHBOUR
+    [
+        SubCellIndex::RightBottomBack,
+        SubCellIndex::RightBottomFront,
+        SubCellIndex::RightTopBack,
+        SubCellIndex::RightTopFront,
+        SubCellIndex::LeftBottomBack,
+        SubCellIndex::LeftBottomFront,
+        SubCellIndex::LeftTopBack,
+        SubCellIndex::LeftTopFront,
+    ], // RIGHT NEIGHBOUR
 ];
 
 /// @brief neighbour face table between sub cell

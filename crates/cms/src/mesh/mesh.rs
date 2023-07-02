@@ -1,16 +1,16 @@
 use std::{io::Write, path::Path};
 
-use bevy::prelude::info;
+use bevy::prelude::{info, Component};
 use nalgebra::Vector3;
 
 #[derive(Clone, Debug)]
-pub struct Vertex {
+pub struct MeshVertex {
     pub position: Vector3<f32>,
     /// 仅用于扇形中心顶点
     pub normals: Vector3<f32>,
 }
 
-impl Vertex {
+impl MeshVertex {
     pub fn new() -> Self {
         Self {
             position: Vector3::new(0.0, 0.0, 0.0),
@@ -26,7 +26,7 @@ impl Vertex {
     }
 }
 
-impl Vertex {
+impl MeshVertex {
     pub fn set_position(&mut self, position: &Vector3<f32>) {
         self.position = position.clone();
     }
@@ -44,8 +44,9 @@ impl Vertex {
     }
 }
 
+#[derive(Debug, Clone, Default, Component)]
 pub struct Mesh {
-    pub vertices: Vec<Vertex>,
+    pub vertices: Vec<MeshVertex>,
     pub indices: Vec<u32>,
 }
 
@@ -59,7 +60,7 @@ impl Mesh {
 }
 
 impl Mesh {
-    pub fn set_vertices(&mut self, vertices: Vec<Vertex>) {
+    pub fn set_vertices(&mut self, vertices: Vec<MeshVertex>) {
         self.vertices = vertices;
     }
 
@@ -67,7 +68,7 @@ impl Mesh {
         self.indices = indices;
     }
 
-    pub fn get_vertices(&self) -> &Vec<Vertex> {
+    pub fn get_vertices(&self) -> &Vec<MeshVertex> {
         &self.vertices
     }
 
@@ -75,7 +76,7 @@ impl Mesh {
         &self.indices
     }
 
-    pub fn get_vertices_mut(&mut self) -> &mut Vec<Vertex> {
+    pub fn get_vertices_mut(&mut self) -> &mut Vec<MeshVertex> {
         &mut self.vertices
     }
 

@@ -1,6 +1,6 @@
 use nalgebra::Vector3;
 
-use super::tables::Direction;
+use super::tables::EdgeDirection;
 
 #[derive(Default, Clone, Debug)]
 pub struct VertexIndices {
@@ -23,11 +23,11 @@ impl VertexIndices {
         self.empty = false;
     }
 
-    pub fn set_dir_vertex_index(&mut self, dir: Direction, vertex_index: usize) {
+    pub fn set_dir_vertex_index(&mut self, dir: EdgeDirection, vertex_index: usize) {
         match dir {
-            Direction::XAxis => self.vertex_index.x = Some(vertex_index),
-            Direction::YAxis => self.vertex_index.y = Some(vertex_index),
-            Direction::ZAxis => self.vertex_index.z = Some(vertex_index),
+            EdgeDirection::XAxis => self.vertex_index.x = Some(vertex_index),
+            EdgeDirection::YAxis => self.vertex_index.y = Some(vertex_index),
+            EdgeDirection::ZAxis => self.vertex_index.z = Some(vertex_index),
         }
         self.empty = false;
     }
