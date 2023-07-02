@@ -1,6 +1,6 @@
 use nalgebra::Vector3;
 
-use super::tables::{Direction, Face2DEdge};
+use super::tables::{EdgeDirection, Face2DEdge};
 
 #[derive(Clone, Debug)]
 pub struct Strip {
@@ -12,7 +12,7 @@ pub struct Strip {
     /// every edge crossing point
     crossing_left_coord: [Option<Vector3<usize>>; 2],
     /// every edge direction
-    edge_dir: [Option<Direction>; 2],
+    edge_dir: [Option<EdgeDirection>; 2],
 }
 
 impl Default for Strip {
@@ -60,11 +60,11 @@ impl Strip {
         self.crossing_left_coord[index]
     }
 
-    pub fn set_edge_dir(&mut self, index: usize, dir: Option<Direction>) {
+    pub fn set_edge_dir(&mut self, index: usize, dir: Option<EdgeDirection>) {
         self.edge_dir[index] = dir;
     }
 
-    pub fn get_dir(&self, index: usize) -> Option<Direction> {
+    pub fn get_dir(&self, index: usize) -> Option<EdgeDirection> {
         self.edge_dir[index]
     }
 

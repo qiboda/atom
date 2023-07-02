@@ -1,15 +1,14 @@
-use std::fmt::Debug;
-
-pub trait DensyFunction {
+pub trait DensyFunction: Sync + Send {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32;
 }
 
-impl Debug for dyn DensyFunction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DensyFunction").finish()
-    }
-}
-
+// impl Debug for dyn DensyFunction {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.debug_struct("DensyFunction").finish()
+//     }
+// }
+//
+#[derive(Default)]
 pub struct Sphere;
 
 impl DensyFunction for Sphere {
@@ -19,6 +18,7 @@ impl DensyFunction for Sphere {
 }
 
 // 圆环面
+#[derive(Default)]
 pub struct Torus;
 
 impl DensyFunction for Torus {
@@ -32,6 +32,7 @@ impl DensyFunction for Torus {
     }
 }
 
+#[derive(Default)]
 pub struct Cube;
 
 impl DensyFunction for Cube {
