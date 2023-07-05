@@ -1,6 +1,6 @@
 pub mod camera;
+pub mod isosurface;
 pub mod material;
-pub mod octree;
 pub mod renderdoc;
 pub mod terrain;
 pub mod ui;

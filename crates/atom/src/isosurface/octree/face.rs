@@ -1,11 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
-
 use bevy::prelude::*;
 
-use super::{
-    strip::Strip,
-    tables::{FaceIndex, SubFaceIndex},
-};
+use super::{strip::Strip, tables::FaceIndex};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum FaceType {

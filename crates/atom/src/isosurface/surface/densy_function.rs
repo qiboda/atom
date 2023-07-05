@@ -1,4 +1,6 @@
-pub trait DensyFunction: Sync + Send {
+use std::fmt::Debug;
+
+pub trait DensyFunction: Sync + Send + Debug {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32;
 }
 
@@ -8,7 +10,7 @@ pub trait DensyFunction: Sync + Send {
 //     }
 // }
 //
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Sphere;
 
 impl DensyFunction for Sphere {
@@ -18,7 +20,7 @@ impl DensyFunction for Sphere {
 }
 
 // 圆环面
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Torus;
 
 impl DensyFunction for Torus {
@@ -32,7 +34,7 @@ impl DensyFunction for Torus {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Cube;
 
 impl DensyFunction for Cube {

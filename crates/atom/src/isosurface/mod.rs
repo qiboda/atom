@@ -1,11 +1,61 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
+use bevy::prelude::*;
+use mesh::MeshingPlugin;
+use octree::OctreePlugin;
+use sample::SampleSurfacePlugin;
+use surface::{densy_function::Sphere, shape_surface::ShapeSurface};
 
+// #![allow(dead_code)]
+// #![allow(unused_variables)]
+//
+
+/// shape surface
+///   cms plugin cms as a empty bundle and has these children.
+///      => sample data as cache..
+///      => octree => build
+///      => meshing => build
 pub mod cms;
 pub mod mesh;
 pub mod octree;
 pub mod sample;
 pub mod surface;
+
+#[derive(Default, Component)]
+struct IsosurfaceExtract;
+
+#[derive(Default, Debug)]
+pub struct IsosurfaceExtractionPlugin;
+
+#[derive(PartialEq, Eq, Debug, Hash, Clone, SystemSet)]
+pub enum IsosurfaceExtractionSet {
+    Initialize,
+    Sample,
+    Extract,
+    Meshing,
+}
+
+/// todo: 坐标变换，从密度函数的坐标系到采样坐标系
+impl Plugin for IsosurfaceExtractionPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(ShapeSurface {
+            densy_function: Box::new(Sphere),
+            iso_level: Vec3::ZERO,
+            negative_inside: true,
+        })
+        .configure_sets(
+            Startup,
+            (
+                IsosurfaceExtractionSet::Initialize,
+                IsosurfaceExtractionSet::Sample,
+                IsosurfaceExtractionSet::Extract,
+                IsosurfaceExtractionSet::Meshing,
+            )
+                .chain(),
+        )
+        .add_plugin(SampleSurfacePlugin)
+        .add_plugin(OctreePlugin)
+        .add_plugin(MeshingPlugin);
+    }
+}
 
 //
 // use std::{path::Path, rc::Rc};

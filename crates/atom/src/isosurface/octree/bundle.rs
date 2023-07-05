@@ -6,7 +6,7 @@ use super::{
     octree::{Octree, OctreeCellAddress},
 };
 
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub struct CellBundle {
     pub cell: Cell,
     pub faces: Faces,

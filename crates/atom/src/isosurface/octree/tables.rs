@@ -158,7 +158,7 @@ pub const VERTEX_MAP: [[Face2DVertex; 2]; Face2DEdge::COUNT] = [
 
 */
 
-use strum::EnumCount;
+use strum::{EnumCount, FromRepr};
 use strum_macros::EnumIter;
 
 // also face
@@ -202,7 +202,7 @@ pub enum VertexPoint {
 }
 
 // x, y, z => xyz
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, EnumIter, EnumCount)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, FromRepr, EnumIter, EnumCount)]
 pub enum SubCellIndex {
     LeftBottomBack = 0,
     LeftBottomFront = 1,
