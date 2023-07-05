@@ -1,10 +1,11 @@
 use bevy::prelude::Plugin;
 
 pub mod mesh;
+pub mod vertex_index;
 
-struct MeshPlugin;
+pub struct MeshingPlugin;
 
-impl Plugin for MeshPlugin {
+impl Plugin for MeshingPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         // app.add_system(Mesh, update_mesh);
     }

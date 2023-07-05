@@ -1,18 +1,11 @@
-// pub fn cubical_marching_sqaures_algorithm() {
-//     generate_segments(cells, query, query_add)
-//     edit_transitional_face();
-//
-//     trace_comonent();
-// }
-
 use std::ops::Range;
 
 use bevy::prelude::*;
-use nalgebra::Vector3;
 
-use strum::EnumCount;
+use strum::{EnumCount, IntoEnumIterator};
 
-use crate::{
+use crate::isosurface::{
+    mesh::mesh::MeshCache,
     octree::{
         cell::{Cell, CellMeshInfo},
         face::{Face, FaceType, Faces},
@@ -23,42 +16,47 @@ use crate::{
             EdgeDirection, Face2DEdge, Face2DVertex, FaceIndex, EDGE_MAP, FACE_2_SUBCELL,
             FACE_VERTEX, VERTEX_MAP,
         },
-        vertex::Vertex,
     },
-    sample::sample_info::SampleInfo,
+    sample::surface_sampler::SurfaceSampler,
     surface::shape_surface::ShapeSurface,
+    IsosurfaceExtract,
 };
-
-use super::cms::CMSMeshInfo;
 
 /// 生成每个面的连线，以及边的顶点的位置信息。
 pub fn generate_segments(
+    isosurface_extract: Query<&Children, Added<IsosurfaceExtract>>,
     shape_surface: Res<ShapeSurface>,
+    sample_query: Query<&SurfaceSampler>,
     cells: Query<(&Cell, &mut CellMeshInfo, &mut Faces)>,
     query: Query<(&Octree, &OctreeCellAddress)>,
-    sample_query: Query<(&mut CMSMeshInfo, &SampleInfo)>,
+    mesh_query: Query<&mut MeshCache>,
 ) {
-    let (mesh_info, sample_info) = sample_query.single();
-    for (octree, address) in query.iter() {
-        for entity in octree.leaf_cells.iter() {
-            if let Ok((cell, mut cell_mesh_info, mut faces)) = cells.get(*entity) {
-                let mut indices = [Vector3::zeros(); Face2DVertex::COUNT];
-                for face_index in FaceIndex::iter() {
-                    for (i, face_vertex) in Face2DVertex::iter().enumerate() {
-                        let vertex_pos = FACE_VERTEX[face_index as usize][face_vertex as usize];
-                        indices[i] = cell.get_corner_sample_index()[vertex_pos as usize];
-                    }
+    for children in isosurface_extract.iter() {
+        for child in children.iter() {
+            let sample_info = sample_query.get(*child).unwrap();
+            let (octree, address) = query.get(*child).unwrap();
+            let mut mesh = mesh_query.get_mut(*child).unwrap();
 
-                    let face = faces.get_face(face_index);
-                    face.get_strips_mut().resize(2, Strip::default());
-                    make_face_segments(
-                        &indices,
-                        face,
-                        &mut cell_mesh_info,
-                        &mut mesh_info,
-                        &sample_info,
-                        shape_surface,
-                    );
+            for entity in octree.leaf_cells.iter() {
+                if let Ok((cell, mut cell_mesh_info, mut faces)) = cells.get(*entity) {
+                    let mut indices = [UVec3::ZERO; Face2DVertex::COUNT];
+                    for face_index in FaceIndex::iter() {
+                        for (i, face_vertex) in Face2DVertex::iter().enumerate() {
+                            let vertex_pos = FACE_VERTEX[face_index as usize][face_vertex as usize];
+                            indices[i] = cell.get_corner_sample_index()[vertex_pos as usize];
+                        }
+
+                        let face = faces.get_face(face_index);
+                        face.get_strips_mut().resize(2, Strip::default());
+                        make_face_segments(
+                            &indices,
+                            face,
+                            &mut cell_mesh_info,
+                            &mut mesh,
+                            &sample_info,
+                            &shape_surface,
+                        );
+                    }
                 }
             }
         }
@@ -67,19 +65,15 @@ pub fn generate_segments(
 
 // make segments in a face.
 fn make_face_segments(
-    indices: &[Vector3<usize>; 4],
+    indices: &[UVec3; 4],
     face: &Face,
     cell_mesh_info: &mut CellMeshInfo,
-    mesh_info: &mut CMSMeshInfo,
-    sample_info: &SampleInfo,
-    shape_surface: Res<ShapeSurface>,
+    mesh_info: &mut MeshCache,
+    sample_info: &SurfaceSampler,
+    shape_surface: &Res<ShapeSurface>,
 ) {
     let edges = (0..4).fold(0, |acc, i| {
-        acc | if sample_info
-            .sample_data
-            .get_value(indices[i].x, indices[i].y, indices[i].z)
-            < 0.0
-        {
+        acc | if sample_info.get_value_from_vertex_address(indices[i], shape_surface) < 0.0 {
             1 << i
         } else {
             0
@@ -121,16 +115,16 @@ fn make_face_segments(
     }
 }
 
-pub fn make_strip(
+fn make_strip(
     edge0: Option<Face2DEdge>,
     edge1: Option<Face2DEdge>,
-    indices: &[Vector3<usize>; 4],
+    indices: &[UVec3; 4],
     face: &Face,
     strip_index: usize,
     cell_mesh_info: &mut CellMeshInfo,
-    mesh_info: &mut CMSMeshInfo,
-    sample_info: &SampleInfo,
-    shape_surface: Res<ShapeSurface>,
+    mesh_info: &mut MeshCache,
+    sample_info: &SurfaceSampler,
+    shape_surface: &Res<ShapeSurface>,
 ) {
     assert!(edge0.is_some() && edge1.is_some());
 
@@ -160,14 +154,14 @@ pub fn make_strip(
 }
 
 /// 计算strip的一条边的顶点信息
-pub fn populate_strip(
+fn populate_strip(
     strip: &mut Strip,
-    indices: &[Vector3<usize>; 4],
+    indices: &[UVec3; 4],
     edge_index: usize,
     cell_mesh_info: &mut CellMeshInfo,
-    mesh_info: &mut CMSMeshInfo,
-    sample_info: &SampleInfo,
-    shape_surface: Res<ShapeSurface>,
+    mesh_info: &mut MeshCache,
+    sample_info: &SurfaceSampler,
+    shape_surface: &Res<ShapeSurface>,
 ) {
     let edge = strip.get_edge(edge_index);
     assert!(edge.is_some());
@@ -175,6 +169,7 @@ pub fn populate_strip(
     let vertex0 = VERTEX_MAP[edge.unwrap() as usize][0];
     let vertex1 = VERTEX_MAP[edge.unwrap() as usize][1];
 
+    // todo: 因为是从叶子cell的面四边形的四个顶点开始，所以这里的顶点索引是固定的，后面可以优化
     let vertex_coord0 = indices[vertex0 as usize];
     let vertex_coord1 = indices[vertex1 as usize];
 
@@ -189,6 +184,7 @@ pub fn populate_strip(
         vertex_coord0,
         vertex_coord1,
         sample_info,
+        shape_surface,
     );
     assert!(vertex_range.contains(&sign_change_dir_coord));
 
@@ -199,42 +195,21 @@ pub fn populate_strip(
     crossing_index_1[edge_dir_index] = sign_change_dir_coord + 1;
 
     assert!(
-        sample_info.sample_data.get_value(
-            crossing_index_0.x,
-            crossing_index_0.y,
-            crossing_index_0.z
-        ) * sample_info.sample_data.get_value(
-            crossing_index_1.x,
-            crossing_index_1.y,
-            crossing_index_1.z
-        ) <= 0.0
+        sample_info.get_value_from_vertex_address(crossing_index_0, shape_surface)
+            * sample_info.get_value_from_vertex_address(crossing_index_1, shape_surface)
+            <= 0.0
     );
 
     let mut dupli = false;
 
-    let value_0 = mesh_info.vertex_index_data.get_value(
-        crossing_index_0.x,
-        crossing_index_0.y,
-        crossing_index_0.z,
-    );
-    if value_0.is_empty() == false {
-        if value_0
-            .get_vertex_index()
-            .get(edge_dir_index)
-            .unwrap()
-            .is_some()
-        {
-            strip.set_vertex_index(
-                edge_index,
-                value_0
-                    .get_vertex_index()
-                    .get(edge_dir_index)
-                    .unwrap()
-                    .unwrap(),
-            );
-            strip.set_crossing_left_coord(edge_index, crossing_index_0);
-            strip.set_edge_dir(edge_index, Some(edge_dir));
-            dupli = true;
+    if let Some(value_0) = mesh_info.vertex_index_data.get(&crossing_index_0) {
+        if value_0.is_empty() == false {
+            if value_0.get_dir_vertex_index(edge_dir).is_some() {
+                strip.set_vertex_index(edge_index, value_0.get_dir_vertex_index(edge_dir).unwrap());
+                strip.set_crossing_left_coord(edge_index, crossing_index_0);
+                strip.set_edge_dir(edge_index, Some(edge_dir));
+                dupli = true;
+            }
         }
     }
 
@@ -246,32 +221,34 @@ pub fn populate_strip(
             crossing_index_1,
             edge_index,
             cell_mesh_info,
-            shape_surface,
+            mesh_info,
+            sample_info,
+            &shape_surface,
         );
     }
 }
 
 /// 获取边的两个顶点的方向以及距离。
-pub fn get_edges_betwixt(
-    range: &mut Range<usize>,
-    vertex_coord0: Vector3<usize>,
-    vertex_coord1: Vector3<usize>,
-) -> Direction {
+fn get_edges_betwixt(
+    range: &mut Range<u32>,
+    vertex_coord0: UVec3,
+    vertex_coord1: UVec3,
+) -> EdgeDirection {
     let mut direction = None;
 
-    let diff = (vertex_coord0.cast::<i32>() - vertex_coord1.cast::<i32>()).abs();
+    let diff = (vertex_coord0.as_ivec3() - vertex_coord1.as_ivec3()).abs();
 
     if diff.x > 0 {
-        range.start = vertex_coord0.x.min(vertex_coord1.x) as usize;
-        range.end = vertex_coord0.x.max(vertex_coord1.x) as usize;
+        range.start = vertex_coord0.x.min(vertex_coord1.x);
+        range.end = vertex_coord0.x.max(vertex_coord1.x);
         direction = Some(EdgeDirection::XAxis);
     } else if diff.y > 0 {
-        range.start = vertex_coord0.y.min(vertex_coord1.y) as usize;
-        range.end = vertex_coord0.y.max(vertex_coord1.y) as usize;
-        direction = Some(EdgeDirection::YAxis);
+        range.start = vertex_coord0.y.min(vertex_coord1.y);
+        range.end = vertex_coord0.y.max(vertex_coord1.y);
+        // direction = Some(EdgeDirection::YAxis);
     } else if diff.z > 0 {
-        range.start = vertex_coord0.z.min(vertex_coord1.z) as usize;
-        range.end = vertex_coord0.z.max(vertex_coord1.z) as usize;
+        range.start = vertex_coord0.z.min(vertex_coord1.z);
+        range.end = vertex_coord0.z.max(vertex_coord1.z);
         direction = Some(EdgeDirection::ZAxis);
     }
 
@@ -282,14 +259,15 @@ pub fn get_edges_betwixt(
 
 /// 检测是否有精确的符号变化。
 /// 返回值为符号变化的前一个索引。
-pub fn exact_sign_change_index(
-    vertex_range: Range<usize>,
-    edge_dir: Direction,
-    vertex_coord0: Vector3<usize>,
-    vertex_coord1: Vector3<usize>,
-    sample_info: &SampleInfo,
-) -> usize {
-    let mut start_vertex_coord = Vector3::new(usize::MAX, usize::MAX, usize::MAX);
+fn exact_sign_change_index(
+    vertex_range: Range<u32>,
+    edge_dir: EdgeDirection,
+    vertex_coord0: UVec3,
+    vertex_coord1: UVec3,
+    sample_info: &SurfaceSampler,
+    shape_surface: &Res<ShapeSurface>,
+) -> u32 {
+    let mut start_vertex_coord = UVec3::splat(u32::MAX);
 
     if vertex_coord0[edge_dir as usize] == vertex_range.start {
         start_vertex_coord = vertex_coord0;
@@ -299,18 +277,11 @@ pub fn exact_sign_change_index(
 
     // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。
     if vertex_range.end - vertex_range.start == 1 {
-        let this_value = sample_info.sample_data.get_value(
-            start_vertex_coord.x,
-            start_vertex_coord.y,
-            start_vertex_coord.z,
-        );
+        let this_value =
+            sample_info.get_value_from_vertex_address(start_vertex_coord, shape_surface);
         let mut end_vertex_coord = start_vertex_coord;
         end_vertex_coord[edge_dir as usize] = start_vertex_coord[edge_dir as usize] + 1;
-        let next_value = sample_info.sample_data.get_value(
-            end_vertex_coord.x,
-            end_vertex_coord.y,
-            end_vertex_coord.z,
-        );
+        let next_value = sample_info.get_value_from_vertex_address(end_vertex_coord, shape_surface);
         // info!(
         //     "this value {}, next_value: {}, start {}, end {}",
         //     this_value, next_value, start_vertex_coord, end_vertex_coord
@@ -325,144 +296,122 @@ pub fn exact_sign_change_index(
     for i in vertex_range.clone() {
         indexer[edge_dir as usize] = i;
 
-        let this_value = sample_info
-            .sample_data
-            .get_value(indexer.x, indexer.y, indexer.z);
+        let this_value = sample_info.get_value_from_vertex_address(indexer, shape_surface);
 
         indexer[edge_dir as usize] = i + 1;
-        let next_value = sample_info
-            .sample_data
-            .get_value(indexer.x, indexer.y, indexer.z);
+        let next_value = sample_info.get_value_from_vertex_address(indexer, shape_surface);
 
         if this_value * next_value <= 0.0 {
             return i;
         }
     }
 
-    // for i in vertex_range {
-    //     indexer[edge_dir as usize] = i;
-    //
-    //     let this_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
-    //
-    //     indexer[edge_dir as usize] = i + 1;
-    //     let next_value = self.sample_data.get_value(indexer.x, indexer.y, indexer.z);
-    //
-    //     info!("this value: {} next value {}", this_value, next_value);
-    //     if this_value * next_value <= 0.0 {
-    //         return i;
-    //     }
-    // }
     // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。此处代码不会执行。
     assert!(false);
 
-    return usize::MAX;
+    return u32::MAX;
 }
 
-pub fn make_vertex(
+fn make_vertex(
     strip: &mut Strip,
-    edge_dir: Direction,
-    crossing_index_0: Vector3<usize>,
-    crossing_index_1: Vector3<usize>,
+    edge_dir: EdgeDirection,
+    crossing_index_0: UVec3,
+    crossing_index_1: UVec3,
     edge_index: usize,
     cell_mesh_info: &mut CellMeshInfo,
-    mesh_info: &mut CMSMeshInfo,
-    sample_info: &SampleInfo,
-    shape_surface: Res<ShapeSurface>,
+    mesh_info: &mut MeshCache,
+    sample_info: &SurfaceSampler,
+    shape_surface: &Res<ShapeSurface>,
 ) {
-    let pos0 =
-        sample_info
-            .sample_data
-            .get_pos(crossing_index_0.x, crossing_index_0.y, crossing_index_0.z);
-    let value0 = sample_info.sample_data.get_value(
-        crossing_index_0.x,
-        crossing_index_0.y,
-        crossing_index_0.z,
-    );
-    let point0 = Point::new_with_position_and_value(&pos0, value0);
+    let pos0 = sample_info.get_pos_from_vertex_address(crossing_index_0, shape_surface);
+    let value0 = sample_info.get_value_from_vertex_address(crossing_index_0, shape_surface);
+    let point0 = Point::new_with_position_and_value(pos0, value0);
 
-    let pos1 =
-        sample_info
-            .sample_data
-            .get_pos(crossing_index_1.x, crossing_index_1.y, crossing_index_1.z);
-    let value1 = sample_info.sample_data.get_value(
-        crossing_index_1.x,
-        crossing_index_1.y,
-        crossing_index_1.z,
-    );
-    let point1 = Point::new_with_position_and_value(&pos1, value1);
+    let pos1 = sample_info.get_pos_from_vertex_address(crossing_index_1, shape_surface);
+    let value1 = sample_info.get_value_from_vertex_address(crossing_index_1, shape_surface);
+    let point1 = Point::new_with_position_and_value(pos1, value1);
 
-    let crossing_point = find_crossing_point(2, &point0, &point1, shape_surface);
-    let mut gradient = Vector3::new(0.0, 0.0, 0.0);
-    find_gradient(
-        &mut gradient,
-        sample_info.offsets,
-        &crossing_point,
-        shape_surface,
-    );
+    let crossing_point = find_crossing_point_pos(2, &point0, &point1, sample_info, shape_surface);
+    let mut gradient = Vec3::ZERO;
+    find_gradient(&mut gradient, crossing_point, &sample_info, shape_surface);
 
-    let vert = Vertex::new_with_position_and_normals(&crossing_point, &gradient);
-    mesh_info.vertices.push(vert);
+    mesh_info.positions.push(crossing_point);
+    mesh_info.normals.push(gradient);
 
-    strip.set_vertex_index(edge_index, mesh_info.vertices.len() - 1);
+    strip.set_vertex_index(edge_index, (mesh_info.positions.len() - 1) as u32);
     strip.set_crossing_left_coord(edge_index, crossing_index_0);
     strip.set_edge_dir(edge_index, Some(edge_dir));
 
-    let mut e = mesh_info.vertex_index_data.get_value(
-        crossing_index_0.x,
-        crossing_index_0.y,
-        crossing_index_0.z,
-    );
+    if let Some(mut e) = mesh_info.vertex_index_data.get_mut(&crossing_index_0) {
+        assert!(e.get_dir_vertex_index(edge_dir).is_none());
 
-    assert!(e
-        .get_vertex_index()
-        .get(edge_dir as usize)
-        .unwrap()
-        .is_none());
-    e.set_dir_vertex_index(edge_dir, mesh_info.vertices.len() - 1);
-    mesh_info.vertex_index_data.set_value(
-        crossing_index_0.x,
-        crossing_index_0.y,
-        crossing_index_0.z,
-        e.clone(),
-    );
+        e.set_dir_vertex_index(edge_dir, (mesh_info.positions.len() - 1) as u32);
+        mesh_info
+            .vertex_index_data
+            .insert(crossing_index_0, e.clone());
+    }
 }
 
 /// @param quality iter count
-pub fn find_crossing_point(
+fn find_crossing_point_pos(
     quality: usize,
     point0: &Point,
     point1: &Point,
-    shape_surface: Res<ShapeSurface>,
-) -> Vector3<f32> {
-    let iso_value = shape_surface.get_iso_level();
-
+    sample_info: &SurfaceSampler,
+    shape_surface: &Res<ShapeSurface>,
+) -> Vec3 {
     let p0 = point0.get_position();
     let v0 = point0.get_value();
 
     let p1 = point1.get_position();
     let v1 = point1.get_value();
 
-    let alpha = (iso_value - v0) / (v1 - v0);
-    let mut pos = p0 + (p1 - p0) * alpha;
-    let val = shape_surface.get_value(pos.x, pos.y, pos.z);
+    let alpha_value = (0.0 - v0) / (v1 - v0);
+    assert!(alpha_value >= 0.0);
+    let mut pos = *p0 + (*p1 - *p0) * alpha_value;
+    let val = sample_info.get_value_from_pos(pos, shape_surface);
 
-    let point = Point::new_with_position_and_value(&pos, val);
+    let point = Point::new_with_position_and_value(pos, val);
 
     // 误差足够小，或者迭代次数足够多，就认为找到了交点。
-    if (iso_value - val).abs() < f32::EPSILON || quality == 0 {
+    if val.abs() < f32::EPSILON || quality == 0 {
         return pos;
     } else {
         if val < 0.0 {
             if v0 > 0.0 {
-                pos = find_crossing_point(quality - 1, &point, point0, shape_surface);
+                pos = find_crossing_point_pos(
+                    quality - 1,
+                    &point,
+                    point0,
+                    sample_info,
+                    shape_surface,
+                );
             } else if v1 > 0.0 {
-                pos = find_crossing_point(quality - 1, &point, point1, shape_surface);
+                pos = find_crossing_point_pos(
+                    quality - 1,
+                    &point,
+                    point1,
+                    sample_info,
+                    shape_surface,
+                );
             }
         } else {
             if v0 < 0.0 {
-                pos = find_crossing_point(quality - 1, point0, &point, shape_surface);
+                pos = find_crossing_point_pos(
+                    quality - 1,
+                    point0,
+                    &point,
+                    sample_info,
+                    shape_surface,
+                );
             } else if v1 < 0.0 {
-                pos = find_crossing_point(quality - 1, point1, &point, shape_surface);
+                pos = find_crossing_point_pos(
+                    quality - 1,
+                    point1,
+                    &point,
+                    sample_info,
+                    shape_surface,
+                );
             }
         }
     }
@@ -470,20 +419,24 @@ pub fn find_crossing_point(
     return pos;
 }
 
-pub fn find_gradient(
-    normal: &mut Vector3<f32>,
-    offset: Vector3<f32>,
-    position: &Vector3<f32>,
-    shape_surface: Res<ShapeSurface>,
+fn find_gradient(
+    normal: &mut Vec3,
+    position: Vec3,
+    sample_info: &SurfaceSampler,
+    shape_surface: &Res<ShapeSurface>,
 ) {
-    let val = shape_surface.get_value(position.x, position.y, position.z);
-    let dx = shape_surface.get_value(position.x + offset.x, position.y, position.z);
+    let val = sample_info.get_value_from_pos(position, shape_surface);
+    let offset = sample_info.voxel_size * 0.5;
+    let dx =
+        sample_info.get_value_from_pos(position + Vec3::new(offset.x, 0.0, 0.0), shape_surface);
 
-    let dy = shape_surface.get_value(position.x, position.y + offset.y, position.z);
+    let dy =
+        sample_info.get_value_from_pos(position + Vec3::new(0.0, offset.y, 0.0), shape_surface);
 
-    let dz = shape_surface.get_value(position.x, position.y, position.z + offset.z);
+    let dz =
+        sample_info.get_value_from_pos(position + Vec3::new(0.0, 0.0, offset.z), shape_surface);
 
-    *normal = Vector3::new(dx - val, dy - val, dz - val);
+    *normal = Vec3::new(dx - val, dy - val, dz - val).normalize();
 }
 
 /// 计算面的Twin的Strip的起点和重点，以及所经过的顶点。
@@ -668,7 +621,7 @@ pub fn edit_transitional_face(
     }
 }
 
-pub fn traverse_face(
+fn traverse_face(
     cell_query: Query<(&Cell, &Faces)>,
     cell_addresses: &OctreeCellAddress,
     cell: &Cell,
@@ -747,7 +700,7 @@ pub fn trace_comonent(
         }
     }
 }
-pub fn collect_strips(
+fn collect_strips(
     cells: Query<&Cell>,
     cell_addresses: &OctreeCellAddress,
     cell: &Cell,
@@ -792,7 +745,7 @@ pub fn collect_strips(
     assert!(cell_strips.len() > 0);
 }
 
-pub fn link_strips(
+fn link_strips(
     components: &mut Vec<usize>,
     cell_strips: &mut Vec<Strip>,
     transit_segs: &mut Vec<Vec<usize>>,

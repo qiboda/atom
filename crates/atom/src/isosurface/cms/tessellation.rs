@@ -1,19 +1,3 @@
-use bevy::prelude::{Query, Res};
-use nalgebra::Vector3;
-
-use crate::{
-    mesh::mesh::Mesh,
-    octree::{
-        cell::{Cell, CellType},
-        octree::{Octree, OctreeCellAddress},
-        tables::SubCellIndex,
-        vertex::Vertex,
-    },
-    surface::shape_surface::{self, ShapeSurface},
-};
-
-use super::cms::CMSMeshInfo;
-
 // pub fn tessellation_traversal(
 //     cells: Query<&Cell>,
 //     query: Query<&Octree, &OctreeCellAddress>,

@@ -1,4 +1,4 @@
-use nalgebra::Vector3;
+use bevy::prelude::UVec3;
 
 use super::tables::{EdgeDirection, Face2DEdge};
 
@@ -8,9 +8,9 @@ pub struct Strip {
 
     edge: [Option<Face2DEdge>; 2],
     /// every edge CMS::vertices index.
-    vertex_index: [Option<usize>; 2],
+    vertex_index: [Option<u32>; 2],
     /// every edge crossing point
-    crossing_left_coord: [Option<Vector3<usize>>; 2],
+    crossing_left_coord: [Option<UVec3>; 2],
     /// every edge direction
     edge_dir: [Option<EdgeDirection>; 2],
 }
@@ -44,19 +44,19 @@ impl Strip {
         self.edge[index]
     }
 
-    pub fn set_vertex_index(&mut self, index: usize, vertex_index: usize) {
+    pub fn set_vertex_index(&mut self, index: usize, vertex_index: u32) {
         self.vertex_index[index] = Some(vertex_index);
     }
 
-    pub fn get_vertex_index(&self, index: usize) -> Option<usize> {
+    pub fn get_vertex_index(&self, index: usize) -> Option<u32> {
         self.vertex_index[index]
     }
 
-    pub fn set_crossing_left_coord(&mut self, index: usize, block: Vector3<usize>) {
+    pub fn set_crossing_left_coord(&mut self, index: usize, block: UVec3) {
         self.crossing_left_coord[index] = Some(block);
     }
 
-    pub fn get_crossing_left_coord(&self, index: usize) -> Option<Vector3<usize>> {
+    pub fn get_crossing_left_coord(&self, index: usize) -> Option<UVec3> {
         self.crossing_left_coord[index]
     }
 

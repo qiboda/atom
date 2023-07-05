@@ -15,6 +15,7 @@ use super::{
 
 pub mod chunk;
 pub mod coords;
+pub mod settings;
 pub mod terrain;
 pub mod visible;
 pub mod voxel;
