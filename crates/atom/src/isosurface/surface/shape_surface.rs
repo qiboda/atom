@@ -9,6 +9,8 @@ pub struct ShapeSurface {
     pub iso_level: Vec3,
 
     pub negative_inside: bool,
+
+    pub snap_centro_id: bool,
 }
 
 impl ShapeSurface {

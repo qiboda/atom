@@ -162,7 +162,7 @@ use strum::{EnumCount, FromRepr};
 use strum_macros::EnumIter;
 
 // also face
-#[derive(Debug, Clone, Copy, PartialEq, EnumIter, EnumCount)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumIter, EnumCount, FromRepr)]
 pub enum FaceIndex {
     Back = 0,
     Front = 1,

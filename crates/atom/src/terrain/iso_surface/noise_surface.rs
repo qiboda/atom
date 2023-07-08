@@ -1,9 +1,6 @@
 use std::ops::Range;
 
-use bevy::{
-    prelude::{info, warn},
-    utils::HashMap,
-};
+use bevy::{prelude::info, utils::HashMap};
 use simdnoise::NoiseBuilder;
 
 use crate::terrain::data::{

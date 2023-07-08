@@ -31,7 +31,7 @@ impl Plugin for OctreePlugin {
     }
 }
 
-fn start_up(mut commands: Commands, parent: Query<Entity, Added<IsosurfaceExtract>>) {
+fn start_up(mut commands: Commands, _parent: Query<Entity, Added<IsosurfaceExtract>>) {
     commands.spawn(OctreeBundle {
         octree: Octree::default(),
         octree_cells: OctreeCellAddress::default(),

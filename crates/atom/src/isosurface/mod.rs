@@ -20,7 +20,7 @@ pub mod sample;
 pub mod surface;
 
 #[derive(Default, Component)]
-struct IsosurfaceExtract;
+pub struct IsosurfaceExtract;
 
 #[derive(Default, Debug)]
 pub struct IsosurfaceExtractionPlugin;
@@ -40,6 +40,7 @@ impl Plugin for IsosurfaceExtractionPlugin {
             densy_function: Box::new(Sphere),
             iso_level: Vec3::ZERO,
             negative_inside: true,
+            snap_centro_id: true,
         })
         .configure_sets(
             Startup,
