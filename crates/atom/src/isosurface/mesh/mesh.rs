@@ -1,10 +1,8 @@
-// use std::{io::Write, path::Path};
-
 use bevy::{
-    prelude::{Component, UVec3, Vec3},
+    prelude::{Component, Mesh, UVec3, Vec3},
+    render::render_resource::PrimitiveTopology,
     utils::HashMap,
 };
-use nalgebra::Vector3;
 
 use super::vertex_index::VertexIndices;
 
@@ -57,49 +55,20 @@ impl MeshCache {
     }
 }
 
-impl MeshCache {
-    // pub fn export_obj(&self, path: &Path) {
-    //     info!("export_obj");
-    //     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    //     let mut file = std::fs::File::create(path).unwrap();
-    //
-    //     for vertex in &self.vertices {
-    //         let position = vertex.get_position();
-    //         let normals = vertex.get_normals();
-    //
-    //         let line = format!(
-    //             "v {} {} {}\nvn {} {} {}\n",
-    //             position.x, position.y, position.z, normals.x, normals.y, normals.z
-    //         );
-    //
-    //         file.write_all(line.as_bytes()).unwrap();
-    //     }
-    //
-    //     for i in (0..self.indices.len()).step_by(3) {
-    //         let line = format!(
-    //             "f {} {} {}\n",
-    //             self.indices[i] + 1,
-    //             self.indices[i + 1] + 1,
-    //             self.indices[i + 2] + 1
-    //         );
-    //
-    //         file.write_all(line.as_bytes()).unwrap();
-    //     }
-    // }
-}
-
-#[cfg(test)]
-mod test {
-    use std::io::Write;
-
-    #[test]
-    fn test_write_files() {
-        std::fs::create_dir_all("output/");
-        let mut file = std::fs::File::create("output/abc.txt").unwrap();
-
-        file.write_all("abcd".as_bytes());
-        file.write_all("ebdadf".as_bytes());
-
-        file.flush();
+impl From<MeshCache> for Mesh {
+    fn from(mesh_cache: MeshCache) -> Self {
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        mesh.insert_attribute(
+            Mesh::ATTRIBUTE_POSITION,
+            mesh_cache.get_vertice_positions().clone(),
+        );
+        mesh.insert_attribute(
+            Mesh::ATTRIBUTE_NORMAL,
+            mesh_cache.get_vertice_normals().clone(),
+        );
+        mesh.set_indices(Some(bevy::render::mesh::Indices::U32(
+            mesh_cache.get_indices().clone(),
+        )));
+        mesh
     }
 }

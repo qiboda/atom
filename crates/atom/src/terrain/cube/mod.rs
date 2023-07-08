@@ -93,11 +93,11 @@ fn create_terrain_cube(
     }
 }
 
-fn log_terrain_voxel_cube_count(
+fn _log_terrain_voxel_cube_count(
     cubes: Query<(), With<TerrainCube>>,
     voxels: Query<(), With<TerrainVoxel>>,
     cameras: Query<&GlobalTransform, With<Camera>>,
-    terrain_areas: Res<TerrainVisibleAreas>,
+    _terrain_areas: Res<TerrainVisibleAreas>,
 ) {
     // if terrain_areas.is_changed() {
     //     for single_area in terrain_areas.get_all_current_visible_area() {

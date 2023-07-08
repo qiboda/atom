@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use std::{cell::RefCell, rc::Rc};
 
 use super::{address::VoxelAddress, tables::FaceIndex};
 
@@ -11,7 +10,7 @@ pub enum CellType {
 
 #[derive(Debug, Component, Default)]
 pub struct CellMeshInfo {
-    componnets: Vec<Vec<usize>>,
+    pub components: Vec<Vec<u32>>,
 }
 
 #[derive(Debug, Component)]
@@ -30,8 +29,6 @@ impl Cell {
         address: VoxelAddress,
         corner_sample_index: [UVec3; 8],
     ) -> Self {
-        const INIT_CELL: Option<Rc<RefCell<Cell>>> = None;
-
         Self {
             cell_type,
             corner_sample_index,

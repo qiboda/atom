@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use strum::{EnumCount, IntoEnumIterator};
 
 use crate::isosurface::{
-    mesh::mesh::MeshCache,
+    mesh::{mesh::MeshCache, vertex_index::VertexIndices},
     octree::{
         cell::{Cell, CellMeshInfo},
         face::{Face, FaceType, Faces},
@@ -26,19 +26,25 @@ use crate::isosurface::{
 pub fn generate_segments(
     isosurface_extract: Query<&Children, Added<IsosurfaceExtract>>,
     shape_surface: Res<ShapeSurface>,
-    sample_query: Query<&SurfaceSampler>,
-    cells: Query<(&Cell, &mut CellMeshInfo, &mut Faces)>,
+    mut sample_query: Query<&mut SurfaceSampler>,
+    mut cells: Query<(&Cell, &mut Faces)>,
+    // mut cell_mesh_info: Query<&mut CellMeshInfo>,
     query: Query<(&Octree, &OctreeCellAddress)>,
-    mesh_query: Query<&mut MeshCache>,
+    mut mesh_query: Query<&mut MeshCache>,
 ) {
     for children in isosurface_extract.iter() {
         for child in children.iter() {
-            let sample_info = sample_query.get(*child).unwrap();
-            let (octree, address) = query.get(*child).unwrap();
+            let mut sample_info = sample_query.get_mut(*child).unwrap();
+            let (octree, _address) = query.get(*child).unwrap();
             let mut mesh = mesh_query.get_mut(*child).unwrap();
 
             for entity in octree.leaf_cells.iter() {
-                if let Ok((cell, mut cell_mesh_info, mut faces)) = cells.get(*entity) {
+                if let Ok((cell, mut faces)) = cells.get_mut(*entity) {
+                    // let Ok(cell_mesh_info) = cell_mesh_info.get_mut(*entity) else {
+                    //     assert!(false);
+                    //     continue;
+                    // };
+                    //
                     let mut indices = [UVec3::ZERO; Face2DVertex::COUNT];
                     for face_index in FaceIndex::iter() {
                         for (i, face_vertex) in Face2DVertex::iter().enumerate() {
@@ -46,14 +52,13 @@ pub fn generate_segments(
                             indices[i] = cell.get_corner_sample_index()[vertex_pos as usize];
                         }
 
-                        let face = faces.get_face(face_index);
+                        let face = faces.get_face_mut(face_index);
                         face.get_strips_mut().resize(2, Strip::default());
                         make_face_segments(
                             &indices,
                             face,
-                            &mut cell_mesh_info,
                             &mut mesh,
-                            &sample_info,
+                            &mut sample_info,
                             &shape_surface,
                         );
                     }
@@ -66,10 +71,9 @@ pub fn generate_segments(
 // make segments in a face.
 fn make_face_segments(
     indices: &[UVec3; 4],
-    face: &Face,
-    cell_mesh_info: &mut CellMeshInfo,
+    face: &mut Face,
     mesh_info: &mut MeshCache,
-    sample_info: &SurfaceSampler,
+    sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
     let edges = (0..4).fold(0, |acc, i| {
@@ -88,9 +92,8 @@ fn make_face_segments(
             e0a,
             e0b,
             indices,
-            face.clone(),
+            face,
             0,
-            cell_mesh_info,
             mesh_info,
             sample_info,
             shape_surface,
@@ -105,9 +108,8 @@ fn make_face_segments(
             e1a,
             e1b,
             indices,
-            face.clone(),
+            face,
             1,
-            cell_mesh_info,
             mesh_info,
             sample_info,
             shape_surface,
@@ -119,36 +121,19 @@ fn make_strip(
     edge0: Option<Face2DEdge>,
     edge1: Option<Face2DEdge>,
     indices: &[UVec3; 4],
-    face: &Face,
+    face: &mut Face,
     strip_index: usize,
-    cell_mesh_info: &mut CellMeshInfo,
     mesh_info: &mut MeshCache,
-    sample_info: &SurfaceSampler,
+    sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
     assert!(edge0.is_some() && edge1.is_some());
 
     let mut s = Strip::new(edge0, edge1);
 
-    populate_strip(
-        &mut s,
-        indices,
-        0,
-        cell_mesh_info,
-        mesh_info,
-        sample_info,
-        shape_surface,
-    );
+    populate_strip(&mut s, indices, 0, mesh_info, sample_info, shape_surface);
 
-    populate_strip(
-        &mut s,
-        indices,
-        1,
-        cell_mesh_info,
-        mesh_info,
-        sample_info,
-        shape_surface,
-    );
+    populate_strip(&mut s, indices, 1, mesh_info, sample_info, shape_surface);
 
     face.get_strips_mut()[strip_index] = s.clone();
 }
@@ -158,9 +143,8 @@ fn populate_strip(
     strip: &mut Strip,
     indices: &[UVec3; 4],
     edge_index: usize,
-    cell_mesh_info: &mut CellMeshInfo,
     mesh_info: &mut MeshCache,
-    sample_info: &SurfaceSampler,
+    sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
     let edge = strip.get_edge(edge_index);
@@ -220,7 +204,6 @@ fn populate_strip(
             crossing_index_0,
             crossing_index_1,
             edge_index,
-            cell_mesh_info,
             mesh_info,
             sample_info,
             &shape_surface,
@@ -264,7 +247,7 @@ fn exact_sign_change_index(
     edge_dir: EdgeDirection,
     vertex_coord0: UVec3,
     vertex_coord1: UVec3,
-    sample_info: &SurfaceSampler,
+    sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) -> u32 {
     let mut start_vertex_coord = UVec3::splat(u32::MAX);
@@ -318,9 +301,8 @@ fn make_vertex(
     crossing_index_0: UVec3,
     crossing_index_1: UVec3,
     edge_index: usize,
-    cell_mesh_info: &mut CellMeshInfo,
     mesh_info: &mut MeshCache,
-    sample_info: &SurfaceSampler,
+    sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
     let pos0 = sample_info.get_pos_from_vertex_address(crossing_index_0, shape_surface);
@@ -342,14 +324,10 @@ fn make_vertex(
     strip.set_crossing_left_coord(edge_index, crossing_index_0);
     strip.set_edge_dir(edge_index, Some(edge_dir));
 
-    if let Some(mut e) = mesh_info.vertex_index_data.get_mut(&crossing_index_0) {
-        assert!(e.get_dir_vertex_index(edge_dir).is_none());
-
-        e.set_dir_vertex_index(edge_dir, (mesh_info.positions.len() - 1) as u32);
-        mesh_info
-            .vertex_index_data
-            .insert(crossing_index_0, e.clone());
-    }
+    assert!(mesh_info.vertex_index_data.get(&crossing_index_0).is_none());
+    let mut e = VertexIndices::new();
+    e.set_dir_vertex_index(edge_dir, (mesh_info.positions.len() - 1) as u32);
+    mesh_info.vertex_index_data.insert(crossing_index_0, e);
 }
 
 /// @param quality iter count
@@ -442,33 +420,64 @@ fn find_gradient(
 /// 计算面的Twin的Strip的起点和重点，以及所经过的顶点。
 /// todo: 如果twin是由多个leaf Cell的面组成的，会重复吧，需要添加检测
 pub fn edit_transitional_face(
-    cells: Query<&Cell, &Faces>,
+    mut cells: Query<(&Cell, &mut Faces)>,
     octree_query: Query<(&Octree, &OctreeCellAddress)>,
 ) {
     info!("edit_transitional_face");
 
     for (octree, addresses) in octree_query.iter() {
-        for cell_entity in octree.transit_face_celss {
-            if let Ok(cell, faces) = cells.get(cell_entity) {
-                for face_index in FaceIndex::iter() {
+        for cell_entity in octree.transit_face_cells.iter() {
+            let mut all_strips = [
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+            ];
+            let mut all_twin_cell_entitys = [
+                Entity::PLACEHOLDER,
+                Entity::PLACEHOLDER,
+                Entity::PLACEHOLDER,
+                Entity::PLACEHOLDER,
+                Entity::PLACEHOLDER,
+                Entity::PLACEHOLDER,
+            ];
+            let mut all_twin_cell_face_index = [
+                FaceIndex::Left,
+                FaceIndex::Left,
+                FaceIndex::Left,
+                FaceIndex::Left,
+                FaceIndex::Left,
+                FaceIndex::Left,
+            ];
+            if let Ok((cell, faces)) = cells.get(*cell_entity) {
+                for (i, face_index) in FaceIndex::iter().enumerate() {
                     let face = faces.get_face(face_index);
                     assert!(face.get_face_type() == &FaceType::TransitFace);
 
                     let (twin_address, twin_face_index) = cell.get_twin_face_address(face_index);
-                    let twin_cell_entity = addresses.get(twin_address);
+                    all_twin_cell_entitys[i] =
+                        *addresses.cell_addresses.get(&twin_address).unwrap();
+                    all_twin_cell_face_index[i] = twin_face_index;
 
-                    let Ok(twin_cell, twin_faces) = cells.get(twin_cell_entity);
-
-                    let mut all_strips = Vec::new();
+                    let mut all_strip = &mut all_strips[i];
                     traverse_face(
-                        cells,
+                        &cells,
                         addresses,
-                        twin_cell,
-                        twin_faces.get_face(face_index),
-                        &mut all_strips,
+                        &all_twin_cell_entitys[i],
+                        twin_face_index,
+                        &mut all_strip,
                     );
+                }
+            }
 
-                    if all_strips.len() == 0 {
+            for (index, twin_cell_entity) in all_twin_cell_entitys.iter().enumerate() {
+                if let Ok((_twin_cell, mut twin_faces)) = cells.get_mut(*twin_cell_entity) {
+                    let all_strip = &mut all_strips[index];
+                    let twin_face_index = all_twin_cell_face_index[index];
+
+                    if all_strip.len() == 0 {
                         continue;
                     }
 
@@ -477,23 +486,23 @@ pub fn edit_transitional_face(
                     loop {
                         let mut vertex_indices = Vec::new();
 
-                        if let Some(data) = all_strips[0].get_vertex_index(0) {
+                        if let Some(data) = all_strip[0].get_vertex_index(0) {
                             vertex_indices.push(data);
                         }
-                        if let Some(data) = all_strips[0].get_vertex_index(1) {
+                        if let Some(data) = all_strip[0].get_vertex_index(1) {
                             vertex_indices.push(data);
                         }
 
-                        let mut long_strip = all_strips[0].clone();
+                        let mut long_strip = all_strip[0].clone();
 
-                        all_strips.remove(0);
+                        all_strip.remove(0);
 
                         let mut added_in_iteration;
 
                         loop {
                             added_in_iteration = 0;
 
-                            all_strips.retain(|strip| {
+                            all_strip.retain(|strip| {
                                 if vertex_indices.last() == strip.get_vertex_index(0).as_ref() {
                                     if let Some(data) = strip.get_vertex_index(1) {
                                         vertex_indices.push(data);
@@ -513,7 +522,7 @@ pub fn edit_transitional_face(
                                         // info!("Some(data) != strip.get_vertex_index(0)");
                                     }
                                 } else {
-                                    // info!("all_strips.retain first false");
+                                    // info!("all_strip.retain first false");
                                     // info!(
                                     //     "strip: {:?} vertex_indices: {:?}",
                                     //     strip, vertex_indices
@@ -537,24 +546,24 @@ pub fn edit_transitional_face(
                                 return false;
                             });
 
-                            // info!("all_strips: num: {}", all_strips.len());
+                            // info!("all_strip: num: {}", all_strip.len());
 
-                            if all_strips.len() <= 0
+                            if all_strip.len() <= 0
                                 || added_in_iteration <= 0
                                 || long_strip.get_loop()
                             {
-                                // info!("all_strips.retain first break");
+                                // info!("all_strip.retain first break");
                                 break;
                             } else {
-                                // info!("first all_strips: len {} added_in_iteration {}, long_strip is loop: {}", all_strips.len(), added_in_iteration, long_strip.get_loop());
+                                // info!("first all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                             }
                         }
 
-                        if long_strip.get_loop() == false && all_strips.len() > 0 {
+                        if long_strip.get_loop() == false && all_strip.len() > 0 {
                             loop {
                                 added_in_iteration = 0;
 
-                                all_strips.retain(|strip| {
+                                all_strip.retain(|strip| {
                                     if vertex_indices.first() == strip.get_vertex_index(0).as_ref()
                                     {
                                         if let Some(data) = strip.get_vertex_index(1) {
@@ -571,7 +580,7 @@ pub fn edit_transitional_face(
                                             added_in_iteration += 1;
                                         }
                                     } else {
-                                        // info!("all_strips.retain second false");
+                                        // info!("all_strip.retain second false");
                                         return true;
                                     }
 
@@ -582,39 +591,39 @@ pub fn edit_transitional_face(
                                     return false;
                                 });
 
-                                if all_strips.len() <= 0
+                                if all_strip.len() <= 0
                                     || added_in_iteration <= 0
                                     || long_strip.get_loop()
                                 {
                                     break;
                                 } else {
-                                    // info!("seconds all_strips: len {} added_in_iteration {}, long_strip is loop: {}", all_strips.len(), added_in_iteration, long_strip.get_loop());
+                                    // info!("seconds all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                                 }
                             }
                         }
 
                         twin_faces
-                            .get_face(face_index)
+                            .get_face_mut(twin_face_index)
                             .get_strips_mut()
                             .push(long_strip.clone());
 
                         transit_segs.push(vertex_indices);
 
-                        // info!("all_strips len: {}", all_strips.len());
-                        if all_strips.len() == 0 {
+                        // info!("all_strip len: {}", all_strip.len());
+                        if all_strip.len() == 0 {
                             break;
                         } else {
-                            // info!("three all_strips: len {} added_in_iteration {}, long_strip is loop: {}", all_strips.len(), added_in_iteration, long_strip.get_loop());
+                            // info!("three all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                         }
                     }
 
                     if transit_segs.len() != 0 {
                         twin_faces
-                            .get_face(face_index)
+                            .get_face_mut(twin_face_index)
                             .set_transit_segs(transit_segs);
                     }
 
-                    all_strips.clear();
+                    all_strip.clear();
                 }
             }
         }
@@ -622,61 +631,62 @@ pub fn edit_transitional_face(
 }
 
 fn traverse_face(
-    cell_query: Query<(&Cell, &Faces)>,
+    cell_query: &Query<(&Cell, &mut Faces)>,
     cell_addresses: &OctreeCellAddress,
-    cell: &Cell,
-    face: &Face,
+    cell_entity: &Entity,
+    face_index: FaceIndex,
     strips: &mut Vec<Strip>,
 ) {
-    match face.get_face_type() {
-        FaceType::BranchFace => {
-            let face_index = face.get_face_index();
-            let sub_cell_indices = FACE_2_SUBCELL[face_index as usize];
+    if let Ok((cell, faces)) = cell_query.get(*cell_entity) {
+        let face = faces.get_face(face_index);
+        match face.get_face_type() {
+            FaceType::BranchFace => {
+                let sub_cell_indices = FACE_2_SUBCELL[face_index as usize];
 
-            for sub_cell_index in sub_cell_indices.iter() {
-                let child_address = cell.get_address().get_child_address(sub_cell_index);
-                let entity = cell_addresses.cell_addresses.get(&child_address);
-                let (cell, faces) = cell_query.get(entity);
-                traverse_face(
-                    cell_query,
-                    cell_addresses,
-                    cell,
-                    faces.get(face_index),
-                    strips,
-                );
-            }
-        }
-        FaceType::LeafFace => {
-            for strip in face.get_strips().iter() {
-                if strip.get_vertex_index(0).is_none() {
-                    continue;
+                for sub_cell_index in sub_cell_indices.iter() {
+                    let child_address = cell.get_address().get_child_address(*sub_cell_index);
+                    let entity = cell_addresses.cell_addresses.get(&child_address).unwrap();
+                    traverse_face(cell_query, cell_addresses, entity, face_index, strips);
                 }
-                strips.push(strip.clone());
             }
+            FaceType::LeafFace => {
+                for strip in face.get_strips().iter() {
+                    if strip.get_vertex_index(0).is_none() {
+                        continue;
+                    }
+                    strips.push(strip.clone());
+                }
+            }
+            FaceType::TransitFace => assert!(false),
         }
-        FaceType::TransitFace => assert!(false),
     }
 }
 
 pub fn trace_comonent(
-    cells: Query<(&Cell, &mut CellMeshInfo)>,
+    cells: Query<(&Cell, &Faces)>,
+    mut cell_mesh_info: Query<&mut CellMeshInfo>,
     query: Query<(&Octree, &OctreeCellAddress)>,
 ) {
     info!("trace_comonent");
 
-    for (octree, mut cell_addresses) in query.iter_mut() {
+    for (octree, cell_addresses) in query.iter() {
         for cell_entity in octree.leaf_cells.iter() {
-            let Ok(cell, cell_mesh_info) = cells.get(cell_entity) else {
-                continue;
-            };
-
             let mut cell_strips = Vec::new();
             let mut transit_segs = Vec::new();
             let mut components = Vec::new();
 
+            let Ok((cell, faces)) = cells.get(*cell_entity) else {
+                continue;
+            };
+
+            let Ok(mut cell_mesh_info) = cell_mesh_info.get_mut(*cell_entity) else {
+                continue;
+            };
+
             // 获取一个cell的所有strip
             collect_strips(
-                cells,
+                &cells,
+                faces,
                 cell_addresses,
                 cell,
                 &mut cell_strips,
@@ -700,15 +710,17 @@ pub fn trace_comonent(
         }
     }
 }
+
 fn collect_strips(
-    cells: Query<&Cell>,
+    cells: &Query<(&Cell, &Faces)>,
+    faces: &Faces,
     cell_addresses: &OctreeCellAddress,
     cell: &Cell,
     cell_strips: &mut Vec<Strip>,
-    transit_segs: &mut Vec<Vec<usize>>,
+    transit_segs: &mut Vec<Vec<u32>>,
 ) {
     for face_index in FaceIndex::iter() {
-        let face = cell.get_face(face_index);
+        let face = faces.get_face(face_index);
         match face.get_face_type() {
             FaceType::BranchFace => {
                 assert!(false);
@@ -728,12 +740,15 @@ fn collect_strips(
                 }
 
                 let (twin_address, twin_face_index) = cell.get_twin_face_address(face_index);
-                let cell_entity = cell_addresses.get(twin_address);
-                let (cell, faces) = cells.get(cell_entity);
+                let cell_entity = cell_addresses.cell_addresses.get(&twin_address).unwrap();
+                let Ok((_cell, faces)) = cells.get(*cell_entity) else {
+                    assert!(false);
+                    continue;
+                };
 
                 let twin = faces.get_face(twin_face_index);
                 for (i, strip) in twin.get_strips().iter().enumerate() {
-                    strip.get_vertex_index(0).map(|data| {
+                    strip.get_vertex_index(0).map(|_data| {
                         transit_segs.push(twin.get_transit_segs()[i].clone());
                         cell_strips.push(strip.clone());
                     });
@@ -746,9 +761,9 @@ fn collect_strips(
 }
 
 fn link_strips(
-    components: &mut Vec<usize>,
+    components: &mut Vec<u32>,
     cell_strips: &mut Vec<Strip>,
-    transit_segs: &mut Vec<Vec<usize>>,
+    transit_segs: &mut Vec<Vec<u32>>,
 ) {
     assert!(components.len() == 0);
     assert!(cell_strips[0].get_vertex_index(0).is_some());
@@ -944,8 +959,8 @@ fn link_strips(
 }
 
 fn insert_data_from_twin(
-    components: &mut Vec<usize>,
-    transit_segs: &Vec<Vec<usize>>,
+    components: &mut Vec<u32>,
+    transit_segs: &Vec<Vec<u32>>,
     strip: &Strip,
     transit: &mut bool,
     added_in_iteration: &mut i32,
@@ -963,11 +978,11 @@ fn insert_data_from_twin(
             // }
             if *backwards {
                 for i in (0..seg.len()).rev() {
-                    components.push(seg[i] as usize);
+                    components.push(seg[i]);
                 }
             } else {
                 for i in 0..seg.len() {
-                    components.push(seg[i] as usize);
+                    components.push(seg[i]);
                 }
             }
             // transit_segs.remove(i);
@@ -987,7 +1002,7 @@ fn insert_data_from_twin(
     }
 }
 
-fn compare_strip_to_seg(strip: &Strip, seg: &Vec<usize>) -> bool {
+fn compare_strip_to_seg(strip: &Strip, seg: &Vec<u32>) -> bool {
     let s0 = strip.get_vertex_index(0);
     let s1 = strip.get_vertex_index(1);
 

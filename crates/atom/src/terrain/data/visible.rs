@@ -1,9 +1,4 @@
-use bevy::{
-    prelude::{Component, Entity, GlobalTransform, Vec3},
-    utils::HashMap,
-};
-
-use super::coords::VoxelGradedCoord;
+use bevy::prelude::{Component, Vec3};
 
 #[derive(Debug, Hash, PartialEq, Default, Eq, Clone, Copy)]
 pub enum VisibleAxis {

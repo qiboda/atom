@@ -24,14 +24,14 @@ fn startup_sample_surface(
     mut commands: Commands,
     terrain_settings: Res<TerrainSettings>,
     chunk_coord_query: Query<(&Children, &TerrainChunkCoord), With<TerrainChunk>>,
-    children: Query<Entity, With<IsosurfaceExtract>>,
+    _children: Query<Entity, With<IsosurfaceExtract>>,
 ) {
     for (children, chunk_coord) in chunk_coord_query.iter() {
         for child in children.iter() {
-            let mut sample_size = UVec3::splat(terrain_settings.get_chunk_voxel_num());
+            let sample_size = UVec3::splat(terrain_settings.get_chunk_voxel_num());
             let voxel_size = Vec3::splat(terrain_settings.get_chunk_voxel_size());
 
-            let world_offset = Vec3::new(
+            let _world_offset = Vec3::new(
                 chunk_coord.x as f32,
                 chunk_coord.y as f32,
                 chunk_coord.z as f32,

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{strip::Strip, tables::FaceIndex};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FaceType {
     BranchFace,
     LeafFace,    // only cell's face can be leaf face.
@@ -19,7 +19,7 @@ pub struct Face {
 
     strips: Vec<Strip>,
 
-    transit_segs: Vec<Vec<usize>>,
+    transit_segs: Vec<Vec<u32>>,
 }
 
 impl Face {
@@ -63,11 +63,11 @@ impl Face {
         &mut self.strips
     }
 
-    pub fn set_transit_segs(&mut self, transit_segs: Vec<Vec<usize>>) {
+    pub fn set_transit_segs(&mut self, transit_segs: Vec<Vec<u32>>) {
         self.transit_segs = transit_segs;
     }
 
-    pub fn get_transit_segs(&self) -> &Vec<Vec<usize>> {
+    pub fn get_transit_segs(&self) -> &Vec<Vec<u32>> {
         &self.transit_segs
     }
 }

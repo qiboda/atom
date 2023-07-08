@@ -1,5 +1,4 @@
 pub mod seg_component;
-pub mod tessellation;
 
 use bevy::prelude::*;
 
