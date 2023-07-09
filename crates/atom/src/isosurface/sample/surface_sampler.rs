@@ -5,10 +5,12 @@ use bevy::{
 
 use crate::isosurface::surface::shape_surface::ShapeSurface;
 
+use super::sample_data::SampleData;
+
 #[derive(Debug, Component)]
 pub struct SurfaceSampler {
     /// UVec3 index size
-    sample_data: HashMap<UVec3, f32>,
+    sample_data: SampleData<f32>,
 
     sample_pos: HashMap<UVec3, Vec3>,
 
@@ -19,13 +21,21 @@ pub struct SurfaceSampler {
 }
 
 impl SurfaceSampler {
-    pub fn new(world_offset: Vec3, voxel_size: Vec3) -> SurfaceSampler {
+    pub fn new(world_offset: Vec3, voxel_size: Vec3, voxel_num: UVec3) -> SurfaceSampler {
         Self {
-            sample_data: HashMap::default(),
+            sample_data: SampleData::new(voxel_num),
             sample_pos: HashMap::default(),
             world_offset,
             voxel_size,
         }
+    }
+
+    pub fn get_sample_size(&self) -> UVec3 {
+        self.sample_data.get_size()
+    }
+
+    pub fn set_sample_data(&mut self, sample_data: Vec<f32>) {
+        self.sample_data.set_all_values(sample_data)
     }
 }
 
@@ -47,18 +57,11 @@ impl SurfaceSampler {
 
 impl SurfaceSampler {
     pub fn get_value_from_vertex_address(
-        &mut self,
+        &self,
         vertex_address: UVec3,
-        shape_surface: &ShapeSurface,
+        _shape_surface: &ShapeSurface,
     ) -> f32 {
-        if let Some(value) = self.sample_data.get(&vertex_address) {
-            return *value;
-        }
-
-        let pos = self.voxel_size * vertex_address.as_vec3() + shape_surface.iso_level;
-        let value = shape_surface.get_value_from_vec(pos);
-        self.sample_data.insert(vertex_address, value);
-        value
+        self.sample_data.get_value(vertex_address)
     }
 
     /// todo: cache get values.
@@ -68,9 +71,24 @@ impl SurfaceSampler {
         vertex_offset: Vec3,
         shape_surface: &ShapeSurface,
     ) -> f32 {
-        let pos =
-            self.voxel_size * vertex_address.as_vec3() + shape_surface.iso_level + vertex_offset;
-        shape_surface.get_value_from_vec(pos)
+        let vertex_alpha = vertex_offset / self.voxel_size;
+        let abs_vertex_alpha = vertex_alpha.abs();
+        assert!(
+            abs_vertex_alpha.x >= 0.0
+                && abs_vertex_alpha.x <= 1.0
+                && abs_vertex_alpha.y >= 0.0
+                && abs_vertex_alpha.y <= 1.0
+                && abs_vertex_alpha.z >= 0.0
+                && abs_vertex_alpha.z <= 1.0
+        );
+
+        let vertex_address_next = vertex_address + vertex_alpha.ceil().as_uvec3();
+        let value = self.get_value_from_vertex_address(vertex_address, shape_surface);
+        let value_next = self.get_value_from_vertex_address(vertex_address_next, shape_surface);
+
+        value
+            + (value_next - value) * (abs_vertex_alpha.x + abs_vertex_alpha.y + abs_vertex_alpha.z)
+                / 3.0
     }
 
     pub fn get_value_from_pos(&self, pos: Vec3, shape_surface: &ShapeSurface) -> f32 {
