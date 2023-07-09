@@ -4,15 +4,6 @@ use octree::OctreePlugin;
 use sample::SampleSurfacePlugin;
 use surface::{densy_function::Sphere, shape_surface::ShapeSurface};
 
-// #![allow(dead_code)]
-// #![allow(unused_variables)]
-//
-
-/// shape surface
-///   cms plugin cms as a empty bundle and has these children.
-///      => sample data as cache..
-///      => octree => build
-///      => meshing => build
 pub mod cms;
 pub mod mesh;
 pub mod octree;
@@ -24,6 +15,14 @@ pub struct IsosurfaceExtract;
 
 #[derive(Default, Debug)]
 pub struct IsosurfaceExtractionPlugin;
+
+#[derive(PartialEq, Eq, Debug, Hash, Clone, SystemSet)]
+pub enum IsosurfaceExtractionSet {
+    Initialize,
+    Sample,
+    Extract,
+    Meshing,
+}
 
 #[derive(PartialEq, Eq, Debug, Hash, Clone, SystemSet)]
 pub enum IsosurfaceExtractionSet {

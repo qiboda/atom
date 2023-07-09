@@ -44,3 +44,10 @@ impl ShapeSurface {
         self.negative_inside
     }
 }
+
+impl ShapeSurface {
+    pub fn get_range_values(&self, offset: Vec3, size: Vec3, grain_size: Vec3) -> Vec<f32> {
+        self.densy_function
+            .get_range_values(offset, size, grain_size)
+    }
+}

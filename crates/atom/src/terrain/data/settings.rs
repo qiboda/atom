@@ -26,4 +26,8 @@ impl TerrainSettings {
     pub fn get_chunk_voxel_num(&self) -> u32 {
         self.chunk_voxel_num
     }
+
+    pub fn get_chunk_size(&self) -> f32 {
+        self.chunk_voxel_size * self.chunk_voxel_num as f32
+    }
 }
