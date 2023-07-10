@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
-use crate::isosurface::{
-    mesh::mesh::MeshCache,
+use crate::terrain::isosurface::{
+    meshing::mesh::MeshCache,
     octree::{
         cell::{Cell, CellMeshInfo, CellType},
         octree::{Octree, OctreeCellAddress},

@@ -1,14 +1,9 @@
 use bevy::prelude::*;
 
-use self::{
-    coords::{TerrainChunkCoord, TerrainGlobalCoord, TerrainVoxelCoord, VoxelGradedCoord},
-    terrain::TerrainData,
-    visible::VisibleTerrainRange,
-};
+use self::{coords::TerrainChunkCoord, terrain::TerrainData, visible::VisibleTerrainRange};
 
 use super::{
-    bundle::{TerrainBundle, TerrainChunkBundle, TerrainVoxelBundle},
-    iso_surface::surface::TerrainSurfaceData,
+    bundle::{TerrainBundle, TerrainChunkBundle},
     visible_areas::{TerrainSingleVisibleArea, TerrainVisibleAreas},
     TerrainSystemSet,
 };
@@ -18,13 +13,6 @@ pub mod coords;
 pub mod settings;
 pub mod terrain;
 pub mod visible;
-pub mod voxel;
-
-// voxel total size in one chunk
-pub const TERRAIN_VOXEL_NUM_IN_CHUNK: usize = 16;
-
-// voxel size in meter unit
-pub const TERRAIN_VOXEL_SIZE: f32 = 1.0;
 
 #[derive(Debug, Component)]
 pub struct Terrain;
@@ -46,10 +34,9 @@ impl Plugin for TerrainDataPlugin {
                 create_visible_chunks,
                 apply_deferred,
                 update_terrain_surface,
-                update_terrain_voxel_height,
             )
                 .chain()
-                .in_set(TerrainSystemSet::TerrainData),
+                .in_set(TerrainSystemSet::GenerateTerrain),
         );
     }
 }
@@ -144,22 +131,6 @@ fn spawn_terrain_chunks(
             ..default()
         })
         .insert(TerrainChunk)
-        .with_children(|parent| {
-            for x in 0..TERRAIN_VOXEL_NUM_IN_CHUNK {
-                for z in 0..TERRAIN_VOXEL_NUM_IN_CHUNK {
-                    parent
-                        .spawn(TerrainVoxelBundle {
-                            local_coord: TerrainVoxelCoord::from(&[x, 0, z]),
-                            global_coord: TerrainGlobalCoord::from_local_coords(
-                                &terrain_chunk_coord,
-                                &TerrainVoxelCoord::from(&[x, 0, z]),
-                            ),
-                            ..default()
-                        })
-                        .insert(TerrainVoxel);
-                }
-            }
-        })
         .id();
 
     let mut terrian = commands.get_entity(terrain_entity).unwrap();
@@ -167,31 +138,6 @@ fn spawn_terrain_chunks(
     terrain_data.data.insert(terrain_chunk_coord, child);
 }
 
-fn update_terrain_voxel_height(
-    query: Query<&Children, With<TerrainChunk>>,
-    mut children_query: Query<
-        (&mut TerrainVoxelCoord, &mut TerrainGlobalCoord),
-        With<TerrainVoxel>,
-    >,
-    surface_data: Res<TerrainSurfaceData>,
-) {
-    for children in query.iter() {
-        for child in children.iter() {
-            let (mut voxel_coord, mut global_coord) = children_query.get_mut(*child).unwrap();
-
-            let height = surface_data.get_surface_value(&VoxelGradedCoord::from(&*global_coord));
-
-            voxel_coord.y = height as usize;
-            global_coord.y = voxel_coord.y as i64;
-        }
-    }
-}
-
-fn update_terrain_surface(
-    mut all_chunks: Query<&TerrainChunkCoord, With<TerrainChunk>>,
-    surface_data: ResMut<TerrainSurfaceData>,
-) {
-    for chunk_coord in all_chunks.iter_mut() {
-        surface_data.generate_surface_value(chunk_coord);
-    }
+fn update_terrain_surface(mut all_chunks: Query<&TerrainChunkCoord, With<TerrainChunk>>) {
+    for chunk_coord in all_chunks.iter_mut() {}
 }

@@ -1,5 +1,4 @@
 pub mod camera;
-pub mod isosurface;
 pub mod material;
 pub mod renderdoc;
 pub mod terrain;
@@ -16,7 +15,7 @@ use bevy::{
 };
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
-use terrain::{data::visible::VisibleTerrainRange, TerrainPlugin};
+use terrain::{chunk::visible::VisibleTerrainRange, TerrainPlugin};
 use ui::FrameUIPlugin;
 
 fn main() {
@@ -29,7 +28,7 @@ fn main() {
         .add_plugin(FrameUIPlugin)
         .add_plugin(MaterialPlugin::<CoolMaterial>::default())
         .add_systems(Startup, startup)
-        .add_systems(Update, exit_game)
+        .add_systems(Last, exit_game)
         .run();
 
     // app.add_plugins(DefaultPlugins.build().disable::<LogPlugin>());

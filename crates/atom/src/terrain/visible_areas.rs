@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-use super::data::coords::{TerrainGlobalCoord, VoxelGradedCoord};
-use super::data::visible::VisibleTerrainRange;
+use super::chunk::coords::TerrainChunkCoord;
+use super::chunk::settings::TerrainSettings;
+use super::chunk::visible::VisibleTerrainRange;
 use super::TerrainSystemSet;
 
 #[derive(Default, Debug)]
@@ -22,37 +23,25 @@ impl Plugin for TerrainVisibleAreaPlugin {
 #[derive(Debug, Default, Clone)]
 pub struct TerrainSingleVisibleArea {
     pub global_transform: GlobalTransform,
-    pub cached_min_voxle_graded_coord: VoxelGradedCoord,
-    pub cached_max_voxle_graded_coord: VoxelGradedCoord,
+    pub cached_min_chunk_coord: TerrainChunkCoord,
+    pub cached_max_chunk_coord: TerrainChunkCoord,
 }
 
 impl TerrainSingleVisibleArea {
     pub fn iter_chunk(&self, callback: &mut impl FnMut(i64, i64, i64) -> ()) {
-        for x in self.cached_min_voxle_graded_coord.chunk_coord.x
-            ..self.cached_max_voxle_graded_coord.chunk_coord.x
-        {
-            // for y in self.cached_min_voxle_graded_coord.chunk_coord.y
-            //     ..self.cached_max_voxle_graded_coord.chunk_coord.y
-            // {
-            for z in self.cached_min_voxle_graded_coord.chunk_coord.z
-                ..self.cached_max_voxle_graded_coord.chunk_coord.z
-            {
-                callback(x, 0, z);
+        for x in self.cached_min_chunk_coord.x..self.cached_max_chunk_coord.x {
+            for y in self.cached_min_chunk_coord.y..self.cached_max_chunk_coord.y {
+                for z in self.cached_min_chunk_coord.z..self.cached_max_chunk_coord.z {
+                    callback(x, y, z);
+                }
             }
-            // }
         }
     }
 
-    pub fn is_in_chunk(&self, x: i64, _y: i64, z: i64) -> bool {
-        (self.cached_min_voxle_graded_coord.chunk_coord.x
-            ..self.cached_max_voxle_graded_coord.chunk_coord.x)
-            .contains(&x)
-            // && (self.cached_min_voxle_graded_coord.chunk_coord.y
-            //     ..self.cached_max_voxle_graded_coord.chunk_coord.y)
-            //     .contains(&y)
-            && (self.cached_min_voxle_graded_coord.chunk_coord.z
-                ..self.cached_max_voxle_graded_coord.chunk_coord.z)
-                .contains(&z)
+    pub fn is_in_chunk(&self, x: i64, y: i64, z: i64) -> bool {
+        (self.cached_min_chunk_coord.x..self.cached_max_chunk_coord.x).contains(&x)
+            && (self.cached_min_chunk_coord.y..self.cached_max_chunk_coord.y).contains(&y)
+            && (self.cached_min_chunk_coord.z..self.cached_max_chunk_coord.z).contains(&z)
     }
 }
 
@@ -172,6 +161,7 @@ impl TerrainVisibleAreas {
 // #[bevycheck::system]
 pub fn update_terrain_visible_areas(
     mut terrain_centers: ResMut<TerrainVisibleAreas>,
+    terrain_settings: Res<TerrainSettings>,
     visible_range_query: Query<
         (Entity, &GlobalTransform, &VisibleTerrainRange),
         (
@@ -183,21 +173,25 @@ pub fn update_terrain_visible_areas(
     for (entity, global_transform, visible_range) in visible_range_query.iter() {
         let camera_position = global_transform.translation();
 
-        let min_global_coord =
-            TerrainGlobalCoord::from_location(&(camera_position + visible_range.min));
-        // todo: add one offset
-        let max_global_coord =
-            TerrainGlobalCoord::from_location(&(camera_position + visible_range.max));
+        let chunk_size = terrain_settings.get_chunk_size();
 
-        let min_graded_coord = VoxelGradedCoord::from(&min_global_coord);
-        let max_graded_coord = VoxelGradedCoord::from(&max_global_coord);
+        let min_global_coord = (camera_position + visible_range.min) / chunk_size;
+        let max_global_coord = (camera_position + visible_range.max) / chunk_size;
 
         terrain_centers.set_current_visible_area(
             entity,
             &TerrainSingleVisibleArea {
                 global_transform: *global_transform,
-                cached_min_voxle_graded_coord: min_graded_coord,
-                cached_max_voxle_graded_coord: max_graded_coord,
+                cached_min_chunk_coord: TerrainChunkCoord::new(
+                    min_global_coord.x.floor() as i64,
+                    min_global_coord.y.floor() as i64,
+                    min_global_coord.z.floor() as i64,
+                ),
+                cached_max_chunk_coord: TerrainChunkCoord::new(
+                    max_global_coord.x.floor() as i64,
+                    max_global_coord.y.floor() as i64,
+                    max_global_coord.z.floor() as i64,
+                ),
             },
         );
     }

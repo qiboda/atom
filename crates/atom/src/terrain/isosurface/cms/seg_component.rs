@@ -4,8 +4,8 @@ use bevy::prelude::*;
 
 use strum::{EnumCount, IntoEnumIterator};
 
-use crate::isosurface::{
-    mesh::{mesh::MeshCache, vertex_index::VertexIndices},
+use crate::terrain::isosurface::{
+    meshing::{mesh::MeshCache, vertex_index::VertexIndices},
     octree::{
         cell::{Cell, CellMeshInfo},
         face::{Face, FaceType, Faces},
