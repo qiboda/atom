@@ -1,11 +1,8 @@
 use bevy::prelude::Bundle;
 
-use super::data::{
-    chunk::TerrainChunkData,
-    coords::{TerrainChunkCoord, TerrainGlobalCoord, TerrainVoxelCoord},
-    terrain::TerrainData,
+use super::chunk::{
+    chunk::TerrainChunkData, coords::TerrainChunkCoord, terrain::TerrainData,
     visible::TerrainVisibility,
-    voxel::TerrainVoxelData,
 };
 
 #[derive(Bundle, Default)]
@@ -18,13 +15,5 @@ pub struct TerrainBundle {
 pub struct TerrainChunkBundle {
     pub terrain_chunk_data: TerrainChunkData,
     pub terrain_chunk_coord: TerrainChunkCoord,
-    pub visible: TerrainVisibility,
-}
-
-#[derive(Bundle, Default)]
-pub struct TerrainVoxelBundle {
-    pub terrain_voxel_data: TerrainVoxelData,
-    pub local_coord: TerrainVoxelCoord,
-    pub global_coord: TerrainGlobalCoord,
     pub visible: TerrainVisibility,
 }

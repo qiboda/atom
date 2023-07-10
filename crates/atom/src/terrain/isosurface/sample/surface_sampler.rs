@@ -3,7 +3,7 @@ use bevy::{
     utils::HashMap,
 };
 
-use crate::isosurface::surface::shape_surface::ShapeSurface;
+use crate::terrain::isosurface::surface::shape_surface::ShapeSurface;
 
 use super::sample_data::SampleData;
 

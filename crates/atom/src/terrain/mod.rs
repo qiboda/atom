@@ -5,25 +5,21 @@
 /// generate cubes, use octree store since easy to search.
 ///
 pub mod bundle;
-pub mod cube;
-pub mod data;
-pub mod iso_surface;
+pub mod chunk;
+pub mod isosurface;
 pub mod visible_areas;
 
 use bevy::prelude::*;
 
 use self::{
-    cube::TerrainCubePlugin,
-    data::TerrainDataPlugin,
-    iso_surface::IsoSurfacePlugin,
+    chunk::TerrainDataPlugin,
     visible_areas::{TerrainVisibleAreaPlugin, TerrainVisibleAreas},
 };
 
 #[derive(SystemSet, PartialEq, Eq, Debug, Clone, Hash)]
 enum TerrainSystemSet {
     VisibleAreas,
-    TerrainData,
-    TerrainCube,
+    GenerateTerrain,
 }
 
 #[derive(Default, Debug)]
@@ -36,14 +32,11 @@ impl Plugin for TerrainPlugin {
                 Update,
                 (
                     TerrainSystemSet::VisibleAreas,
-                    TerrainSystemSet::TerrainData,
-                    TerrainSystemSet::TerrainCube,
+                    TerrainSystemSet::GenerateTerrain,
                 )
                     .chain(),
             )
             .add_plugin(TerrainVisibleAreaPlugin)
-            .add_plugin(IsoSurfacePlugin)
-            .add_plugin(TerrainDataPlugin)
-            .add_plugin(TerrainCubePlugin);
+            .add_plugin(TerrainDataPlugin);
     }
 }

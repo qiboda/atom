@@ -5,7 +5,7 @@ use self::tessellation::tessellation_traversal;
 use super::IsosurfaceExtractionSet;
 
 pub mod mesh;
-mod tessellation;
+pub mod tessellation;
 pub mod vertex_index;
 
 pub struct MeshingPlugin;

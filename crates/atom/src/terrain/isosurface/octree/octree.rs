@@ -1,10 +1,10 @@
 use bevy::{prelude::*, utils::HashMap};
-use nalgebra::Vector3;
 
 use strum::{EnumCount, IntoEnumIterator};
 
 use crate::{
-    isosurface::{
+    terrain::chunk::settings::TerrainSettings,
+    terrain::isosurface::{
         octree::{
             bundle::CellBundle,
             cell::{Cell, CellMeshInfo, CellType},
@@ -15,7 +15,6 @@ use crate::{
         surface::shape_surface::ShapeSurface,
         IsosurfaceExtract,
     },
-    terrain::data::settings::TerrainSettings,
 };
 
 use super::{
@@ -316,7 +315,7 @@ fn find_gradient(
     sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
-    let mut dimensions = Vector3::new(0.0, 0.0, 0.0);
+    let mut dimensions = Vec3::new(0.0, 0.0, 0.0);
 
     // why use half offset?
     for i in 0..3 {
