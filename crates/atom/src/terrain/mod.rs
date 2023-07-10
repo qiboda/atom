@@ -7,13 +7,15 @@
 pub mod bundle;
 pub mod chunk;
 pub mod isosurface;
-pub mod visible_areas;
+pub mod settings;
+pub mod terrain;
+pub mod visible;
 
 use bevy::prelude::*;
 
 use self::{
     chunk::TerrainDataPlugin,
-    visible_areas::{TerrainVisibleAreaPlugin, TerrainVisibleAreas},
+    visible::visible_areas::{TerrainVisibleAreaPlugin, TerrainVisibleAreas},
 };
 
 #[derive(SystemSet, PartialEq, Eq, Debug, Clone, Hash)]
@@ -36,7 +38,7 @@ impl Plugin for TerrainPlugin {
                 )
                     .chain(),
             )
-            .add_plugin(TerrainVisibleAreaPlugin)
-            .add_plugin(TerrainDataPlugin);
+            .add_plugins(TerrainVisibleAreaPlugin)
+            .add_plugins(TerrainDataPlugin);
     }
 }

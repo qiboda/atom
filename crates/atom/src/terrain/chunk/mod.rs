@@ -1,18 +1,25 @@
 use bevy::prelude::*;
 
-use self::{coords::TerrainChunkCoord, terrain::TerrainData, visible::VisibleTerrainRange};
+use self::{chunk::TerrainChunkData, coords::TerrainChunkCoord};
 
 use super::{
-    bundle::{TerrainBundle, TerrainChunkBundle},
-    visible_areas::{TerrainSingleVisibleArea, TerrainVisibleAreas},
+    bundle::TerrainBundle,
+    terrain::TerrainData,
+    visible::{
+        visible::VisibleTerrainRange,
+        visible_areas::{TerrainSingleVisibleArea, TerrainVisibleAreas},
+    },
     TerrainSystemSet,
 };
 
 pub mod chunk;
 pub mod coords;
-pub mod settings;
-pub mod terrain;
-pub mod visible;
+
+#[derive(Bundle, Default)]
+pub struct TerrainChunkBundle {
+    pub terrain_chunk_data: TerrainChunkData,
+    pub terrain_chunk_coord: TerrainChunkCoord,
+}
 
 #[derive(Debug, Component)]
 pub struct Terrain;
@@ -139,5 +146,5 @@ fn spawn_terrain_chunks(
 }
 
 fn update_terrain_surface(mut all_chunks: Query<&TerrainChunkCoord, With<TerrainChunk>>) {
-    for chunk_coord in all_chunks.iter_mut() {}
+    for _chunk_coord in all_chunks.iter_mut() {}
 }

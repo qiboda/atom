@@ -14,7 +14,7 @@
 //! use bevy_renderdoc::*;
 //!
 //! App::new()
-//!     .add_plugin(RenderDocPlugin) // order is important
+//!     .add_plugins(RenderDocPlugin) // order is important
 //!     .add_plugins(DefaultPlugins)
 //!     .run();
 //!
@@ -44,7 +44,7 @@ pub type RenderDocVersion = V141;
 /// }
 ///
 /// App::new()
-///     .add_plugin(RenderDocPlugin)
+///     .add_plugins(RenderDocPlugin)
 ///     .add_plugins(DefaultPlugins)
 ///     .add_startup_system(modify_renderdoc)
 ///     .run();

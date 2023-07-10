@@ -104,15 +104,8 @@ impl DensyFunction for NoiseSurface {
             let _freq = _mm_set1_ps(self.frequency);
             let lacunarity = _mm_set1_ps(self.lacunarity);
             let gain = _mm_set1_ps(2.0);
-            let value_m128: __m128 = simdnoise::intrinsics::sse2::fbm_3d(
-                x,
-                y,
-                z,
-                lacunarity,
-                gain,
-                self.octaves,
-                self.seed,
-            );
+            let value_m128: __m128 =
+                simdnoise::sse2::fbm_3d(x, y, z, lacunarity, gain, self.octaves, self.seed);
             _mm_cvtss_f32(value_m128)
         }
     }

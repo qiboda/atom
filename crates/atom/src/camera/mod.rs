@@ -33,11 +33,11 @@ fn camera_movement(
             trans.translation += MOVE_SPEED * global_transform.right() * time.delta_seconds();
         }
 
-        if keyboard_input.pressed(KeyCode::LShift) {
+        if keyboard_input.pressed(KeyCode::ShiftLeft) {
             trans.translation += MOVE_SPEED * Vec3::new(0.0, -1.0, 0.0) * time.delta_seconds();
         }
 
-        if keyboard_input.pressed(KeyCode::RShift) {
+        if keyboard_input.pressed(KeyCode::ShiftRight) {
             trans.translation += MOVE_SPEED * Vec3::new(0.0, 1.0, 0.0) * time.delta_seconds();
         }
 
@@ -49,11 +49,11 @@ fn camera_movement(
             trans.rotate_y(10.0 * time.delta_seconds() * ROTATION_SPEED);
         }
 
-        if keyboard_input.pressed(KeyCode::LControl) {
+        if keyboard_input.pressed(KeyCode::ControlLeft) {
             trans.rotate_z(-10.0 * time.delta_seconds() * ROTATION_SPEED);
         }
 
-        if keyboard_input.pressed(KeyCode::RControl) {
+        if keyboard_input.pressed(KeyCode::ControlRight) {
             trans.rotate_z(10.0 * time.delta_seconds() * ROTATION_SPEED);
         }
     }

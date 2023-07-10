@@ -3,10 +3,11 @@ use bevy::{
     utils::HashMap,
 };
 
-use super::coords::TerrainChunkCoord;
+use super::chunk::coords::TerrainChunkCoord;
 
 #[derive(Debug, Component, Default)]
 pub struct TerrainData {
+    /// entity is TerrainChunk
     pub data: HashMap<TerrainChunkCoord, Entity>,
 }
 

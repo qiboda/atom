@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::terrain::chunk::{coords::TerrainChunkCoord, settings::TerrainSettings, TerrainChunk};
+use crate::terrain::{
+    chunk::{coords::TerrainChunkCoord, TerrainChunk},
+    settings::TerrainSettings,
+};
 
 use self::surface_sampler::SurfaceSampler;
 

@@ -56,8 +56,8 @@ impl Plugin for IsosurfaceExtractionPlugin {
             )
                 .chain(),
         )
-        .add_plugin(SampleSurfacePlugin)
-        .add_plugin(OctreePlugin)
-        .add_plugin(MeshingPlugin);
+        .add_plugins(SampleSurfacePlugin)
+        .add_plugins(OctreePlugin)
+        .add_plugins(MeshingPlugin);
     }
 }
