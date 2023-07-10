@@ -5,6 +5,7 @@
 
 [workspace]
 members = ["crates/*"]
+resolver = "2"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]
@@ -19,5 +20,5 @@ inherits = "release"
 debug = true
 
 
-[patch.crates-io]
-bevy = { path = '../dep/bevy' }
+# [patch.crates-io]
+# bevy = { path = '../dep/bevy' }

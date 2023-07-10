@@ -2,9 +2,8 @@ use bevy::{prelude::*, utils::HashMap};
 
 use strum::{EnumCount, IntoEnumIterator};
 
-use crate::{
-    terrain::chunk::settings::TerrainSettings,
-    terrain::isosurface::{
+use crate::terrain::{
+    isosurface::{
         octree::{
             bundle::CellBundle,
             cell::{Cell, CellMeshInfo, CellType},
@@ -15,6 +14,7 @@ use crate::{
         surface::shape_surface::ShapeSurface,
         IsosurfaceExtract,
     },
+    settings::TerrainSettings,
 };
 
 use super::{

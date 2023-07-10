@@ -3,8 +3,8 @@ use bevy::{core::FrameCount, diagnostic::FrameTimeDiagnosticsPlugin, prelude::*}
 pub struct FrameUIPlugin;
 impl Plugin for FrameUIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(FrameTimeDiagnosticsPlugin::default())
-            // .add_plugin(LogDiagnosticsPlugin::default())
+        app.add_plugins(FrameTimeDiagnosticsPlugin::default())
+            // .add_plugins(LogDiagnosticsPlugin::default())
             .add_systems(Startup, add_frame_ui)
             .add_systems(Update, update_fps);
     }

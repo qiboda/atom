@@ -15,18 +15,18 @@ use bevy::{
 };
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
-use terrain::{chunk::visible::VisibleTerrainRange, TerrainPlugin};
+use terrain::{visible::visible::VisibleTerrainRange, TerrainPlugin};
 use ui::FrameUIPlugin;
 
 fn main() {
     let mut app = App::new();
 
-    app.add_plugin(RenderDocPlugin)
+    app.add_plugins(RenderDocPlugin)
         .add_plugins(DefaultPlugins)
-        .add_plugin(CameraControllerPlugin::default())
-        .add_plugin(TerrainPlugin::default())
-        .add_plugin(FrameUIPlugin)
-        .add_plugin(MaterialPlugin::<CoolMaterial>::default())
+        .add_plugins(CameraControllerPlugin::default())
+        .add_plugins(TerrainPlugin::default())
+        .add_plugins(FrameUIPlugin)
+        .add_plugins(MaterialPlugin::<CoolMaterial>::default())
         .add_systems(Startup, startup)
         .add_systems(Last, exit_game)
         .run();

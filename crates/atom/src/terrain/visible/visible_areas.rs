@@ -1,10 +1,11 @@
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-use super::chunk::coords::TerrainChunkCoord;
-use super::chunk::settings::TerrainSettings;
-use super::chunk::visible::VisibleTerrainRange;
-use super::TerrainSystemSet;
+use crate::terrain::chunk::coords::TerrainChunkCoord;
+use crate::terrain::settings::TerrainSettings;
+use crate::terrain::TerrainSystemSet;
+
+use super::visible::VisibleTerrainRange;
 
 #[derive(Default, Debug)]
 pub struct TerrainVisibleAreaPlugin;
