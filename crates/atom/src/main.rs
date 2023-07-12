@@ -3,6 +3,7 @@ pub mod material;
 pub mod renderdoc;
 pub mod terrain;
 pub mod ui;
+pub mod visible;
 
 use crate::renderdoc::RenderDocPlugin;
 use bevy::{
@@ -15,8 +16,9 @@ use bevy::{
 };
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
-use terrain::{visible::visible::VisibleTerrainRange, TerrainPlugin};
+use terrain::TerrainPlugin;
 use ui::FrameUIPlugin;
+use visible::visible::VisibleTerrainRange;
 
 fn main() {
     let mut app = App::new();

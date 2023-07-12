@@ -9,17 +9,15 @@ pub mod chunk;
 pub mod isosurface;
 pub mod settings;
 pub mod terrain;
-pub mod visible;
 
 use bevy::prelude::*;
 
-use self::{
-    chunk::TerrainDataPlugin,
-    visible::visible_areas::{TerrainVisibleAreaPlugin, TerrainVisibleAreas},
-};
+use crate::visible::{visible_areas::TerrainVisibleAreas, TerrainVisibleAreaPlugin};
+
+use self::terrain::TerrainDataPlugin;
 
 #[derive(SystemSet, PartialEq, Eq, Debug, Clone, Hash)]
-enum TerrainSystemSet {
+pub enum TerrainSystemSet {
     VisibleAreas,
     GenerateTerrain,
 }

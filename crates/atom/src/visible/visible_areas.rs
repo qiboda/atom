@@ -3,23 +3,8 @@ use bevy::utils::HashMap;
 
 use crate::terrain::chunk::coords::TerrainChunkCoord;
 use crate::terrain::settings::TerrainSettings;
-use crate::terrain::TerrainSystemSet;
 
 use super::visible::VisibleTerrainRange;
-
-#[derive(Default, Debug)]
-pub struct TerrainVisibleAreaPlugin;
-
-impl Plugin for TerrainVisibleAreaPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (update_terrain_visible_areas, remove_terrain_visible_areas)
-                .chain()
-                .in_set(TerrainSystemSet::VisibleAreas),
-        );
-    }
-}
 
 #[derive(Debug, Default, Clone)]
 pub struct TerrainSingleVisibleArea {

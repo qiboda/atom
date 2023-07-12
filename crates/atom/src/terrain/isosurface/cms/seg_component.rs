@@ -19,25 +19,22 @@ use crate::terrain::isosurface::{
     },
     sample::surface_sampler::SurfaceSampler,
     surface::shape_surface::ShapeSurface,
-    IsosurfaceExtract,
+    IsosurfaceExtractionState,
 };
 
 /// 生成每个面的连线，以及边的顶点的位置信息。
 pub fn generate_segments(
-    isosurface_extract: Query<&Children, Added<IsosurfaceExtract>>,
     shape_surface: Res<ShapeSurface>,
-    mut sample_query: Query<&mut SurfaceSampler>,
     mut cells: Query<(&Cell, &mut Faces)>,
-    // mut cell_mesh_info: Query<&mut CellMeshInfo>,
-    query: Query<(&Octree, &OctreeCellAddress)>,
-    mut mesh_query: Query<&mut MeshCache>,
+    mut query: Query<(
+        &mut MeshCache,
+        &mut SurfaceSampler,
+        &IsosurfaceExtractionState,
+        &Octree,
+    )>,
 ) {
-    for children in isosurface_extract.iter() {
-        for child in children.iter() {
-            let mut sample_info = sample_query.get_mut(*child).unwrap();
-            let (octree, _address) = query.get(*child).unwrap();
-            let mut mesh = mesh_query.get_mut(*child).unwrap();
-
+    for (mut mesh_cache, mut surface_sampler, state, octree) in query.iter_mut() {
+        if let IsosurfaceExtractionState::Extract = *state {
             for entity in octree.leaf_cells.iter() {
                 if let Ok((cell, mut faces)) = cells.get_mut(*entity) {
                     // let Ok(cell_mesh_info) = cell_mesh_info.get_mut(*entity) else {
@@ -57,8 +54,8 @@ pub fn generate_segments(
                         make_face_segments(
                             &indices,
                             face,
-                            &mut mesh,
-                            &mut sample_info,
+                            &mut mesh_cache,
+                            &mut surface_sampler,
                             &shape_surface,
                         );
                     }
@@ -421,209 +418,213 @@ fn find_gradient(
 /// todo: 如果twin是由多个leaf Cell的面组成的，会重复吧，需要添加检测
 pub fn edit_transitional_face(
     mut cells: Query<(&Cell, &mut Faces)>,
-    octree_query: Query<(&Octree, &OctreeCellAddress)>,
+    octree_query: Query<(&Octree, &OctreeCellAddress, &IsosurfaceExtractionState)>,
 ) {
     info!("edit_transitional_face");
 
-    for (octree, addresses) in octree_query.iter() {
-        for cell_entity in octree.transit_face_cells.iter() {
-            let mut all_strips = [
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-            ];
-            let mut all_twin_cell_entitys = [
-                Entity::PLACEHOLDER,
-                Entity::PLACEHOLDER,
-                Entity::PLACEHOLDER,
-                Entity::PLACEHOLDER,
-                Entity::PLACEHOLDER,
-                Entity::PLACEHOLDER,
-            ];
-            let mut all_twin_cell_face_index = [
-                FaceIndex::Left,
-                FaceIndex::Left,
-                FaceIndex::Left,
-                FaceIndex::Left,
-                FaceIndex::Left,
-                FaceIndex::Left,
-            ];
-            if let Ok((cell, faces)) = cells.get(*cell_entity) {
-                for (i, face_index) in FaceIndex::iter().enumerate() {
-                    let face = faces.get_face(face_index);
-                    assert!(face.get_face_type() == &FaceType::TransitFace);
+    for (octree, addresses, state) in octree_query.iter() {
+        if let IsosurfaceExtractionState::Extract = *state {
+            for cell_entity in octree.transit_face_cells.iter() {
+                let mut all_strips = [
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                ];
+                let mut all_twin_cell_entitys = [
+                    Entity::PLACEHOLDER,
+                    Entity::PLACEHOLDER,
+                    Entity::PLACEHOLDER,
+                    Entity::PLACEHOLDER,
+                    Entity::PLACEHOLDER,
+                    Entity::PLACEHOLDER,
+                ];
+                let mut all_twin_cell_face_index = [
+                    FaceIndex::Left,
+                    FaceIndex::Left,
+                    FaceIndex::Left,
+                    FaceIndex::Left,
+                    FaceIndex::Left,
+                    FaceIndex::Left,
+                ];
+                if let Ok((cell, faces)) = cells.get(*cell_entity) {
+                    for (i, face_index) in FaceIndex::iter().enumerate() {
+                        let face = faces.get_face(face_index);
+                        assert!(face.get_face_type() == &FaceType::TransitFace);
 
-                    let (twin_address, twin_face_index) = cell.get_twin_face_address(face_index);
-                    all_twin_cell_entitys[i] =
-                        *addresses.cell_addresses.get(&twin_address).unwrap();
-                    all_twin_cell_face_index[i] = twin_face_index;
+                        let (twin_address, twin_face_index) =
+                            cell.get_twin_face_address(face_index);
+                        all_twin_cell_entitys[i] =
+                            *addresses.cell_addresses.get(&twin_address).unwrap();
+                        all_twin_cell_face_index[i] = twin_face_index;
 
-                    let mut all_strip = &mut all_strips[i];
-                    traverse_face(
-                        &cells,
-                        addresses,
-                        &all_twin_cell_entitys[i],
-                        twin_face_index,
-                        &mut all_strip,
-                    );
-                }
-            }
-
-            for (index, twin_cell_entity) in all_twin_cell_entitys.iter().enumerate() {
-                if let Ok((_twin_cell, mut twin_faces)) = cells.get_mut(*twin_cell_entity) {
-                    let all_strip = &mut all_strips[index];
-                    let twin_face_index = all_twin_cell_face_index[index];
-
-                    if all_strip.len() == 0 {
-                        continue;
+                        let mut all_strip = &mut all_strips[i];
+                        traverse_face(
+                            &cells,
+                            addresses,
+                            &all_twin_cell_entitys[i],
+                            twin_face_index,
+                            &mut all_strip,
+                        );
                     }
+                }
 
-                    let mut transit_segs = Vec::new();
+                for (index, twin_cell_entity) in all_twin_cell_entitys.iter().enumerate() {
+                    if let Ok((_twin_cell, mut twin_faces)) = cells.get_mut(*twin_cell_entity) {
+                        let all_strip = &mut all_strips[index];
+                        let twin_face_index = all_twin_cell_face_index[index];
 
-                    loop {
-                        let mut vertex_indices = Vec::new();
-
-                        if let Some(data) = all_strip[0].get_vertex_index(0) {
-                            vertex_indices.push(data);
-                        }
-                        if let Some(data) = all_strip[0].get_vertex_index(1) {
-                            vertex_indices.push(data);
+                        if all_strip.len() == 0 {
+                            continue;
                         }
 
-                        let mut long_strip = all_strip[0].clone();
-
-                        all_strip.remove(0);
-
-                        let mut added_in_iteration;
+                        let mut transit_segs = Vec::new();
 
                         loop {
-                            added_in_iteration = 0;
+                            let mut vertex_indices = Vec::new();
 
-                            all_strip.retain(|strip| {
-                                if vertex_indices.last() == strip.get_vertex_index(0).as_ref() {
-                                    if let Some(data) = strip.get_vertex_index(1) {
-                                        vertex_indices.push(data);
-                                        long_strip.change_back(strip, 1);
-                                        added_in_iteration += 1;
-                                    } else {
-                                        // info!("Some(data) != strip.get_vertex_index(1)");
-                                    }
-                                } else if vertex_indices.last()
-                                    == strip.get_vertex_index(1).as_ref()
-                                {
-                                    if let Some(data) = strip.get_vertex_index(0) {
-                                        vertex_indices.push(data);
-                                        long_strip.change_back(strip, 0);
-                                        added_in_iteration += 1;
-                                    } else {
-                                        // info!("Some(data) != strip.get_vertex_index(0)");
-                                    }
-                                } else {
-                                    // info!("all_strip.retain first false");
-                                    // info!(
-                                    //     "strip: {:?} vertex_indices: {:?}",
-                                    //     strip, vertex_indices
-                                    // );
-                                    return true;
-                                }
-
-                                if vertex_indices.first() == vertex_indices.last() {
-                                    vertex_indices.remove(0);
-                                    long_strip.set_loop(true);
-                                } else {
-                                    // info!(
-                                    //     "!= vertex index len {} vertex index {:?} added_in_iteration {}, long_strip is loop: {}",
-                                    //     vertex_indices.len(),
-                                    //     vertex_indices,
-                                    //     added_in_iteration,
-                                    //     long_strip.get_loop()
-                                    // );
-                                }
-
-                                return false;
-                            });
-
-                            // info!("all_strip: num: {}", all_strip.len());
-
-                            if all_strip.len() <= 0
-                                || added_in_iteration <= 0
-                                || long_strip.get_loop()
-                            {
-                                // info!("all_strip.retain first break");
-                                break;
-                            } else {
-                                // info!("first all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                            if let Some(data) = all_strip[0].get_vertex_index(0) {
+                                vertex_indices.push(data);
                             }
-                        }
+                            if let Some(data) = all_strip[0].get_vertex_index(1) {
+                                vertex_indices.push(data);
+                            }
 
-                        if long_strip.get_loop() == false && all_strip.len() > 0 {
+                            let mut long_strip = all_strip[0].clone();
+
+                            all_strip.remove(0);
+
+                            let mut added_in_iteration;
+
                             loop {
                                 added_in_iteration = 0;
 
                                 all_strip.retain(|strip| {
-                                    if vertex_indices.first() == strip.get_vertex_index(0).as_ref()
-                                    {
+                                    if vertex_indices.last() == strip.get_vertex_index(0).as_ref() {
                                         if let Some(data) = strip.get_vertex_index(1) {
-                                            vertex_indices.insert(0, data);
-                                            long_strip.change_front(strip, 1);
+                                            vertex_indices.push(data);
+                                            long_strip.change_back(strip, 1);
                                             added_in_iteration += 1;
+                                        } else {
+                                            // info!("Some(data) != strip.get_vertex_index(1)");
                                         }
-                                    } else if vertex_indices.first()
+                                    } else if vertex_indices.last()
                                         == strip.get_vertex_index(1).as_ref()
                                     {
                                         if let Some(data) = strip.get_vertex_index(0) {
-                                            vertex_indices.insert(0, data);
-                                            long_strip.change_front(strip, 0);
+                                            vertex_indices.push(data);
+                                            long_strip.change_back(strip, 0);
                                             added_in_iteration += 1;
+                                        } else {
+                                            // info!("Some(data) != strip.get_vertex_index(0)");
                                         }
                                     } else {
-                                        // info!("all_strip.retain second false");
+                                        // info!("all_strip.retain first false");
+                                        // info!(
+                                        //     "strip: {:?} vertex_indices: {:?}",
+                                        //     strip, vertex_indices
+                                        // );
                                         return true;
                                     }
 
                                     if vertex_indices.first() == vertex_indices.last() {
                                         vertex_indices.remove(0);
                                         long_strip.set_loop(true);
+                                    } else {
+                                        // info!(
+                                        //     "!= vertex index len {} vertex index {:?} added_in_iteration {}, long_strip is loop: {}",
+                                        //     vertex_indices.len(),
+                                        //     vertex_indices,
+                                        //     added_in_iteration,
+                                        //     long_strip.get_loop()
+                                        // );
                                     }
+
                                     return false;
                                 });
+
+                                // info!("all_strip: num: {}", all_strip.len());
 
                                 if all_strip.len() <= 0
                                     || added_in_iteration <= 0
                                     || long_strip.get_loop()
                                 {
+                                    // info!("all_strip.retain first break");
                                     break;
                                 } else {
-                                    // info!("seconds all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                                    // info!("first all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                                 }
+                            }
+
+                            if long_strip.get_loop() == false && all_strip.len() > 0 {
+                                loop {
+                                    added_in_iteration = 0;
+
+                                    all_strip.retain(|strip| {
+                                        if vertex_indices.first()
+                                            == strip.get_vertex_index(0).as_ref()
+                                        {
+                                            if let Some(data) = strip.get_vertex_index(1) {
+                                                vertex_indices.insert(0, data);
+                                                long_strip.change_front(strip, 1);
+                                                added_in_iteration += 1;
+                                            }
+                                        } else if vertex_indices.first()
+                                            == strip.get_vertex_index(1).as_ref()
+                                        {
+                                            if let Some(data) = strip.get_vertex_index(0) {
+                                                vertex_indices.insert(0, data);
+                                                long_strip.change_front(strip, 0);
+                                                added_in_iteration += 1;
+                                            }
+                                        } else {
+                                            // info!("all_strip.retain second false");
+                                            return true;
+                                        }
+
+                                        if vertex_indices.first() == vertex_indices.last() {
+                                            vertex_indices.remove(0);
+                                            long_strip.set_loop(true);
+                                        }
+                                        return false;
+                                    });
+
+                                    if all_strip.len() <= 0
+                                        || added_in_iteration <= 0
+                                        || long_strip.get_loop()
+                                    {
+                                        break;
+                                    } else {
+                                        // info!("seconds all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                                    }
+                                }
+                            }
+
+                            twin_faces
+                                .get_face_mut(twin_face_index)
+                                .get_strips_mut()
+                                .push(long_strip.clone());
+
+                            transit_segs.push(vertex_indices);
+
+                            // info!("all_strip len: {}", all_strip.len());
+                            if all_strip.len() == 0 {
+                                break;
+                            } else {
+                                // info!("three all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                             }
                         }
 
-                        twin_faces
-                            .get_face_mut(twin_face_index)
-                            .get_strips_mut()
-                            .push(long_strip.clone());
-
-                        transit_segs.push(vertex_indices);
-
-                        // info!("all_strip len: {}", all_strip.len());
-                        if all_strip.len() == 0 {
-                            break;
-                        } else {
-                            // info!("three all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                        if transit_segs.len() != 0 {
+                            twin_faces
+                                .get_face_mut(twin_face_index)
+                                .set_transit_segs(transit_segs);
                         }
-                    }
 
-                    if transit_segs.len() != 0 {
-                        twin_faces
-                            .get_face_mut(twin_face_index)
-                            .set_transit_segs(transit_segs);
+                        all_strip.clear();
                     }
-
-                    all_strip.clear();
                 }
             }
         }
@@ -665,48 +666,51 @@ fn traverse_face(
 pub fn trace_comonent(
     cells: Query<(&Cell, &Faces)>,
     mut cell_mesh_info: Query<&mut CellMeshInfo>,
-    query: Query<(&Octree, &OctreeCellAddress)>,
+    mut query: Query<(&Octree, &OctreeCellAddress, &mut IsosurfaceExtractionState)>,
 ) {
     info!("trace_comonent");
 
-    for (octree, cell_addresses) in query.iter() {
-        for cell_entity in octree.leaf_cells.iter() {
-            let mut cell_strips = Vec::new();
-            let mut transit_segs = Vec::new();
-            let mut components = Vec::new();
+    for (octree, cell_addresses, mut state) in query.iter_mut() {
+        if let IsosurfaceExtractionState::Extract = *state {
+            for cell_entity in octree.leaf_cells.iter() {
+                let mut cell_strips = Vec::new();
+                let mut transit_segs = Vec::new();
+                let mut components = Vec::new();
 
-            let Ok((cell, faces)) = cells.get(*cell_entity) else {
-                continue;
-            };
+                let Ok((cell, faces)) = cells.get(*cell_entity) else {
+                    continue;
+                };
 
-            let Ok(mut cell_mesh_info) = cell_mesh_info.get_mut(*cell_entity) else {
-                continue;
-            };
+                let Ok(mut cell_mesh_info) = cell_mesh_info.get_mut(*cell_entity) else {
+                    continue;
+                };
 
-            // 获取一个cell的所有strip
-            collect_strips(
-                &cells,
-                faces,
-                cell_addresses,
-                cell,
-                &mut cell_strips,
-                &mut transit_segs,
-            );
+                // 获取一个cell的所有strip
+                collect_strips(
+                    &cells,
+                    faces,
+                    cell_addresses,
+                    cell,
+                    &mut cell_strips,
+                    &mut transit_segs,
+                );
 
-            // todo: transit segs number is not correct
+                // todo: transit segs number is not correct
 
-            // 循环是为了建立多个Component
-            loop {
-                if cell_strips.len() == 0 {
-                    break;
+                // 循环是为了建立多个Component
+                loop {
+                    if cell_strips.len() == 0 {
+                        break;
+                    }
+
+                    link_strips(&mut components, &mut cell_strips, &mut transit_segs);
+
+                    cell_mesh_info.components.push(components.clone());
+
+                    components.clear();
                 }
-
-                link_strips(&mut components, &mut cell_strips, &mut transit_segs);
-
-                cell_mesh_info.components.push(components.clone());
-
-                components.clear();
             }
+            *state = IsosurfaceExtractionState::Meshing;
         }
     }
 }

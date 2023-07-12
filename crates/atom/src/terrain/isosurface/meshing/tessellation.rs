@@ -9,31 +9,38 @@ use crate::terrain::isosurface::{
     },
     sample::surface_sampler::SurfaceSampler,
     surface::shape_surface::ShapeSurface,
+    IsosurfaceExtractionState,
 };
 
 use strum::IntoEnumIterator;
 
 pub fn tessellation_traversal(
-    query: Query<(&Octree, &OctreeCellAddress)>,
+    mut query: Query<(
+        &Octree,
+        &OctreeCellAddress,
+        &mut MeshCache,
+        &mut SurfaceSampler,
+        &mut IsosurfaceExtractionState,
+    )>,
     cells: Query<&Cell>,
     mut cell_mesh_infos: Query<&mut CellMeshInfo>,
-    mut mesh: Query<&mut MeshCache>,
-    mut surface_sampler: Query<&mut SurfaceSampler>,
     shape_surface: Res<ShapeSurface>,
 ) {
-    for (octree, cell_addresses) in query.iter() {
-        for entity in octree.cells.iter() {
-            let mut mesh = mesh.get_mut(*entity).unwrap();
-            let mut surface_sampler = surface_sampler.get_mut(*entity).unwrap();
-            tessellation_traversal_inner(
-                &mut mesh,
-                *entity,
-                &cells,
-                &mut cell_mesh_infos,
-                cell_addresses,
-                &mut surface_sampler,
-                &shape_surface,
-            );
+    for (octree, cell_addresses, mut mesh_cache, mut surface_sampler, mut state) in query.iter_mut()
+    {
+        if let IsosurfaceExtractionState::Meshing = *state {
+            for entity in octree.cells.iter() {
+                tessellation_traversal_inner(
+                    &mut mesh_cache,
+                    *entity,
+                    &cells,
+                    &mut cell_mesh_infos,
+                    cell_addresses,
+                    &mut surface_sampler,
+                    &shape_surface,
+                );
+            }
+            *state = IsosurfaceExtractionState::Done;
         }
     }
 }
