@@ -12,7 +12,7 @@ use crate::terrain::{
         },
         sample::surface_sampler::SurfaceSampler,
         surface::shape_surface::ShapeSurface,
-        IsosurfaceExtract,
+        BuildOctreeState, IsosurfaceExtractionState,
     },
     settings::TerrainSettings,
 };
@@ -37,54 +37,96 @@ pub struct Octree {
     pub transit_face_cells: Vec<Entity>,
 }
 
+// #[derive(Component)]
+// struct BuildOctreeTask(Task<()>);
+//
+/// This system generates tasks simulating computationally intensive
+/// work that potentially spans multiple frames/ticks. A separate
+/// system, [`handle_tasks`], will poll the spawned tasks on subsequent
+/// frames/ticks, and use the results to spawn cubes
+// fn spawn_tasks(mut commands: Commands) {}
+//
+// fn handle_tasks(
+//     mut commands: Commands,
+//     mut transform_tasks: Query<(Entity, &mut BuildOctreeTask)>,
+// ) {
+//     for (entity, mut task) in &mut transform_tasks {
+//         if let Some(transform) = future::block_on(future::poll_once(&mut task.0)) {}
+//     }
+// }
+
 pub fn make_octree_structure(
-    mut commands: Commands,
-    isosurface_extract: Query<&Children, Added<IsosurfaceExtract>>,
+    commands: ParallelCommands,
     shape_surface: Res<ShapeSurface>,
     terrain_settings: Res<TerrainSettings>,
-    mut surface_sampler_query: Query<&mut SurfaceSampler>,
-    mut octree_query: Query<(&mut Octree, &mut OctreeCellAddress)>,
+    mut octree_query: Query<
+        (
+            &mut Octree,
+            &mut OctreeCellAddress,
+            &mut SurfaceSampler,
+            &mut IsosurfaceExtractionState,
+        ),
+        Added<Octree>,
+    >,
 ) {
-    for children in isosurface_extract.iter() {
-        for child in children.iter() {
-            let (mut octree, mut cell_address) = octree_query.get_mut(*child).unwrap();
-            let mut shape_sampler = surface_sampler_query.get_mut(*child).unwrap();
-            info!("make_structure");
+    // let thread_pool = AsyncComputeTaskPool::get();
 
-            let c000 = UVec3::new(0, 0, 0);
+    octree_query.par_iter_mut().for_each_mut(
+        |(
+            mut octree,
+            mut octree_cell_address,
+            mut surface_sampler,
+            mut isosurface_extract_state,
+        )| {
+            if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build) =
+                *isosurface_extract_state
+            {
+                commands.command_scope(|mut commands| {
+                    info!("make_structure");
 
-            let voxel_num = terrain_settings.get_chunk_voxel_num();
-            let voxel_num = UVec3::splat(voxel_num);
+                    // let task = thread_pool.spawn(async move {
+                    let c000 = UVec3::new(0, 0, 0);
 
-            // todo: check is branch or leat cell.....
-            let mut address = VoxelAddress::new();
-            address.set(VoxelAddress::new(), SubCellIndex::LeftBottomBack);
+                    let voxel_num = terrain_settings.get_chunk_voxel_num();
+                    let voxel_num = UVec3::splat(voxel_num);
 
-            let vertex_points = acquire_cell_info(c000, voxel_num);
-            let entity = commands
-                .spawn(CellBundle {
-                    cell: Cell::new(CellType::Branch, address, vertex_points),
-                    faces: Faces::new(0, FaceType::BranchFace),
-                    cell_mesh_info: CellMeshInfo::default(),
-                })
-                .id();
+                    // todo: check is branch or leat cell.....
+                    let mut address = VoxelAddress::new();
+                    address.set(VoxelAddress::new(), SubCellIndex::LeftBottomBack);
 
-            octree.cells.push(entity);
-            cell_address.cell_addresses.insert(address, entity);
+                    let vertex_points = acquire_cell_info(c000, voxel_num);
+                    let entity = commands
+                        .spawn(CellBundle {
+                            cell: Cell::new(CellType::Branch, address, vertex_points),
+                            faces: Faces::new(0, FaceType::BranchFace),
+                            cell_mesh_info: CellMeshInfo::default(),
+                        })
+                        .id();
 
-            subdivide_cell(
-                &mut commands,
-                &mut octree,
-                address,
-                c000,
-                voxel_num,
-                &mut shape_sampler,
-                &vertex_points,
-                &mut cell_address,
-                &shape_surface,
-            );
-        }
-    }
+                    octree.cells.push(entity);
+                    octree_cell_address.cell_addresses.insert(address, entity);
+
+                    subdivide_cell(
+                        &mut commands,
+                        &mut octree,
+                        address,
+                        c000,
+                        voxel_num,
+                        &mut surface_sampler,
+                        &vertex_points,
+                        &mut octree_cell_address,
+                        &shape_surface,
+                    );
+                    // });
+                });
+
+                *isosurface_extract_state =
+                    IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace);
+            }
+        },
+    );
+    // Spawn new entity and add our new task as a component
+    // commands.spawn(BuildOctreeTask(task));
 }
 
 fn acquire_cell_info(c000: UVec3, voxel_num: UVec3) -> [UVec3; VertexPoint::COUNT] {
@@ -343,14 +385,16 @@ fn find_gradient(
 }
 
 pub fn mark_transitional_faces(
-    isosurface_extract: Query<&Children, Added<IsosurfaceExtract>>,
     mut cell_faces: Query<(&mut Cell, &mut Faces)>,
-    mut query: Query<(&mut Octree, &OctreeCellAddress)>,
+    mut query: Query<(
+        &mut Octree,
+        &OctreeCellAddress,
+        &mut IsosurfaceExtractionState,
+    )>,
 ) {
     info!("mark_transitional_faces");
-    for children in isosurface_extract.iter() {
-        for child in children.iter() {
-            let (mut octree, cell_address) = query.get_mut(*child).unwrap();
+    query.for_each_mut(|(mut octree, cell_address, mut state)| {
+        if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace) = *state {
             let mut transitional_cells = Vec::new();
 
             for entity in octree.leaf_cells.iter() {
@@ -422,8 +466,9 @@ pub fn mark_transitional_faces(
                     transitional_cells.push(*entity);
                 }
             }
-
             octree.transit_face_cells = transitional_cells;
+
+            *state = IsosurfaceExtractionState::Extract;
         }
-    }
+    });
 }
