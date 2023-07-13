@@ -14,7 +14,7 @@ use bevy::prelude::*;
 
 use crate::visible::{visible_areas::TerrainVisibleAreas, TerrainVisibleAreaPlugin};
 
-use self::terrain::TerrainDataPlugin;
+use self::{isosurface::IsosurfaceExtractionPlugin, terrain::TerrainDataPlugin};
 
 #[derive(SystemSet, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum TerrainSystemSet {
@@ -37,6 +37,7 @@ impl Plugin for TerrainPlugin {
                     .chain(),
             )
             .add_plugins(TerrainVisibleAreaPlugin)
-            .add_plugins(TerrainDataPlugin);
+            .add_plugins(TerrainDataPlugin)
+            .add_plugins(IsosurfaceExtractionPlugin);
     }
 }

@@ -18,11 +18,8 @@ pub struct SampleSurfacePlugin;
 
 impl Plugin for SampleSurfacePlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(
-            Startup,
-            startup_sample_surface.in_set(IsosurfaceExtractionSet::Sample),
-        )
-        .add_systems(
+        info!("add SampleSurfacePlugin");
+        app.add_systems(First, startup_sample_surface).add_systems(
             Update,
             init_surface_sampler.in_set(IsosurfaceExtractionSet::Sample),
         );
@@ -37,6 +34,7 @@ fn startup_sample_surface(
         (Without<SurfaceSampler>, With<TerrainChunk>),
     >,
 ) {
+    // info!("startup_sample_surface: {:?}", chunk_coord_query);
     for (entity, chunk_coord) in chunk_coord_query.iter() {
         let voxel_num = UVec3::splat(terrain_settings.get_chunk_voxel_num());
         let voxel_size = Vec3::splat(terrain_settings.get_chunk_voxel_size());
@@ -55,21 +53,22 @@ fn startup_sample_surface(
 }
 
 fn init_surface_sampler(
-    mut surface_sampler_query: Query<
-        (&mut SurfaceSampler, &mut IsosurfaceExtractionState),
-        Added<SurfaceSampler>,
-    >,
+    mut surface_sampler_query: Query<(&mut SurfaceSampler, &mut IsosurfaceExtractionState)>,
     shape_surface: Res<ShapeSurface>,
 ) {
     surface_sampler_query
         .par_iter_mut()
         .for_each_mut(|(mut surface_sampler, mut state)| {
-            let offset = surface_sampler.world_offset;
-            let size = surface_sampler.voxel_size * surface_sampler.get_sample_size().as_vec3();
+            if *state == IsosurfaceExtractionState::Sample {
+                info!("init_surface_sampler");
+                let offset = surface_sampler.world_offset;
+                let size = surface_sampler.voxel_size * surface_sampler.get_sample_size().as_vec3();
 
-            let values = shape_surface.get_range_values(offset, size, surface_sampler.voxel_size);
-            surface_sampler.set_sample_data(values);
+                let values =
+                    shape_surface.get_range_values(offset, size, surface_sampler.voxel_size);
+                surface_sampler.set_sample_data(values);
 
-            *state = IsosurfaceExtractionState::Extract;
+                *state = IsosurfaceExtractionState::Extract;
+            }
         });
 }

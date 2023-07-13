@@ -24,7 +24,8 @@ pub struct OctreePlugin;
 
 impl Plugin for OctreePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, add_octree).add_systems(
+        info!("add OctreePlugin");
+        app.add_systems(First, add_octree).add_systems(
             Update,
             (make_octree_structure, mark_transitional_faces)
                 .chain()

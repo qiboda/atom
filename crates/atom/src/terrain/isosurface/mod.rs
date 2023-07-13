@@ -3,7 +3,9 @@ use meshing::MeshingPlugin;
 use sample::SampleSurfacePlugin;
 use surface::shape_surface::ShapeSurface;
 
-use self::{cms::ExtractPluign, octree::OctreePlugin, surface::densy_function::NoiseSurface};
+use self::{cms::ExtractPlugin, octree::OctreePlugin, surface::densy_function::NoiseSurface};
+
+use super::TerrainSystemSet;
 
 pub mod cms;
 pub mod meshing;
@@ -36,6 +38,7 @@ pub enum IsosurfaceExtractionState {
     BuildOctree(BuildOctreeState),
     Extract,
     Meshing,
+    MeshCreate,
     Done,
 }
 
@@ -44,6 +47,7 @@ pub struct IsosurfaceExtractionPlugin;
 
 impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
+        info!("add IsosurfaceExtractionPlugin");
         app.insert_resource(ShapeSurface {
             densy_function: Box::new(NoiseSurface {
                 seed: rand::random(),
@@ -57,18 +61,19 @@ impl Plugin for IsosurfaceExtractionPlugin {
             snap_centro_id: true,
         })
         .configure_sets(
-            Startup,
+            Update,
             (
                 IsosurfaceExtractionSet::Sample,
                 IsosurfaceExtractionSet::BuildOctree,
                 IsosurfaceExtractionSet::Extract,
                 IsosurfaceExtractionSet::Meshing,
             )
+                .after(TerrainSystemSet::GenerateTerrain)
                 .chain(),
         )
         .add_plugins(SampleSurfacePlugin)
         .add_plugins(OctreePlugin)
-        .add_plugins(ExtractPluign)
+        .add_plugins(ExtractPlugin)
         .add_plugins(MeshingPlugin);
     }
 }

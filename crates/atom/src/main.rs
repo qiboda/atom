@@ -16,14 +16,15 @@ use bevy::{
 };
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
-use terrain::TerrainPlugin;
+use terrain::{settings::TerrainSettings, TerrainPlugin};
 use ui::FrameUIPlugin;
 use visible::visible::VisibleTerrainRange;
 
 fn main() {
     let mut app = App::new();
 
-    app.add_plugins(RenderDocPlugin)
+    app.insert_resource(TerrainSettings::new(1.0, 16))
+        .add_plugins(RenderDocPlugin)
         .add_plugins(DefaultPlugins)
         .add_plugins(CameraControllerPlugin::default())
         .add_plugins(TerrainPlugin::default())
