@@ -138,6 +138,8 @@ fn spawn_terrain_chunks(
         .insert(TerrainChunk)
         .id();
 
+    info!("spawn_terrain_chunks: {:?}", terrain_chunk_coord);
+
     let mut terrian = commands.get_entity(terrain_entity).unwrap();
     terrian.add_child(child);
     terrain_data.data.insert(terrain_chunk_coord, child);

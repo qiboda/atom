@@ -70,7 +70,6 @@ pub fn make_octree_structure(
     >,
 ) {
     // let thread_pool = AsyncComputeTaskPool::get();
-
     octree_query.par_iter_mut().for_each_mut(
         |(
             mut octree,
@@ -81,6 +80,7 @@ pub fn make_octree_structure(
             if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build) =
                 *isosurface_extract_state
             {
+                info!("make_octree_structure");
                 commands.command_scope(|mut commands| {
                     info!("make_structure");
 
@@ -392,9 +392,9 @@ pub fn mark_transitional_faces(
         &mut IsosurfaceExtractionState,
     )>,
 ) {
-    info!("mark_transitional_faces");
     query.for_each_mut(|(mut octree, cell_address, mut state)| {
         if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace) = *state {
+            info!("mark_transitional_faces");
             let mut transitional_cells = Vec::new();
 
             for entity in octree.leaf_cells.iter() {

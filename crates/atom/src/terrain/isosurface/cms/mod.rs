@@ -4,14 +4,15 @@ use bevy::prelude::*;
 
 use self::seg_component::{edit_transitional_face, generate_segments, trace_comonent};
 
-use super::{octree::OctreePlugin, IsosurfaceExtractionSet};
+use super::IsosurfaceExtractionSet;
 
-pub struct ExtractPluign;
+pub struct ExtractPlugin;
 
-impl Plugin for ExtractPluign {
+impl Plugin for ExtractPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(OctreePlugin).add_systems(
-            Startup,
+        info!("add ExtractPluign");
+        app.add_systems(
+            Update,
             (generate_segments, edit_transitional_face, trace_comonent)
                 .in_set(IsosurfaceExtractionSet::Extract),
         );

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::terrain::chunk::TerrainChunk;
+use crate::terrain::{chunk::TerrainChunk, isosurface::meshing::mesh::create_mesh};
 
 use self::{mesh::MeshCache, tessellation::tessellation_traversal};
 
@@ -14,9 +14,10 @@ pub struct MeshingPlugin;
 
 impl Plugin for MeshingPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(Startup, add_mesh_cache).add_systems(
+        info!("add MeshingPlugin");
+        app.add_systems(First, add_mesh_cache).add_systems(
             Update,
-            tessellation_traversal.in_set(IsosurfaceExtractionSet::Meshing),
+            (tessellation_traversal, create_mesh).in_set(IsosurfaceExtractionSet::Meshing),
         );
     }
 }

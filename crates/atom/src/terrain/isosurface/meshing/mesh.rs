@@ -1,7 +1,15 @@
 use bevy::{
-    prelude::{Component, Mesh, UVec3, Vec3},
+    prelude::{
+        info, Assets, Color, Commands, Component, Mesh, PbrBundle, Query, Res, ResMut,
+        StandardMaterial, Transform, UVec3, Vec3,
+    },
     render::render_resource::PrimitiveTopology,
     utils::HashMap,
+};
+
+use crate::terrain::{
+    chunk::coords::TerrainChunkCoord, isosurface::IsosurfaceExtractionState,
+    settings::TerrainSettings,
 };
 
 use super::vertex_index::VertexIndices;
@@ -70,5 +78,35 @@ impl From<MeshCache> for Mesh {
             mesh_cache.get_indices().clone(),
         )));
         mesh
+    }
+}
+
+pub fn create_mesh(
+    mut commands: Commands,
+    terrain_setting: Res<TerrainSettings>,
+    mut mesh_cache: Query<(
+        &MeshCache,
+        &TerrainChunkCoord,
+        &mut IsosurfaceExtractionState,
+    )>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    for (mesh_cache, chunk_coord, mut state) in mesh_cache.iter_mut() {
+        if let IsosurfaceExtractionState::MeshCreate = *state {
+            let location = Vec3::new(
+                chunk_coord.x as f32 * terrain_setting.get_chunk_size(),
+                chunk_coord.y as f32 * terrain_setting.get_chunk_size(),
+                chunk_coord.z as f32 * terrain_setting.get_chunk_size(),
+            );
+            info!("create_mesh: {:?}", mesh_cache);
+            commands.spawn(PbrBundle {
+                mesh: meshes.add(Mesh::from(mesh_cache.clone())),
+                material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+                transform: Transform::from_translation(location),
+                ..Default::default()
+            });
+            *state = IsosurfaceExtractionState::Done;
+        }
     }
 }
