@@ -52,6 +52,10 @@ impl Strip {
         self.vertex_index[index]
     }
 
+    pub fn get_vertex(&self) -> &[Option<u32>; 2] {
+        &self.vertex_index
+    }
+
     pub fn set_crossing_left_coord(&mut self, index: usize, block: UVec3) {
         self.crossing_left_coord[index] = Some(block);
     }

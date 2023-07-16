@@ -106,6 +106,9 @@ pub fn make_octree_structure(
                     octree.cells.push(entity);
                     octree_cell_address.cell_addresses.insert(address, entity);
 
+                    let voxel_num = voxel_num.x >> 1;
+                    let voxel_num = UVec3::splat(voxel_num);
+
                     subdivide_cell(
                         &mut commands,
                         &mut octree,
@@ -113,7 +116,6 @@ pub fn make_octree_structure(
                         c000,
                         voxel_num,
                         &mut surface_sampler,
-                        &vertex_points,
                         &mut octree_cell_address,
                         &shape_surface,
                     );
@@ -179,19 +181,11 @@ fn subdivide_cell(
     octree: &mut Octree,
     parent_address: VoxelAddress,
     parent_c000: UVec3,
-    parent_voxel_num: UVec3,
+    voxel_num: UVec3,
     sample_info: &mut SurfaceSampler,
-    parent_vertex_points: &[UVec3; 8],
     cell_address: &mut OctreeCellAddress,
     shape_surface: &Res<ShapeSurface>,
 ) {
-    let voxel_num = parent_voxel_num.x >> 1;
-    let voxel_num = UVec3::splat(voxel_num);
-
-    if voxel_num.x == 0 {
-        return;
-    }
-
     // info!("subdivide_cell: voxle num {}", voxel_num);
 
     for (i, subcell_index) in SubCellIndex::iter().enumerate() {
@@ -207,22 +201,36 @@ fn subdivide_cell(
 
         let mut branch_type = CellType::Branch;
         if check_for_subdivision(sample_info, &vertex_points, shape_surface) {
-            subdivide_cell(
-                commands,
-                octree,
-                address,
-                c000,
-                voxel_num,
-                sample_info,
-                &vertex_points,
-                cell_address,
-                shape_surface,
-            );
+            info!("check_for_subdivision can subdivice cell");
+            let voxel_num = voxel_num.x >> 1;
+            let voxel_num = UVec3::splat(voxel_num);
+            if voxel_num.x == 0 {
+                // todo: 如此，如果不是在表面，就会忽略cell，这是否正确？
+                if check_for_surface(&vertex_points, sample_info, &shape_surface) {
+                    info!("check_for_surface success: {:?}", vertex_points);
+                    branch_type = CellType::Leaf;
+                } else {
+                    info!("check_for_surface fail: {:?}", vertex_points);
+                }
+            } else {
+                subdivide_cell(
+                    commands,
+                    octree,
+                    address,
+                    c000,
+                    voxel_num,
+                    sample_info,
+                    cell_address,
+                    shape_surface,
+                );
+            }
         } else {
             // todo: 如此，如果不是在表面，就会忽略cell，这是否正确？
-            // info!("{this_level}:{i}: check_for_surface: {}", surface);
             if check_for_surface(&vertex_points, sample_info, &shape_surface) {
+                info!("check_for_surface success: {:?}", vertex_points);
                 branch_type = CellType::Leaf;
+            } else {
+                info!("check_for_surface fail: {:?}", vertex_points);
             }
         }
 
@@ -259,16 +267,22 @@ fn check_for_surface(
     sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) -> bool {
-    // info!("check for surface: vertex_points: {:?}", vertex_points);
-
     // 8个顶点中有几个在内部
     let mut inside = 0;
     for i in 0..8 {
+        info!(
+            "value: {}",
+            sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface)
+        );
         if sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface) < 0.0 {
             inside += 1;
         }
     }
 
+    info!(
+        "check for surface: vertex_points: {:?}, inside: {}",
+        vertex_points, inside
+    );
     inside != 0 && inside != 8
 }
 
@@ -351,7 +365,13 @@ fn check_for_edge_ambiguity(
                             .z
             );
 
-            info!("prev_point: {}, index: {}", prev_point, index);
+            info!(
+                "prev_point: {} value: {}, index: {} value: {}",
+                prev_point,
+                sample_info.get_value_from_vertex_address(prev_point, shape_surface),
+                index,
+                sample_info.get_value_from_vertex_address(index, shape_surface)
+            );
             // if the sign of the value at the previous point is different from the sign of the value at the current point,
             // then there is an edge ambiguity
             if sample_info.get_value_from_vertex_address(prev_point, shape_surface)
@@ -392,8 +412,8 @@ fn check_for_complex_surface(
             find_gradient(&mut gradient_point_1, &point_1, sample_info, shape_surface);
 
             info!(
-                "point_0 {} gradient_point_0: {:?}, point_1 {} gradient_point_1: {:?}",
-                point_0, gradient_point_0, point_1, gradient_point_1
+                "point_0 {} gradient_point_0: {:?}, point_1 {} gradient_point_1: {:?} value {} < or not {}",
+                point_0, gradient_point_0, point_1, gradient_point_1, gradient_point_0.dot(gradient_point_1), COMPLEX_SURFACE_THRESHOLD
             );
             if gradient_point_0.dot(gradient_point_1) < COMPLEX_SURFACE_THRESHOLD {
                 info!("is complex surface");
@@ -449,7 +469,12 @@ pub fn mark_transitional_faces(
 ) {
     query.for_each_mut(|(mut octree, cell_address, mut state)| {
         if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace) = *state {
-            info!("mark_transitional_faces");
+            info!(
+                "mark_transitional_faces: cell num: {} leaf cells: {}, transitional_cells: {}",
+                octree.cells.len(),
+                octree.leaf_cells.len(),
+                octree.transit_face_cells.len()
+            );
             let mut transitional_cells = Vec::new();
 
             for entity in octree.leaf_cells.iter() {

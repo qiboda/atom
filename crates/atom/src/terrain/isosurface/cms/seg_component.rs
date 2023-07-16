@@ -54,6 +54,7 @@ pub fn generate_segments(
                             info!("vertex_pos:{i} {:?}, indices: {}", vertex_pos, indices[i]);
                         }
 
+                        info!("face index {:?} start", face_index);
                         let face = faces.get_face_mut(face_index);
                         face.get_strips_mut().resize(2, Strip::default());
                         make_face_segments(
@@ -65,6 +66,15 @@ pub fn generate_segments(
                         );
                         if face.get_strips()[0].get_vertex_index(0).is_some() {
                             valid_strips += 1;
+                        }
+                    }
+
+                    for face_index in FaceIndex::iter() {
+                        let face = faces.get_face(face_index);
+                        for strip in face.get_strips().iter() {
+                            for vertex_index in strip.get_vertex().iter() {
+                                info!("entity: {:?}: vertex_index: {:?}", entity, vertex_index);
+                            }
                         }
                     }
 
@@ -173,6 +183,11 @@ fn populate_strip(
     let vertex_coord0 = indices[vertex0 as usize];
     let vertex_coord1 = indices[vertex1 as usize];
 
+    info!(
+        "vertex_coord0: {}, vertex_coord1: {}",
+        vertex_coord0, vertex_coord1
+    );
+
     let mut vertex_range = Range::default();
 
     let edge_dir = get_edges_betwixt(&mut vertex_range, vertex_coord0, vertex_coord1);
@@ -202,10 +217,13 @@ fn populate_strip(
 
     let mut dupli = false;
 
+    info!("crossing_index_0: {}", crossing_index_0);
+
     if let Some(value_0) = mesh_info.vertex_index_data.get(&crossing_index_0) {
         if value_0.is_empty() == false {
-            if value_0.get_dir_vertex_index(edge_dir).is_some() {
-                strip.set_vertex_index(edge_index, value_0.get_dir_vertex_index(edge_dir).unwrap());
+            if value_0.get_dir_vertex_index().is_some() {
+                info!("vertex index: {:?}", value_0.get_dir_vertex_index());
+                strip.set_vertex_index(edge_index, value_0.get_dir_vertex_index().unwrap());
                 strip.set_crossing_left_coord(edge_index, crossing_index_0);
                 strip.set_edge_dir(edge_index, Some(edge_dir));
                 dupli = true;
@@ -287,6 +305,7 @@ fn exact_sign_change_index(
         //     this_value, next_value, start_vertex_coord, end_vertex_coord
         // );
         assert!(this_value * next_value <= 0.0);
+        // assert!(this_value * next_value != 0.0);
         return start_vertex_coord[edge_dir as usize];
     }
 
@@ -301,6 +320,7 @@ fn exact_sign_change_index(
         indexer[edge_dir as usize] = i + 1;
         let next_value = sample_info.get_value_from_vertex_address(indexer, shape_surface);
 
+        // assert!(this_value * next_value != 0.0);
         if this_value * next_value <= 0.0 {
             return i;
         }
@@ -350,13 +370,14 @@ fn make_vertex(
     mesh_info.positions.push(crossing_vertex_point);
     mesh_info.normals.push(gradient);
 
+    info!("add vertex index: {:?}", mesh_info.positions.len() - 1);
     strip.set_vertex_index(edge_index, (mesh_info.positions.len() - 1) as u32);
     strip.set_crossing_left_coord(edge_index, crossing_index_0);
     strip.set_edge_dir(edge_index, Some(edge_dir));
 
     // assert!(mesh_info.vertex_index_data.get(&crossing_index_0).is_none());
     let mut e = VertexIndices::new();
-    e.set_dir_vertex_index(edge_dir, (mesh_info.positions.len() - 1) as u32);
+    e.set_dir_vertex_index((mesh_info.positions.len() - 1) as u32);
     mesh_info.vertex_index_data.insert(crossing_index_0, e);
 }
 
@@ -742,7 +763,9 @@ pub fn trace_comonent(
 
                     link_strips(&mut components, &mut cell_strips, &mut transit_segs);
 
-                    cell_mesh_info.components.push(components.clone());
+                    if components.len() >= 3 {
+                        cell_mesh_info.components.push(components.clone());
+                    }
 
                     components.clear();
                 }
@@ -818,6 +841,10 @@ fn link_strips(
     let mut added_in_iteration;
     let mut backwards = false;
 
+    for i in 0..cell_strips.len() {
+        info!("link_strips: {:?}", cell_strips[i].get_vertex());
+    }
+
     components.push(cell_strips[0].get_vertex_index(0).unwrap());
 
     loop {
@@ -844,7 +871,7 @@ fn link_strips(
                             &backwards,
                         );
                         // if debug {
-                        //     info!("component transit: {:?}", components);
+                        info!("component transit: {:?}", components);
                         // }
                     }
 
@@ -853,7 +880,7 @@ fn link_strips(
                             components.push(data);
                             added_in_iteration += 1;
                             // if debug {
-                            //     info!("component non transit: {:?}", components);
+                            info!("component non transit: {:?}", components);
                             // }
                         }
                     }
@@ -872,7 +899,7 @@ fn link_strips(
                             &backwards,
                         );
                         // if debug {
-                        //     info!("component transit 2: {:?}", components);
+                        info!("component transit 2: {:?}", components);
                         // }
                     }
 
@@ -881,14 +908,14 @@ fn link_strips(
                             components.push(data);
                             added_in_iteration += 1;
                             // if debug {
-                            //     info!("component non transit 2: {:?}", components);
+                            info!("component non transit 2: {:?}", components);
                             // }
                         }
                     }
                 }
                 _ => {
                     // if debug {
-                    //     info!("component not add");
+                    info!("component not add: {:?}", components);
                     // }
                     return true;
                 }
@@ -896,14 +923,16 @@ fn link_strips(
             return false;
         });
 
+        info!(
+            "component {:?} and first == last: {}",
+            components,
+            components.first() == components.last()
+        );
         if components.first() == components.last() {
             components.remove(0);
         }
+        info!("component {:?} after", components,);
 
-        // if components.len() > 1 && components.first() == components.get(1) {
-        //     components.remove(0);
-        // }
-        //
         if added_in_iteration <= 0 {
             break;
         }
@@ -933,7 +962,7 @@ fn link_strips(
                             &backwards,
                         );
                         // if debug {
-                        //     info!("component transit 3: {:?}", components);
+                        info!("component transit 3: {:?}", components);
                         // }
                     }
 
@@ -942,7 +971,7 @@ fn link_strips(
                             components.insert(0, data);
                             added_in_iteration += 1;
                             // if debug {
-                            //     info!("component non transit 3: {:?}", components);
+                            info!("component non transit 3: {:?}", components);
                             // }
                         }
                     }
@@ -961,7 +990,7 @@ fn link_strips(
                             &backwards,
                         );
                         // if debug {
-                        //     info!("component transit 4: {:?}", components);
+                        info!("component transit 4: {:?}", components);
                         // }
                     }
 
@@ -970,14 +999,14 @@ fn link_strips(
                             components.insert(0, data);
                             added_in_iteration += 1;
                             // if debug {
-                            //     info!("component non transit 4: {:?}", components);
+                            info!("component non transit 4: {:?}", components);
                             // }
                         }
                     }
                 }
                 _ => {
                     // if debug {
-                    //     info!("component 2 not add");
+                    info!("component 2 not add: {:?}", components);
                     // }
                     return true;
                 }
@@ -985,13 +1014,15 @@ fn link_strips(
             return false;
         });
 
+        info!(
+            "component {:?} and first == last: {}",
+            components,
+            components.first() == components.last()
+        );
         if components.first() == components.last() {
             components.remove(0);
         }
-
-        // if components.len() > 1 && components.first() == components.get(1) {
-        //     components.remove(0);
-        // }
+        info!("component {:?} after", components,);
 
         if added_in_iteration <= 0 {
             break;
@@ -1000,9 +1031,6 @@ fn link_strips(
 
     assert!(components.first() != components.last());
     assert!(components.len() >= 3);
-    // if components.len() < 3 {
-    //     components.clear();
-    // }
 }
 
 fn insert_data_from_twin(
