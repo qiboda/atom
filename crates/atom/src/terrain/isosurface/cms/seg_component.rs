@@ -217,19 +217,24 @@ fn populate_strip(
 
     let mut dupli = false;
 
-    info!("crossing_index_0: {}", crossing_index_0);
+    info!(
+        "crossing_index_0: {}, edge_dir: {:?}",
+        crossing_index_0, edge_dir
+    );
 
     if let Some(value_0) = mesh_info.vertex_index_data.get(&crossing_index_0) {
-        if value_0.is_empty() == false {
-            if value_0.get_dir_vertex_index().is_some() {
-                info!("vertex index: {:?}", value_0.get_dir_vertex_index());
-                strip.set_vertex_index(edge_index, value_0.get_dir_vertex_index().unwrap());
-                strip.set_crossing_left_coord(edge_index, crossing_index_0);
-                strip.set_edge_dir(edge_index, Some(edge_dir));
-                dupli = true;
-                info!("make vertex dupli");
-            }
+        if value_0.get_dir_vertex_index(edge_dir).is_some() {
+            info!("vertex index: {:?}", value_0.get_dir_vertex_index(edge_dir));
+            strip.set_vertex_index(edge_index, value_0.get_dir_vertex_index(edge_dir).unwrap());
+            strip.set_crossing_left_coord(edge_index, crossing_index_0);
+            strip.set_edge_dir(edge_index, Some(edge_dir));
+            dupli = true;
+            info!("make vertex dupli");
+        } else {
+            info!("crossing_index_0 get_dir_vertex_index is None");
         }
+    } else {
+        info!("mesh_info.vertex_index_data.get(&crossing_index_0) is None");
     }
 
     if dupli == false {
@@ -375,10 +380,12 @@ fn make_vertex(
     strip.set_crossing_left_coord(edge_index, crossing_index_0);
     strip.set_edge_dir(edge_index, Some(edge_dir));
 
-    // assert!(mesh_info.vertex_index_data.get(&crossing_index_0).is_none());
-    let mut e = VertexIndices::new();
-    e.set_dir_vertex_index((mesh_info.positions.len() - 1) as u32);
-    mesh_info.vertex_index_data.insert(crossing_index_0, e);
+    let vertex_index = mesh_info
+        .vertex_index_data
+        .entry(crossing_index_0)
+        .or_insert(VertexIndices::new());
+    assert!(vertex_index.get_dir_vertex_index(edge_dir).is_none());
+    vertex_index.set_dir_vertex_index(edge_dir, (mesh_info.positions.len() - 1) as u32);
 }
 
 /// @param quality iter count

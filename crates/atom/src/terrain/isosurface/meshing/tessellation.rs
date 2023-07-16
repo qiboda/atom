@@ -177,6 +177,7 @@ fn find_gradient_with_value(
 
 fn make_tri(mesh: &mut MeshCache, component: &Vec<u32>) {
     info!("make_tri:{:?}", component);
+    // 逆时针
     mesh.get_indices_mut().push(component[0]);
     mesh.get_indices_mut().push(component[2]);
     mesh.get_indices_mut().push(component[1]);
@@ -185,6 +186,7 @@ fn make_tri(mesh: &mut MeshCache, component: &Vec<u32>) {
 // 扇形三角面
 fn make_tri_fan(mesh: &mut MeshCache, component: &Vec<u32>) {
     info!("make_tri_fan: {:?}", component);
+    // 逆时针
     for i in 0..(component.len() - 2) {
         mesh.get_indices_mut()
             .push(component[component.len() - 1] as u32);
@@ -192,6 +194,7 @@ fn make_tri_fan(mesh: &mut MeshCache, component: &Vec<u32>) {
         mesh.get_indices_mut().push(component[i] as u32);
     }
 
+    // 逆时针
     mesh.get_indices_mut()
         .push(component[component.len() - 2] as u32);
     mesh.get_indices_mut()
