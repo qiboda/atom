@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
 };
 
-use bevy::prelude::Vec3;
+use bevy::prelude::{info, Vec3};
 use simdnoise::NoiseBuilder;
 
 pub trait DensyFunction: Sync + Send + Debug {
@@ -35,7 +35,7 @@ pub struct Sphere;
 
 impl DensyFunction for Sphere {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        x * x + y * y + z * z - 1.0
+        x * x + y * y + z * z - 7.0
     }
 }
 
@@ -51,6 +51,20 @@ impl DensyFunction for Torus {
         ((x0 * x0 + y * y + z * z + r_outer * r_outer - r_inner * r_inner)
             * (x0 * x0 + y * y + z * z + r_outer * r_outer - r_inner * r_inner))
             - (4.0 * r_outer * r_outer) * (z * z + x0 * x0)
+    }
+}
+
+// 圆环面
+#[derive(Default, Debug)]
+pub struct Panel;
+
+impl DensyFunction for Panel {
+    fn get_value(&self, _x: f32, y: f32, _z: f32) -> f32 {
+        match y {
+            y if y < 0.0 => -0.5,
+            y if y > 0.0 => 0.5,
+            _ => y,
+        }
     }
 }
 
@@ -95,7 +109,6 @@ impl DensyFunction for NoiseSurface {
 
     // todo: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        assert!(false);
         unsafe {
             // avx2 turbulence
             let x = _mm_set1_ps(x);

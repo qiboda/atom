@@ -27,7 +27,11 @@ impl Plugin for OctreePlugin {
         info!("add OctreePlugin");
         app.add_systems(First, add_octree).add_systems(
             Update,
-            (make_octree_structure, mark_transitional_faces)
+            (
+                make_octree_structure,
+                apply_deferred,
+                mark_transitional_faces,
+            )
                 .chain()
                 .in_set(IsosurfaceExtractionSet::BuildOctree),
         );

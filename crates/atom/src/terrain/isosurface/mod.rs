@@ -3,6 +3,8 @@ use meshing::MeshingPlugin;
 use sample::SampleSurfacePlugin;
 use surface::shape_surface::ShapeSurface;
 
+use crate::terrain::isosurface::surface::densy_function::{Panel, Sphere};
+
 use self::{cms::ExtractPlugin, octree::OctreePlugin, surface::densy_function::NoiseSurface};
 
 use super::TerrainSystemSet;
@@ -49,13 +51,15 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         info!("add IsosurfaceExtractionPlugin");
         app.insert_resource(ShapeSurface {
-            densy_function: Box::new(NoiseSurface {
-                seed: rand::random(),
-                frequency: 0.01,
-                lacunarity: 2.0,
-                gain: 0.5,
-                octaves: 3,
-            }),
+            // densy_function: Box::new(NoiseSurface {
+            //     seed: rand::random(),
+            //     frequency: 0.01,
+            //     lacunarity: 2.0,
+            //     gain: 0.5,
+            //     octaves: 3,
+            // }),
+            // densy_function: Box::new(Sphere),
+            densy_function: Box::new(Panel),
             iso_level: Vec3::ZERO,
             negative_inside: true,
             snap_centro_id: true,

@@ -50,6 +50,14 @@ fn add_frame_ui(mut commands: Commands) {
                             ..default()
                         },
                     },
+                    TextSection {
+                        value: "".to_string(),
+                        style: TextStyle {
+                            font_size: 60.0,
+                            color: Color::GREEN,
+                            ..default()
+                        },
+                    },
                 ],
                 ..Default::default()
             },
@@ -62,8 +70,10 @@ fn update_fps(
     time: Res<Time>,
     frame_count: Res<FrameCount>,
     mut query: Query<&mut Text, With<FpsText>>,
+    mut camera: Query<&mut GlobalTransform, With<Camera>>,
 ) {
     let mut text = query.single_mut();
     text.sections[1].value = format!("{:.2}", 1.0 / time.delta_seconds());
     text.sections[3].value = format!("{:.2}", frame_count.0);
+    text.sections[4].value = format!("{:?}", camera.single_mut().translation());
 }

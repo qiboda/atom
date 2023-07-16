@@ -14,6 +14,7 @@ impl Plugin for ExtractPlugin {
         app.add_systems(
             Update,
             (generate_segments, edit_transitional_face, trace_comonent)
+                .chain()
                 .in_set(IsosurfaceExtractionSet::Extract),
         );
     }

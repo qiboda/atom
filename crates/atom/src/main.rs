@@ -23,7 +23,7 @@ use visible::visible::VisibleTerrainRange;
 fn main() {
     let mut app = App::new();
 
-    app.insert_resource(TerrainSettings::new(1.0, 16))
+    app.insert_resource(TerrainSettings::new(1.0, 4))
         .add_plugins(RenderDocPlugin)
         .add_plugins(DefaultPlugins)
         .add_plugins(CameraControllerPlugin::default())
@@ -44,6 +44,7 @@ fn startup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     mut cool_materials: ResMut<Assets<CoolMaterial>>,
 ) {
     commands.insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.1)));
@@ -74,11 +75,11 @@ fn startup(
         ..Default::default()
     });
 
-    let size = 4.0 * 16.0;
+    let size = 1.0 * 2.0;
 
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(30.0, 30.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(1.0, 1.0, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera: Camera {
                 hdr: true,
                 order: 0,
@@ -97,6 +98,30 @@ fn startup(
             max: Vec3::new(size, size, size),
         },
     ));
+
+    // let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    //
+    // // Positions of the vertices
+    // // See https://bevy-cheatbook.github.io/features/coords.html
+    // mesh.insert_attribute(
+    //     Mesh::ATTRIBUTE_POSITION,
+    //     vec![[0., 0., 0.], [1., 2., 1.], [2., 0., 0.]],
+    // );
+    //
+    // // In this example, normals and UVs don't matter,
+    // // so we just use the same value for all of them
+    // mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; 3]);
+    // mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; 3]);
+    //
+    // // A triangle using vertices 0, 2, and 1.
+    // // Note: order matters. [0, 1, 2] will be flipped upside down, and you won't see it from behind!
+    // mesh.set_indices(Some(mesh::Indices::U32(vec![0, 2, 1])));
+    //
+    // commands.spawn(PbrBundle {
+    //     mesh: meshes.add(mesh),
+    //     material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+    //     ..default()
+    // });
 }
 
 fn exit_game(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
