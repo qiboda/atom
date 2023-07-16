@@ -3,7 +3,7 @@ use meshing::MeshingPlugin;
 use sample::SampleSurfacePlugin;
 use surface::shape_surface::ShapeSurface;
 
-use crate::terrain::isosurface::surface::densy_function::{Panel, Sphere};
+use crate::terrain::isosurface::surface::densy_function::{Cube, Panel, Sphere, Torus};
 
 use self::{cms::ExtractPlugin, octree::OctreePlugin, surface::densy_function::NoiseSurface};
 
@@ -58,8 +58,9 @@ impl Plugin for IsosurfaceExtractionPlugin {
             //     gain: 0.5,
             //     octaves: 3,
             // }),
-            densy_function: Box::new(Sphere),
+            // densy_function: Box::new(Sphere),
             // densy_function: Box::new(Panel),
+            densy_function: Box::new(Cube),
             iso_level: Vec3::ZERO,
             negative_inside: true,
             snap_centro_id: true,
