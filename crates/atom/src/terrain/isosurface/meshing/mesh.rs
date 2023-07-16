@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
         info, Assets, Color, Commands, Component, Mesh, PbrBundle, Query, Res, ResMut,
-        StandardMaterial, Transform, UVec3, Vec3,
+        StandardMaterial, Transform, UVec3, Vec2, Vec3, Vec4,
     },
     render::render_resource::PrimitiveTopology,
     utils::HashMap,
@@ -74,6 +74,7 @@ impl From<MeshCache> for Mesh {
             Mesh::ATTRIBUTE_NORMAL,
             mesh_cache.get_vertice_normals().clone(),
         );
+        info!("mesh cache from: {:?}", mesh_cache.get_indices());
         mesh.set_indices(Some(bevy::render::mesh::Indices::U32(
             mesh_cache.get_indices().clone(),
         )));
@@ -106,6 +107,7 @@ pub fn create_mesh(
                 transform: Transform::from_translation(location),
                 ..Default::default()
             });
+
             *state = IsosurfaceExtractionState::Done;
         }
     }

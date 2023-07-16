@@ -36,6 +36,8 @@ pub fn generate_segments(
     for (mut mesh_cache, mut surface_sampler, state, octree) in query.iter_mut() {
         if let IsosurfaceExtractionState::Extract = *state {
             info!("generate_segments");
+            info!("octree.leaf_cells num: {}", octree.leaf_cells.len());
+            info!("query: {:?}", cells);
             for entity in octree.leaf_cells.iter() {
                 if let Ok((cell, mut faces)) = cells.get_mut(*entity) {
                     // let Ok(cell_mesh_info) = cell_mesh_info.get_mut(*entity) else {
@@ -44,10 +46,12 @@ pub fn generate_segments(
                     // };
                     //
                     let mut indices = [UVec3::ZERO; Face2DVertex::COUNT];
+                    let mut valid_strips = 0;
                     for face_index in FaceIndex::iter() {
                         for (i, face_vertex) in Face2DVertex::iter().enumerate() {
                             let vertex_pos = FACE_VERTEX[face_index as usize][face_vertex as usize];
                             indices[i] = cell.get_corner_sample_index()[vertex_pos as usize];
+                            info!("vertex_pos:{i} {:?}, indices: {}", vertex_pos, indices[i]);
                         }
 
                         let face = faces.get_face_mut(face_index);
@@ -59,7 +63,12 @@ pub fn generate_segments(
                             &mut surface_sampler,
                             &shape_surface,
                         );
+                        if face.get_strips()[0].get_vertex_index(0).is_some() {
+                            valid_strips += 1;
+                        }
                     }
+
+                    assert!(valid_strips > 0);
                 }
             }
         }
@@ -75,12 +84,19 @@ fn make_face_segments(
     shape_surface: &Res<ShapeSurface>,
 ) {
     let edges = (0..4).fold(0, |acc, i| {
+        info!(
+            "index: {}, value: {}",
+            indices[i],
+            sample_info.get_value_from_vertex_address(indices[i], shape_surface)
+        );
         acc | if sample_info.get_value_from_vertex_address(indices[i], shape_surface) < 0.0 {
             1 << i
         } else {
             0
         }
     });
+
+    info!("make_face_segments edges {}", edges);
 
     let e0a = EDGE_MAP[edges as usize][0][0];
     let e0b = EDGE_MAP[edges as usize][0][1];
@@ -125,6 +141,7 @@ fn make_strip(
     sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
+    info!("make strip {}: {:?} {:?}", strip_index, edge0, edge1);
     assert!(edge0.is_some() && edge1.is_some());
 
     let mut s = Strip::new(edge0, edge1);
@@ -145,6 +162,7 @@ fn populate_strip(
     sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
+    info!("populate_strip strip edge index {}", edge_index);
     let edge = strip.get_edge(edge_index);
     assert!(edge.is_some());
 
@@ -191,6 +209,7 @@ fn populate_strip(
                 strip.set_crossing_left_coord(edge_index, crossing_index_0);
                 strip.set_edge_dir(edge_index, Some(edge_dir));
                 dupli = true;
+                info!("make vertex dupli");
             }
         }
     }
@@ -226,7 +245,7 @@ fn get_edges_betwixt(
     } else if diff.y > 0 {
         range.start = vertex_coord0.y.min(vertex_coord1.y);
         range.end = vertex_coord0.y.max(vertex_coord1.y);
-        // direction = Some(EdgeDirection::YAxis);
+        direction = Some(EdgeDirection::YAxis);
     } else if diff.z > 0 {
         range.start = vertex_coord0.z.min(vertex_coord1.z);
         range.end = vertex_coord0.z.max(vertex_coord1.z);
@@ -303,26 +322,39 @@ fn make_vertex(
     sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
+    info!("make vertex");
     let pos0 = sample_info.get_pos_from_vertex_address(crossing_index_0, shape_surface);
     let value0 = sample_info.get_value_from_vertex_address(crossing_index_0, shape_surface);
     let point0 = Point::new_with_position_and_value(pos0, value0);
+    info!("crossing_index_0:{} point0:{:?}", crossing_index_0, point0);
 
     let pos1 = sample_info.get_pos_from_vertex_address(crossing_index_1, shape_surface);
     let value1 = sample_info.get_value_from_vertex_address(crossing_index_1, shape_surface);
     let point1 = Point::new_with_position_and_value(pos1, value1);
+    info!("crossing_index_1:{} point1:{:?}", crossing_index_1, point1);
 
-    let crossing_point = find_crossing_point_pos(2, &point0, &point1, sample_info, shape_surface);
+    let crossing_vertex_point =
+        find_crossing_point_pos(2, &point0, &point1, sample_info, shape_surface);
     let mut gradient = Vec3::ZERO;
-    find_gradient(&mut gradient, crossing_point, &sample_info, shape_surface);
+    find_gradient(
+        &mut gradient,
+        crossing_vertex_point,
+        &sample_info,
+        shape_surface,
+    );
+    info!(
+        "crossing_point:{} gradient:{}",
+        crossing_vertex_point, gradient
+    );
 
-    mesh_info.positions.push(crossing_point);
+    mesh_info.positions.push(crossing_vertex_point);
     mesh_info.normals.push(gradient);
 
     strip.set_vertex_index(edge_index, (mesh_info.positions.len() - 1) as u32);
     strip.set_crossing_left_coord(edge_index, crossing_index_0);
     strip.set_edge_dir(edge_index, Some(edge_dir));
 
-    assert!(mesh_info.vertex_index_data.get(&crossing_index_0).is_none());
+    // assert!(mesh_info.vertex_index_data.get(&crossing_index_0).is_none());
     let mut e = VertexIndices::new();
     e.set_dir_vertex_index(edge_dir, (mesh_info.positions.len() - 1) as u32);
     mesh_info.vertex_index_data.insert(crossing_index_0, e);
@@ -342,7 +374,11 @@ fn find_crossing_point_pos(
     let p1 = point1.get_position();
     let v1 = point1.get_value();
 
-    let alpha_value = (0.0 - v0) / (v1 - v0);
+    let alpha_value = if v1 - v0 != 0.0 {
+        (0.0 - v0) / (v1 - v0)
+    } else {
+        0.0
+    };
     assert!(alpha_value >= 0.0);
     let mut pos = *p0 + (*p1 - *p0) * alpha_value;
     let val = sample_info.get_value_from_pos(pos, shape_surface);
@@ -397,20 +433,20 @@ fn find_crossing_point_pos(
 
 fn find_gradient(
     normal: &mut Vec3,
-    position: Vec3,
+    vertex_point: Vec3,
     sample_info: &SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
-    let val = sample_info.get_value_from_pos(position, shape_surface);
+    let val = sample_info.get_value_from_pos(vertex_point, shape_surface);
     let offset = sample_info.voxel_size * 0.5;
     let dx =
-        sample_info.get_value_from_pos(position + Vec3::new(offset.x, 0.0, 0.0), shape_surface);
+        sample_info.get_value_from_pos(vertex_point + Vec3::new(offset.x, 0.0, 0.0), shape_surface);
 
     let dy =
-        sample_info.get_value_from_pos(position + Vec3::new(0.0, offset.y, 0.0), shape_surface);
+        sample_info.get_value_from_pos(vertex_point + Vec3::new(0.0, offset.y, 0.0), shape_surface);
 
     let dz =
-        sample_info.get_value_from_pos(position + Vec3::new(0.0, 0.0, offset.z), shape_surface);
+        sample_info.get_value_from_pos(vertex_point + Vec3::new(0.0, 0.0, offset.z), shape_surface);
 
     *normal = Vec3::new(dx - val, dy - val, dz - val).normalize();
 }
@@ -449,25 +485,26 @@ pub fn edit_transitional_face(
                     FaceIndex::Left,
                     FaceIndex::Left,
                 ];
-                if let Ok((cell, faces)) = cells.get(*cell_entity) {
+                if let Ok((cell, _faces)) = cells.get(*cell_entity) {
                     for (i, face_index) in FaceIndex::iter().enumerate() {
-                        let face = faces.get_face(face_index);
-                        assert!(face.get_face_type() == &FaceType::TransitFace);
+                        // let face = faces.get_face(face_index);
+                        // assert!(face.get_face_type() == &FaceType::TransitFace);
 
                         let (twin_address, twin_face_index) =
                             cell.get_twin_face_address(face_index);
-                        all_twin_cell_entitys[i] =
-                            *addresses.cell_addresses.get(&twin_address).unwrap();
-                        all_twin_cell_face_index[i] = twin_face_index;
+                        if let Some(twin_entity) = addresses.cell_addresses.get(&twin_address) {
+                            all_twin_cell_entitys[i] = *twin_entity;
+                            all_twin_cell_face_index[i] = twin_face_index;
 
-                        let mut all_strip = &mut all_strips[i];
-                        traverse_face(
-                            &cells,
-                            addresses,
-                            &all_twin_cell_entitys[i],
-                            twin_face_index,
-                            &mut all_strip,
-                        );
+                            let mut all_strip = &mut all_strips[i];
+                            traverse_face(
+                                &cells,
+                                addresses,
+                                &all_twin_cell_entitys[i],
+                                twin_face_index,
+                                &mut all_strip,
+                            );
+                        }
                     }
                 }
 
@@ -646,8 +683,9 @@ fn traverse_face(
 
                 for sub_cell_index in sub_cell_indices.iter() {
                     let child_address = cell.get_address().get_child_address(*sub_cell_index);
-                    let entity = cell_addresses.cell_addresses.get(&child_address).unwrap();
-                    traverse_face(cell_query, cell_addresses, entity, face_index, strips);
+                    if let Some(entity) = cell_addresses.cell_addresses.get(&child_address) {
+                        traverse_face(cell_query, cell_addresses, entity, face_index, strips);
+                    }
                 }
             }
             FaceType::LeafFace => {
@@ -729,16 +767,22 @@ fn collect_strips(
                 assert!(false);
             }
             FaceType::LeafFace => {
+                info!("collect strip leaf face");
                 for strip in face.get_strips().iter() {
                     if strip.get_vertex_index(0).is_some() {
                         cell_strips.push(strip.clone());
+                    } else {
+                        info!("collect strip leaf face vertex index is none")
                     }
                 }
             }
             FaceType::TransitFace => {
+                info!("collect strip transit face");
                 for strip in face.get_strips().iter() {
                     if strip.get_vertex_index(0).is_some() {
                         cell_strips.push(strip.clone());
+                    } else {
+                        info!("collect strip transit face vertex index is none")
                     }
                 }
 

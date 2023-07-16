@@ -51,7 +51,7 @@ where
 
     #[inline]
     pub fn get_value(&self, coord: UVec3) -> T {
-        self.data[self.get_data_index(coord) as usize].clone()
+        self.data[self.get_data_index(coord)].clone()
     }
 
     #[inline]

@@ -159,24 +159,30 @@ pub fn update_terrain_visible_areas(
     for (entity, global_transform, visible_range) in visible_range_query.iter() {
         let camera_position = global_transform.translation();
 
+        let camera_position = Vec3::new(0.0, 0.0, 0.0);
+
         let chunk_size = terrain_settings.get_chunk_size();
 
-        let min_global_coord = (camera_position + visible_range.min) / chunk_size;
-        let max_global_coord = (camera_position + visible_range.max) / chunk_size;
+        let min_coord = (camera_position + visible_range.min) / chunk_size;
+        let max_coord = (camera_position + visible_range.max) / chunk_size;
+        info!(
+            "min_coord: {:?} max_coord: {:?}, visible_range: {:?}",
+            min_coord, max_coord, visible_range
+        );
 
         terrain_centers.set_current_visible_area(
             entity,
             &TerrainSingleVisibleArea {
                 global_transform: *global_transform,
                 cached_min_chunk_coord: TerrainChunkCoord::new(
-                    min_global_coord.x.floor() as i64,
-                    min_global_coord.y.floor() as i64,
-                    min_global_coord.z.floor() as i64,
+                    min_coord.x.floor() as i64,
+                    min_coord.y.floor() as i64,
+                    min_coord.z.floor() as i64,
                 ),
                 cached_max_chunk_coord: TerrainChunkCoord::new(
-                    max_global_coord.x.floor() as i64,
-                    max_global_coord.y.floor() as i64,
-                    max_global_coord.z.floor() as i64,
+                    max_coord.x.floor() as i64,
+                    max_coord.y.floor() as i64,
+                    max_coord.z.floor() as i64,
                 ),
             },
         );

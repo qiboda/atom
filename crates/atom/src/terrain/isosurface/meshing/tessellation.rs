@@ -55,23 +55,31 @@ fn tessellation_traversal_inner(
     surface_sampler: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
+    // info!("tessellation_inner: {:?}", entity);
     if let Ok(cell) = cells.get(entity) {
         let cell_type = cell.get_cell_type();
         match cell_type {
             CellType::Branch => {
                 for subcell_index in SubCellIndex::iter() {
                     let child_address = cell.get_address().get_child_address(subcell_index);
-                    let child_cell_entity =
-                        cell_addresses.cell_addresses.get(&child_address).unwrap();
-                    tessellation_traversal_inner(
-                        mesh,
-                        *child_cell_entity,
-                        cells,
-                        cell_mesh_infos,
-                        cell_addresses,
-                        surface_sampler,
-                        shape_surface,
-                    );
+
+                    if let Some(child_cell_entity) =
+                        cell_addresses.cell_addresses.get(&child_address)
+                    {
+                        // info!(
+                        //     "children address: {:?} children entity {:?}",
+                        //     child_address, child_cell_entity
+                        // );
+                        tessellation_traversal_inner(
+                            mesh,
+                            *child_cell_entity,
+                            cells,
+                            cell_mesh_infos,
+                            cell_addresses,
+                            surface_sampler,
+                            shape_surface,
+                        );
+                    }
                 }
             }
             CellType::Leaf => {
@@ -90,6 +98,7 @@ fn tessellate_component(
     shape_surface: &Res<ShapeSurface>,
     component: &mut Vec<u32>,
 ) {
+    info!("tessellate_component");
     let num_of_indices = component.len();
 
     assert!(num_of_indices >= 3);
@@ -136,6 +145,7 @@ fn tessellate_component(
         mesh_cache.positions.push(med_vertex);
         mesh_cache.normals.push(centro_id_normal);
 
+        assert!(mesh_cache.positions.len() > 0);
         component.push((mesh_cache.positions.len() - 1) as u32);
 
         make_tri_fan(mesh_cache, component);
@@ -152,6 +162,7 @@ fn find_gradient_with_value(
     position: Vec3,
     value: f32,
 ) {
+    info!("find_gradient_with_value");
     let dx = surface_sampler
         .get_value_from_pos(position + Vec3::new(dimensions.x, 0.0, 0.0), shape_surface);
 
@@ -165,23 +176,25 @@ fn find_gradient_with_value(
 }
 
 fn make_tri(mesh: &mut MeshCache, component: &Vec<u32>) {
-    for i in 0..3 {
-        mesh.get_indices_mut().push(component[i]);
-    }
+    info!("make_tri:{:?}", component);
+    mesh.get_indices_mut().push(component[0]);
+    mesh.get_indices_mut().push(component[2]);
+    mesh.get_indices_mut().push(component[1]);
 }
 
 // 扇形三角面
 fn make_tri_fan(mesh: &mut MeshCache, component: &Vec<u32>) {
+    info!("make_tri_fan: {:?}", component);
     for i in 0..(component.len() - 2) {
         mesh.get_indices_mut()
             .push(component[component.len() - 1] as u32);
-        mesh.get_indices_mut().push(component[i] as u32);
         mesh.get_indices_mut().push(component[i + 1] as u32);
+        mesh.get_indices_mut().push(component[i] as u32);
     }
 
     mesh.get_indices_mut()
         .push(component[component.len() - 1] as u32);
+    mesh.get_indices_mut().push(component[0] as u32);
     mesh.get_indices_mut()
         .push(component[component.len() - 2] as u32);
-    mesh.get_indices_mut().push(component[0] as u32);
 }

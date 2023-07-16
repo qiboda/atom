@@ -51,10 +51,6 @@ impl Face {
         &self.face_type
     }
 
-    pub fn set_strips(&mut self, strips: Vec<Strip>) {
-        self.strips = strips;
-    }
-
     pub fn get_strips(&self) -> &Vec<Strip> {
         &self.strips
     }

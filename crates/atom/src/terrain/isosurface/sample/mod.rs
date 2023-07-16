@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::terrain::{
     chunk::{coords::TerrainChunkCoord, TerrainChunk},
+    isosurface::BuildOctreeState,
     settings::TerrainSettings,
 };
 
@@ -64,11 +65,60 @@ fn init_surface_sampler(
                 let offset = surface_sampler.world_offset;
                 let size = surface_sampler.voxel_size * surface_sampler.get_sample_size().as_vec3();
 
+                info!(
+                    "range values: {:?}, {:?}, voxel_size: {:?}",
+                    offset, size, surface_sampler.voxel_size
+                );
                 let values =
                     shape_surface.get_range_values(offset, size, surface_sampler.voxel_size);
-                surface_sampler.set_sample_data(values);
+                info!("sample value num: {}", values.len());
 
-                *state = IsosurfaceExtractionState::Extract;
+                let mut min_num = 0;
+                let mut max_num = 0;
+                let mut zero_num = 0;
+                for i in values.iter() {
+                    if i < &0.0 {
+                        min_num += 1;
+                    } else if i == &0.0 {
+                        zero_num += 1;
+                    } else {
+                        max_num += 1;
+                    }
+                }
+
+                info!(
+                    "min num: {}, zero_num: {}, max_num: {}",
+                    min_num, zero_num, max_num
+                );
+
+                info!("value: {:?}", values);
+
+                surface_sampler.set_sample_data(values);
+                info!(
+                    "444 value: {}",
+                    surface_sampler
+                        .get_value_from_vertex_address(UVec3::new(4, 4, 4), &shape_surface)
+                );
+
+                info!(
+                    "000 value: {}",
+                    surface_sampler
+                        .get_value_from_vertex_address(UVec3::new(0, 0, 0), &shape_surface)
+                );
+
+                info!(
+                    "440 value: {}",
+                    surface_sampler
+                        .get_value_from_vertex_address(UVec3::new(4, 4, 0), &shape_surface)
+                );
+
+                info!(
+                    "400 value: {}",
+                    surface_sampler
+                        .get_value_from_vertex_address(UVec3::new(4, 0, 0), &shape_surface)
+                );
+
+                *state = IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build);
             }
         });
 }
