@@ -193,8 +193,8 @@ fn make_tri_fan(mesh: &mut MeshCache, component: &Vec<u32>) {
     }
 
     mesh.get_indices_mut()
+        .push(component[component.len() - 2] as u32);
+    mesh.get_indices_mut()
         .push(component[component.len() - 1] as u32);
     mesh.get_indices_mut().push(component[0] as u32);
-    mesh.get_indices_mut()
-        .push(component[component.len() - 2] as u32);
 }

@@ -71,15 +71,15 @@ fn startup(
     });
 
     commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(-100.0, -100.0, -100.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 
-    let size = 1.0 * 2.0;
+    let size = 1.0 * 3.0;
 
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(1.0, 1.0, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(-4.0, -4.0, -4.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera: Camera {
                 hdr: true,
                 order: 0,
