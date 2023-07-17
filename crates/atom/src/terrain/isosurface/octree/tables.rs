@@ -388,68 +388,68 @@ pub const FACE_2_SUBCELL: [[SubCellIndex; 4]; FaceIndex::COUNT] = [
 /// @brief Cell neighbour table
 /// See: 'Cell Point and Subcell Layout' in tables header
 ///
-/// 在对应的方向上，当前Cell的ID，对应的相邻Cell的ID
+/// 在对应的方向上，当前Cell的ID，对应的相邻Cell的ID, 以及是否是相同的父cell。
 ///
-pub const NEIGHBOUR_ADDRESS_TABLE: [[SubCellIndex; SubCellIndex::COUNT]; FaceIndex::COUNT] = [
+pub const NEIGHBOUR_ADDRESS_TABLE: [[(SubCellIndex, bool); SubCellIndex::COUNT]; FaceIndex::COUNT] = [
     [
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftTopFront,
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::RightBottomFront,
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::RightTopBack,
+        (SubCellIndex::LeftBottomFront, false),
+        (SubCellIndex::LeftBottomBack, true),
+        (SubCellIndex::LeftTopFront, false),
+        (SubCellIndex::LeftTopBack, true),
+        (SubCellIndex::RightBottomFront, false),
+        (SubCellIndex::RightBottomBack, true),
+        (SubCellIndex::RightTopFront, false),
+        (SubCellIndex::RightTopBack, true),
     ], // BACK NEIGHBOUR
     [
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftTopFront,
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::RightBottomFront,
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::RightTopBack,
+        (SubCellIndex::LeftBottomFront, true),
+        (SubCellIndex::LeftBottomBack, false),
+        (SubCellIndex::LeftTopFront, true),
+        (SubCellIndex::LeftTopBack, false),
+        (SubCellIndex::RightBottomFront, true),
+        (SubCellIndex::RightBottomBack, false),
+        (SubCellIndex::RightTopFront, true),
+        (SubCellIndex::RightTopBack, false),
     ], // FRONT NEIGHBOUR
     [
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::LeftTopFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::RightTopBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightBottomFront,
+        (SubCellIndex::LeftTopBack, false),
+        (SubCellIndex::LeftTopFront, false),
+        (SubCellIndex::LeftBottomBack, true),
+        (SubCellIndex::LeftBottomFront, true),
+        (SubCellIndex::RightTopBack, false),
+        (SubCellIndex::RightTopFront, false),
+        (SubCellIndex::RightBottomBack, true),
+        (SubCellIndex::RightBottomFront, true),
     ], // BOTTOM NEIGHBOUR
     [
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::LeftTopFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::RightTopBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightBottomFront,
+        (SubCellIndex::LeftTopBack, true),
+        (SubCellIndex::LeftTopFront, true),
+        (SubCellIndex::LeftBottomBack, false),
+        (SubCellIndex::LeftBottomFront, false),
+        (SubCellIndex::RightTopBack, true),
+        (SubCellIndex::RightTopFront, true),
+        (SubCellIndex::RightBottomBack, false),
+        (SubCellIndex::RightBottomFront, false),
     ], // TOP NEIGHBOUR
     [
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightBottomFront,
-        SubCellIndex::RightTopBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::LeftTopFront,
+        (SubCellIndex::RightBottomBack, false),
+        (SubCellIndex::RightBottomFront, false),
+        (SubCellIndex::RightTopBack, false),
+        (SubCellIndex::RightTopFront, false),
+        (SubCellIndex::LeftBottomBack, true),
+        (SubCellIndex::LeftBottomFront, true),
+        (SubCellIndex::LeftTopBack, true),
+        (SubCellIndex::LeftTopFront, true),
     ], // LEFT NEIGHBOUR
     [
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightBottomFront,
-        SubCellIndex::RightTopBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::LeftTopFront,
+        (SubCellIndex::RightBottomBack, true),
+        (SubCellIndex::RightBottomFront, true),
+        (SubCellIndex::RightTopBack, true),
+        (SubCellIndex::RightTopFront, true),
+        (SubCellIndex::LeftBottomBack, false),
+        (SubCellIndex::LeftBottomFront, false),
+        (SubCellIndex::LeftTopBack, false),
+        (SubCellIndex::LeftTopFront, false),
     ], // RIGHT NEIGHBOUR
 ];
 
