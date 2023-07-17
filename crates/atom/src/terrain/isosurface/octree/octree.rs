@@ -477,7 +477,30 @@ pub fn mark_transitional_faces(
             );
             let mut transitional_cells = Vec::new();
 
+            let mut face_branch_num = 0;
+            let mut face_leaf_num = 0;
+            for entity in octree.cells.iter() {
+                if let Ok((_cell, faces)) = cell_faces.get(*entity) {
+                    for face_index in FaceIndex::iter() {
+                        match faces.get_face(face_index).get_face_type() {
+                            FaceType::BranchFace => {
+                                face_branch_num += 1;
+                            }
+                            FaceType::LeafFace => {
+                                face_leaf_num += 1;
+                            }
+                            FaceType::TransitFace => assert!(false),
+                        }
+                    }
+                }
+            }
+            info!(
+                "branch face: {}, leaf face: {}",
+                face_branch_num, face_leaf_num
+            );
+
             for entity in octree.leaf_cells.iter() {
+                info!("entity: {:?}", entity);
                 let mut all_neighbour_cell_entity = [
                     Entity::PLACEHOLDER,
                     Entity::PLACEHOLDER,
@@ -500,6 +523,7 @@ pub fn mark_transitional_faces(
                     assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
 
                     for (i, face_index) in FaceIndex::iter().enumerate() {
+                        info!("entity: {:?} face index: {:?}", entity, face_index);
                         let face = faces.get_face_mut(face_index);
                         assert!(face.get_face_type() == &FaceType::LeafFace);
 
@@ -511,14 +535,22 @@ pub fn mark_transitional_faces(
                             cell_address.cell_addresses.get(&neighbour_cell_address)
                         {
                             all_neighbour_cell_entity[i] = *neighbour_cell_entity;
+                        } else {
+                            info!("get cell fail from cell address!");
                         }
                     }
+                } else {
+                    info!("get cell fail!");
                 }
 
                 let mut set_transit_face = [false, false, false, false, false, false];
 
                 for (i, entity) in all_neighbour_cell_entity.iter().enumerate() {
                     let neighbour_face_index = all_neighbour_face_index[i];
+                    info!(
+                        "entity: {:?} neighbour face index: {:?}",
+                        entity, neighbour_face_index
+                    );
                     if let Ok((_neighbour_cell, neighbour_faces)) = cell_faces.get(*entity) {
                         if neighbour_faces
                             .get_face(neighbour_face_index)
@@ -526,7 +558,19 @@ pub fn mark_transitional_faces(
                             == &FaceType::BranchFace
                         {
                             set_transit_face[i] = true;
+                            info!("set_transit_face true {}", i);
+                        } else {
+                            info!(
+                                "entity: {:?} neighbour face index: {:?} face type: {:?}",
+                                entity,
+                                neighbour_face_index,
+                                neighbour_faces
+                                    .get_face(neighbour_face_index)
+                                    .get_face_type()
+                            );
                         }
+                    } else {
+                        info!("get neighbour cell fail from entity!");
                     }
                 }
 
@@ -538,8 +582,11 @@ pub fn mark_transitional_faces(
                             let face = faces.get_face_mut(FaceIndex::from_repr(i).unwrap());
                             face.set_face_type(FaceType::TransitFace);
                             b_set = true;
+                            info!("set_transit_face transit face {}", i);
                         }
                     }
+                } else {
+                    info!("get leaf cell fail from entity!");
                 }
 
                 if b_set {

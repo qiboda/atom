@@ -1,5 +1,6 @@
 use super::tables::{FaceIndex, SubCellIndex, NEIGHBOUR_ADDRESS_TABLE};
 
+use bevy::prelude::info;
 use strum::EnumCount;
 
 /// store octree cell address
@@ -66,48 +67,119 @@ impl VoxelAddress {
         let mut shift_count = 0;
 
         loop {
-            let mut same_parent = false;
             let sub_cell_index = address.get_pos_in_parent();
-
-            let neighbour_sub_cell_index =
-                NEIGHBOUR_ADDRESS_TABLE[face_index as usize][sub_cell_index as usize];
 
             // if searching for right(+X), top(+Y) or front(+Z) neighbour
             // it should always have a greater slot value
             // if searching for left(-X), bottom(-Y) or back(-Z) neighbour
             // the neightbour should always have a smaller slot value,
             // OTHERWISE it means it belongs to a different parent
-            match face_index {
-                FaceIndex::Back | FaceIndex::Bottom | FaceIndex::Left => {
-                    if neighbour_sub_cell_index < sub_cell_index {
-                        same_parent = true;
-                    }
-                }
-                FaceIndex::Front | FaceIndex::Top | FaceIndex::Right => {
-                    if neighbour_sub_cell_index < sub_cell_index {
-                        same_parent = true;
-                    }
-                }
-            }
+            let (neighbour_sub_cell_index, same_parent) =
+                NEIGHBOUR_ADDRESS_TABLE[face_index as usize][sub_cell_index as usize];
 
+            info!("nighbour sub cell index: {:?}", neighbour_sub_cell_index);
+            println!(
+                "sub_cell_index {:?}, face_index: {:?}, nighbour sub cell index: {:?}, same parent : {}",
+                sub_cell_index, face_index, neighbour_sub_cell_index, same_parent
+            );
+
+            println!("neighbour_address: {:o}", neighbour_address.raw_address);
+
+            neighbour_address.raw_address = neighbour_address.raw_address
+                | ((neighbour_sub_cell_index as usize) << shift_count);
+
+            println!("neighbour_address: {:o}", neighbour_address.raw_address);
+            println!("address: {:o}", address.raw_address);
+
+            address = address.get_parent_address();
+            shift_count += 3;
+            println!("address: {:o}", address.raw_address);
             if same_parent {
                 neighbour_address.raw_address =
-                    address.raw_address << shift_count | neighbour_address.raw_address;
+                    (address.raw_address << shift_count) | neighbour_address.raw_address;
                 break;
-            } else {
-                neighbour_address.raw_address = neighbour_address.raw_address
-                    | ((neighbour_sub_cell_index as usize) << shift_count);
             }
-
-            shift_count += 1;
 
             if address.raw_address == 0 {
                 break;
             }
-
-            address = address.get_parent_address();
         }
 
         neighbour_address
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_child_address() {
+        let address = VoxelAddress { raw_address: 1 };
+        let child_address = address.get_child_address(SubCellIndex::LeftBottomBack);
+        assert_eq!(
+            child_address,
+            VoxelAddress {
+                raw_address: 0b1000
+            }
+        );
+    }
+
+    #[test]
+    fn test_get_pos_in_parent() {
+        let address = VoxelAddress { raw_address: 1 };
+        let pos_in_parent = address.get_pos_in_parent();
+        assert_eq!(pos_in_parent, SubCellIndex::LeftBottomFront);
+    }
+
+    #[test]
+    fn test_get_neighbour_address_simple() {
+        let address = VoxelAddress { raw_address: 1 };
+        assert_eq!(
+            address.get_neighbour_address(FaceIndex::Right),
+            VoxelAddress { raw_address: 0b101 }
+        );
+    }
+
+    #[test]
+    fn test_get_neighbour_address() {
+        let address = VoxelAddress { raw_address: 1 };
+        let child_address_1 = address.get_child_address(SubCellIndex::LeftBottomBack);
+        let child_address_2 = address.get_child_address(SubCellIndex::LeftBottomFront);
+        assert_eq!(
+            child_address_1.get_neighbour_address(FaceIndex::Front),
+            child_address_2
+        );
+    }
+
+    #[test]
+    fn test_get_top_neighbour_address() {
+        let address = VoxelAddress { raw_address: 1 };
+        assert_eq!(
+            address.get_neighbour_address(FaceIndex::Front),
+            VoxelAddress { raw_address: 0o0 }
+        );
+    }
+
+    #[test]
+    fn test_get_neighbour_address_crossing_cell() {
+        let address = VoxelAddress { raw_address: 1 };
+
+        let child_address_1 = address.get_child_address(SubCellIndex::RightTopBack);
+        let child_child_address_1 = child_address_1.get_child_address(SubCellIndex::LeftBottomBack);
+
+        assert_eq!(
+            child_child_address_1.get_neighbour_address(FaceIndex::Left),
+            VoxelAddress { raw_address: 0o124 }
+        );
+
+        let child_address_2 = address.get_child_address(SubCellIndex::LeftTopBack);
+        let child_child_address_2 =
+            child_address_2.get_child_address(SubCellIndex::RightBottomBack);
+
+        assert_eq!(
+            child_child_address_1.get_neighbour_address(FaceIndex::Left),
+            child_child_address_2
+        );
     }
 }
