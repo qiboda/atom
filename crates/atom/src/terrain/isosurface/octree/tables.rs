@@ -215,7 +215,7 @@ pub enum SubCellIndex {
 }
 
 // x, y, z => xyz
-#[derive(Debug, Clone, Copy, PartialEq, EnumIter, EnumCount)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount)]
 pub enum EdgeDirection {
     XAxis = 0,
     YAxis = 1,

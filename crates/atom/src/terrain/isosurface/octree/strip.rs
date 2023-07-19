@@ -2,7 +2,7 @@ use bevy::prelude::UVec3;
 
 use super::tables::{EdgeDirection, Face2DEdge};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Strip {
     b_loop: bool,
 

@@ -160,6 +160,9 @@ fn make_strip(
 
     populate_strip(&mut s, indices, 1, mesh_info, sample_info, shape_surface);
 
+    if strip_index == 1 {
+        assert!(face.get_strips_mut()[0] != s);
+    }
     face.get_strips_mut()[strip_index] = s.clone();
 }
 
@@ -487,7 +490,11 @@ pub fn edit_transitional_face(
 ) {
     for (octree, addresses, state) in octree_query.iter() {
         if let IsosurfaceExtractionState::Extract = *state {
-            info!("edit_transitional_face");
+            info!(
+                "edit_transitional_face: num: {}",
+                octree.transit_face_cells.len()
+            );
+            // todo: cache transit face indices....
             for cell_entity in octree.transit_face_cells.iter() {
                 let mut all_strips = [
                     Vec::new(),
@@ -525,15 +532,31 @@ pub fn edit_transitional_face(
                             all_twin_cell_face_index[i] = twin_face_index;
 
                             let mut all_strip = &mut all_strips[i];
+                            let mut depth = 0;
                             traverse_face(
                                 &cells,
                                 addresses,
                                 &all_twin_cell_entitys[i],
                                 twin_face_index,
                                 &mut all_strip,
+                                &mut depth,
                             );
+
+                            info!(
+                                "twin_entity: {:?}, to traverse_face, all strip: {:?}",
+                                twin_entity, all_strip
+                            );
+                        } else {
+                            info!("get addresses.cell_addresses is none");
                         }
                     }
+                }
+
+                for i in 0..6 {
+                    info!(
+                        "edit_transitiona_face: entity: {:?}, face_index: {:?}, all_strip: {:?}",
+                        all_twin_cell_entitys[i], all_twin_cell_face_index[i], all_strips[i]
+                    );
                 }
 
                 for (index, twin_cell_entity) in all_twin_cell_entitys.iter().enumerate() {
@@ -541,7 +564,13 @@ pub fn edit_transitional_face(
                         let all_strip = &mut all_strips[index];
                         let twin_face_index = all_twin_cell_face_index[index];
 
+                        info!(
+                            "all twin_cell_entity {:?} face index: {:?} strip: {:?}",
+                            twin_cell_entity, index, all_strip
+                        );
+
                         if all_strip.len() == 0 {
+                            info!("all_strip.len() == 0 and continue");
                             continue;
                         }
 
@@ -573,7 +602,7 @@ pub fn edit_transitional_face(
                                             long_strip.change_back(strip, 1);
                                             added_in_iteration += 1;
                                         } else {
-                                            // info!("Some(data) != strip.get_vertex_index(1)");
+                                            info!("Some(data) != strip.get_vertex_index(1)");
                                         }
                                     } else if vertex_indices.last()
                                         == strip.get_vertex_index(1).as_ref()
@@ -583,14 +612,14 @@ pub fn edit_transitional_face(
                                             long_strip.change_back(strip, 0);
                                             added_in_iteration += 1;
                                         } else {
-                                            // info!("Some(data) != strip.get_vertex_index(0)");
+                                            info!("Some(data) != strip.get_vertex_index(0)");
                                         }
                                     } else {
-                                        // info!("all_strip.retain first false");
-                                        // info!(
-                                        //     "strip: {:?} vertex_indices: {:?}",
-                                        //     strip, vertex_indices
-                                        // );
+                                        info!("all_strip.retain first false");
+                                        info!(
+                                            "strip: {:?} vertex_indices: {:?}",
+                                            strip, vertex_indices
+                                        );
                                         return true;
                                     }
 
@@ -598,28 +627,28 @@ pub fn edit_transitional_face(
                                         vertex_indices.remove(0);
                                         long_strip.set_loop(true);
                                     } else {
-                                        // info!(
-                                        //     "!= vertex index len {} vertex index {:?} added_in_iteration {}, long_strip is loop: {}",
-                                        //     vertex_indices.len(),
-                                        //     vertex_indices,
-                                        //     added_in_iteration,
-                                        //     long_strip.get_loop()
-                                        // );
+                                        info!(
+                                            "!= vertex index len {} vertex index {:?} added_in_iteration {}, long_strip is loop: {}",
+                                            vertex_indices.len(),
+                                            vertex_indices,
+                                            added_in_iteration,
+                                            long_strip.get_loop()
+                                        );
                                     }
 
                                     return false;
                                 });
 
-                                // info!("all_strip: num: {}", all_strip.len());
+                                info!("all_strip: num: {}", all_strip.len());
 
                                 if all_strip.len() <= 0
                                     || added_in_iteration <= 0
                                     || long_strip.get_loop()
                                 {
-                                    // info!("all_strip.retain first break");
+                                    info!("all_strip.retain first break");
                                     break;
                                 } else {
-                                    // info!("first all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                                    info!("first all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                                 }
                             }
 
@@ -645,7 +674,7 @@ pub fn edit_transitional_face(
                                                 added_in_iteration += 1;
                                             }
                                         } else {
-                                            // info!("all_strip.retain second false");
+                                            info!("all_strip.retain second false");
                                             return true;
                                         }
 
@@ -662,36 +691,64 @@ pub fn edit_transitional_face(
                                     {
                                         break;
                                     } else {
-                                        // info!("seconds all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                                        info!("seconds all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                                     }
                                 }
                             }
+
+                            info!(
+                                "twin_faces faceIndex: {:?} strips: {:?}, and long strip: {:?}",
+                                twin_face_index,
+                                twin_faces.get_face_mut(twin_face_index).get_strips(),
+                                long_strip
+                            );
+                            assert!(
+                                long_strip.get_vertex_index(0).is_some()
+                                    && twin_faces
+                                        .get_face_mut(twin_face_index)
+                                        .get_strips()
+                                        .contains(&long_strip)
+                                        == false
+                            );
 
                             twin_faces
                                 .get_face_mut(twin_face_index)
                                 .get_strips_mut()
                                 .push(long_strip.clone());
 
+                            info!(
+                                "transit entity: {:?} long strip: {:?}",
+                                twin_cell_entity, long_strip
+                            );
+
                             transit_segs.push(vertex_indices);
 
-                            // info!("all_strip len: {}", all_strip.len());
+                            info!("all_strip len: {}", all_strip.len());
                             if all_strip.len() == 0 {
                                 break;
                             } else {
-                                // info!("three all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                                info!("three all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                             }
                         }
 
                         if transit_segs.len() != 0 {
                             twin_faces
                                 .get_face_mut(twin_face_index)
-                                .set_transit_segs(transit_segs);
+                                .set_transit_segs(transit_segs.clone());
+                            info!(
+                                "transit entity: {:?} transit segs: {:?}",
+                                twin_cell_entity, transit_segs
+                            );
                         }
 
                         all_strip.clear();
                     }
                 }
             }
+            info!(
+                "edit_transitional_face end: num: {}",
+                octree.transit_face_cells.len()
+            );
         }
     }
 }
@@ -702,6 +759,7 @@ fn traverse_face(
     cell_entity: &Entity,
     face_index: FaceIndex,
     strips: &mut Vec<Strip>,
+    depth: &mut u32,
 ) {
     if let Ok((cell, faces)) = cell_query.get(*cell_entity) {
         let face = faces.get_face(face_index);
@@ -709,19 +767,33 @@ fn traverse_face(
             FaceType::BranchFace => {
                 let sub_cell_indices = FACE_2_SUBCELL[face_index as usize];
 
+                *depth += 1;
+
                 for sub_cell_index in sub_cell_indices.iter() {
                     let child_address = cell.get_address().get_child_address(*sub_cell_index);
                     if let Some(entity) = cell_addresses.cell_addresses.get(&child_address) {
-                        traverse_face(cell_query, cell_addresses, entity, face_index, strips);
+                        traverse_face(
+                            cell_query,
+                            cell_addresses,
+                            entity,
+                            face_index,
+                            strips,
+                            depth,
+                        );
                     }
                 }
             }
             FaceType::LeafFace => {
-                for strip in face.get_strips().iter() {
-                    if strip.get_vertex_index(0).is_none() {
-                        continue;
+                if *depth > 0 {
+                    for strip in face.get_strips().iter() {
+                        info!("traverse_face strip: {:?}", strip);
+                        if strip.get_vertex_index(0).is_none() {
+                            continue;
+                        }
+                        info!("traverse_face strip push: {:?}", strip);
+                        strips.push(strip.clone());
+                        info!("transit entity: {:?}", cell_entity);
                     }
-                    strips.push(strip.clone());
                 }
             }
             FaceType::TransitFace => assert!(false),
@@ -753,9 +825,9 @@ pub fn trace_comonent(
                 // 获取一个cell的所有strip
                 collect_strips(
                     &cells,
-                    faces,
                     cell_addresses,
                     cell,
+                    faces,
                     &mut cell_strips,
                     &mut transit_segs,
                 );
@@ -770,9 +842,7 @@ pub fn trace_comonent(
 
                     link_strips(&mut components, &mut cell_strips, &mut transit_segs);
 
-                    if components.len() >= 3 {
-                        cell_mesh_info.components.push(components.clone());
-                    }
+                    cell_mesh_info.components.push(components.clone());
 
                     components.clear();
                 }
@@ -784,9 +854,9 @@ pub fn trace_comonent(
 
 fn collect_strips(
     cells: &Query<(&Cell, &Faces)>,
-    faces: &Faces,
     cell_addresses: &OctreeCellAddress,
     cell: &Cell,
+    faces: &Faces,
     cell_strips: &mut Vec<Strip>,
     transit_segs: &mut Vec<Vec<u32>>,
 ) {
@@ -799,20 +869,34 @@ fn collect_strips(
             FaceType::LeafFace => {
                 info!("collect strip leaf face");
                 for strip in face.get_strips().iter() {
+                    info!(
+                        "entity {:?}, strip: {:?}",
+                        cell_addresses.cell_addresses.get(cell.get_address()),
+                        strip
+                    );
                     if strip.get_vertex_index(0).is_some() {
                         cell_strips.push(strip.clone());
                     } else {
                         info!("collect strip leaf face vertex index is none")
                     }
                 }
+                info!("collect strip leaf face end");
             }
             FaceType::TransitFace => {
                 info!("collect strip transit face");
                 for strip in face.get_strips().iter() {
                     if strip.get_vertex_index(0).is_some() {
+                        info!(
+                            "entity {:?}, strip: {:?}",
+                            cell_addresses.cell_addresses.get(cell.get_address()),
+                            strip
+                        );
                         cell_strips.push(strip.clone());
                     } else {
-                        info!("collect strip transit face vertex index is none")
+                        info!(
+                            "collect strip transit face vertex index is none: {:?}",
+                            strip
+                        )
                     }
                 }
 
@@ -823,13 +907,25 @@ fn collect_strips(
                     continue;
                 };
 
+                info!(
+                    "twin_address: {:?}, entity: {:?}",
+                    twin_address, cell_entity
+                );
+
                 let twin = faces.get_face(twin_face_index);
-                for (i, strip) in twin.get_strips().iter().enumerate() {
-                    strip.get_vertex_index(0).map(|_data| {
-                        transit_segs.push(twin.get_transit_segs()[i].clone());
+                info!("twin.get_strips(): {:?}", twin.get_strips());
+                for strip in twin.get_strips().iter() {
+                    if strip.get_vertex_index(0).is_some() {
                         cell_strips.push(strip.clone());
-                    });
+                    }
                 }
+
+                info!("twin.get_transit_segs(): {:?}", twin.get_transit_segs());
+                for seg in twin.get_transit_segs().iter() {
+                    transit_segs.push(seg.clone());
+                }
+
+                info!("collect strip transit face end");
             }
         }
     }
@@ -850,6 +946,9 @@ fn link_strips(
 
     for i in 0..cell_strips.len() {
         info!("link_strips: {:?}", cell_strips[i].get_vertex());
+    }
+    for i in 0..transit_segs.len() {
+        info!("link_transit_seg: {:?}", transit_segs[i]);
     }
 
     components.push(cell_strips[0].get_vertex_index(0).unwrap());

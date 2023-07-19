@@ -1,6 +1,6 @@
 use bevy::{
     prelude::{
-        info, Assets, Color, Commands, Component, Mesh, PbrBundle, Query, Res, ResMut,
+        default, info, Assets, Color, Commands, Component, Mesh, PbrBundle, Query, Res, ResMut,
         StandardMaterial, Transform, UVec3, Vec2, Vec3, Vec4,
     },
     render::render_resource::PrimitiveTopology,
@@ -103,7 +103,11 @@ pub fn create_mesh(
             info!("create_mesh: {:?}", mesh_cache);
             commands.spawn(PbrBundle {
                 mesh: meshes.add(Mesh::from(mesh_cache.clone())),
-                material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+                material: materials.add(StandardMaterial {
+                    base_color: Color::BLUE,
+                    double_sided: true,
+                    ..default()
+                }),
                 transform: Transform::from_translation(location),
                 ..Default::default()
             });

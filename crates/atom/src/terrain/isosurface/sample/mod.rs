@@ -47,6 +47,11 @@ fn startup_sample_surface(
         ) * voxel_num.as_vec3()
             * voxel_size;
 
+        info!(
+            "world_offset: {}, voxel_size: {}, voxel_num: {}",
+            world_offset, voxel_size, voxel_num
+        );
+
         commands
             .entity(entity)
             .insert(SurfaceSampler::new(world_offset, voxel_size, voxel_num));
@@ -94,29 +99,6 @@ fn init_surface_sampler(
                 info!("value: {:?}", values);
 
                 surface_sampler.set_sample_data(values);
-                info!(
-                    "444 value: {}",
-                    surface_sampler
-                        .get_value_from_vertex_address(UVec3::new(4, 4, 4), &shape_surface)
-                );
-
-                info!(
-                    "000 value: {}",
-                    surface_sampler
-                        .get_value_from_vertex_address(UVec3::new(0, 0, 0), &shape_surface)
-                );
-
-                info!(
-                    "440 value: {}",
-                    surface_sampler
-                        .get_value_from_vertex_address(UVec3::new(4, 4, 0), &shape_surface)
-                );
-
-                info!(
-                    "400 value: {}",
-                    surface_sampler
-                        .get_value_from_vertex_address(UVec3::new(4, 0, 0), &shape_surface)
-                );
 
                 *state = IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build);
             }
