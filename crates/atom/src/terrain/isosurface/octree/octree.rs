@@ -94,7 +94,7 @@ pub fn make_octree_structure(
                         SubCellIndex::LeftBottomBack,
                     );
 
-                    let vertex_points = acquire_cell_info(c000, voxel_num, &mut *surface_sampler);
+                    let vertex_points = acquire_cell_info(c000, voxel_num);
                     let entity = commands
                         .spawn(CellBundle {
                             cell: Cell::new(CellType::Branch, address, vertex_points),
@@ -137,11 +137,7 @@ pub fn make_octree_structure(
     // commands.spawn(BuildOctreeTask(task));
 }
 
-fn acquire_cell_info(
-    c000: UVec3,
-    voxel_num: UVec3,
-    sample_info: &mut SurfaceSampler,
-) -> [UVec3; VertexPoint::COUNT] {
+fn acquire_cell_info(c000: UVec3, voxel_num: UVec3) -> [UVec3; VertexPoint::COUNT] {
     let mut pt_indices = [UVec3::new(0, 0, 0); VertexPoint::COUNT];
 
     assert!(voxel_num != UVec3::ZERO);
@@ -159,16 +155,6 @@ fn acquire_cell_info(
             c000.y + voxel_num.y,
             c000.z + voxel_num.z,
         );
-
-        // // todo: 排除右边缘??????
-        // for pt_index in pt_indices.iter_mut() {
-        //     pt_index.x = pt_index.x.clamp(0, sample_info.get_sample_size().x - 1);
-        //     pt_index.y = pt_index.y.clamp(0, sample_info.get_sample_size().y - 1);
-        //     pt_index.z = pt_index.z.clamp(0, sample_info.get_sample_size().z - 1);
-        //     assert!(pt_index.x < 16);
-        //     assert!(pt_index.y < 16);
-        //     assert!(pt_index.z < 16);
-        // }
     }
 
     info!("pt_indices: {:?}", pt_indices);
@@ -195,7 +181,7 @@ fn subdivide_cell(
             parent_c000.z + voxel_num.z * (i & 1) as u32,
         );
 
-        let vertex_points = acquire_cell_info(c000, voxel_num, sample_info);
+        let vertex_points = acquire_cell_info(c000, voxel_num);
         let mut address = VoxelAddress::new();
         address.set(parent_address, subcell_index);
 
@@ -271,8 +257,10 @@ fn check_for_surface(
     let mut inside = 0;
     for i in 0..8 {
         info!(
-            "value: {}",
-            sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface)
+            "inside value: {}, vertex_points: {}, world_offset: {}",
+            sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface),
+            vertex_points[i],
+            sample_info.world_offset
         );
         if sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface) < 0.0 {
             inside += 1;
@@ -365,13 +353,13 @@ fn check_for_edge_ambiguity(
                             .z
             );
 
-            info!(
-                "prev_point: {} value: {}, index: {} value: {}",
-                prev_point,
-                sample_info.get_value_from_vertex_address(prev_point, shape_surface),
-                index,
-                sample_info.get_value_from_vertex_address(index, shape_surface)
-            );
+            // info!(
+            //     "prev_point: {} value: {}, index: {} value: {}",
+            //     prev_point,
+            //     sample_info.get_value_from_vertex_address(prev_point, shape_surface),
+            //     index,
+            //     sample_info.get_value_from_vertex_address(index, shape_surface)
+            // );
             // if the sign of the value at the previous point is different from the sign of the value at the current point,
             // then there is an edge ambiguity
             if sample_info.get_value_from_vertex_address(prev_point, shape_surface)
@@ -415,6 +403,11 @@ fn check_for_complex_surface(
                 "point_0 {} gradient_point_0: {:?}, point_1 {} gradient_point_1: {:?} value {} < or not {}",
                 point_0, gradient_point_0, point_1, gradient_point_1, gradient_point_0.dot(gradient_point_1), COMPLEX_SURFACE_THRESHOLD
             );
+            info!(
+                "point 0 value:{} point 1 value:{}, ",
+                sample_info.get_value_from_vertex_address(point_0, shape_surface),
+                sample_info.get_value_from_vertex_address(point_1, shape_surface)
+            );
             if gradient_point_0.dot(gradient_point_1) < COMPLEX_SURFACE_THRESHOLD {
                 info!("is complex surface");
                 complex_surface = true;
@@ -456,6 +449,7 @@ fn find_gradient(
     );
     let val = sample_info.get_value_from_vertex_address(*point, shape_surface);
 
+    info!("dx dy dz: {} {} {} val: {}", dz, dy, dz, val);
     *gradient = Vec3::new(dx - val, dy - val, dz - val).normalize();
 }
 

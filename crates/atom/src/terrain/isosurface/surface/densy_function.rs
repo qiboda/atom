@@ -1,16 +1,12 @@
-use std::{
-    arch::x86_64::{__m128, _mm_cvtss_f32, _mm_set1_ps},
-    fmt::Debug,
-};
+use std::fmt::Debug;
 
-use bevy::prelude::{info, Vec3};
-use simdnoise::NoiseBuilder;
+use bevy::prelude::Vec3;
 
 pub trait DensyFunction: Sync + Send + Debug {
     // from world position
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32;
 
-    // from world offset, and world size, and grain size
+    // from world offset, and range size, and grain size
     fn get_range_values(&self, offset: Vec3, size: Vec3, grain_size: Vec3) -> Vec<f32> {
         let mut vec = Vec::with_capacity((size.x * size.y * size.z) as usize);
         let sample_num = (size / grain_size).as_uvec3();
@@ -73,7 +69,7 @@ pub struct Cube;
 
 impl DensyFunction for Cube {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        (x.abs() - 3.0).max((y.abs() - 3.0).max(z.abs() - 3.0))
+        (x.abs() - 10.0).max((y.abs() - 10.0).max(z.abs() - 10.0))
     }
 }
 
@@ -83,43 +79,12 @@ pub struct NoiseSurface {
     pub frequency: f32,
     pub lacunarity: f32,
     pub gain: f32,
-    pub octaves: u8,
+    pub octaves: usize,
 }
 
 impl DensyFunction for NoiseSurface {
-    fn get_range_values(&self, offset: Vec3, size: Vec3, grain_size: Vec3) -> Vec<f32> {
-        let div_grain_size = 1.0 / grain_size;
-        let (values, _min, _max) = NoiseBuilder::fbm_3d_offset(
-            offset.x * div_grain_size.x,
-            (size.x * div_grain_size.x) as usize,
-            offset.y * div_grain_size.y,
-            (size.y * div_grain_size.y) as usize,
-            offset.z * div_grain_size.z,
-            (size.z * div_grain_size.z) as usize,
-        )
-        .with_seed(self.seed)
-        .with_freq(self.frequency)
-        .with_gain(self.gain)
-        .with_lacunarity(self.lacunarity)
-        .with_octaves(self.octaves)
-        .generate();
-
-        values
-    }
-
     // todo: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        unsafe {
-            // avx2 turbulence
-            let x = _mm_set1_ps(x);
-            let y = _mm_set1_ps(y);
-            let z = _mm_set1_ps(z);
-            let _freq = _mm_set1_ps(self.frequency);
-            let lacunarity = _mm_set1_ps(self.lacunarity);
-            let gain = _mm_set1_ps(2.0);
-            let value_m128: __m128 =
-                simdnoise::sse2::fbm_3d(x, y, z, lacunarity, gain, self.octaves, self.seed);
-            _mm_cvtss_f32(value_m128)
-        }
+        noisy_bevy::fbm_simplex_3d(Vec3::new(x, y, z), self.octaves, self.lacunarity, self.gain)
     }
 }

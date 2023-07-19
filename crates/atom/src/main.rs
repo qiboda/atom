@@ -23,7 +23,7 @@ use visible::visible::VisibleTerrainRange;
 fn main() {
     let mut app = App::new();
 
-    app.insert_resource(TerrainSettings::new(1.0, 4))
+    app.insert_resource(TerrainSettings::new(1.0, 16))
         .add_plugins(RenderDocPlugin)
         .add_plugins(DefaultPlugins)
         .add_plugins(CameraControllerPlugin::default())
@@ -44,7 +44,6 @@ fn startup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     mut cool_materials: ResMut<Assets<CoolMaterial>>,
 ) {
     commands.insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.1)));
@@ -71,15 +70,15 @@ fn startup(
     });
 
     commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_xyz(-100.0, -100.0, -100.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 
-    let size = 1.0 * 3.0;
+    let size = 1.0 * 16.0;
 
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(-4.0, -4.0, -4.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(16.0, 16.0, 16.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera: Camera {
                 hdr: true,
                 order: 0,

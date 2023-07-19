@@ -1,6 +1,5 @@
 use super::tables::{FaceIndex, SubCellIndex, NEIGHBOUR_ADDRESS_TABLE};
 
-use bevy::prelude::info;
 use strum::EnumCount;
 
 /// store octree cell address
@@ -77,23 +76,11 @@ impl VoxelAddress {
             let (neighbour_sub_cell_index, same_parent) =
                 NEIGHBOUR_ADDRESS_TABLE[face_index as usize][sub_cell_index as usize];
 
-            info!("nighbour sub cell index: {:?}", neighbour_sub_cell_index);
-            println!(
-                "sub_cell_index {:?}, face_index: {:?}, nighbour sub cell index: {:?}, same parent : {}",
-                sub_cell_index, face_index, neighbour_sub_cell_index, same_parent
-            );
-
-            println!("neighbour_address: {:o}", neighbour_address.raw_address);
-
             neighbour_address.raw_address = neighbour_address.raw_address
                 | ((neighbour_sub_cell_index as usize) << shift_count);
 
-            println!("neighbour_address: {:o}", neighbour_address.raw_address);
-            println!("address: {:o}", address.raw_address);
-
             address = address.get_parent_address();
             shift_count += 3;
-            println!("address: {:o}", address.raw_address);
             if same_parent {
                 neighbour_address.raw_address =
                     (address.raw_address << shift_count) | neighbour_address.raw_address;
