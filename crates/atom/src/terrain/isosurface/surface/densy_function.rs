@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use bevy::prelude::Vec3;
+use bevy::prelude::{Vec2, Vec3};
 
 pub trait DensyFunction: Sync + Send + Debug {
     // from world position
@@ -31,7 +31,7 @@ pub struct Sphere;
 
 impl DensyFunction for Sphere {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        x * x + y * y + z * z - 256.0
+        x * x + y * y + z * z - 32.0
     }
 }
 
@@ -85,6 +85,7 @@ pub struct NoiseSurface {
 impl DensyFunction for NoiseSurface {
     // todo: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        noisy_bevy::fbm_simplex_3d(Vec3::new(x, y, z), self.octaves, self.lacunarity, self.gain)
+       y - noisy_bevy::fbm_simplex_2d(Vec2::new(x, z), self.octaves, self.lacunarity, self.gain) * self.frequency
+            
     }
 }

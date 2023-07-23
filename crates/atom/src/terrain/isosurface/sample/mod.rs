@@ -113,15 +113,15 @@ fn init_surface_sampler(
             }
         });
 
-    for (surface_sampler, state) in surface_sampler_query.iter() {
-        if *state == IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build) {
-            commands.spawn(MaterialMeshBundle {
-                mesh: meshes.add(Mesh::from(surface_sampler)),
-                material: materials.add(SamplerPointMaterial::default()),
-                ..Default::default()
-            });
-        }
-    }
+    // for (surface_sampler, state) in surface_sampler_query.iter() {
+    //     if *state == IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build) {
+    //         commands.spawn(MaterialMeshBundle {
+    //             mesh: meshes.add(Mesh::from(surface_sampler)),
+    //             material: materials.add(SamplerPointMaterial::default()),
+    //             ..Default::default()
+    //         });
+    //     }
+    // }
 }
 
 #[derive(Debug, Default, AsBindGroup, TypeUuid, TypePath, Clone)]

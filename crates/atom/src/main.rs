@@ -63,7 +63,7 @@ fn startup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut wireframe_config: ResMut<WireframeConfig>,
 ) {
-    wireframe_config.global = true;
+    wireframe_config.global = false;
 
     commands.insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.1)));
     commands.insert_resource(Msaa::Sample4);
@@ -77,17 +77,17 @@ fn startup(
         brightness: 1.0,
     });
 
-    let mut material: StandardMaterial = Color::rgb(0.0, 0.0, 0.0).into();
-    material.double_sided = true;
-    material.cull_mode = None;
-
-    commands.spawn(MaterialMeshBundle::<StandardMaterial> {
-        mesh: asset_server.load("blend.obj"),
-        material: materials.add(material),
-        transform: Transform::from_xyz(0.0, 0.0, 0.0),
-        ..default()
-    });
-
+    // let mut material: StandardMaterial = Color::rgb(0.0, 0.0, 0.0).into();
+    // material.double_sided = true;
+    // // material.cull_mode = None;
+    //
+    // commands.spawn(MaterialMeshBundle::<StandardMaterial> {
+    //     mesh: asset_server.load("blend.obj"),
+    //     material: materials.add(material),
+    //     transform: Transform::from_xyz(0.0, 0.0, 0.0),
+    //     ..default()
+    // });
+    //
     //
     // commands.spawn(MaterialMeshBundle::<CoolMaterial> {
     //     mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
@@ -105,7 +105,7 @@ fn startup(
         ..Default::default()
     });
 
-    let size = 1.0 * 8.0;
+    let size = 1.0 * 16.0;
 
     commands.spawn((
         Camera3dBundle {
