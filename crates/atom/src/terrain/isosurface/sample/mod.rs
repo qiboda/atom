@@ -1,4 +1,8 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    reflect::{TypePath, TypeUuid},
+    render::render_resource::AsBindGroup,
+};
 
 use crate::terrain::{
     chunk::{coords::TerrainChunkCoord, TerrainChunk},
@@ -20,14 +24,16 @@ pub struct SampleSurfacePlugin;
 impl Plugin for SampleSurfacePlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         info!("add SampleSurfacePlugin");
-        app.add_systems(First, startup_sample_surface).add_systems(
-            Update,
-            init_surface_sampler.in_set(IsosurfaceExtractionSet::Sample),
-        );
+        app.add_plugins(MaterialPlugin::<SamplerPointMaterial>::default())
+            .add_systems(First, first_sample_surface)
+            .add_systems(
+                Update,
+                init_surface_sampler.in_set(IsosurfaceExtractionSet::Sample),
+            );
     }
 }
 
-fn startup_sample_surface(
+fn first_sample_surface(
     mut commands: Commands,
     terrain_settings: Res<TerrainSettings>,
     chunk_coord_query: Query<
@@ -59,7 +65,10 @@ fn startup_sample_surface(
 }
 
 fn init_surface_sampler(
+    mut commands: Commands,
     mut surface_sampler_query: Query<(&mut SurfaceSampler, &mut IsosurfaceExtractionState)>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<SamplerPointMaterial>>,
     shape_surface: Res<ShapeSurface>,
 ) {
     surface_sampler_query
@@ -96,11 +105,27 @@ fn init_surface_sampler(
                     min_num, zero_num, max_num
                 );
 
-                info!("value: {:?}", values);
+                // info!("value: {:?}", values);
 
                 surface_sampler.set_sample_data(values);
 
                 *state = IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build);
             }
         });
+
+    for (surface_sampler, state) in surface_sampler_query.iter() {
+        if *state == IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build) {
+            commands.spawn(MaterialMeshBundle {
+                mesh: meshes.add(Mesh::from(surface_sampler)),
+                material: materials.add(SamplerPointMaterial::default()),
+                ..Default::default()
+            });
+        }
+    }
 }
+
+#[derive(Debug, Default, AsBindGroup, TypeUuid, TypePath, Clone)]
+#[uuid = "00d75dd7-7431-465e-8072-b2162b82459f"]
+struct SamplerPointMaterial {}
+
+impl Material for SamplerPointMaterial {}

@@ -6,6 +6,8 @@ use super::tables::{EdgeDirection, Face2DEdge};
 pub struct Strip {
     b_loop: bool,
 
+    b_skip: bool,
+
     edge: [Option<Face2DEdge>; 2],
     /// every edge CMS::vertices index.
     vertex_index: [Option<u32>; 2],
@@ -18,6 +20,7 @@ pub struct Strip {
 impl Default for Strip {
     fn default() -> Self {
         Self {
+            b_skip: true,
             b_loop: false,
             edge: [None; 2],
             vertex_index: [None; 2],
@@ -30,6 +33,7 @@ impl Default for Strip {
 impl Strip {
     pub fn new(edge0: Option<Face2DEdge>, edge1: Option<Face2DEdge>) -> Strip {
         Self {
+            b_skip: true,
             b_loop: false,
             edge: [edge0, edge1],
             vertex_index: [None; 2],
@@ -78,6 +82,14 @@ impl Strip {
 
     pub fn get_loop(&self) -> bool {
         self.b_loop
+    }
+
+    pub fn set_skip(&mut self, b_skip: bool) {
+        self.b_skip = b_skip;
+    }
+
+    pub fn get_skip(&self) -> bool {
+        self.b_skip
     }
 }
 
