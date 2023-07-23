@@ -6,6 +6,13 @@ use bevy::{
     render::render_resource::PrimitiveTopology,
     utils::HashMap,
 };
+use bevy_xpbd_3d::{
+    parry::{
+        math::{Point, Real},
+        shape::SharedShape,
+    },
+    prelude::{Collider, RigidBody},
+};
 
 use crate::terrain::isosurface::IsosurfaceExtractionState;
 
@@ -31,6 +38,18 @@ impl MeshCache {
 }
 
 impl MeshCache {
+    pub fn is_empty(&self) -> bool {
+        self.positions.is_empty()
+    }
+
+    fn check(&self) {
+        assert!(
+            self.positions.len() > 0
+                && self.positions.len() == self.normals.len()
+                && self.indices.len() % 3 == 0
+        );
+    }
+
     pub fn get_vertice_positions(&self) -> &Vec<Vec3> {
         &self.positions
     }
@@ -60,8 +79,9 @@ impl MeshCache {
     }
 }
 
-impl From<MeshCache> for Mesh {
-    fn from(mesh_cache: MeshCache) -> Self {
+impl From<&MeshCache> for Mesh {
+    fn from(mesh_cache: &MeshCache) -> Self {
+        mesh_cache.check();
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
         mesh.insert_attribute(
             Mesh::ATTRIBUTE_POSITION,
@@ -79,6 +99,29 @@ impl From<MeshCache> for Mesh {
     }
 }
 
+impl From<&MeshCache> for Collider {
+    fn from(mesh_cache: &MeshCache) -> Self {
+        mesh_cache.check();
+
+        let mut vertices: Vec<Point<Real>> =
+            Vec::with_capacity(mesh_cache.get_vertice_positions().len());
+        let mut indices: Vec<[u32; 3]> = Vec::with_capacity(mesh_cache.get_indices().len() / 3);
+
+        mesh_cache
+            .get_vertice_positions()
+            .iter()
+            .for_each(|vertex| {
+                vertices.push(Point::from_slice(&[vertex.x, vertex.y, vertex.z]));
+            });
+
+        for index in mesh_cache.get_indices().chunks(3) {
+            indices.push(index.try_into().unwrap());
+        }
+
+        Collider::from(SharedShape::trimesh(vertices, indices))
+    }
+}
+
 pub fn create_mesh(
     mut commands: Commands,
     mut mesh_cache: Query<(Entity, &MeshCache, &mut IsosurfaceExtractionState)>,
@@ -88,22 +131,28 @@ pub fn create_mesh(
     for (entity, mesh_cache, mut state) in mesh_cache.iter_mut() {
         if let IsosurfaceExtractionState::MeshCreate = *state {
             info!("create_mesh");
-            let id = commands
-                .spawn(PbrBundle {
-                    mesh: meshes.add(Mesh::from(mesh_cache.clone())),
-                    material: materials.add(StandardMaterial {
-                        base_color: Color::BLUE,
-                        double_sided: false,
-                        // cull_mode: None,
-                        ..default()
-                    }),
-                    transform: Transform::from_translation(Vec3::splat(0.0)),
-                    ..Default::default()
-                })
-                .id();
+            if mesh_cache.is_empty() == false {
+                let id = commands
+                    .spawn((
+                        PbrBundle {
+                            mesh: meshes.add(Mesh::from(mesh_cache)),
+                            material: materials.add(StandardMaterial {
+                                base_color: Color::BLUE,
+                                double_sided: false,
+                                // cull_mode: None,
+                                ..default()
+                            }),
+                            transform: Transform::from_translation(Vec3::splat(0.0)),
+                            ..Default::default()
+                        },
+                        RigidBody::Static,
+                        Collider::from(mesh_cache),
+                    ))
+                    .id();
 
-            let mut terrian = commands.get_entity(entity).unwrap();
-            terrian.add_child(id);
+                let mut terrian = commands.get_entity(entity).unwrap();
+                terrian.add_child(id);
+            }
 
             *state = IsosurfaceExtractionState::Done;
         }
