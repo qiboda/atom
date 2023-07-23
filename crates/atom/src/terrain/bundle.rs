@@ -1,8 +1,13 @@
-use bevy::prelude::Bundle;
+use bevy::{
+    prelude::{Bundle, VisibilityBundle},
+    transform::TransformBundle,
+};
 
 use super::terrain::TerrainData;
 
 #[derive(Bundle, Default)]
 pub struct TerrainBundle {
     pub terrain_data: TerrainData,
+    pub transform_bundle: TransformBundle,
+    pub visibility_bundle: VisibilityBundle,
 }

@@ -35,9 +35,10 @@ pub fn generate_segments(
 ) {
     for (mut mesh_cache, mut surface_sampler, state, octree) in query.iter_mut() {
         if let IsosurfaceExtractionState::Extract = *state {
-            info!("generate_segments");
-            info!("octree.leaf_cells num: {}", octree.leaf_cells.len());
-            info!("query: {:?}", cells);
+            info!(
+                "generate_segments: octree leaf cell num: {}", octree.leaf_cells.len()
+            );
+            debug!("query: {:?}", cells);
             for entity in octree.leaf_cells.iter() {
                 if let Ok((cell, mut faces)) = cells.get_mut(*entity) {
                     // let Ok(cell_mesh_info) = cell_mesh_info.get_mut(*entity) else {
@@ -51,10 +52,10 @@ pub fn generate_segments(
                         for (i, face_vertex) in Face2DVertex::iter().enumerate() {
                             let vertex_pos = FACE_VERTEX[face_index as usize][face_vertex as usize];
                             indices[i] = cell.get_corner_sample_index()[vertex_pos as usize];
-                            info!("vertex_pos:{i} {:?}, indices: {}", vertex_pos, indices[i]);
+                            debug!("vertex_pos:{i} {:?}, indices: {}", vertex_pos, indices[i]);
                         }
 
-                        info!("face index {:?} start", face_index);
+                        debug!("face index {:?} start", face_index);
                         let face = faces.get_face_mut(face_index);
                         face.get_strips_mut().resize(2, Strip::default());
                         make_face_segments(
@@ -73,7 +74,7 @@ pub fn generate_segments(
                         let face = faces.get_face(face_index);
                         for strip in face.get_strips().iter() {
                             for vertex_index in strip.get_vertex().iter() {
-                                info!("entity: {:?}: vertex_index: {:?}", entity, vertex_index);
+                                debug!("entity: {:?}: vertex_index: {:?}", entity, vertex_index);
                             }
                         }
                     }
@@ -94,7 +95,7 @@ fn make_face_segments(
     shape_surface: &Res<ShapeSurface>,
 ) {
     let edges = (0..4).fold(0, |acc, i| {
-        info!(
+        debug!(
             "index: {}, value: {}",
             indices[i],
             sample_info.get_value_from_vertex_address(indices[i], shape_surface)
@@ -106,7 +107,7 @@ fn make_face_segments(
         }
     });
 
-    info!("make_face_segments edges {}", edges);
+    debug!("make_face_segments edges {}", edges);
 
     let e0a = EDGE_MAP[edges as usize][0][0];
     let e0b = EDGE_MAP[edges as usize][0][1];
@@ -151,7 +152,7 @@ fn make_strip(
     sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
-    info!("make strip {}: {:?} {:?}", strip_index, edge0, edge1);
+    debug!("make strip {}: {:?} {:?}", strip_index, edge0, edge1);
     assert!(edge0.is_some() && edge1.is_some());
 
     let mut s = Strip::new(edge0, edge1);
@@ -175,7 +176,7 @@ fn populate_strip(
     sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
-    info!("populate_strip strip edge index {}", edge_index);
+    debug!("populate_strip strip edge index {}", edge_index);
     let edge = strip.get_edge(edge_index);
     assert!(edge.is_some());
 
@@ -186,7 +187,7 @@ fn populate_strip(
     let vertex_coord0 = indices[vertex0 as usize];
     let vertex_coord1 = indices[vertex1 as usize];
 
-    info!(
+    debug!(
         "vertex_coord0: {}, vertex_coord1: {}",
         vertex_coord0, vertex_coord1
     );
@@ -220,24 +221,24 @@ fn populate_strip(
 
     let mut dupli = false;
 
-    info!(
+    debug!(
         "crossing_index_0: {}, edge_dir: {:?}",
         crossing_index_0, edge_dir
     );
 
     if let Some(value_0) = mesh_info.vertex_index_data.get(&crossing_index_0) {
         if value_0.get_dir_vertex_index(edge_dir).is_some() {
-            info!("vertex index: {:?}", value_0.get_dir_vertex_index(edge_dir));
+            debug!("vertex index: {:?}", value_0.get_dir_vertex_index(edge_dir));
             strip.set_vertex_index(edge_index, value_0.get_dir_vertex_index(edge_dir).unwrap());
             strip.set_crossing_left_coord(edge_index, crossing_index_0);
             strip.set_edge_dir(edge_index, Some(edge_dir));
             dupli = true;
-            info!("make vertex dupli");
+            debug!("make vertex dupli");
         } else {
-            info!("crossing_index_0 get_dir_vertex_index is None");
+            debug!("crossing_index_0 get_dir_vertex_index is None");
         }
     } else {
-        info!("mesh_info.vertex_index_data.get(&crossing_index_0) is None");
+        debug!("mesh_info.vertex_index_data.get(&crossing_index_0) is None");
     }
 
     if dupli == false {
@@ -308,7 +309,7 @@ fn exact_sign_change_index(
         let mut end_vertex_coord = start_vertex_coord;
         end_vertex_coord[edge_dir as usize] = start_vertex_coord[edge_dir as usize] + 1;
         let next_value = sample_info.get_value_from_vertex_address(end_vertex_coord, shape_surface);
-        // info!(
+        // debug!(
         //     "this value {}, next_value: {}, start {}, end {}",
         //     this_value, next_value, start_vertex_coord, end_vertex_coord
         // );
@@ -350,16 +351,16 @@ fn make_vertex(
     sample_info: &mut SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
-    info!("make vertex");
+    debug!("make vertex");
     let pos0 = sample_info.get_pos_from_vertex_address(crossing_index_0, shape_surface);
     let value0 = sample_info.get_value_from_vertex_address(crossing_index_0, shape_surface);
     let point0 = Point::new_with_position_and_value(pos0, value0);
-    info!("crossing_index_0:{} point0:{:?}", crossing_index_0, point0);
+    debug!("crossing_index_0:{} point0:{:?}", crossing_index_0, point0);
 
     let pos1 = sample_info.get_pos_from_vertex_address(crossing_index_1, shape_surface);
     let value1 = sample_info.get_value_from_vertex_address(crossing_index_1, shape_surface);
     let point1 = Point::new_with_position_and_value(pos1, value1);
-    info!("crossing_index_1:{} point1:{:?}", crossing_index_1, point1);
+    debug!("crossing_index_1:{} point1:{:?}", crossing_index_1, point1);
 
     let crossing_vertex_point_pos =
         find_crossing_point_pos(0, &point0, &point1, sample_info, shape_surface);
@@ -370,7 +371,7 @@ fn make_vertex(
         &sample_info,
         shape_surface,
     );
-    info!(
+    debug!(
         "crossing_point:{} gradient:{}",
         crossing_vertex_point_pos, gradient
     );
@@ -378,7 +379,7 @@ fn make_vertex(
     mesh_info.positions.push(crossing_vertex_point_pos);
     mesh_info.normals.push(gradient);
 
-    info!("add vertex index: {:?}", mesh_info.positions.len() - 1);
+    debug!("add vertex index: {:?}", mesh_info.positions.len() - 1);
     strip.set_vertex_index(edge_index, (mesh_info.positions.len() - 1) as u32);
     strip.set_crossing_left_coord(edge_index, crossing_index_0);
     strip.set_edge_dir(edge_index, Some(edge_dir));
@@ -496,10 +497,7 @@ pub fn edit_transitional_face(
 ) {
     for (octree, addresses, state) in octree_query.iter() {
         if let IsosurfaceExtractionState::Extract = *state {
-            info!(
-                "edit_transitional_face: num: {}",
-                octree.transit_face_cells.len()
-            );
+            info!("edit_transitional_face: octree.transit_face_cells.len(): {}", octree.transit_face_cells.len());
             // todo: cache transit face indices....
             for transit_cell_entity in octree.transit_face_cells.iter() {
                 let mut all_strips = [
@@ -545,19 +543,19 @@ pub fn edit_transitional_face(
                                     &mut all_strip,
                                 );
 
-                                info!(
+                                debug!(
                                     "twin_entity: {:?}, to traverse_face, all strip: {:?}",
                                     twin_entity, all_strip
                                 );
                             } else {
-                                info!("get addresses.cell_addresses is none");
+                                debug!("get addresses.cell_addresses is none");
                             }
                         }
                     }
                 }
 
                 for i in 0..6 {
-                    info!(
+                    debug!(
                         "edit_transitiona_face: entity: {:?}, face_index: {:?}, all_strip: {:?}",
                         all_twin_cell_entitys[i], all_twin_cell_face_index[i], all_strips[i]
                     );
@@ -568,13 +566,13 @@ pub fn edit_transitional_face(
                         let all_strip = &mut all_strips[index];
                         let twin_face_index = all_twin_cell_face_index[index].unwrap();
 
-                        info!(
+                        debug!(
                             "all twin_cell_entity {:?} face index: {:?} strip: {:?}",
                             twin_cell_entity, index, all_strip
                         );
 
                         if all_strip.len() == 0 {
-                            info!("all_strip.len() == 0 and continue");
+                            debug!("all_strip.len() == 0 and continue");
                             continue;
                         }
 
@@ -607,7 +605,7 @@ pub fn edit_transitional_face(
                                             long_strip.change_back(strip, 1);
                                             added_in_iteration += 1;
                                         } else {
-                                            info!("Some(data) != strip.get_vertex_index(1)");
+                                            debug!("Some(data) != strip.get_vertex_index(1)");
                                         }
                                     } else if vertex_indices.last()
                                         == strip.get_vertex_index(1).as_ref()
@@ -617,11 +615,11 @@ pub fn edit_transitional_face(
                                             long_strip.change_back(strip, 0);
                                             added_in_iteration += 1;
                                         } else {
-                                            info!("Some(data) != strip.get_vertex_index(0)");
+                                            debug!("Some(data) != strip.get_vertex_index(0)");
                                         }
                                     } else {
-                                        info!("all_strip.retain first false");
-                                        info!(
+                                        debug!("all_strip.retain first false");
+                                        debug!(
                                             "strip: {:?} vertex_indices: {:?}",
                                             strip, vertex_indices
                                         );
@@ -632,7 +630,7 @@ pub fn edit_transitional_face(
                                         vertex_indices.remove(0);
                                         long_strip.set_loop(true);
                                     } else {
-                                        info!(
+                                        debug!(
                                             "!= vertex index len {} vertex index {:?} added_in_iteration {}, long_strip is loop: {}",
                                             vertex_indices.len(),
                                             vertex_indices,
@@ -644,16 +642,16 @@ pub fn edit_transitional_face(
                                     return false;
                                 });
 
-                                info!("all_strip: num: {}", all_strip.len());
+                                debug!("all_strip: num: {}", all_strip.len());
 
                                 if all_strip.len() <= 0
                                     || added_in_iteration <= 0
                                     || long_strip.get_loop()
                                 {
-                                    info!("all_strip.retain first break");
+                                    debug!("all_strip.retain first break");
                                     break;
                                 } else {
-                                    info!("first all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                                    debug!("first all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                                 }
                             }
 
@@ -679,7 +677,7 @@ pub fn edit_transitional_face(
                                                 added_in_iteration += 1;
                                             }
                                         } else {
-                                            info!("all_strip.retain second false");
+                                            debug!("all_strip.retain second false");
                                             return true;
                                         }
 
@@ -696,12 +694,12 @@ pub fn edit_transitional_face(
                                     {
                                         break;
                                     } else {
-                                        info!("seconds all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                                        debug!("seconds all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                                     }
                                 }
                             }
 
-                            info!(
+                            debug!(
                                 "twin_faces faceIndex: {:?} strips: {:?}, and long strip: {:?}",
                                 twin_face_index,
                                 twin_faces.get_face_mut(twin_face_index).get_strips(),
@@ -722,18 +720,18 @@ pub fn edit_transitional_face(
                                 .get_strips_mut()
                                 .push(long_strip.clone());
 
-                            info!(
+                            debug!(
                                 "transit entity: {:?} long strip: {:?}",
                                 twin_cell_entity, long_strip
                             );
 
                             transit_segs.push(vertex_indices);
 
-                            info!("all_strip len: {}", all_strip.len());
+                            debug!("all_strip len: {}", all_strip.len());
                             if all_strip.len() == 0 {
                                 break;
                             } else {
-                                info!("three all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
+                                debug!("three all_strip: len {} added_in_iteration {}, long_strip is loop: {}", all_strip.len(), added_in_iteration, long_strip.get_loop());
                             }
                         }
 
@@ -741,7 +739,7 @@ pub fn edit_transitional_face(
                             twin_faces
                                 .get_face_mut(twin_face_index)
                                 .set_transit_segs(transit_segs.clone());
-                            info!(
+                            debug!(
                                 "transit entity: {:?} transit segs: {:?}",
                                 twin_cell_entity, transit_segs
                             );
@@ -751,7 +749,7 @@ pub fn edit_transitional_face(
                     }
                 }
             }
-            info!(
+            debug!(
                 "edit_transitional_face end: num: {}",
                 octree.transit_face_cells.len()
             );
@@ -781,15 +779,15 @@ fn traverse_face(
             }
             FaceType::LeafFace => {
                 for strip in face.get_strips().iter() {
-                    info!("traverse_face strip: {:?}", strip);
+                    debug!("traverse_face strip: {:?}", strip);
                     if strip.get_vertex_index(0).is_none() {
                         continue;
                     }
 
                     if strip.get_skip() == false {
-                        info!("traverse_face strip push: {:?}", strip);
+                        debug!("traverse_face strip push: {:?}", strip);
                         strips.push(strip.clone());
-                        info!("transit entity: {:?}", cell_entity);
+                        debug!("transit entity: {:?}", cell_entity);
                     }
                 }
             }
@@ -864,9 +862,9 @@ fn collect_strips(
                 assert!(false);
             }
             FaceType::LeafFace => {
-                info!("collect strip leaf face");
+                debug!("collect strip leaf face");
                 for strip in face.get_strips().iter() {
-                    info!(
+                    debug!(
                         "entity {:?}, strip: {:?}",
                         cell_addresses.cell_addresses.get(cell.get_address()),
                         strip
@@ -874,24 +872,24 @@ fn collect_strips(
                     if strip.get_vertex_index(0).is_some() {
                         cell_strips.push(strip.clone());
                     } else {
-                        info!("collect strip leaf face vertex index is none")
+                        debug!("collect strip leaf face vertex index is none")
                     }
                 }
-                info!("collect strip leaf face end");
+                debug!("collect strip leaf face end");
             }
             FaceType::TransitFace => {
-                info!("collect strip transit face");
+                debug!("collect strip transit face");
                 assert!(face.get_transit_segs().len() == 0);
                 for strip in face.get_strips().iter() {
                     if strip.get_vertex_index(0).is_some() {
-                        info!(
+                        debug!(
                             "entity {:?}, strip: {:?}",
                             cell_addresses.cell_addresses.get(cell.get_address()),
                             strip
                         );
                         cell_strips.push(strip.clone());
                     } else {
-                        info!(
+                        debug!(
                             "collect strip transit face vertex index is none: {:?}",
                             strip
                         )
@@ -905,27 +903,27 @@ fn collect_strips(
                     continue;
                 };
 
-                info!(
+                debug!(
                     "twin_address: {:?}, entity: {:?}",
                     twin_address, cell_entity
                 );
 
                 let twin = faces.get_face(twin_face_index);
-                info!("twin.get_strips(): {:?}", twin.get_strips());
+                debug!("twin.get_strips(): {:?}", twin.get_strips());
                 for strip in twin.get_strips().iter() {
                     if strip.get_vertex_index(0).is_some() {
                         cell_strips.push(strip.clone());
                     }
                 }
 
-                info!("twin.get_transit_segs(): {:?}", twin.get_transit_segs());
+                debug!("twin.get_transit_segs(): {:?}", twin.get_transit_segs());
                 for seg in twin.get_transit_segs().iter() {
                     transit_segs.push(seg.clone());
                 }
 
                 // assert!(transit_segs.len() > 0);
 
-                info!("collect strip transit face end");
+                debug!("collect strip transit face end");
             }
         }
     }
@@ -945,10 +943,10 @@ fn link_strips(
     let mut backwards = false;
 
     for i in 0..cell_strips.len() {
-        info!("link_strips: {:?}", cell_strips[i].get_vertex());
+        debug!("link_strips: {:?}", cell_strips[i].get_vertex());
     }
     for i in 0..transit_segs.len() {
-        info!("link_transit_seg: {:?}", transit_segs[i]);
+        debug!("link_transit_seg: {:?}", transit_segs[i]);
     }
 
     components.push(cell_strips[0].get_vertex_index(0).unwrap());
@@ -977,7 +975,7 @@ fn link_strips(
                             &backwards,
                         );
                         // if debug {
-                        info!("component transit: {:?}", components);
+                        debug!("component transit: {:?}", components);
                         // }
                     }
 
@@ -986,7 +984,7 @@ fn link_strips(
                             components.push(data);
                             added_in_iteration += 1;
                             // if debug {
-                            info!("component non transit: {:?}", components);
+                            debug!("component non transit: {:?}", components);
                             // }
                         }
                     }
@@ -1005,7 +1003,7 @@ fn link_strips(
                             &backwards,
                         );
                         // if debug {
-                        info!("component transit 2: {:?}", components);
+                        debug!("component transit 2: {:?}", components);
                         // }
                     }
 
@@ -1014,14 +1012,14 @@ fn link_strips(
                             components.push(data);
                             added_in_iteration += 1;
                             // if debug {
-                            info!("component non transit 2: {:?}", components);
+                            debug!("component non transit 2: {:?}", components);
                             // }
                         }
                     }
                 }
                 _ => {
                     // if debug {
-                    info!("component not add: {:?}", components);
+                    debug!("component not add: {:?}", components);
                     // }
                     return true;
                 }
@@ -1029,7 +1027,7 @@ fn link_strips(
             return false;
         });
 
-        info!(
+        debug!(
             "component {:?} and first == last: {}",
             components,
             components.first() == components.last()
@@ -1037,7 +1035,7 @@ fn link_strips(
         if components.first() == components.last() {
             components.remove(0);
         }
-        info!("component {:?} after", components,);
+        debug!("component {:?} after", components,);
 
         if added_in_iteration <= 0 {
             break;
@@ -1068,7 +1066,7 @@ fn link_strips(
                             &backwards,
                         );
                         // if debug {
-                        info!("component transit 3: {:?}", components);
+                        debug!("component transit 3: {:?}", components);
                         // }
                     }
 
@@ -1077,7 +1075,7 @@ fn link_strips(
                             components.insert(0, data);
                             added_in_iteration += 1;
                             // if debug {
-                            info!("component non transit 3: {:?}", components);
+                            debug!("component non transit 3: {:?}", components);
                             // }
                         }
                     }
@@ -1096,7 +1094,7 @@ fn link_strips(
                             &backwards,
                         );
                         // if debug {
-                        info!("component transit 4: {:?}", components);
+                        debug!("component transit 4: {:?}", components);
                         // }
                     }
 
@@ -1105,14 +1103,14 @@ fn link_strips(
                             components.insert(0, data);
                             added_in_iteration += 1;
                             // if debug {
-                            info!("component non transit 4: {:?}", components);
+                            debug!("component non transit 4: {:?}", components);
                             // }
                         }
                     }
                 }
                 _ => {
                     // if debug {
-                    info!("component 2 not add: {:?}", components);
+                    debug!("component 2 not add: {:?}", components);
                     // }
                     return true;
                 }
@@ -1120,7 +1118,7 @@ fn link_strips(
             return false;
         });
 
-        info!(
+        debug!(
             "component {:?} and first == last: {}",
             components,
             components.first() == components.last()
@@ -1128,7 +1126,7 @@ fn link_strips(
         if components.first() == components.last() {
             components.remove(0);
         }
-        info!("component {:?} after", components,);
+        debug!("component {:?} after", components,);
 
         if added_in_iteration <= 0 {
             break;
@@ -1150,12 +1148,12 @@ fn insert_data_from_twin(
     for seg in transit_segs.iter() {
         if compare_strip_to_seg(strip, seg) {
             // if debug {
-            //     info!(
+            //     debug!(
             //         "success component cell_strips: {:?} {:?}",
             //         strip.get_vertex_index(0),
             //         strip.get_vertex_index(1)
             //     );
-            //     info!("success component seg: {:?}", seg,);
+            //     debug!("success component seg: {:?}", seg,);
             // }
             if *backwards {
                 for i in (0..seg.len()).rev() {
@@ -1172,12 +1170,12 @@ fn insert_data_from_twin(
             break;
         } else {
             // if debug {
-            //     info!(
+            //     debug!(
             //         "fail component cell_strips: {:?} {:?}",
             //         strip.get_vertex_index(0),
             //         strip.get_vertex_index(1)
             //     );
-            //     info!("fail component seg: {:?}", seg,);
+            //     debug!("fail component seg: {:?}", seg,);
             // }
         }
     }

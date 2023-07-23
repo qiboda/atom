@@ -159,7 +159,7 @@ pub fn update_terrain_visible_areas(
     for (entity, global_transform, visible_range) in visible_range_query.iter() {
         let camera_position = global_transform.translation();
 
-        let camera_position = Vec3::new(0.0, 0.0, 0.0);
+        // let camera_position = Vec3::new(0.0, 0.0, 0.0);
 
         let chunk_size = terrain_settings.get_chunk_size();
 

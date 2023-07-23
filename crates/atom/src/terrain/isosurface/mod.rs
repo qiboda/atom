@@ -51,16 +51,16 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         info!("add IsosurfaceExtractionPlugin");
         app.insert_resource(ShapeSurface {
-            // densy_function: Box::new(NoiseSurface {
-            //     seed: rand::random(),
-            //     frequency: 0.01,
-            //     lacunarity: 2.0,
-            //     gain: 0.5,
-            //     octaves: 3,
-            // }),
+            densy_function: Box::new(NoiseSurface {
+                seed: rand::random(),
+                frequency: 0.1,
+                lacunarity: 2.0,
+                gain: 2.0,
+                octaves: 2,
+            }),
             // densy_function: Box::new(Sphere),
             // densy_function: Box::new(Panel),
-            densy_function: Box::new(Cube),
+            // densy_function: Box::new(Cube),
             iso_level: Vec3::ZERO,
             negative_inside: true,
             snap_centro_id: false,

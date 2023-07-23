@@ -105,7 +105,7 @@ impl SurfaceSampler {
         _shape_surface: &ShapeSurface,
     ) -> f32 {
         // if self.sample_data.get_data_index(vertex_address) >= 4096 {
-        //     info!("error vertex_address: {:?}", vertex_address);
+        //     debug!("error vertex_address: {:?}", vertex_address);
         //     println!("Custom backtrace: {}", Backtrace::force_capture());
         // }
         self.sample_data.get_value(vertex_address)

@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
-        default, info, Assets, Color, Commands, Component, Mesh, PbrBundle, Query, ResMut,
-        StandardMaterial, Transform, UVec3, Vec3,
+        debug, default, info, Assets, BuildChildren, Color, Commands, Component, Entity, Mesh,
+        PbrBundle, Query, ResMut, StandardMaterial, Transform, UVec3, Vec3,
     },
     render::render_resource::PrimitiveTopology,
     utils::HashMap,
@@ -71,7 +71,7 @@ impl From<MeshCache> for Mesh {
             Mesh::ATTRIBUTE_NORMAL,
             mesh_cache.get_vertice_normals().clone(),
         );
-        info!("mesh cache from: {:?}", mesh_cache.get_indices());
+        debug!("mesh cache from: {:?}", mesh_cache.get_indices());
         mesh.set_indices(Some(bevy::render::mesh::Indices::U32(
             mesh_cache.get_indices().clone(),
         )));
@@ -81,24 +81,29 @@ impl From<MeshCache> for Mesh {
 
 pub fn create_mesh(
     mut commands: Commands,
-    mut mesh_cache: Query<(&MeshCache, &mut IsosurfaceExtractionState)>,
+    mut mesh_cache: Query<(Entity, &MeshCache, &mut IsosurfaceExtractionState)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (mesh_cache, mut state) in mesh_cache.iter_mut() {
+    for (entity, mesh_cache, mut state) in mesh_cache.iter_mut() {
         if let IsosurfaceExtractionState::MeshCreate = *state {
-            info!("create_mesh: {:?}", mesh_cache);
-            commands.spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(mesh_cache.clone())),
-                material: materials.add(StandardMaterial {
-                    base_color: Color::BLUE,
-                    double_sided: false,
-                    cull_mode: None,
-                    ..default()
-                }),
-                transform: Transform::from_translation(Vec3::splat(0.0)),
-                ..Default::default()
-            });
+            info!("create_mesh");
+            let id = commands
+                .spawn(PbrBundle {
+                    mesh: meshes.add(Mesh::from(mesh_cache.clone())),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::BLUE,
+                        double_sided: false,
+                        // cull_mode: None,
+                        ..default()
+                    }),
+                    transform: Transform::from_translation(Vec3::splat(0.0)),
+                    ..Default::default()
+                })
+                .id();
+
+            let mut terrian = commands.get_entity(entity).unwrap();
+            terrian.add_child(id);
 
             *state = IsosurfaceExtractionState::Done;
         }

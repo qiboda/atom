@@ -79,7 +79,7 @@ pub fn make_octree_structure(
             {
                 info!("make_octree_structure");
                 commands.command_scope(|mut commands| {
-                    info!("make_structure");
+                    debug!("make_structure");
 
                     // let task = thread_pool.spawn(async move {
                     let c000 = UVec3::new(0, 0, 0);
@@ -119,7 +119,7 @@ pub fn make_octree_structure(
                         &mut octree_cell_address,
                         &shape_surface,
                     );
-                    info!(
+                    debug!(
                         "cell num: {} and leaf cell num: {}",
                         octree.cells.len(),
                         octree.leaf_cells.len()
@@ -157,7 +157,7 @@ fn acquire_cell_info(c000: UVec3, voxel_num: UVec3) -> [UVec3; VertexPoint::COUN
         );
     }
 
-    info!("pt_indices: {:?}", pt_indices);
+    debug!("pt_indices: {:?}", pt_indices);
 
     pt_indices
 }
@@ -172,7 +172,7 @@ fn subdivide_cell(
     cell_address: &mut OctreeCellAddress,
     shape_surface: &Res<ShapeSurface>,
 ) {
-    // info!("subdivide_cell: voxle num {}", voxel_num);
+    // debug!("subdivide_cell: voxle num {}", voxel_num);
 
     for (i, subcell_index) in SubCellIndex::iter().enumerate() {
         let c000 = UVec3::new(
@@ -187,16 +187,16 @@ fn subdivide_cell(
 
         let mut branch_type = CellType::Branch;
         if check_for_subdivision(sample_info, &vertex_points, shape_surface) {
-            info!("check_for_subdivision can subdivice cell");
+            debug!("check_for_subdivision can subdivice cell");
             let voxel_num = voxel_num.x >> 1;
             let voxel_num = UVec3::splat(voxel_num);
             if voxel_num.x == 0 {
                 // todo: 如此，如果不是在表面，就会忽略cell，这是否正确？
                 if check_for_surface(&vertex_points, sample_info, &shape_surface) {
-                    info!("check_for_surface success: {:?}", vertex_points);
+                    debug!("check_for_surface success: {:?}", vertex_points);
                     branch_type = CellType::Leaf;
                 } else {
-                    info!("check_for_surface fail: {:?}", vertex_points);
+                    debug!("check_for_surface fail: {:?}", vertex_points);
                 }
             } else {
                 subdivide_cell(
@@ -213,10 +213,10 @@ fn subdivide_cell(
         } else {
             // todo: 如此，如果不是在表面，就会忽略cell，这是否正确？
             if check_for_surface(&vertex_points, sample_info, &shape_surface) {
-                info!("check_for_surface success: {:?}", vertex_points);
+                debug!("check_for_surface success: {:?}", vertex_points);
                 branch_type = CellType::Leaf;
             } else {
-                info!("check_for_surface fail: {:?}", vertex_points);
+                debug!("check_for_surface fail: {:?}", vertex_points);
             }
         }
 
@@ -239,7 +239,7 @@ fn subdivide_cell(
         }
         cell_address.cell_addresses.insert(address, entity);
 
-        // info!(
+        // debug!(
         //     "subdivide_cell: cell: {:?}",
         //     cell.borrow().get_corner_sample_index()
         // );
@@ -256,7 +256,7 @@ fn check_for_surface(
     // 8个顶点中有几个在内部
     let mut inside = 0;
     for i in 0..8 {
-        info!(
+        debug!(
             "inside value: {}, vertex_points: {}, world_offset: {}",
             sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface),
             vertex_points[i],
@@ -267,7 +267,7 @@ fn check_for_surface(
         }
     }
 
-    info!(
+    debug!(
         "check for surface: vertex_points: {:?}, inside: {}",
         vertex_points, inside
     );
@@ -283,7 +283,7 @@ fn check_for_subdivision(
         check_for_edge_ambiguity(sample_info, vertex_points, shape_surface);
     let check_for_complex_surface_result =
         check_for_complex_surface(sample_info, vertex_points, shape_surface);
-    info!("check_for_edge_ambiguity_result: {check_for_edge_ambiguity_result}, check_for_complex_surface: {check_for_complex_surface_result}");
+    debug!("check_for_edge_ambiguity_result: {check_for_edge_ambiguity_result}, check_for_complex_surface: {check_for_complex_surface_result}");
     return check_for_edge_ambiguity_result || check_for_complex_surface_result;
 }
 
@@ -293,7 +293,7 @@ fn check_for_edge_ambiguity(
     vertex_points: &[UVec3; 8],
     shape_surface: &Res<ShapeSurface>,
 ) -> bool {
-    // info!("check_for_edge_ambiguity");
+    // debug!("check_for_edge_ambiguity");
     let mut edge_ambiguity = false;
 
     for (i, _edge_index) in EdgeIndex::iter().enumerate() {
@@ -302,14 +302,14 @@ fn check_for_edge_ambiguity(
 
         let edge_direction = EDGE_DIRECTION[i];
 
-        // info!("edge_direction: {:?}", edge_direction);
+        // debug!("edge_direction: {:?}", edge_direction);
 
         // left coord
         let point_0 = vertex_points[vertex_index_0];
         // right coord
         let point_1 = vertex_points[vertex_index_1];
 
-        // info!("point0: {:?} point1: {:?}", point_0, point_1);
+        // debug!("point0: {:?} point1: {:?}", point_0, point_1);
 
         // last iter coord
         let mut prev_point = point_0;
@@ -325,7 +325,7 @@ fn check_for_edge_ambiguity(
                 break;
             }
 
-            // info!(
+            // debug!(
             //     "left: {} => {} right: {:?} => {}",
             //     index,
             //     sample_info.get_value_from_vertex_address(index, shape_surface),
@@ -353,7 +353,7 @@ fn check_for_edge_ambiguity(
                             .z
             );
 
-            // info!(
+            // debug!(
             //     "prev_point: {} value: {}, index: {} value: {}",
             //     prev_point,
             //     sample_info.get_value_from_vertex_address(prev_point, shape_surface),
@@ -384,7 +384,7 @@ fn check_for_complex_surface(
     vertex_points: &[UVec3; 8],
     shape_surface: &Res<ShapeSurface>,
 ) -> bool {
-    // info!("check_for_complex_surface");
+    // debug!("check_for_complex_surface");
     let mut complex_surface = false;
 
     'outer: for i in 0..7 {
@@ -399,17 +399,17 @@ fn check_for_complex_surface(
             let mut gradient_point_1 = Default::default();
             find_gradient(&mut gradient_point_1, &point_1, sample_info, shape_surface);
 
-            info!(
+            debug!(
                 "point_0 {} gradient_point_0: {:?}, point_1 {} gradient_point_1: {:?} value {} < or not {}",
                 point_0, gradient_point_0, point_1, gradient_point_1, gradient_point_0.dot(gradient_point_1), COMPLEX_SURFACE_THRESHOLD
             );
-            info!(
+            debug!(
                 "point 0 value:{} point 1 value:{}, ",
                 sample_info.get_value_from_vertex_address(point_0, shape_surface),
                 sample_info.get_value_from_vertex_address(point_1, shape_surface)
             );
             if gradient_point_0.dot(gradient_point_1) < COMPLEX_SURFACE_THRESHOLD {
-                info!("is complex surface");
+                debug!("is complex surface");
                 complex_surface = true;
                 break 'outer;
             }
@@ -449,7 +449,7 @@ fn find_gradient(
     );
     let val = sample_info.get_value_from_vertex_address(*point, shape_surface);
 
-    info!("dx dy dz: {} {} {} val: {}", dz, dy, dz, val);
+    debug!("dx dy dz: {} {} {} val: {}", dz, dy, dz, val);
     *gradient = Vec3::new(dx - val, dy - val, dz - val).normalize();
 }
 
@@ -488,13 +488,13 @@ pub fn mark_transitional_faces(
                     }
                 }
             }
-            info!(
+            debug!(
                 "branch face: {}, leaf face: {}",
                 face_branch_num, face_leaf_num
             );
 
             for entity in octree.leaf_cells.iter() {
-                info!("entity: {:?}", entity);
+                debug!("entity: {:?}", entity);
                 let mut all_neighbour_cell_entity = [
                     Entity::PLACEHOLDER,
                     Entity::PLACEHOLDER,
@@ -517,7 +517,7 @@ pub fn mark_transitional_faces(
                     assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
 
                     for (i, face_index) in FaceIndex::iter().enumerate() {
-                        info!("entity: {:?} face index: {:?}", entity, face_index);
+                        debug!("entity: {:?} face index: {:?}", entity, face_index);
                         let face = faces.get_face_mut(face_index);
                         assert!(face.get_face_type() == &FaceType::LeafFace);
 
@@ -530,18 +530,18 @@ pub fn mark_transitional_faces(
                         {
                             all_neighbour_cell_entity[i] = *neighbour_cell_entity;
                         } else {
-                            info!("get cell fail from cell address!");
+                            debug!("get cell fail from cell address!");
                         }
                     }
                 } else {
-                    info!("get cell fail!");
+                    debug!("get cell fail!");
                 }
 
                 let mut set_transit_face = [false, false, false, false, false, false];
 
                 for (i, entity) in all_neighbour_cell_entity.iter().enumerate() {
                     let neighbour_face_index = all_neighbour_face_index[i];
-                    info!(
+                    debug!(
                         "entity: {:?} neighbour face index: {:?}",
                         entity, neighbour_face_index
                     );
@@ -552,9 +552,9 @@ pub fn mark_transitional_faces(
                             == &FaceType::BranchFace
                         {
                             set_transit_face[i] = true;
-                            info!("set_transit_face true {}", i);
+                            debug!("set_transit_face true {}", i);
                         } else {
-                            info!(
+                            debug!(
                                 "entity: {:?} neighbour face index: {:?} face type: {:?}",
                                 entity,
                                 neighbour_face_index,
@@ -564,7 +564,7 @@ pub fn mark_transitional_faces(
                             );
                         }
                     } else {
-                        info!("get neighbour cell fail from entity!");
+                        debug!("get neighbour cell fail from entity!");
                     }
                 }
 
@@ -576,11 +576,11 @@ pub fn mark_transitional_faces(
                             let face = faces.get_face_mut(FaceIndex::from_repr(i).unwrap());
                             face.set_face_type(FaceType::TransitFace);
                             b_set = true;
-                            info!("set_transit_face transit face {}", i);
+                            debug!("set_transit_face transit face {}", i);
                         }
                     }
                 } else {
-                    info!("get leaf cell fail from entity!");
+                    debug!("get leaf cell fail from entity!");
                 }
 
                 if b_set {
@@ -590,7 +590,7 @@ pub fn mark_transitional_faces(
             }
             octree.transit_face_cells = transitional_cells;
 
-            info!(
+            debug!(
                 "transit_face_cells num: {}",
                 octree.transit_face_cells.len()
             );
