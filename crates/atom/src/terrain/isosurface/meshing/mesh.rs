@@ -1,16 +1,13 @@
 use bevy::{
     prelude::{
-        default, info, Assets, Color, Commands, Component, Mesh, PbrBundle, Query, Res, ResMut,
-        StandardMaterial, Transform, UVec3, Vec2, Vec3, Vec4,
+        default, info, Assets, Color, Commands, Component, Mesh, PbrBundle, Query, ResMut,
+        StandardMaterial, Transform, UVec3, Vec3,
     },
     render::render_resource::PrimitiveTopology,
     utils::HashMap,
 };
 
-use crate::terrain::{
-    chunk::coords::TerrainChunkCoord, isosurface::IsosurfaceExtractionState,
-    settings::TerrainSettings,
-};
+use crate::terrain::isosurface::IsosurfaceExtractionState;
 
 use super::vertex_index::VertexIndices;
 
@@ -84,31 +81,22 @@ impl From<MeshCache> for Mesh {
 
 pub fn create_mesh(
     mut commands: Commands,
-    terrain_setting: Res<TerrainSettings>,
-    mut mesh_cache: Query<(
-        &MeshCache,
-        &TerrainChunkCoord,
-        &mut IsosurfaceExtractionState,
-    )>,
+    mut mesh_cache: Query<(&MeshCache, &mut IsosurfaceExtractionState)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (mesh_cache, chunk_coord, mut state) in mesh_cache.iter_mut() {
+    for (mesh_cache, mut state) in mesh_cache.iter_mut() {
         if let IsosurfaceExtractionState::MeshCreate = *state {
-            let location = Vec3::new(
-                chunk_coord.x as f32 * terrain_setting.get_chunk_size(),
-                chunk_coord.y as f32 * terrain_setting.get_chunk_size(),
-                chunk_coord.z as f32 * terrain_setting.get_chunk_size(),
-            );
             info!("create_mesh: {:?}", mesh_cache);
             commands.spawn(PbrBundle {
                 mesh: meshes.add(Mesh::from(mesh_cache.clone())),
                 material: materials.add(StandardMaterial {
                     base_color: Color::BLUE,
-                    double_sided: true,
+                    double_sided: false,
+                    cull_mode: None,
                     ..default()
                 }),
-                transform: Transform::from_translation(location),
+                transform: Transform::from_translation(Vec3::splat(0.0)),
                 ..Default::default()
             });
 

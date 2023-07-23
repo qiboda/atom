@@ -1,5 +1,6 @@
 use bevy::{
-    prelude::{Component, UVec3, Vec3},
+    prelude::{Component, Mesh, UVec3, Vec3, Vec4},
+    render::render_resource::PrimitiveTopology,
     utils::HashMap,
 };
 
@@ -18,6 +19,46 @@ pub struct SurfaceSampler {
     pub world_offset: Vec3,
 
     pub voxel_size: Vec3,
+}
+
+impl From<&SurfaceSampler> for Mesh {
+    fn from(value: &SurfaceSampler) -> Self {
+        let mut mesh = Mesh::new(PrimitiveTopology::PointList);
+
+        let mut position = vec![];
+        let mut color = vec![];
+        let sample_size = value.get_sample_size();
+        for x in 0..sample_size.x {
+            for y in 0..sample_size.y {
+                for z in 0..sample_size.z {
+                    let pos_value = value.sample_data.get_value(UVec3::new(x, y, z));
+                    let pos =
+                        value.world_offset + value.voxel_size * UVec3::new(x, y, z).as_vec3() + 0.0;
+                    if pos_value < 0.0 {
+                        position.push(pos);
+                        color.push(Vec4::new(0.0, 255.0, 0.0, 255.0));
+                    } else if pos_value == 0.0 {
+                        position.push(pos);
+                        color.push(Vec4::new(255.0, 0.0, 0.0, 255.0));
+                    }
+                }
+            }
+        }
+
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, position);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, color);
+
+        // mesh.insert_attribute(
+        //     Mesh::ATTRIBUTE_POSITION,
+        //     value
+        //         .sample_pos
+        //         .into_iter()
+        //         .map(|(_, pos)| pos)
+        //         .collect::<Vec<Vec3>>(),
+        // );
+        //
+        mesh
+    }
 }
 
 impl SurfaceSampler {
@@ -49,7 +90,9 @@ impl SurfaceSampler {
             return *value;
         }
 
-        let pos = self.voxel_size * vertex_address.as_vec3() + shape_surface.iso_level;
+        let pos = self.world_offset
+            + self.voxel_size * vertex_address.as_vec3()
+            + shape_surface.iso_level;
         self.sample_pos.insert(vertex_address, pos);
         pos
     }
@@ -84,7 +127,6 @@ impl SurfaceSampler {
     }
 
     pub fn get_value_from_pos(&self, vertex_pos: Vec3, shape_surface: &ShapeSurface) -> f32 {
-        let pos = self.world_offset + vertex_pos * self.voxel_size + shape_surface.iso_level;
-        shape_surface.get_value_from_vec(pos)
+        shape_surface.get_value_from_vec(vertex_pos)
     }
 }

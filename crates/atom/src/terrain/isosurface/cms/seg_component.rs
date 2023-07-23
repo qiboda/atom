@@ -361,21 +361,21 @@ fn make_vertex(
     let point1 = Point::new_with_position_and_value(pos1, value1);
     info!("crossing_index_1:{} point1:{:?}", crossing_index_1, point1);
 
-    let crossing_vertex_point =
-        find_crossing_point_pos(2, &point0, &point1, sample_info, shape_surface);
+    let crossing_vertex_point_pos =
+        find_crossing_point_pos(0, &point0, &point1, sample_info, shape_surface);
     let mut gradient = Vec3::ZERO;
     find_gradient(
         &mut gradient,
-        crossing_vertex_point,
+        crossing_vertex_point_pos,
         &sample_info,
         shape_surface,
     );
     info!(
         "crossing_point:{} gradient:{}",
-        crossing_vertex_point, gradient
+        crossing_vertex_point_pos, gradient
     );
 
-    mesh_info.positions.push(crossing_vertex_point);
+    mesh_info.positions.push(crossing_vertex_point_pos);
     mesh_info.normals.push(gradient);
 
     info!("add vertex index: {:?}", mesh_info.positions.len() - 1);
@@ -464,20 +464,26 @@ fn find_crossing_point_pos(
 
 fn find_gradient(
     normal: &mut Vec3,
-    vertex_point: Vec3,
+    vertex_point_pos: Vec3,
     sample_info: &SurfaceSampler,
     shape_surface: &Res<ShapeSurface>,
 ) {
-    let val = sample_info.get_value_from_pos(vertex_point, shape_surface);
+    let val = sample_info.get_value_from_pos(vertex_point_pos, shape_surface);
     let offset = sample_info.voxel_size * 0.5;
-    let dx =
-        sample_info.get_value_from_pos(vertex_point + Vec3::new(offset.x, 0.0, 0.0), shape_surface);
+    let dx = sample_info.get_value_from_pos(
+        vertex_point_pos + Vec3::new(offset.x, 0.0, 0.0),
+        shape_surface,
+    );
 
-    let dy =
-        sample_info.get_value_from_pos(vertex_point + Vec3::new(0.0, offset.y, 0.0), shape_surface);
+    let dy = sample_info.get_value_from_pos(
+        vertex_point_pos + Vec3::new(0.0, offset.y, 0.0),
+        shape_surface,
+    );
 
-    let dz =
-        sample_info.get_value_from_pos(vertex_point + Vec3::new(0.0, 0.0, offset.z), shape_surface);
+    let dz = sample_info.get_value_from_pos(
+        vertex_point_pos + Vec3::new(0.0, 0.0, offset.z),
+        shape_surface,
+    );
 
     *normal = Vec3::new(dx - val, dy - val, dz - val).normalize();
 }
@@ -495,7 +501,7 @@ pub fn edit_transitional_face(
                 octree.transit_face_cells.len()
             );
             // todo: cache transit face indices....
-            for cell_entity in octree.transit_face_cells.iter() {
+            for transit_cell_entity in octree.transit_face_cells.iter() {
                 let mut all_strips = [
                     Vec::new(),
                     Vec::new(),
@@ -513,41 +519,39 @@ pub fn edit_transitional_face(
                     Entity::PLACEHOLDER,
                 ];
                 let mut all_twin_cell_face_index = [
-                    FaceIndex::Left,
-                    FaceIndex::Left,
-                    FaceIndex::Left,
-                    FaceIndex::Left,
-                    FaceIndex::Left,
-                    FaceIndex::Left,
+                    Option::<FaceIndex>::None,
+                    Option::<FaceIndex>::None,
+                    Option::<FaceIndex>::None,
+                    Option::<FaceIndex>::None,
+                    Option::<FaceIndex>::None,
+                    Option::<FaceIndex>::None,
                 ];
-                if let Ok((cell, _faces)) = cells.get(*cell_entity) {
+                if let Ok((cell, faces)) = cells.get(*transit_cell_entity) {
                     for (i, face_index) in FaceIndex::iter().enumerate() {
-                        // let face = faces.get_face(face_index);
-                        // assert!(face.get_face_type() == &FaceType::TransitFace);
+                        let face = faces.get_face(face_index);
+                        if face.get_face_type() == &FaceType::TransitFace {
+                            let (twin_address, twin_face_index) =
+                                cell.get_twin_face_address(face_index);
+                            if let Some(twin_entity) = addresses.cell_addresses.get(&twin_address) {
+                                all_twin_cell_entitys[i] = *twin_entity;
+                                all_twin_cell_face_index[i] = Some(twin_face_index);
 
-                        let (twin_address, twin_face_index) =
-                            cell.get_twin_face_address(face_index);
-                        if let Some(twin_entity) = addresses.cell_addresses.get(&twin_address) {
-                            all_twin_cell_entitys[i] = *twin_entity;
-                            all_twin_cell_face_index[i] = twin_face_index;
+                                let mut all_strip = &mut all_strips[i];
+                                traverse_face(
+                                    &cells,
+                                    addresses,
+                                    &all_twin_cell_entitys[i],
+                                    twin_face_index,
+                                    &mut all_strip,
+                                );
 
-                            let mut all_strip = &mut all_strips[i];
-                            let mut depth = 0;
-                            traverse_face(
-                                &cells,
-                                addresses,
-                                &all_twin_cell_entitys[i],
-                                twin_face_index,
-                                &mut all_strip,
-                                &mut depth,
-                            );
-
-                            info!(
-                                "twin_entity: {:?}, to traverse_face, all strip: {:?}",
-                                twin_entity, all_strip
-                            );
-                        } else {
-                            info!("get addresses.cell_addresses is none");
+                                info!(
+                                    "twin_entity: {:?}, to traverse_face, all strip: {:?}",
+                                    twin_entity, all_strip
+                                );
+                            } else {
+                                info!("get addresses.cell_addresses is none");
+                            }
                         }
                     }
                 }
@@ -562,7 +566,7 @@ pub fn edit_transitional_face(
                 for (index, twin_cell_entity) in all_twin_cell_entitys.iter().enumerate() {
                     if let Ok((_twin_cell, mut twin_faces)) = cells.get_mut(*twin_cell_entity) {
                         let all_strip = &mut all_strips[index];
-                        let twin_face_index = all_twin_cell_face_index[index];
+                        let twin_face_index = all_twin_cell_face_index[index].unwrap();
 
                         info!(
                             "all twin_cell_entity {:?} face index: {:?} strip: {:?}",
@@ -586,6 +590,7 @@ pub fn edit_transitional_face(
                                 vertex_indices.push(data);
                             }
 
+                            // 记录两个端点
                             let mut long_strip = all_strip[0].clone();
 
                             all_strip.remove(0);
@@ -711,6 +716,7 @@ pub fn edit_transitional_face(
                                         == false
                             );
 
+                            long_strip.set_skip(false);
                             twin_faces
                                 .get_face_mut(twin_face_index)
                                 .get_strips_mut()
@@ -759,7 +765,6 @@ fn traverse_face(
     cell_entity: &Entity,
     face_index: FaceIndex,
     strips: &mut Vec<Strip>,
-    depth: &mut u32,
 ) {
     if let Ok((cell, faces)) = cell_query.get(*cell_entity) {
         let face = faces.get_face(face_index);
@@ -767,29 +772,21 @@ fn traverse_face(
             FaceType::BranchFace => {
                 let sub_cell_indices = FACE_2_SUBCELL[face_index as usize];
 
-                *depth += 1;
-
                 for sub_cell_index in sub_cell_indices.iter() {
                     let child_address = cell.get_address().get_child_address(*sub_cell_index);
                     if let Some(entity) = cell_addresses.cell_addresses.get(&child_address) {
-                        traverse_face(
-                            cell_query,
-                            cell_addresses,
-                            entity,
-                            face_index,
-                            strips,
-                            depth,
-                        );
+                        traverse_face(cell_query, cell_addresses, entity, face_index, strips);
                     }
                 }
             }
             FaceType::LeafFace => {
-                if *depth > 0 {
-                    for strip in face.get_strips().iter() {
-                        info!("traverse_face strip: {:?}", strip);
-                        if strip.get_vertex_index(0).is_none() {
-                            continue;
-                        }
+                for strip in face.get_strips().iter() {
+                    info!("traverse_face strip: {:?}", strip);
+                    if strip.get_vertex_index(0).is_none() {
+                        continue;
+                    }
+
+                    if strip.get_skip() == false {
                         info!("traverse_face strip push: {:?}", strip);
                         strips.push(strip.clone());
                         info!("transit entity: {:?}", cell_entity);
@@ -884,6 +881,7 @@ fn collect_strips(
             }
             FaceType::TransitFace => {
                 info!("collect strip transit face");
+                assert!(face.get_transit_segs().len() == 0);
                 for strip in face.get_strips().iter() {
                     if strip.get_vertex_index(0).is_some() {
                         info!(
@@ -924,6 +922,8 @@ fn collect_strips(
                 for seg in twin.get_transit_segs().iter() {
                     transit_segs.push(seg.clone());
                 }
+
+                // assert!(transit_segs.len() > 0);
 
                 info!("collect strip transit face end");
             }

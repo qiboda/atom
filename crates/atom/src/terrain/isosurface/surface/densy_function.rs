@@ -9,7 +9,7 @@ pub trait DensyFunction: Sync + Send + Debug {
     // from world offset, and range size, and grain size
     fn get_range_values(&self, offset: Vec3, size: Vec3, grain_size: Vec3) -> Vec<f32> {
         let mut vec = Vec::with_capacity((size.x * size.y * size.z) as usize);
-        let sample_num = (size / grain_size).as_uvec3();
+        let sample_num = (size / grain_size).round().as_uvec3();
         for x in 0..sample_num.x {
             for y in 0..sample_num.y {
                 for z in 0..sample_num.z {
@@ -31,7 +31,7 @@ pub struct Sphere;
 
 impl DensyFunction for Sphere {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        x * x + y * y + z * z - 7.0
+        x * x + y * y + z * z - 256.0
     }
 }
 
@@ -69,7 +69,7 @@ pub struct Cube;
 
 impl DensyFunction for Cube {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        (x.abs() - 10.0).max((y.abs() - 10.0).max(z.abs() - 10.0))
+        (x.abs() - 4.0).max((y.abs() - 4.0).max(z.abs() - 4.0))
     }
 }
 
