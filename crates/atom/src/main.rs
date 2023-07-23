@@ -20,6 +20,7 @@ use bevy::{
     },
 };
 use bevy_obj::ObjPlugin;
+use bevy_xpbd_3d::prelude::{PhysicsDebugPlugin, PhysicsPlugins};
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
@@ -40,6 +41,7 @@ fn main() {
             }),
             ObjPlugin,
             WireframePlugin,
+            PhysicsPlugins::default(),
         ))
         .add_plugins(CameraControllerPlugin::default())
         .add_plugins(TerrainPlugin::default())
