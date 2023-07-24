@@ -15,12 +15,13 @@ use bevy::{
     pbr::wireframe::{WireframeConfig, WireframePlugin},
     prelude::*,
     render::{
+        camera::ScalingMode,
         settings::{WgpuFeatures, WgpuSettings},
         RenderPlugin,
     },
 };
 use bevy_obj::ObjPlugin;
-use bevy_xpbd_3d::prelude::{PhysicsDebugPlugin, PhysicsPlugins};
+use bevy_xpbd_3d::prelude::PhysicsPlugins;
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
@@ -65,9 +66,9 @@ fn startup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut wireframe_config: ResMut<WireframeConfig>,
 ) {
-    wireframe_config.global = false;
+    wireframe_config.global = true;
 
-    commands.insert_resource(ClearColor(Color::rgb(0.2, 0.2, 0.1)));
+    commands.insert_resource(ClearColor(Color::rgb(1.0, 0.2, 0.1)));
     commands.insert_resource(Msaa::Sample4);
     commands.insert_resource(AmbientLight {
         color: Color::Rgba {
@@ -107,11 +108,19 @@ fn startup(
         ..Default::default()
     });
 
-    let size = 1.0 * 16.0;
+    let size = 1.0 * 8.0;
 
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(2.0, 2.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
+            // projection: Projection::Orthographic(OrthographicProjection {
+            //     near: 0.0,
+            //     far: 100.0,
+            //     viewport_origin: (0.5, 0.5).into(),
+            //     scaling_mode: ScalingMode::WindowSize(10.0),
+            //     scale: 0.1,
+            //     ..Default::default()
+            // }),
+            transform: Transform::from_xyz(8.0, 8.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera: Camera {
                 hdr: true,
                 order: 0,

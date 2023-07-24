@@ -65,16 +65,17 @@ fn first_sample_surface(
 }
 
 fn init_surface_sampler(
-    mut commands: Commands,
+    // mut commands: Commands,
+    // mut meshes: ResMut<Assets<Mesh>>,
+    // mut materials: ResMut<Assets<SamplerPointMaterial>>,
     mut surface_sampler_query: Query<(&mut SurfaceSampler, &mut IsosurfaceExtractionState)>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<SamplerPointMaterial>>,
     shape_surface: Res<ShapeSurface>,
 ) {
     surface_sampler_query
         .par_iter_mut()
         .for_each_mut(|(mut surface_sampler, mut state)| {
             if *state == IsosurfaceExtractionState::Sample {
+                info_span!("init_surface_sampler");
                 info!("init_surface_sampler");
                 let offset = surface_sampler.world_offset;
                 let size = surface_sampler.voxel_size * surface_sampler.get_sample_size().as_vec3();
@@ -105,10 +106,7 @@ fn init_surface_sampler(
                     min_num, zero_num, max_num
                 );
 
-                // info!("value: {:?}", values);
-
                 surface_sampler.set_sample_data(values);
-
                 *state = IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build);
             }
         });
