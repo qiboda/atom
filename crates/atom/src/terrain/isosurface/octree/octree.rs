@@ -77,25 +77,26 @@ pub fn make_octree_structure(
             if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build) =
                 *isosurface_extract_state
             {
+                info_span!("make_octree_structure");
                 info!("make_octree_structure");
-                commands.command_scope(|mut commands| {
-                    debug!("make_structure");
+                debug!("make_structure");
 
-                    // let task = thread_pool.spawn(async move {
-                    let c000 = UVec3::new(0, 0, 0);
+                // let task = thread_pool.spawn(async move {
+                let c000 = UVec3::new(0, 0, 0);
 
-                    let voxel_num = terrain_settings.get_chunk_voxel_num();
-                    let voxel_num = UVec3::splat(voxel_num);
+                let voxel_num = terrain_settings.get_chunk_voxel_num();
+                let voxel_num = UVec3::splat(voxel_num);
 
-                    // todo: check is branch or leat cell.....
-                    let mut address = VoxelAddress::new();
-                    address.set(
-                        VoxelAddress { raw_address: 1 },
-                        SubCellIndex::LeftBottomBack,
-                    );
+                // todo: check is branch or leat cell.....
+                let mut address = VoxelAddress::new();
+                address.set(
+                    VoxelAddress { raw_address: 1 },
+                    SubCellIndex::LeftBottomBack,
+                );
 
-                    let vertex_points = acquire_cell_info(c000, voxel_num);
-                    let entity = commands
+                let vertex_points = acquire_cell_info(c000, voxel_num);
+                commands.command_scope(|mut command| {
+                    let entity = command
                         .spawn(CellBundle {
                             cell: Cell::new(CellType::Branch, address, vertex_points),
                             faces: Faces::new(0, FaceType::BranchFace),
@@ -105,36 +106,33 @@ pub fn make_octree_structure(
 
                     octree.cells.push(entity);
                     octree_cell_address.cell_addresses.insert(address, entity);
-
-                    let voxel_num = voxel_num.x >> 1;
-                    let voxel_num = UVec3::splat(voxel_num);
-
-                    subdivide_cell(
-                        &mut commands,
-                        &mut octree,
-                        address,
-                        c000,
-                        voxel_num,
-                        &mut surface_sampler,
-                        &mut octree_cell_address,
-                        &shape_surface,
-                    );
-                    debug!(
-                        "cell num: {} and leaf cell num: {}",
-                        octree.cells.len(),
-                        octree.leaf_cells.len()
-                    )
-
-                    // });
                 });
+
+                let voxel_num = voxel_num.x >> 1;
+                let voxel_num = UVec3::splat(voxel_num);
+
+                subdivide_cell(
+                    &commands,
+                    &mut octree,
+                    address,
+                    c000,
+                    voxel_num,
+                    &mut surface_sampler,
+                    &mut octree_cell_address,
+                    &shape_surface,
+                );
+
+                debug!(
+                    "cell num: {} and leaf cell num: {}",
+                    octree.cells.len(),
+                    octree.leaf_cells.len()
+                );
 
                 *isosurface_extract_state =
                     IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace);
             }
         },
     );
-    // Spawn new entity and add our new task as a component
-    // commands.spawn(BuildOctreeTask(task));
 }
 
 fn acquire_cell_info(c000: UVec3, voxel_num: UVec3) -> [UVec3; VertexPoint::COUNT] {
@@ -163,7 +161,7 @@ fn acquire_cell_info(c000: UVec3, voxel_num: UVec3) -> [UVec3; VertexPoint::COUN
 }
 
 fn subdivide_cell(
-    commands: &mut Commands,
+    commands: &ParallelCommands,
     octree: &mut Octree,
     parent_address: VoxelAddress,
     parent_c000: UVec3,
@@ -225,19 +223,21 @@ fn subdivide_cell(
             CellType::Leaf => FaceType::LeafFace,
         };
 
-        let entity = commands
-            .spawn(CellBundle {
-                cell: Cell::new(branch_type, address, vertex_points),
-                faces: Faces::new(0, face_type),
-                cell_mesh_info: CellMeshInfo::default(),
-            })
-            .id();
+        commands.command_scope(|mut command| {
+            let entity = command
+                .spawn(CellBundle {
+                    cell: Cell::new(branch_type, address, vertex_points),
+                    faces: Faces::new(0, face_type),
+                    cell_mesh_info: CellMeshInfo::default(),
+                })
+                .id();
 
-        octree.cells.push(entity);
-        if branch_type == CellType::Leaf {
-            octree.leaf_cells.push(entity);
-        }
-        cell_address.cell_addresses.insert(address, entity);
+            octree.cells.push(entity);
+            if branch_type == CellType::Leaf {
+                octree.leaf_cells.push(entity);
+            }
+            cell_address.cell_addresses.insert(address, entity);
+        });
 
         // debug!(
         //     "subdivide_cell: cell: {:?}",
@@ -279,12 +279,16 @@ fn check_for_subdivision(
     vertex_points: &[UVec3; 8],
     shape_surface: &Res<ShapeSurface>,
 ) -> bool {
-    let check_for_edge_ambiguity_result =
-        check_for_edge_ambiguity(sample_info, vertex_points, shape_surface);
-    let check_for_complex_surface_result =
+    let edge_ambiguity_result = check_for_edge_ambiguity(sample_info, vertex_points, shape_surface);
+    debug!("check_for_edge_ambiguity_result: {edge_ambiguity_result}");
+    if edge_ambiguity_result {
+        return true;
+    }
+
+    let complex_surface_result =
         check_for_complex_surface(sample_info, vertex_points, shape_surface);
-    debug!("check_for_edge_ambiguity_result: {check_for_edge_ambiguity_result}, check_for_complex_surface: {check_for_complex_surface_result}");
-    return check_for_edge_ambiguity_result || check_for_complex_surface_result;
+    debug!("check_for_complex_surface: {complex_surface_result}");
+    return complex_surface_result;
 }
 
 /// 检测是否(坐标位置)平坦
@@ -463,6 +467,7 @@ pub fn mark_transitional_faces(
 ) {
     query.for_each_mut(|(mut octree, cell_address, mut state)| {
         if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace) = *state {
+            info_span!("mark_transitional_faces");
             info!(
                 "mark_transitional_faces: cell num: {} leaf cells: {}, transitional_cells: {}",
                 octree.cells.len(),

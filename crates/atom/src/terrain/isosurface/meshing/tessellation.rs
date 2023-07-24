@@ -29,6 +29,7 @@ pub fn tessellation_traversal(
     for (octree, cell_addresses, mut mesh_cache, mut surface_sampler, mut state) in query.iter_mut()
     {
         if let IsosurfaceExtractionState::Meshing = *state {
+            info_span!("tessellation_traversal");
             info!("tessellation_traversal");
             for entity in octree.cells.iter() {
                 tessellation_traversal_inner(

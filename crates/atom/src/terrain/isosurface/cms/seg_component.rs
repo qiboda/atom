@@ -35,8 +35,10 @@ pub fn generate_segments(
 ) {
     for (mut mesh_cache, mut surface_sampler, state, octree) in query.iter_mut() {
         if let IsosurfaceExtractionState::Extract = *state {
+            info_span!("generate_segments");
             info!(
-                "generate_segments: octree leaf cell num: {}", octree.leaf_cells.len()
+                "generate_segments: octree leaf cell num: {}",
+                octree.leaf_cells.len()
             );
             debug!("query: {:?}", cells);
             for entity in octree.leaf_cells.iter() {
@@ -497,7 +499,11 @@ pub fn edit_transitional_face(
 ) {
     for (octree, addresses, state) in octree_query.iter() {
         if let IsosurfaceExtractionState::Extract = *state {
-            info!("edit_transitional_face: octree.transit_face_cells.len(): {}", octree.transit_face_cells.len());
+            info_span!("edit_transitional_face");
+            info!(
+                "edit_transitional_face: octree.transit_face_cells.len(): {}",
+                octree.transit_face_cells.len()
+            );
             // todo: cache transit face indices....
             for transit_cell_entity in octree.transit_face_cells.iter() {
                 let mut all_strips = [
@@ -803,6 +809,7 @@ pub fn trace_comonent(
 ) {
     for (octree, cell_addresses, mut state) in query.iter_mut() {
         if let IsosurfaceExtractionState::Extract = *state {
+            info_span!("trace_comonent");
             info!("trace_comonent");
             for cell_entity in octree.leaf_cells.iter() {
                 let mut cell_strips = Vec::new();
