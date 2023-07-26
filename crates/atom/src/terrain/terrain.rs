@@ -40,10 +40,15 @@ pub struct TerrainDataPlugin;
 
 impl Plugin for TerrainDataPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_terrain).add_systems(
-            Update,
-            create_visible_chunks.in_set(TerrainSystemSet::GenerateTerrain),
-        );
+        app.add_systems(Startup, setup_terrain)
+            .add_systems(
+                Update,
+                create_visible_chunks.in_set(TerrainSystemSet::GenerateTerrain),
+            )
+            .add_systems(
+                Last,
+                despawn_entity.in_set(TerrainSystemSet::GenerateTerrain),
+            );
     }
 }
 
@@ -98,28 +103,8 @@ fn create_visible_chunks(
             add_count += 1;
         });
 
-        let mut removed_count = 0;
-        last_terrain_single_visible_area.iter_chunk(&mut |x, y, z| {
-            if current_terrain_single_visible_area.is_in_chunk(x, y, z) {
-                return;
-            }
-
-            if let Some(&terrain_chunk_entity) =
-                terrain_data.get_chunk_entity_by_coord(TerrainChunkCoord::from(&[x, y, z]))
-            {
-                commands.entity(terrain_chunk_entity).despawn_recursive();
-                terrain_data
-                    .data
-                    .remove(&TerrainChunkCoord::from(&[x, y, z]));
-                removed_count = removed_count + 1;
-            }
-        });
-
         if add_count > 0 {
             info!("added count: {}", add_count);
-        }
-        if removed_count > 0 {
-            info!("removed count: {}", removed_count);
         }
     }
 }
@@ -143,4 +128,52 @@ fn spawn_terrain_chunks(
     let mut terrian = commands.get_entity(terrain_entity).unwrap();
     terrian.add_child(child);
     terrain_data.data.insert(terrain_chunk_coord, child);
+}
+
+fn despawn_entity(
+    mut commands: Commands,
+    terrain_areas: Res<TerrainVisibleAreas>,
+    visible_changed_query: Query<
+        Entity,
+        (
+            Or<(Changed<VisibleTerrainRange>, Changed<GlobalTransform>)>,
+            With<VisibleTerrainRange>,
+        ),
+    >,
+    mut terrain_query: Query<&mut TerrainData, With<Terrain>>,
+) {
+    for entity in visible_changed_query.iter() {
+        let last_terrain_single_visible_area = match terrain_areas.get_last_visible_area(entity) {
+            Some(visible_area) => visible_area.clone(),
+            None => TerrainSingleVisibleArea::default(),
+        };
+
+        let current_terrain_single_visible_area =
+            match terrain_areas.get_current_visible_area(entity) {
+                Some(visible_area) => visible_area.clone(),
+                None => TerrainSingleVisibleArea::default(),
+            };
+
+        let mut removed_count = 0;
+        let mut terrain_data = terrain_query.single_mut();
+        last_terrain_single_visible_area.iter_chunk(&mut |x, y, z| {
+            if current_terrain_single_visible_area.is_in_chunk(x, y, z) {
+                return;
+            }
+
+            if let Some(&terrain_chunk_entity) =
+                terrain_data.get_chunk_entity_by_coord(TerrainChunkCoord::from(&[x, y, z]))
+            {
+                commands.entity(terrain_chunk_entity).despawn_recursive();
+                terrain_data
+                    .data
+                    .remove(&TerrainChunkCoord::from(&[x, y, z]));
+                removed_count = removed_count + 1;
+            }
+        });
+
+        if removed_count > 0 {
+            info!("removed count: {}", removed_count);
+        }
+    }
 }

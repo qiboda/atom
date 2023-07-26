@@ -15,7 +15,6 @@ use bevy::{
     pbr::wireframe::{WireframeConfig, WireframePlugin},
     prelude::*,
     render::{
-        camera::ScalingMode,
         settings::{WgpuFeatures, WgpuSettings},
         RenderPlugin,
     },
@@ -31,7 +30,7 @@ use visible::visible::VisibleTerrainRange;
 fn main() {
     let mut app = App::new();
 
-    app.insert_resource(TerrainSettings::new(1.0, 8))
+    app.insert_resource(TerrainSettings::new(1.0, 16))
         .add_plugins(RenderDocPlugin)
         .add_plugins((
             DefaultPlugins.set(RenderPlugin {
@@ -108,7 +107,7 @@ fn startup(
         ..Default::default()
     });
 
-    let size = 1.0 * 8.0;
+    let size = 1.0 * 32.0;
 
     commands.spawn((
         Camera3dBundle {

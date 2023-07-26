@@ -88,23 +88,23 @@ fn init_surface_sampler(
                     shape_surface.get_range_values(offset, size, surface_sampler.voxel_size);
                 info!("sample value num: {}", values.len());
 
-                let mut min_num = 0;
-                let mut max_num = 0;
-                let mut zero_num = 0;
-                for i in values.iter() {
-                    if i < &0.0 {
-                        min_num += 1;
-                    } else if i == &0.0 {
-                        zero_num += 1;
-                    } else {
-                        max_num += 1;
-                    }
-                }
-
-                info!(
-                    "min num: {}, zero_num: {}, max_num: {}",
-                    min_num, zero_num, max_num
-                );
+                // let mut min_num = 0;
+                // let mut max_num = 0;
+                // let mut zero_num = 0;
+                // for i in values.iter() {
+                //     if i < &0.0 {
+                //         min_num += 1;
+                //     } else if i == &0.0 {
+                //         zero_num += 1;
+                //     } else {
+                //         max_num += 1;
+                //     }
+                // }
+                //
+                // info!(
+                //     "min num: {}, zero_num: {}, max_num: {}",
+                //     min_num, zero_num, max_num
+                // );
 
                 surface_sampler.set_sample_data(values);
                 *state = IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build);

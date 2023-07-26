@@ -53,10 +53,10 @@ impl Plugin for IsosurfaceExtractionPlugin {
         app.insert_resource(ShapeSurface {
             densy_function: Box::new(NoiseSurface {
                 seed: rand::random(),
-                frequency: 0.1,
-                lacunarity: 10.0,
-                gain: 2.0,
-                octaves: 1,
+                frequency: 0.2,
+                lacunarity: 0.1,
+                gain: 5.0,
+                octaves: 3,
             }),
             // densy_function: Box::new(Sphere),
             // densy_function: Box::new(Panel),
