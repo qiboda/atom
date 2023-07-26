@@ -60,6 +60,7 @@ pub fn make_octree_structure(
     shape_surface: Res<ShapeSurface>,
     terrain_settings: Res<TerrainSettings>,
     mut octree_query: Query<(
+        Entity,
         &mut Octree,
         &mut OctreeCellAddress,
         &mut SurfaceSampler,
@@ -69,6 +70,7 @@ pub fn make_octree_structure(
     // let thread_pool = AsyncComputeTaskPool::get();
     octree_query.par_iter_mut().for_each_mut(
         |(
+            octree_entity,
             mut octree,
             mut octree_cell_address,
             mut surface_sampler,
@@ -104,6 +106,8 @@ pub fn make_octree_structure(
                         })
                         .id();
 
+                    let mut octree_command = command.get_entity(octree_entity).unwrap();
+                    octree_command.add_child(entity);
                     octree.cells.push(entity);
                     octree_cell_address.cell_addresses.insert(address, entity);
                 });
@@ -113,6 +117,7 @@ pub fn make_octree_structure(
 
                 subdivide_cell(
                     &commands,
+                    octree_entity,
                     &mut octree,
                     address,
                     c000,
@@ -162,6 +167,7 @@ fn acquire_cell_info(c000: UVec3, voxel_num: UVec3) -> [UVec3; VertexPoint::COUN
 
 fn subdivide_cell(
     commands: &ParallelCommands,
+    octree_entity: Entity,
     octree: &mut Octree,
     parent_address: VoxelAddress,
     parent_c000: UVec3,
@@ -199,6 +205,7 @@ fn subdivide_cell(
             } else {
                 subdivide_cell(
                     commands,
+                    octree_entity,
                     octree,
                     address,
                     c000,
@@ -232,6 +239,8 @@ fn subdivide_cell(
                 })
                 .id();
 
+            let mut octree_command = command.get_entity(octree_entity).unwrap();
+            octree_command.add_child(entity);
             octree.cells.push(entity);
             if branch_type == CellType::Leaf {
                 octree.leaf_cells.push(entity);
@@ -465,141 +474,145 @@ pub fn mark_transitional_faces(
         &mut IsosurfaceExtractionState,
     )>,
 ) {
-    query.for_each_mut(|(mut octree, cell_address, mut state)| {
-        if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace) = *state {
-            info_span!("mark_transitional_faces");
-            info!(
-                "mark_transitional_faces: cell num: {} leaf cells: {}, transitional_cells: {}",
-                octree.cells.len(),
-                octree.leaf_cells.len(),
-                octree.transit_face_cells.len()
-            );
-            let mut transitional_cells = Vec::new();
+    query
+        // .par_iter_mut()
+        .for_each_mut(|(mut octree, cell_address, mut state)| {
+            if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace) =
+                *state
+            {
+                info_span!("mark_transitional_faces");
+                info!(
+                    "mark_transitional_faces: cell num: {} leaf cells: {}, transitional_cells: {}",
+                    octree.cells.len(),
+                    octree.leaf_cells.len(),
+                    octree.transit_face_cells.len()
+                );
+                let mut transitional_cells = Vec::new();
 
-            let mut face_branch_num = 0;
-            let mut face_leaf_num = 0;
-            for entity in octree.cells.iter() {
-                if let Ok((_cell, faces)) = cell_faces.get(*entity) {
-                    for face_index in FaceIndex::iter() {
-                        match faces.get_face(face_index).get_face_type() {
-                            FaceType::BranchFace => {
-                                face_branch_num += 1;
+                let mut face_branch_num = 0;
+                let mut face_leaf_num = 0;
+                for entity in octree.cells.iter() {
+                    if let Ok((_cell, faces)) = cell_faces.get(*entity) {
+                        for face_index in FaceIndex::iter() {
+                            match faces.get_face(face_index).get_face_type() {
+                                FaceType::BranchFace => {
+                                    face_branch_num += 1;
+                                }
+                                FaceType::LeafFace => {
+                                    face_leaf_num += 1;
+                                }
+                                FaceType::TransitFace => assert!(false),
                             }
-                            FaceType::LeafFace => {
-                                face_leaf_num += 1;
-                            }
-                            FaceType::TransitFace => assert!(false),
                         }
                     }
                 }
-            }
-            debug!(
-                "branch face: {}, leaf face: {}",
-                face_branch_num, face_leaf_num
-            );
+                debug!(
+                    "branch face: {}, leaf face: {}",
+                    face_branch_num, face_leaf_num
+                );
 
-            for entity in octree.leaf_cells.iter() {
-                debug!("entity: {:?}", entity);
-                let mut all_neighbour_cell_entity = [
-                    Entity::PLACEHOLDER,
-                    Entity::PLACEHOLDER,
-                    Entity::PLACEHOLDER,
-                    Entity::PLACEHOLDER,
-                    Entity::PLACEHOLDER,
-                    Entity::PLACEHOLDER,
-                ];
+                for entity in octree.leaf_cells.iter() {
+                    debug!("entity: {:?}", entity);
+                    let mut all_neighbour_cell_entity = [
+                        Entity::PLACEHOLDER,
+                        Entity::PLACEHOLDER,
+                        Entity::PLACEHOLDER,
+                        Entity::PLACEHOLDER,
+                        Entity::PLACEHOLDER,
+                        Entity::PLACEHOLDER,
+                    ];
 
-                let mut all_neighbour_face_index = [
-                    FaceIndex::Left,
-                    FaceIndex::Left,
-                    FaceIndex::Left,
-                    FaceIndex::Left,
-                    FaceIndex::Left,
-                    FaceIndex::Left,
-                ];
+                    let mut all_neighbour_face_index = [
+                        FaceIndex::Left,
+                        FaceIndex::Left,
+                        FaceIndex::Left,
+                        FaceIndex::Left,
+                        FaceIndex::Left,
+                        FaceIndex::Left,
+                    ];
 
-                if let Ok((leaf_cell, mut faces)) = cell_faces.get_mut(*entity) {
-                    assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
+                    if let Ok((leaf_cell, mut faces)) = cell_faces.get_mut(*entity) {
+                        assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
 
-                    for (i, face_index) in FaceIndex::iter().enumerate() {
-                        debug!("entity: {:?} face index: {:?}", entity, face_index);
-                        let face = faces.get_face_mut(face_index);
-                        assert!(face.get_face_type() == &FaceType::LeafFace);
+                        for (i, face_index) in FaceIndex::iter().enumerate() {
+                            debug!("entity: {:?} face index: {:?}", entity, face_index);
+                            let face = faces.get_face_mut(face_index);
+                            assert!(face.get_face_type() == &FaceType::LeafFace);
 
-                        let (neighbour_cell_address, neighbour_face_index) =
-                            leaf_cell.get_twin_face_address(face_index);
-                        all_neighbour_face_index[i] = neighbour_face_index;
+                            let (neighbour_cell_address, neighbour_face_index) =
+                                leaf_cell.get_twin_face_address(face_index);
+                            all_neighbour_face_index[i] = neighbour_face_index;
 
-                        if let Some(neighbour_cell_entity) =
-                            cell_address.cell_addresses.get(&neighbour_cell_address)
-                        {
-                            all_neighbour_cell_entity[i] = *neighbour_cell_entity;
-                        } else {
-                            debug!("get cell fail from cell address!");
-                        }
-                    }
-                } else {
-                    debug!("get cell fail!");
-                }
-
-                let mut set_transit_face = [false, false, false, false, false, false];
-
-                for (i, entity) in all_neighbour_cell_entity.iter().enumerate() {
-                    let neighbour_face_index = all_neighbour_face_index[i];
-                    debug!(
-                        "entity: {:?} neighbour face index: {:?}",
-                        entity, neighbour_face_index
-                    );
-                    if let Ok((_neighbour_cell, neighbour_faces)) = cell_faces.get(*entity) {
-                        if neighbour_faces
-                            .get_face(neighbour_face_index)
-                            .get_face_type()
-                            == &FaceType::BranchFace
-                        {
-                            set_transit_face[i] = true;
-                            debug!("set_transit_face true {}", i);
-                        } else {
-                            debug!(
-                                "entity: {:?} neighbour face index: {:?} face type: {:?}",
-                                entity,
-                                neighbour_face_index,
-                                neighbour_faces
-                                    .get_face(neighbour_face_index)
-                                    .get_face_type()
-                            );
+                            if let Some(neighbour_cell_entity) =
+                                cell_address.cell_addresses.get(&neighbour_cell_address)
+                            {
+                                all_neighbour_cell_entity[i] = *neighbour_cell_entity;
+                            } else {
+                                debug!("get cell fail from cell address!");
+                            }
                         }
                     } else {
-                        debug!("get neighbour cell fail from entity!");
+                        debug!("get cell fail!");
                     }
-                }
 
-                let mut b_set = false;
-                if let Ok((leaf_cell, mut faces)) = cell_faces.get_mut(*entity) {
-                    for (i, set) in set_transit_face.iter().enumerate() {
-                        assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
-                        if *set {
-                            let face = faces.get_face_mut(FaceIndex::from_repr(i).unwrap());
-                            face.set_face_type(FaceType::TransitFace);
-                            b_set = true;
-                            debug!("set_transit_face transit face {}", i);
+                    let mut set_transit_face = [false, false, false, false, false, false];
+
+                    for (i, entity) in all_neighbour_cell_entity.iter().enumerate() {
+                        let neighbour_face_index = all_neighbour_face_index[i];
+                        debug!(
+                            "entity: {:?} neighbour face index: {:?}",
+                            entity, neighbour_face_index
+                        );
+                        if let Ok((_neighbour_cell, neighbour_faces)) = cell_faces.get(*entity) {
+                            if neighbour_faces
+                                .get_face(neighbour_face_index)
+                                .get_face_type()
+                                == &FaceType::BranchFace
+                            {
+                                set_transit_face[i] = true;
+                                debug!("set_transit_face true {}", i);
+                            } else {
+                                debug!(
+                                    "entity: {:?} neighbour face index: {:?} face type: {:?}",
+                                    entity,
+                                    neighbour_face_index,
+                                    neighbour_faces
+                                        .get_face(neighbour_face_index)
+                                        .get_face_type()
+                                );
+                            }
+                        } else {
+                            debug!("get neighbour cell fail from entity!");
                         }
                     }
-                } else {
-                    debug!("get leaf cell fail from entity!");
-                }
 
-                if b_set {
-                    transitional_cells.push(*entity);
-                    assert!(octree.leaf_cells.contains(entity));
+                    let mut b_set = false;
+                    if let Ok((leaf_cell, mut faces)) = cell_faces.get_mut(*entity) {
+                        for (i, set) in set_transit_face.iter().enumerate() {
+                            assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
+                            if *set {
+                                let face = faces.get_face_mut(FaceIndex::from_repr(i).unwrap());
+                                face.set_face_type(FaceType::TransitFace);
+                                b_set = true;
+                                debug!("set_transit_face transit face {}", i);
+                            }
+                        }
+                    } else {
+                        debug!("get leaf cell fail from entity!");
+                    }
+
+                    if b_set {
+                        transitional_cells.push(*entity);
+                        assert!(octree.leaf_cells.contains(entity));
+                    }
                 }
+                octree.transit_face_cells = transitional_cells;
+
+                debug!(
+                    "transit_face_cells num: {}",
+                    octree.transit_face_cells.len()
+                );
+                *state = IsosurfaceExtractionState::Extract;
             }
-            octree.transit_face_cells = transitional_cells;
-
-            debug!(
-                "transit_face_cells num: {}",
-                octree.transit_face_cells.len()
-            );
-            *state = IsosurfaceExtractionState::Extract;
-        }
-    });
+        });
 }
