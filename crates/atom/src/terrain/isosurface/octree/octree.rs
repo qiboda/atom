@@ -143,7 +143,7 @@ pub fn make_octree_structure(
 fn acquire_cell_info(c000: UVec3, voxel_num: UVec3) -> [UVec3; VertexPoint::COUNT] {
     let mut pt_indices = [UVec3::new(0, 0, 0); VertexPoint::COUNT];
 
-    assert!(voxel_num != UVec3::ZERO);
+    debug_assert!(voxel_num != UVec3::ZERO);
 
     {
         pt_indices[0] = UVec3::new(c000.x, c000.y, c000.z);
@@ -265,13 +265,12 @@ fn check_for_surface(
     // 8个顶点中有几个在内部
     let mut inside = 0;
     for i in 0..8 {
+        let value = sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface);
         debug!(
             "inside value: {}, vertex_points: {}, world_offset: {}",
-            sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface),
-            vertex_points[i],
-            sample_info.world_offset
+            value, vertex_points[i], sample_info.world_offset
         );
-        if sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface) < 0.0 {
+        if value < 0.0 {
             inside += 1;
         }
     }
@@ -345,7 +344,7 @@ fn check_for_edge_ambiguity(
             //     point_1,
             //     sample_info.get_value_from_vertex_address(point_1, shape_surface)
             // );
-            assert!(
+            debug_assert!(
                 sample_info
                     .get_pos_from_vertex_address(index, shape_surface)
                     .x
@@ -480,6 +479,14 @@ pub fn mark_transitional_faces(
             if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace) =
                 *state
             {
+                if octree.cells.len() == 0 {
+                    return;
+                }
+
+                if let Err(_) = cell_faces.get(octree.cells[0]) {
+                    return;
+                }
+
                 info_span!("mark_transitional_faces");
                 info!(
                     "mark_transitional_faces: cell num: {} leaf cells: {}, transitional_cells: {}",
@@ -501,7 +508,7 @@ pub fn mark_transitional_faces(
                                 FaceType::LeafFace => {
                                     face_leaf_num += 1;
                                 }
-                                FaceType::TransitFace => assert!(false),
+                                FaceType::TransitFace => debug_assert!(false),
                             }
                         }
                     }
@@ -532,12 +539,12 @@ pub fn mark_transitional_faces(
                     ];
 
                     if let Ok((leaf_cell, mut faces)) = cell_faces.get_mut(*entity) {
-                        assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
+                        debug_assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
 
                         for (i, face_index) in FaceIndex::iter().enumerate() {
                             debug!("entity: {:?} face index: {:?}", entity, face_index);
                             let face = faces.get_face_mut(face_index);
-                            assert!(face.get_face_type() == &FaceType::LeafFace);
+                            debug_assert!(face.get_face_type() == &FaceType::LeafFace);
 
                             let (neighbour_cell_address, neighbour_face_index) =
                                 leaf_cell.get_twin_face_address(face_index);
@@ -589,7 +596,7 @@ pub fn mark_transitional_faces(
                     let mut b_set = false;
                     if let Ok((leaf_cell, mut faces)) = cell_faces.get_mut(*entity) {
                         for (i, set) in set_transit_face.iter().enumerate() {
-                            assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
+                            debug_assert!(leaf_cell.get_cell_type() == &CellType::Leaf);
                             if *set {
                                 let face = faces.get_face_mut(FaceIndex::from_repr(i).unwrap());
                                 face.set_face_type(FaceType::TransitFace);
@@ -603,7 +610,7 @@ pub fn mark_transitional_faces(
 
                     if b_set {
                         transitional_cells.push(*entity);
-                        assert!(octree.leaf_cells.contains(entity));
+                        debug_assert!(octree.leaf_cells.contains(entity));
                     }
                 }
                 octree.transit_face_cells = transitional_cells;

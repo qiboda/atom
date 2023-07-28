@@ -102,7 +102,7 @@ fn tessellate_component(
     debug!("tessellate_component");
     let num_of_indices = component.len();
 
-    assert!(num_of_indices >= 3);
+    debug_assert!(num_of_indices >= 3);
 
     if num_of_indices == 3 {
         make_tri(mesh_cache, component);
@@ -146,7 +146,7 @@ fn tessellate_component(
         mesh_cache.positions.push(med_vertex);
         mesh_cache.normals.push(centro_id_normal);
 
-        assert!(mesh_cache.positions.len() > 0);
+        debug_assert!(mesh_cache.positions.len() > 0);
         component.push((mesh_cache.positions.len() - 1) as u32);
 
         make_tri_fan(mesh_cache, component);

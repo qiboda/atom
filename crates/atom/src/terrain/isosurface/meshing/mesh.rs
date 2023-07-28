@@ -43,7 +43,7 @@ impl MeshCache {
     }
 
     fn check(&self) {
-        assert!(
+        debug_assert!(
             self.positions.len() > 0
                 && self.positions.len() == self.normals.len()
                 && self.indices.len() % 3 == 0

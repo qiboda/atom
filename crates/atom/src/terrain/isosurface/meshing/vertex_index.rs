@@ -17,12 +17,12 @@ impl VertexIndices {
 
 impl VertexIndices {
     pub fn set_vertex_index(&mut self, x: u32, y: u32, z: u32) {
-        assert!(x != u32::MAX && y != u32::MAX && z != u32::MAX);
+        debug_assert!(x != u32::MAX && y != u32::MAX && z != u32::MAX);
         self.vertex_index = UVec3::new(x, y, z);
     }
 
     pub fn set_dir_vertex_index(&mut self, dir: EdgeDirection, vertex_index: u32) {
-        assert!(vertex_index != u32::MAX);
+        debug_assert!(vertex_index != u32::MAX);
         match dir {
             EdgeDirection::XAxis => self.vertex_index.x = vertex_index,
             EdgeDirection::YAxis => self.vertex_index.y = vertex_index,

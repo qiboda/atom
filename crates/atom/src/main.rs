@@ -40,8 +40,8 @@ fn main() {
                 },
             }),
             ObjPlugin,
-            WireframePlugin,
-            PhysicsPlugins::default(),
+            // WireframePlugin,
+            // PhysicsPlugins::default(),
         ))
         .add_plugins(CameraControllerPlugin::default())
         .add_plugins(TerrainPlugin::default())
@@ -63,9 +63,9 @@ fn startup(
     // mut meshes: ResMut<Assets<Mesh>>,
     // mut cool_materials: ResMut<Assets<CoolMaterial>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut wireframe_config: ResMut<WireframeConfig>,
+    // mut wireframe_config: ResMut<WireframeConfig>,
 ) {
-    wireframe_config.global = true;
+    // wireframe_config.global = true;
 
     commands.insert_resource(ClearColor(Color::rgb(1.0, 0.2, 0.1)));
     commands.insert_resource(Msaa::Sample4);
