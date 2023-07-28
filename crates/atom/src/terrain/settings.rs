@@ -8,7 +8,7 @@ pub struct TerrainSettings {
 
 impl TerrainSettings {
     pub fn new(chunk_voxel_size: f32, chunk_voxel_num: u32) -> Self {
-        assert!(chunk_voxel_num.is_power_of_two());
+        debug_assert!(chunk_voxel_num.is_power_of_two());
         Self {
             chunk_voxel_size,
             chunk_voxel_num,

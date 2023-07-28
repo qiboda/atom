@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::terrain::chunk::TerrainChunk;
+use crate::terrain::{
+    chunk::TerrainChunk,
+    isosurface::{BuildOctreeState, IsosurfaceExtractionState},
+};
 
 use self::{
     bundle::OctreeBundle,
@@ -29,7 +32,14 @@ impl Plugin for OctreePlugin {
             Update,
             (
                 make_octree_structure,
-                apply_deferred,
+                // apply_deferred.run_if(|octree_query: Query<&IsosurfaceExtractionState>| {
+                //     octree_query.iter().any(|state| {
+                //         state
+                //             == &IsosurfaceExtractionState::BuildOctree(
+                //                 BuildOctreeState::MarkTransitFace,
+                //             )
+                //     })
+                // }),
                 mark_transitional_faces,
             )
                 .chain()

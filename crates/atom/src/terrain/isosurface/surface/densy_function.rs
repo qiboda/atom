@@ -91,5 +91,6 @@ impl DensyFunction for NoiseSurface {
             self.lacunarity,
             self.gain,
         )
+        .abs()
     }
 }

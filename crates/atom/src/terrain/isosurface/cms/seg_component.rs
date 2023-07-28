@@ -44,7 +44,7 @@ pub fn generate_segments(
             for entity in octree.leaf_cells.iter() {
                 if let Ok((cell, mut faces)) = cells.get_mut(*entity) {
                     // let Ok(cell_mesh_info) = cell_mesh_info.get_mut(*entity) else {
-                    //     assert!(false);
+                    //     debug_assert!(false);
                     //     continue;
                     // };
                     //
@@ -81,7 +81,7 @@ pub fn generate_segments(
                         }
                     }
 
-                    assert!(valid_strips > 0);
+                    debug_assert!(valid_strips > 0);
                 }
             }
         }
@@ -155,7 +155,7 @@ fn make_strip(
     shape_surface: &Res<ShapeSurface>,
 ) {
     debug!("make strip {}: {:?} {:?}", strip_index, edge0, edge1);
-    assert!(edge0.is_some() && edge1.is_some());
+    debug_assert!(edge0.is_some() && edge1.is_some());
 
     let mut s = Strip::new(edge0, edge1);
 
@@ -164,7 +164,7 @@ fn make_strip(
     populate_strip(&mut s, indices, 1, mesh_info, sample_info, shape_surface);
 
     if strip_index == 1 {
-        assert!(face.get_strips_mut()[0] != s);
+        debug_assert!(face.get_strips_mut()[0] != s);
     }
     face.get_strips_mut()[strip_index] = s.clone();
 }
@@ -180,7 +180,7 @@ fn populate_strip(
 ) {
     debug!("populate_strip strip edge index {}", edge_index);
     let edge = strip.get_edge(edge_index);
-    assert!(edge.is_some());
+    debug_assert!(edge.is_some());
 
     let vertex0 = VERTEX_MAP[edge.unwrap() as usize][0];
     let vertex1 = VERTEX_MAP[edge.unwrap() as usize][1];
@@ -207,7 +207,7 @@ fn populate_strip(
         sample_info,
         shape_surface,
     );
-    assert!(vertex_range.contains(&sign_change_dir_coord));
+    debug_assert!(vertex_range.contains(&sign_change_dir_coord));
 
     let mut crossing_index_0 = vertex_coord0;
     let mut crossing_index_1 = vertex_coord1;
@@ -215,7 +215,7 @@ fn populate_strip(
     crossing_index_0[edge_dir_index] = sign_change_dir_coord;
     crossing_index_1[edge_dir_index] = sign_change_dir_coord + 1;
 
-    assert!(
+    debug_assert!(
         sample_info.get_value_from_vertex_address(crossing_index_0, shape_surface)
             * sample_info.get_value_from_vertex_address(crossing_index_1, shape_surface)
             <= 0.0
@@ -281,7 +281,7 @@ fn get_edges_betwixt(
         direction = Some(EdgeDirection::ZAxis);
     }
 
-    assert!(direction.is_some());
+    debug_assert!(direction.is_some());
 
     return direction.unwrap();
 }
@@ -315,8 +315,8 @@ fn exact_sign_change_index(
         //     "this value {}, next_value: {}, start {}, end {}",
         //     this_value, next_value, start_vertex_coord, end_vertex_coord
         // );
-        assert!(this_value * next_value <= 0.0);
-        // assert!(this_value * next_value != 0.0);
+        debug_assert!(this_value * next_value <= 0.0);
+        // debug_assert!(this_value * next_value != 0.0);
         return start_vertex_coord[edge_dir as usize];
     }
 
@@ -331,14 +331,14 @@ fn exact_sign_change_index(
         indexer[edge_dir as usize] = i + 1;
         let next_value = sample_info.get_value_from_vertex_address(indexer, shape_surface);
 
-        // assert!(this_value * next_value != 0.0);
+        // debug_assert!(this_value * next_value != 0.0);
         if this_value * next_value <= 0.0 {
             return i;
         }
     }
 
     // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。此处代码不会执行。
-    assert!(false);
+    debug_assert!(false);
 
     return u32::MAX;
 }
@@ -390,7 +390,7 @@ fn make_vertex(
         .vertex_index_data
         .entry(crossing_index_0)
         .or_insert(VertexIndices::new());
-    assert!(vertex_index.get_dir_vertex_index(edge_dir).is_none());
+    debug_assert!(vertex_index.get_dir_vertex_index(edge_dir).is_none());
     vertex_index.set_dir_vertex_index(edge_dir, (mesh_info.positions.len() - 1) as u32);
 }
 
@@ -413,7 +413,7 @@ fn find_crossing_point_pos(
     } else {
         0.0
     };
-    assert!(alpha_value >= 0.0);
+    debug_assert!(alpha_value >= 0.0);
     let mut pos = *p0 + (*p1 - *p0) * alpha_value;
     let val = sample_info.get_value_from_pos(pos, shape_surface);
 
@@ -711,7 +711,7 @@ pub fn edit_transitional_face(
                                 twin_faces.get_face_mut(twin_face_index).get_strips(),
                                 long_strip
                             );
-                            assert!(
+                            debug_assert!(
                                 long_strip.get_vertex_index(0).is_some()
                                     && twin_faces
                                         .get_face_mut(twin_face_index)
@@ -797,7 +797,7 @@ fn traverse_face(
                     }
                 }
             }
-            FaceType::TransitFace => assert!(false),
+            FaceType::TransitFace => debug_assert!(false),
         }
     }
 }
@@ -866,7 +866,7 @@ fn collect_strips(
         let face = faces.get_face(face_index);
         match face.get_face_type() {
             FaceType::BranchFace => {
-                assert!(false);
+                debug_assert!(false);
             }
             FaceType::LeafFace => {
                 debug!("collect strip leaf face");
@@ -886,7 +886,7 @@ fn collect_strips(
             }
             FaceType::TransitFace => {
                 debug!("collect strip transit face");
-                assert!(face.get_transit_segs().len() == 0);
+                debug_assert!(face.get_transit_segs().len() == 0);
                 for strip in face.get_strips().iter() {
                     if strip.get_vertex_index(0).is_some() {
                         debug!(
@@ -906,7 +906,7 @@ fn collect_strips(
                 let (twin_address, twin_face_index) = cell.get_twin_face_address(face_index);
                 let cell_entity = cell_addresses.cell_addresses.get(&twin_address).unwrap();
                 let Ok((_cell, faces)) = cells.get(*cell_entity) else {
-                    assert!(false);
+                    debug_assert!(false);
                     continue;
                 };
 
@@ -928,14 +928,14 @@ fn collect_strips(
                     transit_segs.push(seg.clone());
                 }
 
-                // assert!(transit_segs.len() > 0);
+                // debug_assert!(transit_segs.len() > 0);
 
                 debug!("collect strip transit face end");
             }
         }
     }
 
-    assert!(cell_strips.len() > 0);
+    debug_assert!(cell_strips.len() > 0);
 }
 
 fn link_strips(
@@ -943,8 +943,8 @@ fn link_strips(
     cell_strips: &mut Vec<Strip>,
     transit_segs: &mut Vec<Vec<u32>>,
 ) {
-    assert!(components.len() == 0);
-    assert!(cell_strips[0].get_vertex_index(0).is_some());
+    debug_assert!(components.len() == 0);
+    debug_assert!(cell_strips[0].get_vertex_index(0).is_some());
 
     let mut added_in_iteration;
     let mut backwards = false;
@@ -962,7 +962,9 @@ fn link_strips(
         added_in_iteration = 0;
 
         cell_strips.retain(|strip| {
-            assert!(strip.get_vertex_index(0).is_some() && strip.get_vertex_index(1).is_some());
+            debug_assert!(
+                strip.get_vertex_index(0).is_some() && strip.get_vertex_index(1).is_some()
+            );
 
             let s_data0 = strip.get_vertex_index(0);
             let s_data1 = strip.get_vertex_index(1);
@@ -1053,7 +1055,9 @@ fn link_strips(
         added_in_iteration = 0;
 
         cell_strips.retain(|strip| {
-            assert!(strip.get_vertex_index(0).is_some() && strip.get_vertex_index(1).is_some());
+            debug_assert!(
+                strip.get_vertex_index(0).is_some() && strip.get_vertex_index(1).is_some()
+            );
 
             let s_data0 = strip.get_vertex_index(0);
             let s_data1 = strip.get_vertex_index(1);
@@ -1140,8 +1144,8 @@ fn link_strips(
         }
     }
 
-    assert!(components.first() != components.last());
-    assert!(components.len() >= 3);
+    debug_assert!(components.first() != components.last());
+    debug_assert!(components.len() >= 3);
 }
 
 fn insert_data_from_twin(
