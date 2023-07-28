@@ -2,7 +2,6 @@ use bevy::prelude::*;
 
 use crate::terrain::{
     chunk::TerrainChunk,
-    isosurface::{BuildOctreeState, IsosurfaceExtractionState},
 };
 
 use self::{

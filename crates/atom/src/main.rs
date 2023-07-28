@@ -12,7 +12,6 @@ use bevy::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
     },
-    pbr::wireframe::{WireframeConfig, WireframePlugin},
     prelude::*,
     render::{
         settings::{WgpuFeatures, WgpuSettings},
@@ -20,7 +19,7 @@ use bevy::{
     },
 };
 use bevy_obj::ObjPlugin;
-use bevy_xpbd_3d::prelude::PhysicsPlugins;
+
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
@@ -59,10 +58,10 @@ fn main() {
 // #[bevycheck::system]
 fn startup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    _asset_server: Res<AssetServer>,
     // mut meshes: ResMut<Assets<Mesh>>,
     // mut cool_materials: ResMut<Assets<CoolMaterial>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    _materials: ResMut<Assets<StandardMaterial>>,
     // mut wireframe_config: ResMut<WireframeConfig>,
 ) {
     // wireframe_config.global = true;

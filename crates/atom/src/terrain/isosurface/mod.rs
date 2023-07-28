@@ -3,8 +3,6 @@ use meshing::MeshingPlugin;
 use sample::SampleSurfacePlugin;
 use surface::shape_surface::ShapeSurface;
 
-use crate::terrain::isosurface::surface::densy_function::{Cube, Panel, Sphere, Torus};
-
 use self::{cms::ExtractPlugin, octree::OctreePlugin, surface::densy_function::NoiseSurface};
 
 use super::TerrainSystemSet;
@@ -73,8 +71,8 @@ impl Plugin for IsosurfaceExtractionPlugin {
                 IsosurfaceExtractionSet::Extract,
                 IsosurfaceExtractionSet::Meshing,
             )
-                .after(TerrainSystemSet::GenerateTerrain)
-                .chain(),
+                .chain()
+                .before(TerrainSystemSet::GenerateTerrain),
         )
         .add_plugins(SampleSurfacePlugin)
         .add_plugins(OctreePlugin)
