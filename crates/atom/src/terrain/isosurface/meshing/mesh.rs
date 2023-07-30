@@ -1,7 +1,8 @@
 use bevy::{
     prelude::{
-        debug, default, info, Assets, BuildChildren, Color, Commands, Component, Entity, Mesh,
-        PbrBundle, Query, ResMut, StandardMaterial, Transform, UVec3, Vec3,
+        debug, default, info, AssetServer, Assets, BuildChildren, Color, Commands, Component,
+        Entity, MaterialMeshBundle, Mesh, PbrBundle, Query, ResMut, StandardMaterial, Transform,
+        UVec3, Vec3,
     },
     render::render_resource::PrimitiveTopology,
     utils::HashMap,
@@ -14,7 +15,7 @@ use bevy_xpbd_3d::{
     prelude::{Collider, RigidBody},
 };
 
-use crate::terrain::isosurface::IsosurfaceExtractionState;
+use crate::terrain::{isosurface::IsosurfaceExtractionState, materials::TerrainMaterial};
 
 use super::vertex_index::VertexIndices;
 
@@ -126,7 +127,8 @@ pub fn create_mesh(
     mut commands: Commands,
     mut mesh_cache: Query<(Entity, &MeshCache, &mut IsosurfaceExtractionState)>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<TerrainMaterial>>,
+    asset_server: ResMut<AssetServer>,
 ) {
     for (entity, mesh_cache, mut state) in mesh_cache.iter_mut() {
         if let IsosurfaceExtractionState::MeshCreate = *state {
@@ -134,12 +136,14 @@ pub fn create_mesh(
             if mesh_cache.is_empty() == false {
                 let id = commands
                     .spawn((
-                        PbrBundle {
+                        MaterialMeshBundle::<TerrainMaterial> {
                             mesh: meshes.add(Mesh::from(mesh_cache)),
-                            material: materials.add(StandardMaterial {
+                            material: materials.add(TerrainMaterial {
                                 base_color: Color::BLUE,
-                                double_sided: false,
-                                // cull_mode: None,
+                                base_color_texture: Some(asset_server.load("output.png")),
+                                normal_map_texture: Some(
+                                    asset_server.load("screenshot_jiumeizi.png"),
+                                ),
                                 ..default()
                             }),
                             transform: Transform::from_translation(Vec3::splat(0.0)),

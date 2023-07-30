@@ -5,9 +5,12 @@ pub mod terrain;
 pub mod ui;
 pub mod visible;
 
+use std::time::Duration;
+
 use crate::renderdoc::RenderDocPlugin;
 use bevy::{
     app::AppExit,
+    asset::ChangeWatcher,
     core_pipeline::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
@@ -32,12 +35,17 @@ fn main() {
     app.insert_resource(TerrainSettings::new(1.0, 16))
         .add_plugins(RenderDocPlugin)
         .add_plugins((
-            DefaultPlugins.set(RenderPlugin {
-                wgpu_settings: WgpuSettings {
-                    features: WgpuFeatures::POLYGON_MODE_LINE,
-                    ..default()
-                },
-            }),
+            DefaultPlugins
+                .set(RenderPlugin {
+                    wgpu_settings: WgpuSettings {
+                        features: WgpuFeatures::POLYGON_MODE_LINE,
+                        ..default()
+                    },
+                })
+                .set(AssetPlugin {
+                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
+                    asset_folder: "assets".to_string(),
+                }),
             ObjPlugin,
             // WireframePlugin,
             // PhysicsPlugins::default(),
@@ -78,7 +86,7 @@ fn startup(
         brightness: 1.0,
     });
 
-    // let mut material: StandardMaterial = Color::rgb(0.0, 0.0, 0.0).into();
+    let mut material: StandardMaterial = Color::rgb(0.0, 0.0, 0.0).into();
     // material.double_sided = true;
     // // material.cull_mode = None;
     //

@@ -1,0 +1,3 @@
+# force all crates use root assets folder
+[env]
+BEVY_ASSET_ROOT = "./"
