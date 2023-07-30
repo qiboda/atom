@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{ecs::query::BatchingStrategy, prelude::*, utils::HashMap};
 
 use strum::{EnumCount, IntoEnumIterator};
 
@@ -37,24 +37,6 @@ pub struct Octree {
     pub transit_face_cells: Vec<Entity>,
 }
 
-// #[derive(Component)]
-// struct BuildOctreeTask(Task<()>);
-//
-/// This system generates tasks simulating computationally intensive
-/// work that potentially spans multiple frames/ticks. A separate
-/// system, [`handle_tasks`], will poll the spawned tasks on subsequent
-/// frames/ticks, and use the results to spawn cubes
-// fn spawn_tasks(mut commands: Commands) {}
-//
-// fn handle_tasks(
-//     mut commands: Commands,
-//     mut transform_tasks: Query<(Entity, &mut BuildOctreeTask)>,
-// ) {
-//     for (entity, mut task) in &mut transform_tasks {
-//         if let Some(transform) = future::block_on(future::poll_once(&mut task.0)) {}
-//     }
-// }
-
 pub fn make_octree_structure(
     commands: ParallelCommands,
     shape_surface: Res<ShapeSurface>,
@@ -67,77 +49,79 @@ pub fn make_octree_structure(
         &mut IsosurfaceExtractionState,
     )>,
 ) {
-    // let thread_pool = AsyncComputeTaskPool::get();
-    octree_query.par_iter_mut().for_each_mut(
-        |(
-            octree_entity,
-            mut octree,
-            mut octree_cell_address,
-            mut surface_sampler,
-            mut isosurface_extract_state,
-        )| {
-            if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build) =
-                *isosurface_extract_state
-            {
-                info_span!("make_octree_structure");
-                info!("make_octree_structure");
-                debug!("make_structure");
+    octree_query
+        .par_iter_mut()
+        .batching_strategy(BatchingStrategy::fixed(1))
+        .for_each_mut(
+            |(
+                octree_entity,
+                mut octree,
+                mut octree_cell_address,
+                mut surface_sampler,
+                mut isosurface_extract_state,
+            )| {
+                if let IsosurfaceExtractionState::BuildOctree(BuildOctreeState::Build) =
+                    *isosurface_extract_state
+                {
+                    info_span!("make_octree_structure");
+                    info!("make_octree_structure");
+                    debug!("make_structure");
 
-                // let task = thread_pool.spawn(async move {
-                let c000 = UVec3::new(0, 0, 0);
+                    // let task = thread_pool.spawn(async move {
+                    let c000 = UVec3::new(0, 0, 0);
 
-                let voxel_num = terrain_settings.get_chunk_voxel_num();
-                let voxel_num = UVec3::splat(voxel_num);
+                    let voxel_num = terrain_settings.get_chunk_voxel_num();
+                    let voxel_num = UVec3::splat(voxel_num);
 
-                // todo: check is branch or leat cell.....
-                let mut address = VoxelAddress::new();
-                address.set(
-                    VoxelAddress { raw_address: 1 },
-                    SubCellIndex::LeftBottomBack,
-                );
+                    // todo: check is branch or leat cell.....
+                    let mut address = VoxelAddress::new();
+                    address.set(
+                        VoxelAddress { raw_address: 1 },
+                        SubCellIndex::LeftBottomBack,
+                    );
 
-                let vertex_points = acquire_cell_info(c000, voxel_num);
-                commands.command_scope(|mut command| {
-                    let entity = command
-                        .spawn(CellBundle {
-                            cell: Cell::new(CellType::Branch, address, vertex_points),
-                            faces: Faces::new(0, FaceType::BranchFace),
-                            cell_mesh_info: CellMeshInfo::default(),
-                        })
-                        .id();
+                    let vertex_points = acquire_cell_info(c000, voxel_num);
+                    commands.command_scope(|mut command| {
+                        let entity = command
+                            .spawn(CellBundle {
+                                cell: Cell::new(CellType::Branch, address, vertex_points),
+                                faces: Faces::new(0, FaceType::BranchFace),
+                                cell_mesh_info: CellMeshInfo::default(),
+                            })
+                            .id();
 
-                    let mut octree_command = command.get_entity(octree_entity).unwrap();
-                    octree_command.add_child(entity);
-                    octree.cells.push(entity);
-                    octree_cell_address.cell_addresses.insert(address, entity);
-                });
+                        let mut octree_command = command.get_entity(octree_entity).unwrap();
+                        octree_command.add_child(entity);
+                        octree.cells.push(entity);
+                        octree_cell_address.cell_addresses.insert(address, entity);
+                    });
 
-                let voxel_num = voxel_num.x >> 1;
-                let voxel_num = UVec3::splat(voxel_num);
+                    let voxel_num = voxel_num.x >> 1;
+                    let voxel_num = UVec3::splat(voxel_num);
 
-                subdivide_cell(
-                    &commands,
-                    octree_entity,
-                    &mut octree,
-                    address,
-                    c000,
-                    voxel_num,
-                    &mut surface_sampler,
-                    &mut octree_cell_address,
-                    &shape_surface,
-                );
+                    subdivide_cell(
+                        &commands,
+                        octree_entity,
+                        &mut octree,
+                        address,
+                        c000,
+                        voxel_num,
+                        &mut surface_sampler,
+                        &mut octree_cell_address,
+                        &shape_surface,
+                    );
 
-                debug!(
-                    "cell num: {} and leaf cell num: {}",
-                    octree.cells.len(),
-                    octree.leaf_cells.len()
-                );
+                    debug!(
+                        "cell num: {} and leaf cell num: {}",
+                        octree.cells.len(),
+                        octree.leaf_cells.len()
+                    );
 
-                *isosurface_extract_state =
-                    IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace);
-            }
-        },
-    );
+                    *isosurface_extract_state =
+                        IsosurfaceExtractionState::BuildOctree(BuildOctreeState::MarkTransitFace);
+                }
+            },
+        );
 }
 
 fn acquire_cell_info(c000: UVec3, voxel_num: UVec3) -> [UVec3; VertexPoint::COUNT] {

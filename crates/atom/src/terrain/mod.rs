@@ -7,6 +7,7 @@
 pub mod bundle;
 pub mod chunk;
 pub mod isosurface;
+pub mod materials;
 pub mod settings;
 pub mod terrain;
 
@@ -14,7 +15,9 @@ use bevy::prelude::*;
 
 use crate::visible::{visible_areas::TerrainVisibleAreas, TerrainVisibleAreaPlugin};
 
-use self::{isosurface::IsosurfaceExtractionPlugin, terrain::TerrainDataPlugin};
+use self::{
+    isosurface::IsosurfaceExtractionPlugin, materials::TerrainMaterial, terrain::TerrainDataPlugin,
+};
 
 #[derive(SystemSet, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum TerrainSystemSet {
@@ -36,6 +39,7 @@ impl Plugin for TerrainPlugin {
                 )
                     .chain(),
             )
+            .add_plugins(MaterialPlugin::<TerrainMaterial>::default())
             .add_plugins(TerrainVisibleAreaPlugin)
             .add_plugins(TerrainDataPlugin)
             .add_plugins(IsosurfaceExtractionPlugin);

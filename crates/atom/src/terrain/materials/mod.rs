@@ -4,27 +4,31 @@ use bevy::{
     render::render_resource::AsBindGroup,
 };
 
+// StandardMaterial::default()
+
 #[derive(AsBindGroup, TypeUuid, TypePath, Clone, Default)]
-#[uuid = "155a821f-9832-48e4-b460-0e8805cbbce5"]
-pub struct CoolMaterial {
+#[uuid = "fd00e067-1a19-47e7-ae15-e05450d68230"]
+pub struct TerrainMaterial {
     #[uniform(0)]
-    pub(crate) color: Color,
+    pub(crate) base_color: Color,
 
-    #[uniform(1)]
-    pub(crate) normal: Vec3,
+    #[texture(1)]
+    #[sampler(2)]
+    pub(crate) base_color_texture: Option<Handle<Image>>,
 
-    #[texture(2)]
-    #[sampler(3)]
-    pub(crate) color_texture: Handle<Image>,
+    #[texture(3)]
+    #[sampler(4)]
+    pub normal_map_texture: Option<Handle<Image>>,
 }
 
-impl Material for CoolMaterial {
+impl Material for TerrainMaterial {
     fn vertex_shader() -> bevy::render::render_resource::ShaderRef {
         bevy::render::render_resource::ShaderRef::Default
     }
 
     fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
-        "shader/cool_mat.wgsl".into()
+        // bevy::render::render_resource::ShaderRef::Default
+        "shader/terrain_mat.wgsl".into()
     }
 
     fn alpha_mode(&self) -> AlphaMode {
