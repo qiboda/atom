@@ -232,8 +232,6 @@ fn populate_strip(
         if value_0.get_dir_vertex_index(edge_dir).is_some() {
             debug!("vertex index: {:?}", value_0.get_dir_vertex_index(edge_dir));
             strip.set_vertex_index(edge_index, value_0.get_dir_vertex_index(edge_dir).unwrap());
-            strip.set_crossing_left_coord(edge_index, crossing_index_0);
-            strip.set_edge_dir(edge_index, Some(edge_dir));
             dupli = true;
             debug!("make vertex dupli");
         } else {
@@ -383,8 +381,6 @@ fn make_vertex(
 
     debug!("add vertex index: {:?}", mesh_info.positions.len() - 1);
     strip.set_vertex_index(edge_index, (mesh_info.positions.len() - 1) as u32);
-    strip.set_crossing_left_coord(edge_index, crossing_index_0);
-    strip.set_edge_dir(edge_index, Some(edge_dir));
 
     let vertex_index = mesh_info
         .vertex_index_data
@@ -720,7 +716,7 @@ pub fn edit_transitional_face(
                                         == false
                             );
 
-                            long_strip.set_skip(false);
+                            // long_strip.set_skip(false);
                             twin_faces
                                 .get_face_mut(twin_face_index)
                                 .get_strips_mut()

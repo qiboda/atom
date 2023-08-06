@@ -85,7 +85,7 @@ pub fn make_octree_structure(
                         let entity = command
                             .spawn(CellBundle {
                                 cell: Cell::new(CellType::Branch, address, vertex_points),
-                                faces: Faces::new(0, FaceType::BranchFace),
+                                faces: Faces::new(FaceType::BranchFace),
                                 cell_mesh_info: CellMeshInfo::default(),
                             })
                             .id();
@@ -218,7 +218,7 @@ fn subdivide_cell(
             let entity = command
                 .spawn(CellBundle {
                     cell: Cell::new(branch_type, address, vertex_points),
-                    faces: Faces::new(0, face_type),
+                    faces: Faces::new(face_type),
                     cell_mesh_info: CellMeshInfo::default(),
                 })
                 .id();
