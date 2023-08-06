@@ -11,8 +11,6 @@ pub enum FaceType {
 
 #[derive(Debug)]
 pub struct Face {
-    cell_id: usize,
-
     face_index: FaceIndex,
 
     face_type: FaceType,
@@ -23,9 +21,8 @@ pub struct Face {
 }
 
 impl Face {
-    pub fn new(face_index: FaceIndex, cell_id: usize, face_type: FaceType) -> Self {
+    pub fn new(face_index: FaceIndex, face_type: FaceType) -> Self {
         Self {
-            cell_id,
             face_index,
             face_type,
             strips: Vec::new(),
@@ -35,10 +32,6 @@ impl Face {
 }
 
 impl Face {
-    pub fn get_cell_id(&self) -> usize {
-        self.cell_id
-    }
-
     pub fn get_face_index(&self) -> FaceIndex {
         self.face_index
     }
@@ -74,15 +67,15 @@ pub struct Faces {
 }
 
 impl Faces {
-    pub fn new(cell_id: usize, face_type: FaceType) -> Self {
+    pub fn new(face_type: FaceType) -> Self {
         Self {
             faces: [
-                Face::new(FaceIndex::Back, cell_id, face_type),
-                Face::new(FaceIndex::Front, cell_id, face_type),
-                Face::new(FaceIndex::Bottom, cell_id, face_type),
-                Face::new(FaceIndex::Top, cell_id, face_type),
-                Face::new(FaceIndex::Left, cell_id, face_type),
-                Face::new(FaceIndex::Right, cell_id, face_type),
+                Face::new(FaceIndex::Back, face_type),
+                Face::new(FaceIndex::Front, face_type),
+                Face::new(FaceIndex::Bottom, face_type),
+                Face::new(FaceIndex::Top, face_type),
+                Face::new(FaceIndex::Left, face_type),
+                Face::new(FaceIndex::Right, face_type),
             ],
         }
     }

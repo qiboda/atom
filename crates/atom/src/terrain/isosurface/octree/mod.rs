@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 
-use crate::terrain::{
-    chunk::TerrainChunk,
-};
+use crate::terrain::chunk::TerrainChunk;
 
 use self::{
     bundle::OctreeBundle,
@@ -15,10 +13,9 @@ pub mod address;
 pub mod bundle;
 pub mod cell;
 pub mod def;
-pub mod edge;
 pub mod face;
-pub mod octree;
 pub mod point;
+pub mod octree;
 pub mod strip;
 pub mod tables;
 

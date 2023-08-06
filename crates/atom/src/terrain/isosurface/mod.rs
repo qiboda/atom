@@ -8,6 +8,7 @@ use self::{cms::ExtractPlugin, octree::OctreePlugin, surface::densy_function::No
 use super::TerrainSystemSet;
 
 pub mod cms;
+pub mod gpu;
 pub mod meshing;
 pub mod octree;
 pub mod sample;
