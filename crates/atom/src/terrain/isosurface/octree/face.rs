@@ -15,8 +15,12 @@ pub struct Face {
 
     face_type: FaceType,
 
+    // 一个face上的所有strip, 包括了transit face 和 leaf face
     strips: Vec<Strip>,
 
+    // 缓存了所有子节点的顶点索引，仅仅在transit face上有用
+    // 通过比较这里的顶点索引与strips的顶点索引，可以得到由于transit
+    // face的存在，缺失的顶点索引。并链接到正确的位置。
     transit_segs: Vec<Vec<u32>>,
 }
 
