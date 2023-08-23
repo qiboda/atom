@@ -1,13 +1,11 @@
 pub mod camera;
 pub mod material;
-pub mod renderdoc;
 pub mod terrain;
 pub mod ui;
 pub mod visible;
 
 use std::time::Duration;
 
-use crate::renderdoc::RenderDocPlugin;
 use bevy::{
     app::AppExit,
     asset::ChangeWatcher,
@@ -33,7 +31,6 @@ fn main() {
     let mut app = App::new();
 
     app.insert_resource(TerrainSettings::new(1.0, 16))
-        .add_plugins(RenderDocPlugin)
         .add_plugins((
             DefaultPlugins
                 .set(RenderPlugin {
