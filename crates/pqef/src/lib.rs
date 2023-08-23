@@ -4,12 +4,13 @@ pub mod math;
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-use bevy_math::{Mat3, Vec3};
+use bevy_math::{Mat3A, Vec3A};
 
-type Pos3 = Vec3;
+type Pos3A = Vec3A;
 
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Quadric {
+    /// a is a symmetric 3x3 matrix
     a00: f32,
     a01: f32,
     a02: f32,
@@ -51,7 +52,7 @@ impl Quadric {
         }
     }
 
-    pub fn from_coefficients_matrix(a: Mat3, b: Vec3, c: f32) -> Self {
+    pub fn from_coefficients_matrix(a: Mat3A, b: Vec3A, c: f32) -> Self {
         Self {
             a00: a.x_axis.x,
             a01: a.x_axis.y,
@@ -68,18 +69,19 @@ impl Quadric {
 }
 
 impl Quadric {
-    pub fn point_quadric(p: Pos3) -> Quadric {
-        Quadric::from_coefficients_matrix(Mat3::IDENTITY, p, 0.0)
+    pub fn point_quadric(p: Pos3A) -> Quadric {
+        Quadric::from_coefficients_matrix(Mat3A::IDENTITY, p, 0.0)
     }
 
-    pub fn plane_quadric(p: Pos3, n: Vec3) -> Quadric {
+    pub fn plane_quadric(p: Pos3A, n: Vec3A) -> Quadric {
         let d = p.dot(n);
         Quadric::from_coefficients_matrix(math::self_outer_product(n), n * d, d * d)
     }
 
+    /// stddev => standard deviation
     pub fn probabilistic_plane_quadric(
-        mean_p: Pos3,
-        mean_n: Vec3,
+        mean_p: Pos3A,
+        mean_n: Vec3A,
         stddev_p: f32,
         stddev_n: f32,
     ) -> Quadric {
@@ -91,23 +93,23 @@ impl Quadric {
 
         let d = p.dot(n);
 
-        let mut n_outer = math::self_outer_product(n);
+        let mut a = math::self_outer_product(n);
 
-        n_outer.x_axis.x += sn2;
-        n_outer.y_axis.y += sn2;
-        n_outer.z_axis.z += sn2;
+        a.x_axis.x += sn2;
+        a.y_axis.y += sn2;
+        a.z_axis.z += sn2;
 
         let b = n * d + p * sn2;
         let c = d * d + sn2 * p.dot(p) + sp2 * n.dot(n) + 3.0 * sp2 * sn2;
 
-        Quadric::from_coefficients_matrix(n_outer, b, c)
+        Quadric::from_coefficients_matrix(a, b, c)
     }
 
     pub fn probabilistic_plane_quadric_sigma(
-        mean_p: Pos3,
-        mean_n: Vec3,
-        sigma_p: Mat3,
-        sigma_n: Mat3,
+        mean_p: Pos3A,
+        mean_n: Vec3A,
+        sigma_p: Mat3A,
+        sigma_n: Mat3A,
     ) -> Quadric {
         let p = mean_p;
         let d = p.dot(mean_n);
@@ -123,7 +125,7 @@ impl Quadric {
         Quadric::from_coefficients_matrix(a, b, c)
     }
 
-    pub fn triangle_quadric(p: Pos3, q: Pos3, r: Pos3) -> Quadric {
+    pub fn triangle_quadric(p: Pos3A, q: Pos3A, r: Pos3A) -> Quadric {
         let pxq = p.cross(q);
         let qxr = q.cross(r);
         let rxp = r.cross(p);
@@ -135,9 +137,9 @@ impl Quadric {
     }
 
     pub fn probabilistic_triangle_quadric(
-        mean_p: Pos3,
-        mean_q: Pos3,
-        mean_r: Pos3,
+        mean_p: Pos3A,
+        mean_q: Pos3A,
+        mean_r: Pos3A,
         stddev: f32,
     ) -> Quadric {
         let sigma = stddev * stddev;
@@ -183,12 +185,12 @@ impl Quadric {
     }
 
     pub fn probabilistic_triangle_quadric_sigma(
-        mean_p: Pos3,
-        mean_q: Pos3,
-        mean_r: Pos3,
-        sigma_p: Mat3,
-        sigma_q: Mat3,
-        sigma_r: Mat3,
+        mean_p: Pos3A,
+        mean_q: Pos3A,
+        mean_r: Pos3A,
+        sigma_p: Mat3A,
+        sigma_q: Mat3A,
+        sigma_r: Mat3A,
     ) -> Quadric {
         let pxq = mean_p.cross(mean_q);
         let qxr = mean_q.cross(mean_r);
@@ -245,8 +247,8 @@ impl Quadric {
 }
 
 impl Quadric {
-    pub fn a(self: &Self) -> Mat3 {
-        let mut a = Mat3::default();
+    pub fn a(self: &Self) -> Mat3A {
+        let mut a = Mat3A::default();
 
         a.x_axis.x = self.a00;
         a.x_axis.y = self.a01;
@@ -261,11 +263,13 @@ impl Quadric {
         a
     }
 
-    pub fn b(self: &Self) -> Vec3 {
-        Vec3::new(self.b0, self.b1, self.b2)
+    pub fn b(self: &Self) -> Vec3A {
+        Vec3A::new(self.b0, self.b1, self.b2)
     }
 
-    pub fn minimizer(self: &Self) -> Vec3 {
+    /// A^-1 * b
+    /// A^-1 = A* / det(A)
+    pub fn minimizer(self: &Self) -> Vec3A {
         let a = self.a00;
         let b = self.a01;
         let c = self.a02;
@@ -291,16 +295,17 @@ impl Quadric {
         let bc_ae = bc - ae;
         let ce_bf = ce - bf;
 
+        // 1.0 / determinant of A
         let denom = 1.0 / (a * df + 2.0 * b * ce - ae * e - bf * b - cd * c);
         let nom0 = r0 * (df - e * e) + r1 * ce_bf + r2 * be_cd;
         let nom1 = r0 * ce_bf + r1 * (af - c * c) + r2 * bc_ae;
         let nom2 = r0 * be_cd + r1 * bc_ae + r2 * (ad - b * b);
 
-        Vec3::new(nom0 * denom, nom1 * denom, nom2 * denom)
+        Vec3A::new(nom0 * denom, nom1 * denom, nom2 * denom)
     }
 
-    pub fn residual_l2_error(self: &Self, p: Pos3) -> f32 {
-        let ax = Vec3::new(
+    pub fn residual_l2_error(self: &Self, p: Pos3A) -> f32 {
+        let ax = Vec3A::new(
             self.a00 * p.x + self.a01 * p.y + self.a02 * p.z,
             self.a01 * p.x + self.a11 * p.y + self.a12 * p.z,
             self.a02 * p.x + self.a12 * p.y + self.a22 * p.z,

@@ -1,15 +1,15 @@
-use bevy_math::{Mat3, Vec3};
+use bevy_math::{Mat3A, Vec3A};
 
 /// two vectors cross product, 3x1 * 1x3
-pub(crate) fn self_outer_product(v: Vec3) -> Mat3 {
+pub(crate) fn self_outer_product(v: Vec3A) -> Mat3A {
     let a = v.x;
     let b = v.y;
     let c = v.z;
 
-    let mat = Mat3::from_cols(
-        Vec3::new(a * a, a * b, a * c),
-        Vec3::new(b * a, b * b, b * c),
-        Vec3::new(c * a, c * b, c * c),
+    let mat = Mat3A::from_cols(
+        Vec3A::new(a * a, a * b, a * c),
+        Vec3A::new(b * a, b * b, b * c),
+        Vec3A::new(c * a, c * b, c * c),
     );
 
     mat
@@ -18,18 +18,23 @@ pub(crate) fn self_outer_product(v: Vec3) -> Mat3 {
 /// trace is Tr(A) = sigma(i=0..n) A_ii
 /// Tr(AB) = Tr(BA) = Tr(BA^T) = Tr(A^TB)
 /// Tr(AB) = sigma(i=0..n) sigma(j=0..m) A_ij B_ji
-pub(crate) fn trace_of_product(a: Mat3, b: Mat3) -> f32 {
+pub(crate) fn trace_of_product(a: Mat3A, b: Mat3A) -> f32 {
     let mut r = 0.0;
     for i in 0..3 {
         for j in 0..3 {
-            r += a.as_ref()[i * 3 + j] * b.as_ref()[j * 3 + i];
+            r += a.to_cols_array_2d()[i][j] * b.to_cols_array_2d()[j][i];
         }
     }
     r
 }
 
-pub(crate) fn cross_interference_matrix(p: Mat3, q: Mat3) -> Mat3 {
-    let mut m = Mat3::default();
+/// todo: to understand
+/// p and q are 3x3 matrices
+/// and use p and q 2x2 matrices interference determinant to as interference value at non 2x2
+/// matrix row and column
+/// such as : m00 = (p11 * q22 - p12 * q21) + (p21 * q12 - p22 * q11)
+pub(crate) fn cross_interference_matrix(p: Mat3A, q: Mat3A) -> Mat3A {
+    let mut m = Mat3A::default();
 
     let cxx = p.y_axis.z * q.y_axis.z;
     let cyy = p.x_axis.z * q.x_axis.z;
@@ -59,8 +64,8 @@ pub(crate) fn cross_interference_matrix(p: Mat3, q: Mat3) -> Mat3 {
     m
 }
 
-pub(crate) fn first_order_tri_quad(a: Vec3, sigma: Mat3) -> Mat3 {
-    let mut m = Mat3::default();
+pub(crate) fn first_order_tri_quad(a: Vec3A, sigma: Mat3A) -> Mat3A {
+    let mut m = Mat3A::default();
 
     let xx = a.x * a.x;
     let yy = a.y * a.y;
@@ -93,7 +98,9 @@ pub(crate) fn first_order_tri_quad(a: Vec3, sigma: Mat3) -> Mat3 {
     m
 }
 
-pub(crate) fn cross_product_squared_transpose(v: Vec3) -> Mat3 {
+/// v => [v]x => [v]x * [v]x^T
+/// [v]x is skwy-symmetric matrix
+pub(crate) fn cross_product_squared_transpose(v: Vec3A) -> Mat3A {
     let a = v[0];
     let b = v[1];
     let c = v[2];
@@ -101,7 +108,7 @@ pub(crate) fn cross_product_squared_transpose(v: Vec3) -> Mat3 {
     let b2 = b * b;
     let c2 = c * c;
 
-    let mut m: Mat3 = Default::default();
+    let mut m: Mat3A = Default::default();
 
     m.x_axis.x = b2 + c2;
     m.y_axis.y = a2 + c2;

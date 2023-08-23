@@ -13,23 +13,23 @@ bevy = { version= "0.11.0", features = ["trace", "trace_tracy"] }
 
 strum = { version ="0.24.1", features=["derive", "strum_macros"] }
 strum_macros = "0.24.1"
+pqef = {path = "../pqef"}
 
 # noisy_bevy = { path = "../dep/noisy_bevy" }
-# transvoxel = { path = "../../../dep/transvoxel_rs" }
 # simdnoise = { path = "../../../dep/rust-simd-noise" }
 # bevy_rapier3d = { path = "../dep/bevy_rapier/bevy_rapier3d" }
 # bevy-inspector-egui = "0.18.0"
 # bevy_editor_pls = "0.3.0"
 # bevy_mod_debugdump = { path = "../dep/bevy_mod_debugdump" }
 # bevy_terrain = { path = "../dep/bevy_terrain" }
-bevycheck = "0.5.2"
-renderdoc = "0.10.1"
-sysinfo = "0.24.6"
 rand = "0.8.5"
 smallvec = "1.10.0"
 futures-lite = "1.13.0"
+
 noisy_bevy = "0.4.0"
+
 bevy_obj = "0.11.0"
+
 bevy_xpbd_3d = { version= "0.2.0", features= ["simd"]} # "debug-plugin"
 bevy_xpbd_derive = "0.1.0"
 bevy_replicon = "0.7.1"
