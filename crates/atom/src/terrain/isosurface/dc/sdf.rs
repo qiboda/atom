@@ -1,6 +1,8 @@
 use bevy::math::Vec3A;
 use pqef::Quadric;
 
+use crate::terrain::isosurface::surface::densy_function::DensyFunction;
+
 use super::cell_extent::CellExtent;
 use super::tables::EDGES3;
 
@@ -33,15 +35,12 @@ pub fn cell_is_bipolar(samples: &[f32; 8]) -> bool {
     any_negative && any_positive
 }
 
-pub fn central_gradient(sdf: impl Fn(Vec3A) -> f32, p: Vec3A, delta: f32) -> Vec3A {
+pub fn central_gradient(sdf: &Box<dyn DensyFunction>, p: Vec3A, delta: f32) -> Vec3A {
     let h = 0.5 * delta;
-    let dx = Vec3A::new(h, 0.0, 0.0);
-    let dy = Vec3A::new(0.0, h, 0.0);
-    let dz = Vec3A::new(0.0, 0.0, h);
     Vec3A::new(
-        sdf(p + dx) - sdf(p - dx),
-        sdf(p + dy) - sdf(p - dy),
-        sdf(p + dz) - sdf(p - dz),
+        sdf.get_value(p.x + h, p.y, p.z) - sdf.get_value(p.x - h, p.y, p.z),
+        sdf.get_value(p.x, p.y + h, p.z) - sdf.get_value(p.x, p.y - h, p.z),
+        sdf.get_value(p.x, p.y, p.z + h) - sdf.get_value(p.x, p.y, p.z - h),
     ) / h
 }
 
@@ -69,7 +68,7 @@ pub fn estimate_interior_vertex(extent: &CellExtent, samples: &[f32; 8]) -> Vec3
 pub fn estimate_interior_vertex_qef(
     extent: &CellExtent,
     samples: &[f32; 8],
-    sdf: impl Fn(Vec3A) -> f32,
+    sdf: &Box<dyn DensyFunction>,
     precision: f32,
 ) -> (Quadric, Quadric) {
     let mut regularized_qef = Quadric::default();

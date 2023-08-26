@@ -63,7 +63,6 @@ impl Plugin for IsosurfaceExtractionPlugin {
             // densy_function: Box::new(Panel),
             // densy_function: Box::new(Cube),
             iso_level: Vec3::ZERO,
-            negative_inside: true,
             snap_centro_id: false,
         })
         .configure_sets(

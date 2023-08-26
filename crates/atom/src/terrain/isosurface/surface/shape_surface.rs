@@ -8,8 +8,6 @@ pub struct ShapeSurface {
 
     pub iso_level: Vec3,
 
-    pub negative_inside: bool,
-
     pub snap_centro_id: bool,
 }
 
@@ -32,16 +30,6 @@ impl ShapeSurface {
     #[inline]
     pub fn get_iso_level(&self) -> Vec3 {
         self.iso_level
-    }
-
-    #[inline]
-    pub fn set_negative_inside(&mut self, negative_inside: bool) {
-        self.negative_inside = negative_inside;
-    }
-
-    #[inline]
-    pub fn is_negative_inside(&self) -> bool {
-        self.negative_inside
     }
 }
 
