@@ -1,7 +1,10 @@
-use bevy::{math::Vec3A, prelude::Vec3};
+use bevy::prelude::Vec3;
 use pqef::Quadric;
 
-use crate::terrain::isosurface::dc::{cell_is_bipolar, estimate_interior_vertex_qef};
+use crate::terrain::isosurface::{
+    dc::{cell_is_bipolar, estimate_interior_vertex_qef},
+    surface::densy_function::DensyFunction,
+};
 
 use super::{branch_empty_check, cell_extent::CellExtent, MeshVertexId, NULL_MESH_VERTEX_ID};
 
@@ -39,7 +42,7 @@ impl CellOctree {
         max_depth: u8,
         error_tolerance: f32,
         precision: f32,
-        sdf: impl Fn(Vec3A) -> f32,
+        sdf: &Box<dyn DensyFunction>,
     ) -> Option<Self> {
         let Some(mut root_cell) = Cell::new(root_cell, &sdf, 0, max_depth == 0) else {
             return None;
@@ -67,7 +70,7 @@ impl CellOctree {
         max_depth: u8,
         error_tolerance: f32,
         precision: f32,
-        sdf: &impl Fn(Vec3A) -> f32,
+        sdf: &Box<dyn DensyFunction>,
         mut branch: Cell,
     ) -> (Option<CellId>, VertexState) {
         assert!(!branch.is_leaf);
@@ -205,14 +208,14 @@ pub struct Cell {
 impl Cell {
     fn new(
         extent: CellExtent,
-        sdf: impl Fn(Vec3A) -> f32,
+        sdf: &Box<dyn DensyFunction>,
         depth: u8,
         is_leaf: bool,
     ) -> Option<Self> {
         let cell_positions = extent.corners();
         // PERF: we could pretty easily make 3^3 samples/taps instead of 2^3 * 2^3 when splitting an octant
         // PERF: we could steal 2^3 samples/taps for the parent octant when splitting
-        let samples = cell_positions.map(&sdf);
+        let samples = cell_positions.map(|pos| sdf.get_value(pos.x, pos.y, pos.z));
 
         // Leaf cells must be bipolar. Branches are checked optimistically.
         if (is_leaf && !cell_is_bipolar(&samples))
@@ -234,7 +237,7 @@ impl Cell {
     }
 
     #[inline]
-    fn get_children(&self, sdf: impl Fn(Vec3A) -> f32, is_leaf: bool) -> [Option<Self>; 8] {
+    fn get_children(&self, sdf: &Box<dyn DensyFunction>, is_leaf: bool) -> [Option<Self>; 8] {
         assert!(!self.is_leaf);
         let child_extents = self.extent.split(self.extent.center());
         child_extents.map(|extent| Self::new(extent, &sdf, self.depth + 1, is_leaf))
@@ -243,7 +246,7 @@ impl Cell {
     #[inline]
     fn estimate_vertex(
         &mut self,
-        sdf: impl Fn(Vec3A) -> f32,
+        sdf: &Box<dyn DensyFunction>,
         precision: f32,
     ) -> (Quadric, Quadric) {
         let (regularized_qef, exact_qef) =
