@@ -8,8 +8,8 @@ use bevy::{prelude::*, utils::HashMap};
 use strum::{EnumCount, IntoEnumIterator};
 
 use crate::terrain::isosurface::{
-    meshing::{mesh::MeshCache, vertex_index::VertexIndices},
-    octree::{
+    cms::meshing::{mesh::MeshCache, vertex_index::VertexIndices},
+    cms::octree::{
         address::VoxelAddress,
         cell::Cell,
         face::{Face, FaceType},
@@ -21,7 +21,7 @@ use crate::terrain::isosurface::{
             FACE_VERTEX, VERTEX_MAP,
         },
     },
-    sample::surface_sampler::SurfaceSampler,
+    cms::sample::surface_sampler::SurfaceSampler,
     surface::shape_surface::ShapeSurface,
 };
 

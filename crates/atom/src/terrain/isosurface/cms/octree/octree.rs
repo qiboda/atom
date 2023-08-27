@@ -6,12 +6,10 @@ use strum::{EnumCount, IntoEnumIterator};
 
 use crate::terrain::{
     isosurface::{
-        octree::{
-            cell::{Cell, CellType},
-            face::FaceType,
-            tables::FaceIndex,
+        cms::{
+            octree::{cell::CellType, face::FaceType, tables::FaceIndex},
+            sample::surface_sampler::SurfaceSampler,
         },
-        sample::surface_sampler::SurfaceSampler,
         surface::shape_surface::ShapeSurface,
     },
     settings::TerrainSettings,
@@ -19,6 +17,7 @@ use crate::terrain::{
 
 use super::{
     address::VoxelAddress,
+    cell::Cell,
     def::COMPLEX_SURFACE_THRESHOLD,
     tables::{EdgeIndex, SubCellIndex, VertexPoint, EDGE_DIRECTION, EDGE_VERTICES},
 };

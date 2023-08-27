@@ -1,6 +1,4 @@
-
-
-use super::tables::{Face2DEdge};
+use super::tables::Face2DEdge;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Strip {
