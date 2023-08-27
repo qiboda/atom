@@ -71,7 +71,7 @@ fn startup(
 ) {
     // wireframe_config.global = true;
 
-    commands.insert_resource(ClearColor(Color::rgb(1.0, 0.2, 0.1)));
+    commands.insert_resource(ClearColor(Color::rgb(0.3, 0.2, 0.1)));
     commands.insert_resource(Msaa::Sample4);
     commands.insert_resource(AmbientLight {
         color: Color::Rgba {
@@ -83,7 +83,7 @@ fn startup(
         brightness: 1.0,
     });
 
-    let mut material: StandardMaterial = Color::rgb(0.0, 0.0, 0.0).into();
+    let _material: StandardMaterial = Color::rgb(0.0, 0.0, 0.0).into();
     // material.double_sided = true;
     // // material.cull_mode = None;
     //

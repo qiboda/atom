@@ -32,7 +32,6 @@ mod mesh;
 mod sdf;
 mod tables;
 
-use bevy::math::Vec3A;
 use bevy::prelude::*;
 pub use cell_extent::*;
 pub use cell_octree::*;
@@ -54,7 +53,7 @@ fn dual_contour(terrain_setting: Res<TerrainSettings>) {
     terrain_setting.get_chunk_size();
 }
 
-pub fn extent(chunk_coord: TerrainChunkCoord, chunk_size: f32) {
+pub fn extent(_chunk_coord: TerrainChunkCoord, _chunk_size: f32) {
 
     // let cell_min = chunk_coord.to_vec3() * chunk_size;
     //

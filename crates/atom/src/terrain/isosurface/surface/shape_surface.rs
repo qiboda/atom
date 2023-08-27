@@ -1,14 +1,19 @@
+use std::sync::{Arc, RwLock};
+
 use bevy::prelude::*;
 
 use super::densy_function::DensyFunction;
 
 #[derive(Resource, Debug)]
+pub struct IsosurfaceContext {
+    pub shape_surface: Arc<RwLock<ShapeSurface>>,
+}
+
+#[derive(Debug)]
 pub struct ShapeSurface {
     pub densy_function: Box<dyn DensyFunction>,
 
     pub iso_level: Vec3,
-
-    pub snap_centro_id: bool,
 }
 
 impl ShapeSurface {

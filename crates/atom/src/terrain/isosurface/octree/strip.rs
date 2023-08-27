@@ -1,6 +1,6 @@
-use bevy::prelude::UVec3;
 
-use super::tables::{EdgeDirection, Face2DEdge};
+
+use super::tables::{Face2DEdge};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Strip {
