@@ -1,6 +1,5 @@
 use bevy::{
-    prelude::{Component, Mesh, UVec3, Vec3, Vec4},
-    render::render_resource::PrimitiveTopology,
+    prelude::{Component, UVec3, Vec3},
     utils::HashMap,
 };
 
@@ -19,46 +18,6 @@ pub struct SurfaceSampler {
     pub world_offset: Vec3,
 
     pub voxel_size: Vec3,
-}
-
-impl From<&SurfaceSampler> for Mesh {
-    fn from(value: &SurfaceSampler) -> Self {
-        let mut mesh = Mesh::new(PrimitiveTopology::PointList);
-
-        let mut position = vec![];
-        let mut color = vec![];
-        let sample_size = value.get_sample_size();
-        for x in 0..sample_size.x {
-            for y in 0..sample_size.y {
-                for z in 0..sample_size.z {
-                    let pos_value = value.sample_data.get_value(UVec3::new(x, y, z));
-                    let pos =
-                        value.world_offset + value.voxel_size * UVec3::new(x, y, z).as_vec3() + 0.0;
-                    if pos_value < 0.0 {
-                        position.push(pos);
-                        color.push(Vec4::new(0.0, 255.0, 0.0, 255.0));
-                    } else if pos_value == 0.0 {
-                        position.push(pos);
-                        color.push(Vec4::new(255.0, 0.0, 0.0, 255.0));
-                    }
-                }
-            }
-        }
-
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, position);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, color);
-
-        // mesh.insert_attribute(
-        //     Mesh::ATTRIBUTE_POSITION,
-        //     value
-        //         .sample_pos
-        //         .into_iter()
-        //         .map(|(_, pos)| pos)
-        //         .collect::<Vec<Vec3>>(),
-        // );
-        //
-        mesh
-    }
 }
 
 impl SurfaceSampler {
@@ -104,14 +63,9 @@ impl SurfaceSampler {
         vertex_address: UVec3,
         _shape_surface: &ShapeSurface,
     ) -> f32 {
-        // if self.sample_data.get_data_index(vertex_address) >= 4096 {
-        //     debug!("error vertex_address: {:?}", vertex_address);
-        //     println!("Custom backtrace: {}", Backtrace::force_capture());
-        // }
         self.sample_data.get_value(vertex_address)
     }
 
-    /// todo: cache get values.
     pub fn get_value_from_vertex_offset(
         &self,
         vertex_address: UVec3,

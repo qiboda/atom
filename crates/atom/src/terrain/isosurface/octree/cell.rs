@@ -1,6 +1,10 @@
 use bevy::prelude::*;
 
-use super::{address::VoxelAddress, tables::FaceIndex};
+use super::{
+    address::VoxelAddress,
+    face::{FaceType, Faces},
+    tables::FaceIndex,
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CellType {
@@ -8,31 +12,33 @@ pub enum CellType {
     Leaf, // 没有在表面的都不是leaf。
 }
 
-#[derive(Debug, Component, Default)]
-pub struct CellMeshInfo {
-    pub components: Vec<Vec<u32>>,
-}
-
 #[derive(Debug, Component)]
 pub struct Cell {
     cell_type: CellType,
+
+    pub faces: Faces,
 
     /// all corners sample index, global coord.
     corner_sample_index: [UVec3; 8],
 
     address: VoxelAddress,
+
+    pub components: Option<Vec<Vec<u32>>>,
 }
 
 impl Cell {
     pub fn new(
         cell_type: CellType,
+        face_type: FaceType,
         address: VoxelAddress,
         corner_sample_index: [UVec3; 8],
     ) -> Self {
         Self {
             cell_type,
+            faces: Faces::new(face_type),
             corner_sample_index,
             address,
+            components: None,
         }
     }
 }

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-#[derive(Resource, Debug)]
+#[derive(Resource, Debug, Clone)]
 pub struct TerrainSettings {
     chunk_voxel_size: f32,
     chunk_voxel_num: u32,

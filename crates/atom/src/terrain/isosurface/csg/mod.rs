@@ -164,7 +164,8 @@ impl CSGNode for CSGTorus {
     }
 }
 
-fn BuildShape() -> Box<CSGMin> {
+#[allow(dead_code)]
+fn build_shape() -> Box<CSGMin> {
     let shift = Vec3::new(0.062151346, 0.0725234, 0.0412);
 
     let one_box = Box::new(CSGMin {
