@@ -5,9 +5,10 @@ use bevy::{
     tasks::Task,
 };
 
-use crate::terrain::isosurface::{
+use crate::terrain::isosurface::IsosurfaceExtractionState;
+
+use super::{
     meshing::mesh::MeshCache, octree::octree::Octree, sample::surface_sampler::SurfaceSampler,
-    IsosurfaceExtractionState,
 };
 
 #[derive(Debug, Component)]

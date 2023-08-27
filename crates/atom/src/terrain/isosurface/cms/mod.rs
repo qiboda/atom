@@ -1,5 +1,8 @@
 pub mod bundle;
-pub mod seg_component;
+pub mod extract;
+pub mod meshing;
+pub mod octree;
+pub mod sample;
 
 use std::sync::{Arc, RwLock};
 
@@ -9,10 +12,12 @@ use futures_lite::future;
 use crate::terrain::{
     chunk::{coords::TerrainChunkCoord, TerrainChunk},
     isosurface::{
-        cms::bundle::{CMSBundle, CMSTask},
-        meshing::mesh::MeshCache,
-        octree::octree::Octree,
-        sample::surface_sampler::SurfaceSampler,
+        cms::{
+            bundle::{CMSBundle, CMSTask},
+            meshing::mesh::MeshCache,
+            octree::octree::Octree,
+            sample::surface_sampler::SurfaceSampler,
+        },
         IsosurfaceExtractionState,
     },
     materials::TerrainMaterial,
@@ -20,13 +25,13 @@ use crate::terrain::{
     TerrainSystemSet,
 };
 
-use self::bundle::CMSComponent;
-
-use super::{
+use self::{
+    bundle::CMSComponent,
     meshing::mesh::create_mesh,
     octree::octree::{make_octree_structure, mark_transitional_faces},
-    surface::shape_surface::{IsosurfaceContext, ShapeSurface},
 };
+
+use super::surface::shape_surface::{IsosurfaceContext, ShapeSurface};
 
 #[derive(Default)]
 pub struct CMSPlugin {}
@@ -222,10 +227,7 @@ fn cms_update_extrace(
     }
 }
 
-fn cms_update_meshing(
-    mut cms_query: Query<(&mut CMSComponent, &mut CMSTask)>,
-    isosurface_context: ResMut<IsosurfaceContext>,
-) {
+fn cms_update_meshing(mut cms_query: Query<(&mut CMSComponent, &mut CMSTask)>) {
     let thread_pool = AsyncComputeTaskPool::get();
 
     for (cms_component, mut cms_task) in cms_query.iter_mut() {

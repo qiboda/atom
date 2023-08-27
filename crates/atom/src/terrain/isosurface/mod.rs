@@ -9,12 +9,8 @@ use self::{
 };
 
 pub mod cms;
-pub mod csg;
 pub mod dc;
 pub mod gpu;
-pub mod meshing;
-pub mod octree;
-pub mod sample;
 pub mod surface;
 
 #[derive(Default, PartialEq, Eq, Debug, Hash, Clone)]
