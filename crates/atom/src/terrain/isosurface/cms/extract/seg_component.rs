@@ -8,7 +8,7 @@ use bevy::{prelude::*, utils::HashMap};
 use strum::{EnumCount, IntoEnumIterator};
 
 use crate::terrain::isosurface::{
-    cms::meshing::{mesh::MeshCache, vertex_index::VertexIndices},
+    cms::meshing::vertex_index::VertexIndices,
     cms::octree::{
         address::VoxelAddress,
         cell::Cell,
@@ -21,7 +21,10 @@ use crate::terrain::isosurface::{
             FACE_VERTEX, VERTEX_MAP,
         },
     },
-    cms::sample::surface_sampler::SurfaceSampler,
+    cms::{
+        bundle::CMSVertexIndexInfo, sample::surface_sampler::SurfaceSampler,
+    },
+    mesh::mesh_cache::MeshCache,
     surface::shape_surface::ShapeSurface,
 };
 
@@ -32,9 +35,11 @@ impl Octree {
         shape_surface: Arc<RwLock<ShapeSurface>>,
         surface_sampler: Arc<RwLock<SurfaceSampler>>,
         mesh_cache: Arc<RwLock<MeshCache>>,
+        vertex_info: Arc<RwLock<CMSVertexIndexInfo>>,
     ) {
         let mut surface_sampler = surface_sampler.write().unwrap();
         let mut mesh_cache = mesh_cache.write().unwrap();
+        let mut vertex_info = vertex_info.write().unwrap();
         let mut shape_surface = shape_surface.write().unwrap();
 
         info_span!("generate_segments");
@@ -66,6 +71,7 @@ impl Octree {
                         &indices,
                         face,
                         &mut mesh_cache,
+                        &mut vertex_info,
                         &mut surface_sampler,
                         &mut shape_surface,
                     );
@@ -93,6 +99,7 @@ impl Octree {
         indices: &[UVec3; 4],
         face: &mut Face,
         mesh_info: &mut MeshCache,
+        vertex_info: &mut CMSVertexIndexInfo,
         sample_info: &mut SurfaceSampler,
         shape_surface: &mut ShapeSurface,
     ) {
@@ -122,6 +129,7 @@ impl Octree {
                 face,
                 0,
                 mesh_info,
+                vertex_info,
                 sample_info,
                 shape_surface,
             );
@@ -138,6 +146,7 @@ impl Octree {
                 face,
                 1,
                 mesh_info,
+                vertex_info,
                 sample_info,
                 shape_surface,
             );
@@ -151,6 +160,7 @@ impl Octree {
         face: &mut Face,
         strip_index: usize,
         mesh_info: &mut MeshCache,
+        vertex_info: &mut CMSVertexIndexInfo,
         sample_info: &mut SurfaceSampler,
         shape_surface: &mut ShapeSurface,
     ) {
@@ -159,9 +169,25 @@ impl Octree {
 
         let mut s = Strip::new(edge0, edge1);
 
-        Self::populate_strip(&mut s, indices, 0, mesh_info, sample_info, shape_surface);
+        Self::populate_strip(
+            &mut s,
+            indices,
+            0,
+            mesh_info,
+            vertex_info,
+            sample_info,
+            shape_surface,
+        );
 
-        Self::populate_strip(&mut s, indices, 1, mesh_info, sample_info, shape_surface);
+        Self::populate_strip(
+            &mut s,
+            indices,
+            1,
+            mesh_info,
+            vertex_info,
+            sample_info,
+            shape_surface,
+        );
 
         if strip_index == 1 {
             debug_assert!(face.get_strips_mut()[0] != s);
@@ -175,6 +201,7 @@ impl Octree {
         indices: &[UVec3; 4],
         edge_index: usize,
         mesh_info: &mut MeshCache,
+        vertex_info: &mut CMSVertexIndexInfo,
         sample_info: &mut SurfaceSampler,
         shape_surface: &mut ShapeSurface,
     ) {
@@ -228,7 +255,7 @@ impl Octree {
             crossing_index_0, edge_dir
         );
 
-        if let Some(value_0) = mesh_info.vertex_index_data.get(&crossing_index_0) {
+        if let Some(value_0) = vertex_info.vertex_index_info.get(&crossing_index_0) {
             if value_0.get_dir_vertex_index(edge_dir).is_some() {
                 debug!("vertex index: {:?}", value_0.get_dir_vertex_index(edge_dir));
                 strip.set_vertex_index(edge_index, value_0.get_dir_vertex_index(edge_dir).unwrap());
@@ -251,6 +278,7 @@ impl Octree {
                 mesh_info,
                 sample_info,
                 shape_surface,
+                vertex_info,
             );
         }
     }
@@ -351,6 +379,7 @@ impl Octree {
         mesh_info: &mut MeshCache,
         sample_info: &mut SurfaceSampler,
         shape_surface: &mut ShapeSurface,
+        vertex_info: &mut CMSVertexIndexInfo,
     ) {
         debug!("make vertex");
         let pos0 = sample_info.get_pos_from_vertex_address(crossing_index_0, shape_surface);
@@ -383,8 +412,8 @@ impl Octree {
         debug!("add vertex index: {:?}", mesh_info.positions.len() - 1);
         strip.set_vertex_index(edge_index, (mesh_info.positions.len() - 1) as u32);
 
-        let vertex_index = mesh_info
-            .vertex_index_data
+        let vertex_index = vertex_info
+            .vertex_index_info
             .entry(crossing_index_0)
             .or_insert(VertexIndices::new());
         debug_assert!(vertex_index.get_dir_vertex_index(edge_dir).is_none());

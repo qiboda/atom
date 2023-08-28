@@ -111,7 +111,7 @@ fn startup(
         ..Default::default()
     });
 
-    let size = 1.0 * 32.0;
+    let size = 1.0 * 64.0;
 
     commands.spawn((
         Camera3dBundle {

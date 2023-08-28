@@ -1,7 +1,7 @@
 use bevy::math::Vec3A;
 use pqef::Quadric;
 
-use crate::terrain::isosurface::surface::densy_function::DensyFunction;
+use crate::terrain::isosurface::surface::shape_surface::ShapeSurface;
 
 use super::cell_extent::CellExtent;
 use super::tables::EDGES3;
@@ -35,7 +35,7 @@ pub fn cell_is_bipolar(samples: &[f32; 8]) -> bool {
     any_negative && any_positive
 }
 
-pub fn central_gradient(sdf: &Box<dyn DensyFunction>, p: Vec3A, delta: f32) -> Vec3A {
+pub fn central_gradient(sdf: &ShapeSurface, p: Vec3A, delta: f32) -> Vec3A {
     let h = 0.5 * delta;
     Vec3A::new(
         sdf.get_value(p.x + h, p.y, p.z) - sdf.get_value(p.x - h, p.y, p.z),
@@ -68,7 +68,7 @@ pub fn estimate_interior_vertex(extent: &CellExtent, samples: &[f32; 8]) -> Vec3
 pub fn estimate_interior_vertex_qef(
     extent: &CellExtent,
     samples: &[f32; 8],
-    sdf: &Box<dyn DensyFunction>,
+    sdf: &ShapeSurface,
     precision: f32,
 ) -> (Quadric, Quadric) {
     let mut regularized_qef = Quadric::default();

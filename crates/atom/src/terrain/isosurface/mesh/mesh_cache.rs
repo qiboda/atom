@@ -1,31 +1,20 @@
-use std::sync::{Arc, RwLock};
-
 use bevy::{
-    prelude::{
-        debug, default, info, AssetServer, Assets, BuildChildren, Color, Commands, Component,
-        Entity, MaterialMeshBundle, Mesh, ResMut, Transform, UVec3, Vec3,
-    },
+    prelude::{debug, Component, Mesh, Vec3},
     render::render_resource::PrimitiveTopology,
-    utils::HashMap,
 };
 use bevy_xpbd_3d::{
     parry::{
         math::{Point, Real},
         shape::SharedShape,
     },
-    prelude::{Collider, RigidBody},
+    prelude::Collider,
 };
-
-use crate::terrain::materials::TerrainMaterial;
-
-use super::vertex_index::VertexIndices;
 
 #[derive(Debug, Clone, Component)]
 pub struct MeshCache {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
     pub indices: Vec<u32>,
-    pub vertex_index_data: HashMap<UVec3, VertexIndices>,
 }
 
 impl MeshCache {
@@ -34,14 +23,13 @@ impl MeshCache {
             positions: Vec::new(),
             normals: Vec::new(),
             indices: Vec::new(),
-            vertex_index_data: HashMap::default(),
         }
     }
 }
 
 impl MeshCache {
     pub fn is_empty(&self) -> bool {
-        self.positions.is_empty()
+        self.positions.is_empty() || self.indices.is_empty()
     }
 
     fn check(&self) {
@@ -121,44 +109,5 @@ impl From<&MeshCache> for Collider {
         }
 
         Collider::from(SharedShape::trimesh(vertices, indices))
-    }
-}
-
-pub fn create_mesh(
-    commands: &mut Commands,
-    terrain_chunk_eneity: Entity,
-    mesh_cache: Arc<RwLock<MeshCache>>,
-    meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<TerrainMaterial>>,
-    asset_server: &ResMut<AssetServer>,
-) {
-    if let Ok(mesh_cache) = mesh_cache.read() {
-        if mesh_cache.is_empty() {
-            return;
-        }
-
-        info!("create_mesh: position: {}, indices:{}", mesh_cache.get_vertice_positions().len(),
-        mesh_cache.get_indices().len(),
-    );
-        let id = commands
-            .spawn((
-                MaterialMeshBundle::<TerrainMaterial> {
-                    mesh: meshes.add(Mesh::from(&*mesh_cache)),
-                    material: materials.add(TerrainMaterial {
-                        base_color: Color::BLUE,
-                        base_color_texture: Some(asset_server.load("output.png")),
-                        normal_map_texture: Some(asset_server.load("screenshot_jiumeizi.png")),
-                        ..default()
-                    }),
-                    transform: Transform::from_translation(Vec3::splat(0.0)),
-                    ..Default::default()
-                },
-                RigidBody::Static,
-                Collider::from(&*mesh_cache),
-            ))
-            .id();
-
-        let mut terrian = commands.get_entity(terrain_chunk_eneity).unwrap();
-        terrian.add_child(id);
     }
 }

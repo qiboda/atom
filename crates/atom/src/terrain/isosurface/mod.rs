@@ -4,13 +4,14 @@ use bevy::prelude::*;
 use surface::shape_surface::ShapeSurface;
 
 use self::{
-    cms::CMSPlugin,
+    dc::DualContourPlugin,
     surface::{densy_function::NoiseSurface, shape_surface::IsosurfaceContext},
 };
 
 pub mod cms;
 pub mod dc;
 pub mod gpu;
+pub mod mesh;
 pub mod surface;
 
 #[derive(Default, PartialEq, Eq, Debug, Hash, Clone)]
@@ -44,6 +45,7 @@ impl Plugin for IsosurfaceExtractionPlugin {
                 iso_level: Vec3::ZERO,
             })),
         })
-        .add_plugins(CMSPlugin::default());
+        // .add_plugins(CMSPlugin::default());
+        .add_plugins(DualContourPlugin::default());
     }
 }
