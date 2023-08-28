@@ -13,11 +13,11 @@ use crate::terrain::{
     chunk::{coords::TerrainChunkCoord, TerrainChunk},
     isosurface::{
         cms::{
-            bundle::{CMSBundle, CMSTask},
-            meshing::mesh::MeshCache,
+            bundle::{CMSBundle, CMSTask, CMSVertexIndexInfo},
             octree::octree::Octree,
             sample::surface_sampler::SurfaceSampler,
         },
+        mesh::mesh_cache::MeshCache,
         IsosurfaceExtractionState,
     },
     materials::TerrainMaterial,
@@ -27,11 +27,14 @@ use crate::terrain::{
 
 use self::{
     bundle::CMSComponent,
-    meshing::mesh::create_mesh,
     octree::octree::{make_octree_structure, mark_transitional_faces},
 };
 
-use super::surface::shape_surface::{IsosurfaceContext, ShapeSurface};
+use super::{
+    mesh::create_mesh,
+    
+    surface::shape_surface::{IsosurfaceContext, ShapeSurface},
+};
 
 #[derive(Default)]
 pub struct CMSPlugin {}
@@ -79,6 +82,7 @@ fn cms_init(
 
         commands.entity(entity).insert(CMSBundle {
             cms: CMSComponent {
+                vertex_index_info: Arc::new(RwLock::new(CMSVertexIndexInfo::default())),
                 mesh_cache: Arc::new(RwLock::new(MeshCache::new())),
                 octree: Arc::new(RwLock::new(Octree::default())),
                 surface_sampler: Arc::new(RwLock::new(SurfaceSampler::new(
@@ -204,11 +208,17 @@ fn cms_update_extrace(
                     let surface_sampler = cms_component.surface_sampler.clone();
                     let octree = cms_component.octree.clone();
                     let mesh_cache = cms_component.mesh_cache.clone();
+                    let vertex_index = cms_component.vertex_index_info.clone();
                     let shape_surface = isosurface_context.shape_surface.clone();
 
                     let task = thread_pool.spawn(async move {
                         let mut octree = octree.write().unwrap();
-                        octree.generate_segments(shape_surface, surface_sampler, mesh_cache);
+                        octree.generate_segments(
+                            shape_surface,
+                            surface_sampler,
+                            mesh_cache,
+                            vertex_index,
+                        );
                         octree.edit_transitional_face();
                         octree.trace_comonent();
                     });

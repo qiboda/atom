@@ -2,11 +2,10 @@ use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
 
-use crate::terrain::isosurface::cms::octree::{
-    address::VoxelAddress, cell::CellType, octree::Octree,
+use crate::terrain::isosurface::{
+    cms::octree::{address::VoxelAddress, cell::CellType, octree::Octree},
+    mesh::mesh_cache::MeshCache,
 };
-
-use super::mesh::MeshCache;
 
 impl Octree {
     pub fn tessellation_traversal(&mut self, mesh_cache: Arc<RwLock<MeshCache>>) {

@@ -3,7 +3,7 @@ use pqef::Quadric;
 
 use crate::terrain::isosurface::{
     dc::{cell_is_bipolar, estimate_interior_vertex_qef},
-    surface::densy_function::DensyFunction,
+    surface::shape_surface::ShapeSurface,
 };
 
 use super::{branch_empty_check, cell_extent::CellExtent, MeshVertexId, NULL_MESH_VERTEX_ID};
@@ -19,12 +19,16 @@ pub struct CellOctree {
 }
 
 impl CellOctree {
-    fn new(root_id: CellId, all_cells: Vec<Cell>) -> Self {
+    pub fn new(root_id: CellId, all_cells: Vec<Cell>) -> Self {
         Self {
             root_id,
             all_cells,
             ..Default::default()
         }
+    }
+
+    pub fn is_valid_octree(&self) -> bool {
+        self.root_id != CellId::MAX
     }
 
     pub fn all_cells(&self) -> &[Cell] {
@@ -38,29 +42,34 @@ impl CellOctree {
     }
 
     pub fn build(
+        &mut self,
         root_cell: CellExtent,
         max_depth: u8,
         error_tolerance: f32,
         precision: f32,
-        sdf: &Box<dyn DensyFunction>,
-    ) -> Option<Self> {
+        sdf: &ShapeSurface,
+    ) {
         let Some(mut root_cell) = Cell::new(root_cell, &sdf, 0, max_depth == 0) else {
-            return None;
+            return;
         };
 
         if root_cell.is_leaf {
             let _qef = root_cell.estimate_vertex(&sdf, precision);
-            return Some(Self::new(0, vec![root_cell]));
+            Self::new(0, vec![root_cell]);
+            return;
         }
 
-        let mut me = Self::new(CellId::MAX, vec![]);
-        let (maybe_root_id, _) =
-            me.build_recursive_from_branch(max_depth, error_tolerance, precision, &sdf, root_cell);
+        let (maybe_root_id, _) = self.build_recursive_from_branch(
+            max_depth,
+            error_tolerance,
+            precision,
+            &sdf,
+            root_cell,
+        );
 
         maybe_root_id.map(|root_id| {
-            me.root_id = root_id;
-            me
-        })
+            self.root_id = root_id;
+        });
     }
 
     // Recursive because it's easier and slightly more efficient for post-order
@@ -70,7 +79,7 @@ impl CellOctree {
         max_depth: u8,
         error_tolerance: f32,
         precision: f32,
-        sdf: &Box<dyn DensyFunction>,
+        sdf: &ShapeSurface,
         mut branch: Cell,
     ) -> (Option<CellId>, VertexState) {
         assert!(!branch.is_leaf);
@@ -206,12 +215,7 @@ pub struct Cell {
 }
 
 impl Cell {
-    fn new(
-        extent: CellExtent,
-        sdf: &Box<dyn DensyFunction>,
-        depth: u8,
-        is_leaf: bool,
-    ) -> Option<Self> {
+    fn new(extent: CellExtent, sdf: &ShapeSurface, depth: u8, is_leaf: bool) -> Option<Self> {
         let cell_positions = extent.corners();
         // PERF: we could pretty easily make 3^3 samples/taps instead of 2^3 * 2^3 when splitting an octant
         // PERF: we could steal 2^3 samples/taps for the parent octant when splitting
@@ -237,18 +241,14 @@ impl Cell {
     }
 
     #[inline]
-    fn get_children(&self, sdf: &Box<dyn DensyFunction>, is_leaf: bool) -> [Option<Self>; 8] {
+    fn get_children(&self, sdf: &ShapeSurface, is_leaf: bool) -> [Option<Self>; 8] {
         assert!(!self.is_leaf);
         let child_extents = self.extent.split(self.extent.center());
         child_extents.map(|extent| Self::new(extent, &sdf, self.depth + 1, is_leaf))
     }
 
     #[inline]
-    fn estimate_vertex(
-        &mut self,
-        sdf: &Box<dyn DensyFunction>,
-        precision: f32,
-    ) -> (Quadric, Quadric) {
+    fn estimate_vertex(&mut self, sdf: &ShapeSurface, precision: f32) -> (Quadric, Quadric) {
         let (regularized_qef, exact_qef) =
             estimate_interior_vertex_qef(&self.extent, &self.samples, &sdf, precision);
         self.estimate_vertex_with_qef(&regularized_qef, &exact_qef);
