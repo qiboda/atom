@@ -47,7 +47,7 @@ pub use sdf::*;
 
 use crate::terrain::chunk::coords::TerrainChunkCoord;
 use crate::terrain::chunk::TerrainChunk;
-use crate::terrain::materials::TerrainMaterial;
+use crate::terrain::materials::terrain::TerrainMaterial;
 use crate::terrain::settings::TerrainSettings;
 use crate::terrain::TerrainSystemSet;
 
