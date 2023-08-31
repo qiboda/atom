@@ -20,7 +20,7 @@ use crate::terrain::{
         mesh::mesh_cache::MeshCache,
         IsosurfaceExtractionState,
     },
-    materials::TerrainMaterial,
+    materials::terrain::TerrainMaterial,
     settings::TerrainSettings,
     TerrainSystemSet,
 };
@@ -32,7 +32,6 @@ use self::{
 
 use super::{
     mesh::create_mesh,
-    
     surface::shape_surface::{IsosurfaceContext, ShapeSurface},
 };
 

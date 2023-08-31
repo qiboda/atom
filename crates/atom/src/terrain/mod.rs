@@ -6,6 +6,7 @@
 ///
 pub mod bundle;
 pub mod chunk;
+pub mod ecology;
 pub mod isosurface;
 pub mod materials;
 pub mod settings;
@@ -16,7 +17,8 @@ use bevy::prelude::*;
 use crate::visible::{visible_areas::TerrainVisibleAreas, TerrainVisibleAreaPlugin};
 
 use self::{
-    isosurface::IsosurfaceExtractionPlugin, materials::TerrainMaterial, terrain::TerrainDataPlugin,
+    isosurface::IsosurfaceExtractionPlugin, materials::terrain::TerrainMaterial,
+    terrain::TerrainDataPlugin,
 };
 
 #[derive(SystemSet, PartialEq, Eq, Debug, Clone, Hash)]

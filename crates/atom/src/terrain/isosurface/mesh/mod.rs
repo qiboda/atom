@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use bevy::prelude::*;
 use bevy_xpbd_3d::prelude::{Collider, RigidBody};
 
-use crate::terrain::materials::TerrainMaterial;
+use crate::terrain::materials::terrain::TerrainMaterial;
 
 use self::mesh_cache::MeshCache;
 

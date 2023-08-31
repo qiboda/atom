@@ -1,0 +1,48 @@
+
+// group 0 is mesh, so can use mesh_vertex_output
+// group 1 is material, because only one group, so can not support multipe materials on on mesh.
+// group 2 is mesh animation
+
+#import bevy_pbr::mesh_vertex_output MeshVertexOutput
+
+
+@group(1) @binding(0)
+var<uniform> base_color: vec4<f32>;
+
+@group(1) @binding(1)
+var base_color_texture: texture_2d<f32>;
+
+@group(1) @binding(2)
+var base_color_texture_sampler: sampler;
+
+@group(1) @binding(3)
+var normal_map_texture: texture_2d<f32>;
+
+@group(1) @binding(4)
+var normal_map_sampler: sampler;
+
+@group(1) @binding(5)
+var metallic_map_texture: texture_2d<f32>;
+
+@group(1) @binding(6)
+var metallic_map_sampler: sampler;
+
+@group(1) @binding(7)
+var roughness_map_texture: texture_2d<f32>;
+
+@group(1) @binding(8)
+var roughness_map_sampler: sampler;
+
+@group(1) @binding(9)
+var occlusion_map_texture: texture_2d<f32>;
+
+@group(1) @binding(10)
+var occlusion_map_sampler: sampler;
+
+@fragment
+fn fragment(
+    in: MeshVertexOutput
+) -> @location(0) vec4<f32> {
+    var uv = fract(in.world_position / 16);
+    return textureSample(base_color_texture, base_color_texture_sampler, uv) * base_color;
+}
