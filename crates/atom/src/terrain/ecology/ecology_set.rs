@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use super::category::EcologyMaterial;
 
 #[derive(Debug, Resource)]
-struct EcologyMaterials {
-    forest_material: Arc<dyn EcologyMaterial>,
-    desert_material: Arc<dyn EcologyMaterial>,
+pub struct EcologyMaterials {
+    pub forest_material: Arc<dyn EcologyMaterial>,
+    pub desert_material: Arc<dyn EcologyMaterial>,
 }
