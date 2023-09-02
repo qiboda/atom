@@ -5,7 +5,7 @@ use crate::terrain::ecology::EcologyType;
 use super::EcologyMaterial;
 
 #[derive(Debug)]
-struct ForestEcologyMaterial {
+pub struct ForestEcologyMaterial {
     albedo_texture: Handle<Image>,
     normal_texture: Handle<Image>,
     clussion_texture: Handle<Image>,
