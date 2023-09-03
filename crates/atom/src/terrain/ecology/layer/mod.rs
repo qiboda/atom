@@ -1,4 +1,6 @@
-use std::{ops::ControlFlow, sync::Arc};
+use std::{fmt::Debug, ops::ControlFlow, sync::Arc};
+
+use bevy::prelude::*;
 
 use crate::terrain::chunk::coords::TerrainChunkCoord;
 
@@ -10,21 +12,26 @@ pub trait Sampler {
     fn sample(&self, chunk_coord: TerrainChunkCoord) -> Option<Arc<dyn EcologyMaterial>>;
 }
 
-pub trait EcologyLayer: Sampler {}
+pub trait EcologyLayer: Sampler + Send + Sync + Debug {}
 
 #[derive(Debug, Component)]
 pub struct EcologyLayerSampler {
-    all_layer: Vec<Box<dyn EcologyLayer>>,
+    pub all_layer: Vec<Box<dyn EcologyLayer>>,
 }
 
 impl Sampler for EcologyLayerSampler {
     fn sample(&self, chunk_coord: TerrainChunkCoord) -> Option<Arc<dyn EcologyMaterial>> {
-        return self.all_layer.iter().rev().try_for_each(|layer| {
-            if let mat = layer.sample(chunk_coord) {
-                return ControlFlow::Break(mat);
-            } else {
-                return ControlFlow::Continue(None);
-            }
-        });
+        if let ControlFlow::Break(mat) =
+            self.all_layer
+                .iter()
+                .rev()
+                .try_for_each(|layer| match layer.sample(chunk_coord) {
+                    mat if mat.is_some() => return ControlFlow::Break(mat),
+                    _ => return ControlFlow::Continue(()),
+                })
+        {
+            return mat;
+        }
+        return None;
     }
 }

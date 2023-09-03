@@ -1,11 +1,20 @@
 use std::sync::Arc;
 
 use bevy::{
-    asset::Asset,
-    prelude::{App, AssetServer, Commands, Image, Plugin, Res, Startup, Without, With, Added, Entity, Query, Last},
+    prelude::{
+        Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res,
+        Startup,
+    },
 };
 
-use self::{category::forest::ForestEcologyMaterial, ecology_set::EcologyMaterials, layer::{EcologyLayerSampler, first::{FirstLayer, self}}};
+use self::{
+    category::forest::ForestEcologyMaterial,
+    ecology_set::EcologyMaterials,
+    layer::{
+        first::{FirstLayer},
+        EcologyLayerSampler,
+    },
+};
 
 use super::terrain::Terrain;
 
@@ -25,11 +34,11 @@ struct EcologyPlugin;
 impl Plugin for EcologyPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, startup)
-        .add_systems(Last, add_ecology_layer_sampler)));
+            .add_systems(Last, add_ecology_layer_sampler);
     }
 }
 
-fn startup(commands: &mut Commands, images: Res<Asset<Image>>, asset_server: Res<AssetServer>) {
+fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let albedo_image_handle = asset_server
         .load("textures/terrian/M3D_RockyAridGround01_4K/RockyAridGround01_ALBEDO_4K.png");
     let ao_image_handle =
@@ -45,12 +54,12 @@ fn startup(commands: &mut Commands, images: Res<Asset<Image>>, asset_server: Res
 
     commands.insert_resource(EcologyMaterials {
         forest_material: Arc::new(ForestEcologyMaterial {
-            albedo_texture: albedo_image_handle,
-            normal_texture: normal_image_handle,
-            clussion_texture: ao_image_handle,
-            metallic_texture: metallic_image_handle,
-            roughness_texture: rough_image_handle,
-            height_texture: height_image_handle,
+            albedo_texture: albedo_image_handle.clone(),
+            normal_texture: normal_image_handle.clone(),
+            clussion_texture: ao_image_handle.clone(),
+            metallic_texture: metallic_image_handle.clone(),
+            roughness_texture: rough_image_handle.clone(),
+            height_texture: height_image_handle.clone(),
         }),
         desert_material: Arc::new(ForestEcologyMaterial {
             albedo_texture: albedo_image_handle,
@@ -63,7 +72,11 @@ fn startup(commands: &mut Commands, images: Res<Asset<Image>>, asset_server: Res
     });
 }
 
-fn add_ecology_layer_sampler(commands: &mut Commands, terrain_query: Query<Entity, Added<Terrain>> , ecology_materials: Res<EcologyMaterials>) {
+fn add_ecology_layer_sampler(
+    mut commands: Commands,
+    terrain_query: Query<Entity, Added<Terrain>>,
+    ecology_materials: Res<EcologyMaterials>,
+) {
     for entity in terrain_query.iter() {
         commands.entity(entity).insert(EcologyLayerSampler {
             all_layer: vec![

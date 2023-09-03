@@ -6,12 +6,12 @@ use super::EcologyMaterial;
 
 #[derive(Debug)]
 pub struct ForestEcologyMaterial {
-    albedo_texture: Handle<Image>,
-    normal_texture: Handle<Image>,
-    clussion_texture: Handle<Image>,
-    metallic_texture: Handle<Image>,
-    roughness_texture: Handle<Image>,
-    height_texture: Handle<Image>,
+    pub albedo_texture: Handle<Image>,
+    pub normal_texture: Handle<Image>,
+    pub clussion_texture: Handle<Image>,
+    pub metallic_texture: Handle<Image>,
+    pub roughness_texture: Handle<Image>,
+    pub height_texture: Handle<Image>,
 }
 
 impl EcologyMaterial for ForestEcologyMaterial {
