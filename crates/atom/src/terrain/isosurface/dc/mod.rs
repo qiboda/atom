@@ -263,14 +263,13 @@ pub fn dual_contouring_create_mesh(
     )>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
-    asset_server: ResMut<AssetServer>,
 ) {
     for (
         terrain_chunk_entity,
         cms_component,
         mut cms_task,
-        _terrain_chunk_coord,
-        _ecology_layer_sampler,
+        terrain_chunk_coord,
+        ecology_layer_sampler,
     ) in cms_query.iter_mut()
     {
         if cms_task.state == DualContourState::CreateMesh {
@@ -282,7 +281,8 @@ pub fn dual_contouring_create_mesh(
                 mesh_cache,
                 &mut meshes,
                 &mut materials,
-                &asset_server,
+                *terrain_chunk_coord,
+                &ecology_layer_sampler,
             );
             cms_task.state = DualContourState::Done;
         }

@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::terrain::{chunk::coords::TerrainChunkCoord, ecology::category::EcologyMaterial};
+use crate::terrain::{
+    chunk::coords::TerrainChunkCoord, ecology::category::EcologyMaterial,
+    isosurface::dc::CellExtent,
+};
 
 use super::{EcologyLayer, Sampler};
 
@@ -10,7 +13,11 @@ pub struct FirstLayer {
 }
 
 impl Sampler for FirstLayer {
-    fn sample(&self, _chunk_coord: TerrainChunkCoord) -> Option<Arc<dyn EcologyMaterial>> {
+    fn sample(
+        &self,
+        _chunk_coord: TerrainChunkCoord,
+        _cell_extent: CellExtent,
+    ) -> Option<Arc<dyn EcologyMaterial>> {
         return Some(self.forest_material.clone());
     }
 }

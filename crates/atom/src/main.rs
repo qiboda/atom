@@ -1,4 +1,5 @@
 pub mod camera;
+pub mod log;
 pub mod material;
 pub mod terrain;
 pub mod ui;
@@ -13,6 +14,7 @@ use bevy::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
     },
+    log::LogPlugin,
     prelude::*,
     render::{
         settings::{WgpuFeatures, WgpuSettings},
@@ -20,6 +22,7 @@ use bevy::{
     },
 };
 use bevy_obj::ObjPlugin;
+use log::CustomLogPlugin;
 
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
@@ -42,8 +45,10 @@ fn main() {
                 .set(AssetPlugin {
                     watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
                     asset_folder: "assets".to_string(),
-                }),
+                })
+                .disable::<LogPlugin>(),
             ObjPlugin,
+            CustomLogPlugin::default(),
             // WireframePlugin,
             // PhysicsPlugins::default(),
         ))

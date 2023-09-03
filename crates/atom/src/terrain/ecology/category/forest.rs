@@ -27,7 +27,7 @@ impl EcologyMaterial for ForestEcologyMaterial {
         self.normal_texture.clone()
     }
 
-    fn get_clussion_texture(&self) -> Handle<Image> {
+    fn get_occlusion_texture(&self) -> Handle<Image> {
         self.clussion_texture.clone()
     }
 

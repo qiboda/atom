@@ -3,6 +3,8 @@ use std::sync::{Arc, RwLock};
 use bevy::prelude::*;
 use surface::shape_surface::ShapeSurface;
 
+use super::ecology::EcologyPlugin;
+
 use self::{
     dc::DualContourPlugin,
     surface::{densy_function::NoiseSurface, shape_surface::IsosurfaceContext},
@@ -46,6 +48,7 @@ impl Plugin for IsosurfaceExtractionPlugin {
             })),
         })
         // .add_plugins(CMSPlugin::default());
-        .add_plugins(DualContourPlugin::default());
+        .add_plugins(DualContourPlugin::default())
+        .add_plugins(EcologyPlugin::default());
     }
 }

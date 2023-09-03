@@ -1,6 +1,6 @@
 use bevy::math::Vec3A;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct CellExtent {
     min: Vec3A,
     max: Vec3A,

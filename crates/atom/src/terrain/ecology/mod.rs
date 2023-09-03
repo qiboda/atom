@@ -1,19 +1,11 @@
 use std::sync::Arc;
 
-use bevy::{
-    prelude::{
-        Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res,
-        Startup,
-    },
-};
+use bevy::prelude::{Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res, Startup};
 
 use self::{
     category::forest::ForestEcologyMaterial,
     ecology_set::EcologyMaterials,
-    layer::{
-        first::{FirstLayer},
-        EcologyLayerSampler,
-    },
+    layer::{first::FirstLayer, EcologyLayerSampler},
 };
 
 use super::terrain::Terrain;
@@ -28,8 +20,8 @@ pub enum EcologyType {
     Desert,
 }
 
-#[derive(Debug)]
-struct EcologyPlugin;
+#[derive(Debug, Default)]
+pub struct EcologyPlugin;
 
 impl Plugin for EcologyPlugin {
     fn build(&self, app: &mut App) {

@@ -11,6 +11,7 @@ use futures_lite::future;
 
 use crate::terrain::{
     chunk::{coords::TerrainChunkCoord, TerrainChunk},
+    ecology::layer::EcologyLayerSampler,
     isosurface::{
         cms::{
             bundle::{CMSBundle, CMSTask, CMSVertexIndexInfo},
@@ -267,12 +268,24 @@ fn cms_update_meshing(mut cms_query: Query<(&mut CMSComponent, &mut CMSTask)>) {
 
 fn cms_update_create_mesh(
     mut commands: Commands,
-    mut cms_query: Query<(Entity, &CMSComponent, &mut CMSTask)>,
+    mut cms_query: Query<(
+        Entity,
+        &CMSComponent,
+        &mut CMSTask,
+        &TerrainChunkCoord,
+        &EcologyLayerSampler,
+    )>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
-    asset_server: ResMut<AssetServer>,
 ) {
-    for (terrain_chunk_entity, cms_component, mut cms_task) in cms_query.iter_mut() {
+    for (
+        terrain_chunk_entity,
+        cms_component,
+        mut cms_task,
+        terrain_chunk_coord,
+        ecology_layer_sampler,
+    ) in cms_query.iter_mut()
+    {
         if cms_task.state == IsosurfaceExtractionState::CreateMesh {
             let mesh_cache = cms_component.mesh_cache.clone();
 
@@ -282,7 +295,8 @@ fn cms_update_create_mesh(
                 mesh_cache,
                 &mut meshes,
                 &mut materials,
-                &asset_server,
+                *terrain_chunk_coord,
+                &ecology_layer_sampler,
             );
             cms_task.state = super::IsosurfaceExtractionState::Done;
         }
