@@ -10,7 +10,7 @@ pub struct FirstLayer {
 }
 
 impl Sampler for FirstLayer {
-    fn sample(&self, chunk_coord: TerrainChunkCoord) -> Option<Arc<dyn EcologyMaterial>> {
+    fn sample(&self, _chunk_coord: TerrainChunkCoord) -> Option<Arc<dyn EcologyMaterial>> {
         return Some(self.forest_material.clone());
     }
 }

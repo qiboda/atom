@@ -47,6 +47,7 @@ pub use sdf::*;
 
 use crate::terrain::chunk::coords::TerrainChunkCoord;
 use crate::terrain::chunk::TerrainChunk;
+use crate::terrain::ecology::layer::EcologyLayerSampler;
 use crate::terrain::materials::terrain::TerrainMaterial;
 use crate::terrain::settings::TerrainSettings;
 use crate::terrain::TerrainSystemSet;
@@ -253,12 +254,25 @@ fn dual_contour_meshing(
 
 pub fn dual_contouring_create_mesh(
     mut commands: Commands,
-    mut cms_query: Query<(Entity, &DualContoring, &mut DualContoringTask)>,
+    mut cms_query: Query<(
+        Entity,
+        &DualContoring,
+        &mut DualContoringTask,
+        &TerrainChunkCoord,
+        &EcologyLayerSampler,
+    )>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
     asset_server: ResMut<AssetServer>,
 ) {
-    for (terrain_chunk_entity, cms_component, mut cms_task) in cms_query.iter_mut() {
+    for (
+        terrain_chunk_entity,
+        cms_component,
+        mut cms_task,
+        _terrain_chunk_coord,
+        _ecology_layer_sampler,
+    ) in cms_query.iter_mut()
+    {
         if cms_task.state == DualContourState::CreateMesh {
             let mesh_cache = cms_component.mesh_cache.clone();
 
