@@ -11,7 +11,7 @@ pub trait EcologyMaterial: Send + Sync + Debug {
 
     fn get_albedo_texture(&self) -> Handle<Image>;
     fn get_normal_texture(&self) -> Handle<Image>;
-    fn get_clussion_texture(&self) -> Handle<Image>;
+    fn get_occlusion_texture(&self) -> Handle<Image>;
     fn get_metallic_texture(&self) -> Handle<Image>;
     fn get_roughness_texture(&self) -> Handle<Image>;
     fn get_height_texture(&self) -> Handle<Image>;
