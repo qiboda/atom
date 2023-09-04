@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use bevy::prelude::{Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res, Startup};
+use bevy::prelude::{
+    info, Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res, Startup,
+};
 
 use self::{
     category::forest::ForestEcologyMaterial,
@@ -8,7 +10,7 @@ use self::{
     layer::{first::FirstLayer, EcologyLayerSampler},
 };
 
-use super::terrain::Terrain;
+use super::chunk::TerrainChunk;
 
 pub mod category;
 pub mod ecology_set;
@@ -31,18 +33,20 @@ impl Plugin for EcologyPlugin {
 }
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    info!("startup ecology");
+
     let albedo_image_handle = asset_server
-        .load("textures/terrian/M3D_RockyAridGround01_4K/RockyAridGround01_ALBEDO_4K.png");
+        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_ALBEDO_4K.png");
     let ao_image_handle =
-        asset_server.load("textures/terrian/M3D_RockyAridGround01_4K/RockyAridGround01_AO_4K.png");
+        asset_server.load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_AO_4K.png");
     let height_image_handle = asset_server
-        .load("textures/terrian/M3D_RockyAridGround01_4K/RockyAridGround01_HEIGHT_4K.png");
+        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_HEIGHT_4K.png");
     let metallic_image_handle = asset_server
-        .load("textures/terrian/M3D_RockyAridGround01_4K/RockyAridGround01_METALLIC_4K.png");
+        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_METALLIC_4K.png");
     let normal_image_handle = asset_server
-        .load("textures/terrian/M3D_RockyAridGround01_4K/RockyAridGround01_NORMAL_4K.png");
+        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_NORMAL_4K.png");
     let rough_image_handle = asset_server
-        .load("textures/terrian/M3D_RockyAridGround01_4K/RockyAridGround01_ROUGH_4K.png");
+        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_ROUGH_4K.png");
 
     commands.insert_resource(EcologyMaterials {
         forest_material: Arc::new(ForestEcologyMaterial {
@@ -66,10 +70,14 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn add_ecology_layer_sampler(
     mut commands: Commands,
-    terrain_query: Query<Entity, Added<Terrain>>,
+    terrain_query: Query<Entity, Added<TerrainChunk>>,
     ecology_materials: Res<EcologyMaterials>,
 ) {
     for entity in terrain_query.iter() {
+        info!(
+            "add_ecology_layer_sampler: entity count: {}",
+            terrain_query.iter().count()
+        );
         commands.entity(entity).insert(EcologyLayerSampler {
             all_layer: vec![
                 Box::new(FirstLayer {
