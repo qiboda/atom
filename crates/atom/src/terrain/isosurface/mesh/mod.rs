@@ -33,6 +33,8 @@ pub fn create_mesh(
             terrain_chunk_coord,
             CellExtent::new(Vec3A::splat(0.0), Vec3A::splat(1.0)),
         );
+
+        info!("create_mesh ok, material: {:?}", ecology_material);
         match &ecology_material {
             Some(ecology_material) => {
                 material = materials.add(TerrainMaterial {

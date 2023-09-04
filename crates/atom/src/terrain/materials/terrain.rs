@@ -40,7 +40,7 @@ impl Material for TerrainMaterial {
 
     fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
         // bevy::render::render_resource::ShaderRef::Default
-        "shader/terrain_mat.wgsl".into()
+        "shader/terrain/terrain_mat.wgsl".into()
     }
 
     fn alpha_mode(&self) -> AlphaMode {
