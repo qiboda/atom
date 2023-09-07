@@ -1,0 +1,66 @@
+<mxfile host="Electron" modified="2023-09-06T16:03:00.991Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="6d9LOHYLwXXks6qqR-nH" version="21.6.8" type="device">
+  <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
+    <mxGraphModel dx="814" dy="552" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="WIyWlLk6GJQsqaUBKTNV-0" />
+        <mxCell id="WIyWlLk6GJQsqaUBKTNV-1" parent="WIyWlLk6GJQsqaUBKTNV-0" />
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-2" value="组件" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;recursiveResize=0;container=1;collapsible=0;width=160;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+          <mxGeometry x="50" y="270" width="370" height="410" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-0" value="属性" style="html=1;whiteSpace=wrap;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-2">
+          <mxGeometry x="80" y="150" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-1" value="技能" style="html=1;whiteSpace=wrap;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-2">
+          <mxGeometry x="80" y="70" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-5" value="状态" style="html=1;whiteSpace=wrap;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-2">
+          <mxGeometry x="80" y="230" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-6" value="Object" style="html=1;whiteSpace=wrap;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-2">
+          <mxGeometry x="80" y="315" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-4" value="EffectNodePools" style="shape=note2;boundedLbl=1;whiteSpace=wrap;html=1;size=25;verticalAlign=top;align=center;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+          <mxGeometry x="130" y="170" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-14" value="Effect Component" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;recursiveResize=0;container=1;collapsible=0;width=160;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+          <mxGeometry x="480" y="270" width="660" height="550" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="_Kv_LYZ9CVoAIaad1dvz-14" source="_Kv_LYZ9CVoAIaad1dvz-7" target="_Kv_LYZ9CVoAIaad1dvz-9">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="125" y="80" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-9" value="EffectLifeNode Trait" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-14">
+          <mxGeometry x="65" y="280" width="160" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-10" value="+ field: type" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-9">
+          <mxGeometry y="26" width="160" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-11" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-9">
+          <mxGeometry y="52" width="160" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-12" value="+ method(type): type" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-9">
+          <mxGeometry y="60" width="160" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-7" value="EffectNode trait" style="html=1;whiteSpace=wrap;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-14">
+          <mxGeometry x="90" y="190" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-16" value="Effect Node Builder" style="html=1;whiteSpace=wrap;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-14">
+          <mxGeometry x="75" y="40" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-17" value="node 中引用其他组件。例如另一个组件。总可以通过entity进行查询。&lt;br&gt;&lt;br&gt;&lt;br&gt;使用guid或者entity或者自增id，来表示Node 的Id" style="shape=note2;boundedLbl=1;whiteSpace=wrap;html=1;size=25;verticalAlign=top;align=center;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-14">
+          <mxGeometry x="300" y="60" width="120" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-18" value="Effect Node Schema" style="html=1;whiteSpace=wrap;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-14">
+          <mxGeometry x="75" y="110" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-19" value="Effect Node Context" style="html=1;whiteSpace=wrap;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-14">
+          <mxGeometry x="90" y="400" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="_Kv_LYZ9CVoAIaad1dvz-20" value="Effect Node Event Manager" style="html=1;whiteSpace=wrap;" vertex="1" parent="_Kv_LYZ9CVoAIaad1dvz-14">
+          <mxGeometry x="90" y="480" width="110" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
