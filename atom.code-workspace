@@ -1,11 +1,15 @@
 {
-	"folders": [
-		{
-			"path": "."
-		},
-		{
-			"path": "../dep"
-		}
-	],
-	"settings": {}
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "rust-analyzer.linkedProjects": [
+            ".\\crates\\ability\\Cargo.toml",
+            ".\\crates\\ability_editor\\Cargo.toml",
+            ".\\crates\\ability_editor\\Cargo.toml",
+            ".\\crates\\ability_editor\\Cargo.toml"
+        ]
+    }
 }

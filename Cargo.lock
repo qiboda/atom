@@ -23,6 +23,19 @@ name = "ability"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy-trait-query",
+ "bevy-trait-query-impl",
+ "smallvec",
+]
+
+[[package]]
+name = "ability_editor"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy-trait-query",
+ "bevy-trait-query-impl",
+ "smallvec",
 ]
 
 [[package]]
@@ -337,6 +350,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18e71a9143ac21bed247c30129399af8be170309e7ff5983a1bd37e87d3da520"
 dependencies = [
  "bevy_internal",
+]
+
+[[package]]
+name = "bevy-trait-query"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04cdaa9163c725fbc66d781837cd73e0f290facba6052c03f1f4eb956dc4bbb0"
+dependencies = [
+ "bevy",
+ "bevy-trait-query-impl",
+]
+
+[[package]]
+name = "bevy-trait-query-impl"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d694c7e8e932307d2dc3a7d1bd7bded7e1f743e453f18010a08ab3df7351bff"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.30",
 ]
 
 [[package]]
