@@ -1,14 +1,9 @@
-use bevy::prelude::{Bundle, Component};
+use bevy::prelude::Bundle;
 
-use super::{
-    node::{EffectNode, EffectNodeState},
-    pin::{EffectNodeInputs, EffectNodeOutputs},
-};
+use super::node::{EffectNodeState, EffectNodeUuid};
 
-#[derive(Debug, Bundle)]
-pub struct EffectNodeBundle<T: EffectNode + Component> {
-    effect_node: T,
-    effect_node_state: EffectNodeState,
-    effect_node_outputs: EffectNodeOutputs,
-    effect_node_inputs: EffectNodeInputs,
+#[derive(Debug, Bundle, Default)]
+pub struct EffectNodeBaseBundle {
+    pub effect_node_state: EffectNodeState,
+    pub uuid: EffectNodeUuid,
 }

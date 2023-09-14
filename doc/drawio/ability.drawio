@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2023-09-07T14:28:29.362Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="xWEmKZGBhaieD8NoMIzg" version="21.6.8" type="device">
+<mxfile host="Electron" modified="2023-09-12T15:27:12.347Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="Sz0RfX_seRSTFiDlX9bK" version="21.6.8" type="device">
   <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
     <mxGraphModel dx="977" dy="662" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -23,7 +23,7 @@
           <mxGeometry x="130" y="170" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="_Kv_LYZ9CVoAIaad1dvz-14" value="Effect Component" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;recursiveResize=0;container=1;collapsible=0;width=160;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
-          <mxGeometry x="480" y="270" width="660" height="550" as="geometry" />
+          <mxGeometry x="480" y="270" width="920" height="550" as="geometry" />
         </mxCell>
         <mxCell id="_Kv_LYZ9CVoAIaad1dvz-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="_Kv_LYZ9CVoAIaad1dvz-14" source="_Kv_LYZ9CVoAIaad1dvz-7" target="_Kv_LYZ9CVoAIaad1dvz-9" edge="1">
           <mxGeometry relative="1" as="geometry">
@@ -59,6 +59,30 @@
         </mxCell>
         <mxCell id="_Kv_LYZ9CVoAIaad1dvz-20" value="Effect Node Event Manager" style="html=1;whiteSpace=wrap;" parent="_Kv_LYZ9CVoAIaad1dvz-14" vertex="1">
           <mxGeometry x="90" y="480" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="CBVFbIwDwmJJxsSD5G-e-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" parent="_Kv_LYZ9CVoAIaad1dvz-14" source="CBVFbIwDwmJJxsSD5G-e-0" target="CBVFbIwDwmJJxsSD5G-e-1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="CBVFbIwDwmJJxsSD5G-e-0" value="state end" style="rounded=0;whiteSpace=wrap;html=1;" parent="_Kv_LYZ9CVoAIaad1dvz-14" vertex="1">
+          <mxGeometry x="480" y="180" width="120" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="CBVFbIwDwmJJxsSD5G-e-1" value="buff jump" style="rounded=0;whiteSpace=wrap;html=1;" parent="_Kv_LYZ9CVoAIaad1dvz-14" vertex="1">
+          <mxGeometry x="730" y="150" width="120" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="CBVFbIwDwmJJxsSD5G-e-7" value="entity&lt;br&gt;exec name&amp;nbsp;&lt;br&gt;pin name&lt;br&gt;pin value" style="rounded=0;whiteSpace=wrap;html=1;" parent="_Kv_LYZ9CVoAIaad1dvz-14" vertex="1">
+          <mxGeometry x="520" y="440" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="CBVFbIwDwmJJxsSD5G-e-8" value="entity&lt;br style=&quot;border-color: var(--border-color);&quot;&gt;exec name&amp;nbsp;&lt;br style=&quot;border-color: var(--border-color);&quot;&gt;pin name" style="rounded=0;whiteSpace=wrap;html=1;" parent="_Kv_LYZ9CVoAIaad1dvz-14" vertex="1">
+          <mxGeometry x="750" y="440" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="CBVFbIwDwmJJxsSD5G-e-3" value="get loop index" style="rounded=0;whiteSpace=wrap;html=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="1490" y="490" width="120" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="CBVFbIwDwmJJxsSD5G-e-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="CBVFbIwDwmJJxsSD5G-e-1" target="CBVFbIwDwmJJxsSD5G-e-3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="CBVFbIwDwmJJxsSD5G-e-13" value="outpu pin how to get input pin value" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="975" y="868" width="210" height="30" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

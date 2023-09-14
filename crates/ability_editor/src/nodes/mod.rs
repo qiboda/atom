@@ -10,7 +10,7 @@ pub mod bundle;
 pub mod event;
 pub mod graph;
 pub mod node;
-pub mod base;
+pub mod pin;
 
 #[derive(Debug)]
 pub struct EffectGraphPlugin {}
