@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use bevy::reflect::Reflect;
+use bevy::{prelude::Entity, reflect::Reflect};
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -17,6 +17,8 @@ pub enum EffectValue {
 
     F32(f32),
     F64(f64),
+
+    Entity(Entity),
 
     String(Cow<'static, str>),
 
