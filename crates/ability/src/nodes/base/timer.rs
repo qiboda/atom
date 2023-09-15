@@ -3,6 +3,8 @@ use bevy::{
     time::Time,
 };
 
+use lazy_static::lazy_static;
+
 use crate::nodes::{
     bundle::EffectNodeBaseBundle,
     event::EffectEvent,
@@ -82,32 +84,34 @@ impl EffectNodeTimer {
     pub const INPUT_EXEC_START: &'static str = "start";
     pub const INPUT_PIN_DURATION: &'static str = "duration";
     pub const OUTPUT_EXEC_FINISHED: &'static str = "finished";
-
-    const INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
-        exec: EffectNodeExec {
-            name: Self::INPUT_EXEC_START,
-        },
-        pins: vec![EffectNodePin {
-            name: Self::INPUT_PIN_DURATION,
-            pin_type: std::any::TypeId::of::<f32>(),
-        }],
-    }];
-
-    const OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
-        exec: EffectNodeExec {
-            name: Self::OUTPUT_EXEC_FINISHED,
-        },
-        pins: vec![],
-    }];
 }
 
 impl EffectNodePinGroup for EffectNodeTimer {
     fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        &Self::INPUT_PIN_GROUPS
+        lazy_static! {
+            static ref INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+                exec: EffectNodeExec {
+                    name: EffectNodeTimer::INPUT_EXEC_START,
+                },
+                pins: vec![EffectNodePin {
+                    name: EffectNodeTimer::INPUT_PIN_DURATION,
+                    pin_type: std::any::TypeId::of::<f32>(),
+                }],
+            }];
+        }
+        &INPUT_PIN_GROUPS
     }
 
     fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        &Self::OUTPUT_PIN_GROUPS
+        lazy_static! {
+            static ref OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+                exec: EffectNodeExec {
+                    name: EffectNodeTimer::OUTPUT_EXEC_FINISHED,
+                },
+                pins: vec![],
+            }];
+        }
+        &OUTPUT_PIN_GROUPS
     }
 }
 
@@ -122,9 +126,9 @@ fn update_timer(
                 timer.elapse += time.delta_seconds();
                 if timer.elapse >= timer.duration {
                     *state = EffectNodeState::Finished;
-                    for entity in timer.end_exec.entities.iter() {
-                        event_writer.send(EffectEvent::Start(*entity));
-                    }
+                    // for entity in timer.end_exec.entities.iter() {
+                    //     event_writer.send(EffectEvent::Start(*entity));
+                    // }
                 }
             }
             _ => {}

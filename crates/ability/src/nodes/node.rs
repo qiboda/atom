@@ -29,7 +29,7 @@ pub enum EffectNodeState {
     Finished,
 }
 
-#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct EffectNodeUuid {
     pub uuid: Uuid,
 }

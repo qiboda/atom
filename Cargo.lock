@@ -25,6 +25,7 @@ dependencies = [
  "bevy",
  "bevy-trait-query",
  "bevy-trait-query-impl",
+ "lazy_static",
  "smallvec",
 ]
 

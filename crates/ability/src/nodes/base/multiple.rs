@@ -1,5 +1,7 @@
 use std::any::TypeId;
 
+use lazy_static::lazy_static;
+
 use bevy::{
     prelude::{
         default, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query,
@@ -9,10 +11,9 @@ use bevy::{
 };
 
 use crate::nodes::{
-    blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
     event::EffectEvent,
-    graph::{EffectGraphContext, EffectOutputKey},
+    graph::EffectGraphContext,
     node::{
         EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin, EffectNodePinGroup,
         EffectNodeState, EffectNodeUuid,
@@ -51,35 +52,50 @@ pub struct EffectNodeMultipleEndExec {
 pub struct EffectNodeMultiple {}
 
 impl EffectNodeMultiple {
-    const INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
-        exec: EffectNodeExec { name: "start" },
-        pins: vec![
-            EffectNodePin {
-                name: "a",
-                pin_type: TypeId::of::<f32>(),
-            },
-            EffectNodePin {
-                name: "b",
-                pin_type: TypeId::of::<f32>(),
-            },
-        ],
-    }];
-    const OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
-        exec: EffectNodeExec { name: "finish" },
-        pins: vec![EffectNodePin {
-            name: "c",
-            pin_type: TypeId::of::<f32>(),
-        }],
-    }];
+    const INPUT_EXEC_START: &'static str = "start";
+    const INPUT_PIN_A: &'static str = "a";
+    const INPUT_PIN_B: &'static str = "b";
+
+    const OUTPUT_EXEC_FINISH: &'static str = "finish";
+    const OUTPUT_PIN_C: &'static str = "c";
 }
 
 impl EffectNodePinGroup for EffectNodeMultiple {
     fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        &Self::INPUT_PIN_GROUPS
+        lazy_static! {
+            static ref INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+                exec: EffectNodeExec {
+                    name: EffectNodeMultiple::INPUT_EXEC_START
+                },
+                pins: vec![
+                    EffectNodePin {
+                        name: EffectNodeMultiple::INPUT_PIN_A,
+                        pin_type: TypeId::of::<f32>(),
+                    },
+                    EffectNodePin {
+                        name: EffectNodeMultiple::INPUT_PIN_B,
+                        pin_type: TypeId::of::<f32>(),
+                    },
+                ],
+            }];
+        }
+        &INPUT_PIN_GROUPS
     }
 
     fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        &Self::OUTPUT_PIN_GROUPS
+        lazy_static! {
+            static ref OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+                exec: EffectNodeExec {
+                    name: EffectNodeMultiple::OUTPUT_EXEC_FINISH
+                },
+                pins: vec![EffectNodePin {
+                    name: EffectNodeMultiple::OUTPUT_PIN_C,
+                    pin_type: TypeId::of::<f32>(),
+                }],
+            }];
+        }
+
+        &OUTPUT_PIN_GROUPS
     }
 }
 
@@ -136,21 +152,21 @@ fn update_msg(
 ) {
     for (node, mut state, parent) in query.iter_mut() {
         if *state == EffectNodeState::Running {
-            let c = node.a + node.b;
-            if let context = graph_context.get_mut(parent).unwrap() {
-                context.outputs.insert(
-                    EffectOutputKey {
-                        node: parent,
-                        output_key: "c".to_string(),
-                    },
-                    EffectValue::Float(c),
-                );
-            }
+            // let c = node.a + node.b;
+            // if let context = graph_context.get_mut(parent).unwrap() {
+            //     context.outputs.insert(
+            //         EffectPinKey {
+            //             node: parent,
+            //             output_key: "c".to_string(),
+            //         },
+            //         EffectValue::Float(c),
+            //     );
+            // }
 
-            *state = EffectNodeState::Finished;
-            for entity in node.end_exec.entities.iter() {
-                event_writer.send(EffectEvent::Start(*entity));
-            }
+            // *state = EffectNodeState::Finished;
+            // for entity in node.end_exec.entities.iter() {
+            //     event_writer.send(EffectEvent::Start(*entity));
+            // }
         }
     }
 }
