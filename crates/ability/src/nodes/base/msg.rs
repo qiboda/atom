@@ -1,14 +1,17 @@
 use std::any::TypeId;
 
 use bevy::prelude::{
-    default, info, App, Bundle, Component, EventWriter, Plugin, PreUpdate, Query, Update,
+    default, info, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query,
+    Update,
 };
 
 use lazy_static::lazy_static;
 
 use crate::nodes::{
+    blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
     event::EffectEvent,
+    graph::{EffectGraphContext, EffectPinKey},
     node::{
         EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin, EffectNodePinGroup,
         EffectNodeState, EffectNodeUuid,
@@ -37,9 +40,7 @@ impl EffectNodeMsgPlugin {
 ///////////////////////// Node Component /////////////////////////
 
 #[derive(Debug, Default, Component)]
-pub struct EffectNodeMsg {
-    pub message: String,
-}
+pub struct EffectNodeMsg {}
 
 impl EffectNodeMsg {
     pub const INPUT_EXEC_START: &'static str = "start";
@@ -113,12 +114,9 @@ pub struct MsgNodeBundle {
 }
 
 impl MsgNodeBundle {
-    pub fn new(message: &str) -> Self {
+    pub fn new() -> Self {
         Self {
-            effect_node: EffectNodeMsg {
-                message: message.to_string(),
-                ..default()
-            },
+            effect_node: EffectNodeMsg { ..default() },
             effect_node_base: EffectNodeBaseBundle {
                 effect_node_state: EffectNodeState::default(),
                 uuid: EffectNodeUuid::new(),
@@ -130,27 +128,53 @@ impl MsgNodeBundle {
 impl Default for MsgNodeBundle {
     fn default() -> Self {
         Self {
-            effect_node: EffectNodeMsg {
-                message: "hello".to_string(),
-                ..default()
-            },
+            effect_node: EffectNodeMsg { ..default() },
             effect_node_base: EffectNodeBaseBundle::default(),
         }
     }
 }
 
 fn update_msg(
-    mut query: Query<(&EffectNodeMsg, &mut EffectNodeState)>,
+    mut query_graph: Query<&mut EffectGraphContext>,
+    mut query: Query<(
+        Entity,
+        &EffectNodeMsg,
+        &mut EffectNodeState,
+        &EffectNodeUuid,
+        &Parent,
+    )>,
     mut event_writer: EventWriter<EffectEvent>,
 ) {
-    for (msg, mut state) in query.iter_mut() {
+    for (entity, _msg, mut state, uuid, parent) in query.iter_mut() {
         if *state == EffectNodeState::Running {
-            info!("{}", msg.message);
-            *state = EffectNodeState::Finished;
+            let graph_context = query_graph.get_mut(parent.get()).unwrap();
 
-            // for entity in msg.end_exec.entities.iter() {
-            //     event_writer.send(EffectEvent::Start(*entity));
-            // }
+            let duration_input_key = EffectPinKey {
+                node: entity,
+                node_id: *uuid,
+                key: EffectNodeMsg::INPUT_PIN_MESSAGE,
+            };
+            let duration_value = graph_context.get_input_value(&duration_input_key);
+
+            if let Some(EffectValue::String(message)) = duration_value {
+                info!("{}", message);
+            }
+
+            if let Some(EffectValue::Vec(entities)) =
+                graph_context.get_output_value(&EffectPinKey {
+                    node: entity,
+                    node_id: *uuid,
+                    key: EffectNodeMsg::OUTPUT_EXEC_FINISH,
+                })
+            {
+                for entity in entities.iter() {
+                    if let EffectValue::Entity(entity) = entity {
+                        event_writer.send(EffectEvent::Start(*entity));
+                    }
+                }
+            }
+
+            *state = EffectNodeState::Finished;
         }
     }
 }
