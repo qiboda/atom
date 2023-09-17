@@ -4,16 +4,16 @@ use lazy_static::lazy_static;
 
 use bevy::{
     prelude::{
-        default, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query,
-        Update,
+        App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query, Update,
     },
     reflect::Reflect,
 };
 
 use crate::nodes::{
+    blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
     event::EffectEvent,
-    graph::EffectGraphContext,
+    graph::{EffectGraphContext, EffectPinKey},
     node::{
         EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin, EffectNodePinGroup,
         EffectNodeState, EffectNodeUuid,
@@ -23,19 +23,13 @@ use crate::nodes::{
 
 ///////////////////////// Plugin /////////////////////////
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct EffectNodeMultiplePlugin {}
 
 impl Plugin for EffectNodeMultiplePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreUpdate, receive_effect_event::<EffectNodeMultiple>)
             .add_systems(Update, update_msg);
-    }
-}
-
-impl EffectNodeMultiplePlugin {
-    pub fn new() -> Self {
-        Self {}
     }
 }
 
@@ -136,7 +130,7 @@ pub struct MultipleNodeBundle {
 impl MultipleNodeBundle {
     pub fn new() -> Self {
         Self {
-            effect_node: EffectNodeMultiple { ..default() },
+            effect_node: EffectNodeMultiple::default(),
             effect_node_base: EffectNodeBaseBundle {
                 effect_node_state: EffectNodeState::default(),
                 uuid: EffectNodeUuid::new(),
@@ -146,27 +140,64 @@ impl MultipleNodeBundle {
 }
 
 fn update_msg(
-    mut graph_context: Query<&EffectGraphContext>,
-    mut query: Query<(&EffectNodeMultiple, &mut EffectNodeState, &Parent)>,
+    mut graph_context: Query<&mut EffectGraphContext>,
+    mut query: Query<(
+        Entity,
+        &EffectNodeMultiple,
+        &mut EffectNodeState,
+        &EffectNodeUuid,
+        &Parent,
+    )>,
     mut event_writer: EventWriter<EffectEvent>,
 ) {
-    for (node, mut state, parent) in query.iter_mut() {
+    for (entity, _node, mut state, uuid, parent) in query.iter_mut() {
         if *state == EffectNodeState::Running {
-            // let c = node.a + node.b;
-            // if let context = graph_context.get_mut(parent).unwrap() {
-            //     context.outputs.insert(
-            //         EffectPinKey {
-            //             node: parent,
-            //             output_key: "c".to_string(),
-            //         },
-            //         EffectValue::Float(c),
-            //     );
-            // }
+            let mut graph_context = graph_context.get_mut(parent.get()).unwrap();
 
-            // *state = EffectNodeState::Finished;
-            // for entity in node.end_exec.entities.iter() {
-            //     event_writer.send(EffectEvent::Start(*entity));
-            // }
+            let a_input_key = EffectPinKey {
+                node: entity,
+                node_id: *uuid,
+                key: EffectNodeMultiple::INPUT_PIN_A,
+            };
+            let a_value = graph_context.get_input_value(&a_input_key);
+
+            let b_input_key = EffectPinKey {
+                node: entity,
+                node_id: *uuid,
+                key: EffectNodeMultiple::INPUT_PIN_B,
+            };
+            let b_value = graph_context.get_input_value(&b_input_key);
+
+            let mut c = EffectValue::F32(0.0);
+            if let (Some(&EffectValue::F32(a)), Some(&EffectValue::F32(b))) = (a_value, b_value) {
+                c = EffectValue::F32(a * b);
+            }
+
+            let c_output_key = EffectPinKey {
+                node: entity,
+                node_id: *uuid,
+                key: EffectNodeMultiple::OUTPUT_PIN_C,
+            };
+
+            if let Some(c_value) = graph_context.get_input_value_mut(&c_output_key) {
+                *c_value = c;
+            }
+
+            if let Some(EffectValue::Vec(entities)) =
+                graph_context.get_output_value(&EffectPinKey {
+                    node: entity,
+                    node_id: *uuid,
+                    key: EffectNodeMultiple::OUTPUT_EXEC_FINISH,
+                })
+            {
+                for entity in entities.iter() {
+                    if let EffectValue::Entity(entity) = entity {
+                        event_writer.send(EffectEvent::Start(*entity));
+                    }
+                }
+            }
+
+            *state = EffectNodeState::Finished;
         }
     }
 }

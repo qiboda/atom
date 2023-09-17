@@ -317,6 +317,22 @@ impl<'a> TryFrom<&'a mut EffectValue> for &'a mut Vec<EffectValue> {
     }
 }
 
+// impl<'a, T> TryFrom<&'a EffectValue> for &'a Vec<T> {
+//     type Error = &'static str;
+//
+//     fn try_from(value: &'a EffectValue) -> Result<Self, Self::Error> {
+//         match value {
+//             EffectValue::Vec(v) => {
+//                 match v {
+//                    v.into() as T => Ok(v)
+//                 }
+//             },
+//             _ => Err("not Vec"),
+//         }
+//     }
+// }
+//
+
 impl<'a> TryFrom<&'a EffectValue> for &'a Box<dyn Reflect> {
     type Error = &'static str;
 
@@ -363,6 +379,13 @@ mod test {
     fn black_board_value_try_from() {
         let br_i32 = EffectValue::I32(100);
         assert!((&br_i32).try_into() == Ok(&100i32));
+
+        let br_vec = EffectValue::Vec(vec![EffectValue::I32(100)]);
+        if let Ok(vec_value) = TryInto::<&Vec<EffectValue>>::try_into(&br_vec) {
+            for elem in vec_value {
+                assert!(elem.try_into() == Ok(&100));
+            }
+        }
 
         let br_str = EffectValue::String("laksdjfk".into());
         assert!((&br_str).try_into() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));

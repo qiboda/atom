@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{App, Bundle, Component, Entity, EventWriter, Plugin, PreUpdate, Query, Res, Update},
+    prelude::{App, Bundle, Component, EventWriter, Plugin, PreUpdate, Query, Res, Update},
     time::Time,
 };
 

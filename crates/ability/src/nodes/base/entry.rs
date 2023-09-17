@@ -1,17 +1,17 @@
-use std::any::TypeId;
-
 use bevy::prelude::{
-    default, info, App, Bundle, Component, EventWriter, Plugin, PreUpdate, Query, Update,
+    default, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query, Update,
 };
 
 use lazy_static::lazy_static;
 
 use crate::nodes::{
+    blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
     event::EffectEvent,
+    graph::{EffectGraphContext, EffectPinKey},
     node::{
-        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin, EffectNodePinGroup,
-        EffectNodeState, EffectNodeUuid,
+        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePinGroup, EffectNodeState,
+        EffectNodeUuid,
     },
     receive_effect_event,
 };
@@ -120,16 +120,34 @@ impl Default for EntryNodeBundle {
 }
 
 fn update_entry(
-    mut query: Query<(&EffectNodeEntry, &mut EffectNodeState)>,
+    mut query_graph: Query<&mut EffectGraphContext>,
+    mut query: Query<(
+        Entity,
+        &EffectNodeEntry,
+        &mut EffectNodeState,
+        &EffectNodeUuid,
+        &Parent,
+    )>,
     mut event_writer: EventWriter<EffectEvent>,
 ) {
-    for (msg, mut state) in query.iter_mut() {
+    for (entity, _entry, mut state, uuid, parent) in query.iter_mut() {
         if *state == EffectNodeState::Running {
+            let graph_context = query_graph.get_mut(parent.get()).unwrap();
+            let key = EffectPinKey {
+                node: entity,
+                node_id: uuid.clone(),
+                key: EffectNodeEntry::OUTPUT_EXEC_FINISH,
+            };
+            if let Some(value) = graph_context.get_output_value(&key) {
+                if let EffectValue::Vec(entities) = value {
+                    for entity in entities.iter() {
+                        if let EffectValue::Entity(entity) = entity {
+                            event_writer.send(EffectEvent::Start(*entity));
+                        }
+                    }
+                }
+            }
             *state = EffectNodeState::Finished;
-
-            // for entity in msg.end_exec.entities.iter() {
-            //     event_writer.send(EffectEvent::Start(*entity));
-            // }
         }
     }
 }

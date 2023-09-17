@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use crate::nodes::{
     base::{
         entry::EntryNodeBundle,
-        msg::MsgNodeBundle,
+        msg::{ MsgNodeBundle, EffectNodeMsg } ,
         timer::{EffectNodeTimer, TimerNodeBundle},
     },
     blackboard::EffectValue,
@@ -24,18 +24,18 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         let entry_node_uuid = entry_node.base.uuid;
         let timer_node = TimerNodeBundle::new(3.0);
         let timer_node_uuid = timer_node.base.uuid;
-        let msg_node = MsgNodeBundle::new("base attack");
-        // let msg_node_uuid = msg_node.effect_node_base.uuid;
+        let msg_node = MsgNodeBundle::new();
+        let msg_node_uuid = msg_node.effect_node_base.uuid;
 
         let msg_node_entity = commands.spawn(msg_node).id();
         let timer_node_entity = commands.spawn(timer_node).id();
         let entry_node_entity = commands.spawn(entry_node).id();
 
-        effect_graph_context.outputs.insert(
+        effect_graph_context.insert_output_value(
             EffectPinKey {
                 node: entry_node_entity,
                 node_id: entry_node_uuid,
-                output_key: EffectNodeTimer::OUTPUT_EXEC_FINISHED,
+                key: EffectNodeTimer::OUTPUT_EXEC_FINISHED,
             },
             EffectValue::Vec(
                 vec![EffectValue::Entity(timer_node_entity)]
@@ -48,7 +48,7 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
             EffectPinKey {
                 node: timer_node_entity,
                 node_id: timer_node_uuid,
-                output_key: EffectNodeTimer::OUTPUT_EXEC_FINISHED,
+                key: EffectNodeTimer::OUTPUT_EXEC_FINISHED,
             },
             EffectValue::Vec(
                 vec![EffectValue::Entity(msg_node_entity)]
@@ -60,9 +60,17 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
             EffectPinKey {
                 node: timer_node_entity,
                 node_id: timer_node_uuid,
-                output_key: EffectNodeTimer::INPUT_PIN_DURATION,
+                key: EffectNodeTimer::INPUT_PIN_DURATION,
             },
             EffectValue::F32(5.0),
+        );
+        effect_graph_context.inputs.insert(
+            EffectPinKey {
+                node: msg_node_entity,
+                node_id: msg_node_uuid,
+                key: EffectNodeMsg::INPUT_PIN_MESSAGE,
+            },
+            EffectValue::String("message log".into()),
         );
     }
 }
