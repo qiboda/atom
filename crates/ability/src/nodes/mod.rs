@@ -1,23 +1,33 @@
-use bevy::prelude::{App, Component, EventReader, Plugin, Query};
+use bevy::prelude::{info, Added, App, Commands, Component, Entity, EventReader, Plugin, Query};
 
 use self::{
     event::EffectEvent,
+    graph::{EffectGraphBuilder, EffectGraphContext},
     node::{EffectNode, EffectNodeState},
 };
 
+pub mod base;
 pub mod blackboard;
 pub mod bundle;
 pub mod event;
 pub mod graph;
 pub mod node;
-pub mod base;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct EffectGraphPlugin {}
 
 impl Plugin for EffectGraphPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<EffectEvent>();
+    }
+}
+
+pub fn build_graph<T: EffectGraphBuilder + Component>(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut EffectGraphContext, &T), Added<T>>,
+) {
+    for (entity, mut graph_context, graph) in query.iter_mut() {
+        graph.build(&mut commands, &mut graph_context, entity);
     }
 }
 
@@ -33,7 +43,9 @@ pub fn receive_effect_event<T: EffectNode + Component>(
         match event {
             EffectEvent::Start(entity) => {
                 if let Ok((mut node, mut state)) = query.get_mut(*entity) {
+                    info!("node start: {:?}", entity);
                     if *state == EffectNodeState::Idle {
+                        info!("node start ok: {:?}", entity);
                         node.start();
                         *state = EffectNodeState::Running;
                     }

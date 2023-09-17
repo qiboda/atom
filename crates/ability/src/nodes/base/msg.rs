@@ -21,7 +21,7 @@ use crate::nodes::{
 
 ///////////////////////// Plugin /////////////////////////
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct EffectNodeMsgPlugin {}
 
 impl Plugin for EffectNodeMsgPlugin {
@@ -80,29 +80,17 @@ impl EffectNodePinGroup for EffectNodeMsg {
 }
 
 impl EffectNode for EffectNodeMsg {
-    fn start(&mut self) {
-        todo!()
-    }
+    fn start(&mut self) {}
 
-    fn clear(&mut self) {
-        todo!()
-    }
+    fn clear(&mut self) {}
 
-    fn abort(&mut self) {
-        todo!()
-    }
+    fn abort(&mut self) {}
 
-    fn update(&mut self) {
-        todo!()
-    }
+    fn update(&mut self) {}
 
-    fn pause(&mut self) {
-        todo!()
-    }
+    fn pause(&mut self) {}
 
-    fn resume(&mut self) {
-        todo!()
-    }
+    fn resume(&mut self) {}
 }
 
 ///////////////////////// Node Bundle /////////////////////////

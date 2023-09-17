@@ -6,7 +6,12 @@ use super::{blackboard::EffectValue, node::EffectNodeUuid};
 pub trait EffectGraph {}
 
 pub trait EffectGraphBuilder {
-    fn build(&self, commands: &mut Commands, effect_graph_context: &mut EffectGraphContext);
+    fn build(
+        &self,
+        commands: &mut Commands,
+        effect_graph_context: &mut EffectGraphContext,
+        parent: Entity,
+    );
 }
 
 #[derive(Debug, Component, PartialEq, Eq, Clone, Hash)]
@@ -16,13 +21,15 @@ pub struct EffectPinKey {
     pub key: &'static str,
 }
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Default)]
 pub struct EffectGraphContext {
     pub blackboard: HashMap<Name, EffectValue>,
 
     pub outputs: HashMap<EffectPinKey, EffectValue>,
 
     pub inputs: HashMap<EffectPinKey, EffectValue>,
+
+    pub entry_node: Option<Entity>,
 }
 
 impl EffectGraphContext {
@@ -31,6 +38,7 @@ impl EffectGraphContext {
             blackboard: HashMap::default(),
             outputs: HashMap::default(),
             inputs: HashMap::default(),
+            entry_node: None,
         }
     }
 }
@@ -59,8 +67,8 @@ impl EffectGraphContext {
     }
 }
 
-#[derive(Debug, Bundle)]
-pub struct EffectGraphBundle<EffectGraphType: EffectGraph + Component> {
+#[derive(Debug, Bundle, Default)]
+pub struct EffectGraphBundle<EffectGraphType: EffectGraph + Component + Default> {
     pub context: EffectGraphContext,
     pub graph: EffectGraphType,
 }
