@@ -1,5 +1,5 @@
 use bevy::prelude::{
-    default, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query, Update,
+    info, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query, Update,
 };
 
 use lazy_static::lazy_static;
@@ -18,19 +18,13 @@ use crate::nodes::{
 
 ///////////////////////// Plugin /////////////////////////
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct EffectNodeEntryPlugin {}
 
 impl Plugin for EffectNodeEntryPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreUpdate, receive_effect_event::<EffectNodeEntry>)
             .add_systems(Update, update_entry);
-    }
-}
-
-impl EffectNodeEntryPlugin {
-    pub fn new() -> Self {
-        Self {}
     }
 }
 
@@ -65,34 +59,22 @@ impl EffectNodePinGroup for EffectNodeEntry {
 }
 
 impl EffectNode for EffectNodeEntry {
-    fn start(&mut self) {
-        todo!()
-    }
+    fn start(&mut self) {}
 
-    fn clear(&mut self) {
-        todo!()
-    }
+    fn clear(&mut self) {}
 
-    fn abort(&mut self) {
-        todo!()
-    }
+    fn abort(&mut self) {}
 
-    fn update(&mut self) {
-        todo!()
-    }
+    fn update(&mut self) {}
 
-    fn pause(&mut self) {
-        todo!()
-    }
+    fn pause(&mut self) {}
 
-    fn resume(&mut self) {
-        todo!()
-    }
+    fn resume(&mut self) {}
 }
 
 ///////////////////////// Node Bundle /////////////////////////
 
-#[derive(Bundle, Debug)]
+#[derive(Bundle, Debug, Default)]
 pub struct EntryNodeBundle {
     pub node: EffectNodeEntry,
     pub base: EffectNodeBaseBundle,
@@ -101,20 +83,11 @@ pub struct EntryNodeBundle {
 impl EntryNodeBundle {
     pub fn new() -> Self {
         Self {
-            node: EffectNodeEntry { ..default() },
+            node: EffectNodeEntry::default(),
             base: EffectNodeBaseBundle {
                 effect_node_state: EffectNodeState::default(),
                 uuid: EffectNodeUuid::new(),
             },
-        }
-    }
-}
-
-impl Default for EntryNodeBundle {
-    fn default() -> Self {
-        Self {
-            node: EffectNodeEntry { ..default() },
-            base: EffectNodeBaseBundle::default(),
         }
     }
 }
@@ -135,15 +108,21 @@ fn update_entry(
             let graph_context = query_graph.get_mut(parent.get()).unwrap();
             let key = EffectPinKey {
                 node: entity,
-                node_id: uuid.clone(),
+                node_id: *uuid,
                 key: EffectNodeEntry::OUTPUT_EXEC_FINISH,
             };
-            if let Some(value) = graph_context.get_output_value(&key) {
-                if let EffectValue::Vec(entities) = value {
-                    for entity in entities.iter() {
-                        if let EffectValue::Entity(entity) = entity {
-                            event_writer.send(EffectEvent::Start(*entity));
-                        }
+            info!("next node key: {:?}", key);
+            info!("next node context outputs: {:?}", graph_context.outputs);
+            info!(
+                "next node context get outputs: {:?}",
+                graph_context.get_output_value(&key)
+            );
+            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
+                info!("next node entities: {:?}", entities);
+                info!("next node: {:?}", entities);
+                for entity in entities.iter() {
+                    if let EffectValue::Entity(entity) = entity {
+                        event_writer.send(EffectEvent::Start(*entity));
                     }
                 }
             }

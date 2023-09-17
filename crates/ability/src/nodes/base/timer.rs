@@ -1,13 +1,17 @@
 use bevy::{
-    prelude::{App, Bundle, Component, EventWriter, Plugin, PreUpdate, Query, Res, Update},
+    prelude::{
+        App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query, Res, Update,
+    },
     time::Time,
 };
 
 use lazy_static::lazy_static;
 
 use crate::nodes::{
+    blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
     event::EffectEvent,
+    graph::{EffectGraphContext, EffectPinKey},
     node::{
         EffectDynamicNode, EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin,
         EffectNodePinGroup, EffectNodeState, EffectNodeUuid,
@@ -16,9 +20,9 @@ use crate::nodes::{
 };
 
 #[derive(Debug)]
-pub struct EffectNodeTimerPluign;
+pub struct EffectNodeTimerPlugin;
 
-impl Plugin for EffectNodeTimerPluign {
+impl Plugin for EffectNodeTimerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreUpdate, receive_effect_event::<EffectNodeTimer>)
             .add_systems(Update, update_timer);
@@ -32,13 +36,9 @@ pub struct TimerNodeBundle {
 }
 
 impl TimerNodeBundle {
-    pub fn new(duration: f32) -> Self {
+    pub fn new() -> Self {
         Self {
-            timer: EffectNodeTimer {
-                elapse: 0.0,
-                duration,
-                ..Default::default()
-            },
+            timer: EffectNodeTimer::default(),
             base: EffectNodeBaseBundle {
                 effect_node_state: EffectNodeState::default(),
                 uuid: EffectNodeUuid::new(),
@@ -50,7 +50,6 @@ impl TimerNodeBundle {
 #[derive(Clone, Debug, Default, Component)]
 pub struct EffectNodeTimer {
     pub elapse: f32,
-    pub duration: f32,
 }
 
 impl EffectNode for EffectNodeTimer {
@@ -60,20 +59,15 @@ impl EffectNode for EffectNodeTimer {
 
     fn clear(&mut self) {
         self.elapse = 0.0;
-        self.duration = f32::MAX;
     }
 
     fn abort(&mut self) {
         self.clear();
     }
 
-    fn pause(&mut self) {
-        todo!()
-    }
+    fn pause(&mut self) {}
 
-    fn resume(&mut self) {
-        todo!()
-    }
+    fn resume(&mut self) {}
 
     fn update(&mut self) {}
 }
@@ -83,7 +77,7 @@ impl EffectDynamicNode for EffectNodeTimer {}
 impl EffectNodeTimer {
     pub const INPUT_EXEC_START: &'static str = "start";
     pub const INPUT_PIN_DURATION: &'static str = "duration";
-    pub const OUTPUT_EXEC_FINISHED: &'static str = "finished";
+    pub const OUTPUT_EXEC_FINISH: &'static str = "finish";
 }
 
 impl EffectNodePinGroup for EffectNodeTimer {
@@ -106,7 +100,7 @@ impl EffectNodePinGroup for EffectNodeTimer {
         lazy_static! {
             static ref OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
                 exec: EffectNodeExec {
-                    name: EffectNodeTimer::OUTPUT_EXEC_FINISHED,
+                    name: EffectNodeTimer::OUTPUT_EXEC_FINISH,
                 },
                 pins: vec![],
             }];
@@ -116,22 +110,50 @@ impl EffectNodePinGroup for EffectNodeTimer {
 }
 
 fn update_timer(
-    mut query: Query<(&mut EffectNodeTimer, &mut EffectNodeState)>,
+    graph_query: Query<&EffectGraphContext>,
+    mut query: Query<(
+        Entity,
+        &mut EffectNodeTimer,
+        &mut EffectNodeState,
+        &EffectNodeUuid,
+        &Parent,
+    )>,
     mut event_writer: EventWriter<EffectEvent>,
     time: Res<Time>,
 ) {
-    for (mut timer, mut state) in query.iter_mut() {
-        match *state {
-            EffectNodeState::Running => {
-                timer.elapse += time.delta_seconds();
-                if timer.elapse >= timer.duration {
+    for (entity, mut timer, mut state, uuid, parent) in query.iter_mut() {
+        if *state == EffectNodeState::Running {
+            let elapse = timer.elapse + time.delta_seconds();
+            timer.elapse = elapse;
+
+            let graph_context = graph_query.get(parent.get()).unwrap();
+
+            let input_key = EffectPinKey {
+                node: entity,
+                node_id: *uuid,
+                key: EffectNodeTimer::INPUT_PIN_DURATION,
+            };
+            if let Some(EffectValue::F32(duration_value)) =
+                graph_context.get_input_value(&input_key)
+            {
+                if timer.elapse >= *duration_value {
+                    if let Some(EffectValue::Vec(entities)) =
+                        graph_context.get_output_value(&EffectPinKey {
+                            node: entity,
+                            node_id: *uuid,
+                            key: EffectNodeTimer::OUTPUT_EXEC_FINISH,
+                        })
+                    {
+                        for entity in entities.iter() {
+                            if let EffectValue::Entity(entity) = entity {
+                                event_writer.send(EffectEvent::Start(*entity));
+                            }
+                        }
+                    }
+
                     *state = EffectNodeState::Finished;
-                    // for entity in timer.end_exec.entities.iter() {
-                    //     event_writer.send(EffectEvent::Start(*entity));
-                    // }
                 }
             }
-            _ => {}
         }
     }
 }

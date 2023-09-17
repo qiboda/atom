@@ -398,7 +398,7 @@ mod test {
     }
 
     #[test]
-    fn black_board_value_get() {
+    fn black_boardrvalue_get() {
         let br_i32 = EffectValue::I32(100);
         assert!((&br_i32).get() == Ok(&100i32));
 
