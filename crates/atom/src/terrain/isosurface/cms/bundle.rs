@@ -9,7 +9,7 @@ use bevy::{
 use crate::terrain::isosurface::{mesh::mesh_cache::MeshCache, IsosurfaceExtractionState};
 
 use super::{
-    meshing::vertex_index::VertexIndices, octree::octree::Octree,
+    build::octree::Octree, meshing::vertex_index::VertexIndices,
     sample::surface_sampler::SurfaceSampler,
 };
 

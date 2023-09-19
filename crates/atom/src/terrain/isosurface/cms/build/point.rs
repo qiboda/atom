@@ -1,6 +1,6 @@
 use bevy::prelude::Vec3;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Point {
     // position instead of coord
     position: Vec3,
@@ -16,10 +16,7 @@ impl Point {
     }
 
     pub fn new_with_position_and_value(position: Vec3, value: f32) -> Self {
-        Self {
-            position: position.clone(),
-            value,
-        }
+        Self { position, value }
     }
 }
 

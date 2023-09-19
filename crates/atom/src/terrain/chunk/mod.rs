@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use self::{chunk::TerrainChunkData, coords::TerrainChunkCoord};
+use self::{chunk_data::TerrainChunkData, coords::TerrainChunkCoord};
 
-pub mod chunk;
+pub mod chunk_data;
 pub mod coords;
 
 #[derive(Bundle, Default)]

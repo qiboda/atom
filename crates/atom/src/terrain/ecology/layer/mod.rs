@@ -30,13 +30,13 @@ impl Sampler for EcologyLayerSampler {
         cell_extent: CellExtent,
     ) -> Option<Arc<dyn EcologyMaterial>> {
         if let ControlFlow::Break(mat) = self.all_layer.iter().rev().try_for_each(|layer| {
-            match layer.sample(chunk_coord, cell_extent.clone()) {
-                mat if mat.is_some() => return ControlFlow::Break(mat),
-                _ => return ControlFlow::Continue(()),
+            match layer.sample(chunk_coord, cell_extent) {
+                mat if mat.is_some() => ControlFlow::Break(mat),
+                _ => ControlFlow::Continue(()),
             }
         }) {
             return mat;
         }
-        return None;
+        None
     }
 }

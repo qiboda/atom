@@ -400,10 +400,10 @@ mod test {
     #[test]
     fn black_boardrvalue_get() {
         let br_i32 = EffectValue::I32(100);
-        assert!((&br_i32).get() == Ok(&100i32));
+        assert!(br_i32.get() == Ok(&100i32));
 
         let br_str = EffectValue::String("laksdjfk".into());
-        assert!((&br_str).get() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
+        assert!(br_str.get() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = br_box.get::<&Box<dyn Reflect>>();
@@ -412,12 +412,12 @@ mod test {
         }
 
         let mut br_i32 = EffectValue::I32(100);
-        assert!((&mut br_i32).get_mut() == Ok(&mut 100i32));
-        *(&mut br_i32).get_mut::<&mut i32>().unwrap() = 200;
-        assert!((&br_i32).get() == Ok(&200i32));
+        assert!(br_i32.get_mut() == Ok(&mut 100i32));
+        *br_i32.get_mut::<&mut i32>().unwrap() = 200;
+        assert!(br_i32.get() == Ok(&200i32));
 
         let br_str = EffectValue::String("laksdjfk".into());
-        assert!((&br_str).get() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
+        assert!(br_str.get() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = br_box.get::<&Box<dyn Reflect>>();

@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    ops::ControlFlow,
+    sync::{Arc, RwLock},
+};
 
 use bevy::{prelude::*, utils::HashMap};
 
@@ -7,7 +10,7 @@ use strum::{EnumCount, IntoEnumIterator};
 use crate::terrain::{
     isosurface::{
         cms::{
-            octree::{cell::CellType, face::FaceType, tables::FaceIndex},
+            build::{cell::CellType, face::FaceType, tables::FaceIndex},
             sample::surface_sampler::SurfaceSampler,
         },
         surface::shape_surface::ShapeSurface,
@@ -139,7 +142,7 @@ fn subdivide_cell(
             let voxel_num = UVec3::splat(voxel_num);
             if voxel_num.x == 0 {
                 // todo: 如此，如果不是在表面，就会忽略cell，这是否正确？
-                if check_for_surface(&vertex_points, &sample_info, &shape_surface) {
+                if check_for_surface(&vertex_points, sample_info, shape_surface) {
                     debug!("check_for_surface success: {:?}", vertex_points);
                     branch_type = CellType::Leaf;
                 } else {
@@ -150,7 +153,7 @@ fn subdivide_cell(
             }
         } else {
             // todo: 如此，如果不是在表面，就会忽略cell，这是否正确？
-            if check_for_surface(&vertex_points, sample_info, &shape_surface) {
+            if check_for_surface(&vertex_points, sample_info, shape_surface) {
                 debug!("check_for_surface success: {:?}", vertex_points);
                 branch_type = CellType::Leaf;
             } else {
@@ -185,8 +188,8 @@ fn check_for_surface(
 ) -> bool {
     // 8个顶点中有几个在内部
     let mut inside = 0;
-    for i in 0..8 {
-        let value = sample_info.get_value_from_vertex_address(vertex_points[i], &shape_surface);
+    (0..8).for_each(|i| {
+        let value = sample_info.get_value_from_vertex_address(vertex_points[i], shape_surface);
         debug!(
             "inside value: {}, vertex_points: {}, world_offset: {}",
             value, vertex_points[i], sample_info.world_offset
@@ -194,7 +197,7 @@ fn check_for_surface(
         if value < 0.0 {
             inside += 1;
         }
-    }
+    });
 
     debug!(
         "check for surface: vertex_points: {:?}, inside: {}",
@@ -217,7 +220,7 @@ fn check_for_subdivision(
     let complex_surface_result =
         check_for_complex_surface(sample_info, vertex_points, shape_surface);
     debug!("check_for_complex_surface: {complex_surface_result}");
-    return complex_surface_result;
+    complex_surface_result
 }
 
 /// 检测是否(坐标位置)平坦
@@ -267,22 +270,22 @@ fn check_for_edge_ambiguity(
             // );
             debug_assert!(
                 sample_info
-                    .get_pos_from_vertex_address(index, &shape_surface)
+                    .get_pos_from_vertex_address(index, shape_surface)
                     .x
                     <= sample_info
-                        .get_pos_from_vertex_address(point_1, &shape_surface)
+                        .get_pos_from_vertex_address(point_1, shape_surface)
                         .x
                     && sample_info
-                        .get_pos_from_vertex_address(index, &shape_surface)
+                        .get_pos_from_vertex_address(index, shape_surface)
                         .y
                         <= sample_info
-                            .get_pos_from_vertex_address(point_1, &shape_surface)
+                            .get_pos_from_vertex_address(point_1, shape_surface)
                             .y
                     && sample_info
-                        .get_pos_from_vertex_address(index, &shape_surface)
+                        .get_pos_from_vertex_address(index, shape_surface)
                         .z
                         <= sample_info
-                            .get_pos_from_vertex_address(point_1, &shape_surface)
+                            .get_pos_from_vertex_address(point_1, shape_surface)
                             .z
             );
 
@@ -295,8 +298,8 @@ fn check_for_edge_ambiguity(
             // );
             // if the sign of the value at the previous point is different from the sign of the value at the current point,
             // then there is an edge ambiguity
-            if sample_info.get_value_from_vertex_address(prev_point, &shape_surface)
-                * sample_info.get_value_from_vertex_address(index, &shape_surface)
+            if sample_info.get_value_from_vertex_address(prev_point, shape_surface)
+                * sample_info.get_value_from_vertex_address(index, shape_surface)
                 < 0.0
             {
                 edge_ambiguity = true;
@@ -320,13 +323,13 @@ fn check_for_complex_surface(
     // debug!("check_for_complex_surface");
     let mut complex_surface = false;
 
-    'outer: for i in 0..7 {
+    (0..7).try_for_each(|i|{
         let point_0 = vertex_points[i];
 
         let mut gradient_point_0 = Default::default();
         find_gradient(&mut gradient_point_0, &point_0, sample_info, shape_surface);
 
-        for j in 1..8 {
+        (1..8).try_for_each(|j| {
             let point_1 = vertex_points[j];
 
             let mut gradient_point_1 = Default::default();
@@ -338,16 +341,17 @@ fn check_for_complex_surface(
             );
             debug!(
                 "point 0 value:{} point 1 value:{}, ",
-                sample_info.get_value_from_vertex_address(point_0, &shape_surface),
-                sample_info.get_value_from_vertex_address(point_1, &shape_surface)
+                sample_info.get_value_from_vertex_address(point_0, shape_surface),
+                sample_info.get_value_from_vertex_address(point_1, shape_surface)
             );
             if gradient_point_0.dot(gradient_point_1) < COMPLEX_SURFACE_THRESHOLD {
                 debug!("is complex surface");
                 complex_surface = true;
-                break 'outer;
+                return ControlFlow::Break(())
             }
-        }
-    }
+            ControlFlow::Continue(())
+        })
+    });
 
     complex_surface
 }
@@ -368,19 +372,19 @@ fn find_gradient(
     let dx = sample_info.get_value_from_vertex_offset(
         *point,
         Vec3::new(dimensions.x, 0.0, 0.0),
-        &shape_surface,
+        shape_surface,
     );
     let dy = sample_info.get_value_from_vertex_offset(
         *point,
         Vec3::new(0.0, dimensions.y, 0.0),
-        &shape_surface,
+        shape_surface,
     );
     let dz = sample_info.get_value_from_vertex_offset(
         *point,
         Vec3::new(0.0, 0.0, dimensions.z),
-        &shape_surface,
+        shape_surface,
     );
-    let val = sample_info.get_value_from_vertex_address(*point, &shape_surface);
+    let val = sample_info.get_value_from_vertex_address(*point, shape_surface);
 
     debug!("dx dy dz: {} {} {} val: {}", dz, dy, dz, val);
     *gradient = Vec3::new(dx - val, dy - val, dz - val).normalize();
@@ -389,7 +393,7 @@ fn find_gradient(
 pub fn mark_transitional_faces(octree: Arc<RwLock<Octree>>) {
     let mut octree = octree.write().unwrap();
 
-    if octree.cell_addresses.len() == 0 {
+    if octree.cell_addresses.is_empty() {
         return;
     }
 

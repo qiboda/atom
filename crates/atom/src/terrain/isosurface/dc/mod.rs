@@ -91,7 +91,7 @@ fn dual_contour_init(
         commands.entity(entity).insert(DualContoringBundle {
             dual_contoring: DualContoring {
                 octree: Arc::new(RwLock::new(CellOctree::new(CellId::MAX, vec![]))),
-                mesh_cache: Arc::new(RwLock::new(MeshCache::new())),
+                mesh_cache: Arc::new(RwLock::new(MeshCache::default())),
             },
             dual_contoring_task: DualContoringTask {
                 state: DualContourState::BuildingOctree,
@@ -144,9 +144,11 @@ fn dual_contour_build_octree(
                     dual_contoring_task.task = Some(task);
                 }
                 Some(_) => {
-                    if let Some(_) = future::block_on(future::poll_once(
+                    if future::block_on(future::poll_once(
                         dual_contoring_task.task.as_mut().unwrap(),
-                    )) {
+                    ))
+                    .is_some()
+                    {
                         dual_contoring_task.state = DualContourState::DualContouring;
                         dual_contoring_task.task = None;
                     }
@@ -175,7 +177,7 @@ fn dual_contour_meshing(
                         let shape_surface = shape_surface.read().unwrap();
                         let mut mesh_cache = mesh_cache.write().unwrap();
 
-                        if dc.is_valid_octree() == false {
+                        if !dc.is_valid_octree() {
                             return;
                         }
 
@@ -240,9 +242,11 @@ fn dual_contour_meshing(
                     dual_contoring_task.task = Some(task);
                 }
                 Some(_) => {
-                    if let Some(_) = future::block_on(future::poll_once(
+                    if future::block_on(future::poll_once(
                         dual_contoring_task.task.as_mut().unwrap(),
-                    )) {
+                    ))
+                    .is_some()
+                    {
                         dual_contoring_task.state = DualContourState::CreateMesh;
                         dual_contoring_task.task = None;
                     }
@@ -282,7 +286,7 @@ pub fn dual_contouring_create_mesh(
                 &mut meshes,
                 &mut materials,
                 *terrain_chunk_coord,
-                &ecology_layer_sampler,
+                ecology_layer_sampler,
             );
             cms_task.state = DualContourState::Done;
         }

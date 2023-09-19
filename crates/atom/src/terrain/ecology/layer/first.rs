@@ -18,7 +18,7 @@ impl Sampler for FirstLayer {
         _chunk_coord: TerrainChunkCoord,
         _cell_extent: CellExtent,
     ) -> Option<Arc<dyn EcologyMaterial>> {
-        return Some(self.forest_material.clone());
+        Some(self.forest_material.clone())
     }
 }
 

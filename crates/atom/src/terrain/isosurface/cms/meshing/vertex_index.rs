@@ -1,6 +1,6 @@
 use bevy::prelude::UVec3;
 
-use crate::terrain::isosurface::cms::octree::tables::EdgeDirection;
+use crate::terrain::isosurface::cms::build::tables::EdgeDirection;
 
 #[derive(Default, Clone, Debug)]
 pub struct VertexIndices {

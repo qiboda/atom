@@ -6,13 +6,13 @@ pub(crate) fn self_outer_product(v: Vec3A) -> Mat3A {
     let b = v.y;
     let c = v.z;
 
-    let mat = Mat3A::from_cols(
+    
+
+    Mat3A::from_cols(
         Vec3A::new(a * a, a * b, a * c),
         Vec3A::new(b * a, b * b, b * c),
         Vec3A::new(c * a, c * b, c * c),
-    );
-
-    mat
+    )
 }
 
 /// trace is Tr(A) = sigma(i=0..n) A_ii
@@ -122,5 +122,5 @@ pub(crate) fn cross_product_squared_transpose(v: Vec3A) -> Mat3A {
     m.x_axis.z = -a * c;
     m.y_axis.z = -b * c;
 
-    return m;
+    m
 }

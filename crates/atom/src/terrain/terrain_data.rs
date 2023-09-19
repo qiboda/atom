@@ -1,8 +1,8 @@
 use bevy::{prelude::*, utils::HashMap};
 
 use crate::visible::{
-    visible::VisibleTerrainRange,
     visible_areas::{TerrainSingleVisibleArea, TerrainVisibleAreas},
+    visible_range::VisibleTerrainRange,
 };
 
 use super::{
@@ -58,6 +58,7 @@ fn setup_terrain(mut commands: Commands) {
 }
 
 // #[bevycheck::system]
+#[allow(clippy::type_complexity)]
 fn create_visible_chunks(
     mut commands: Commands,
     terrain_areas: Res<TerrainVisibleAreas>,
@@ -130,6 +131,7 @@ fn spawn_terrain_chunks(
     terrain_data.data.insert(terrain_chunk_coord, child);
 }
 
+#[allow(clippy::type_complexity)]
 fn despawn_entity(
     mut commands: Commands,
     terrain_areas: Res<TerrainVisibleAreas>,
@@ -168,7 +170,7 @@ fn despawn_entity(
                 terrain_data
                     .data
                     .remove(&TerrainChunkCoord::from(&[x, y, z]));
-                removed_count = removed_count + 1;
+                removed_count += 1;
             }
         });
 

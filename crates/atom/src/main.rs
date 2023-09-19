@@ -28,7 +28,7 @@ use camera::CameraControllerPlugin;
 use material::CoolMaterial;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
 use ui::FrameUIPlugin;
-use visible::visible::VisibleTerrainRange;
+use visible::visible_range::VisibleTerrainRange;
 
 fn main() {
     let mut app = App::new();
@@ -52,8 +52,8 @@ fn main() {
             // WireframePlugin,
             // PhysicsPlugins::default(),
         ))
-        .add_plugins(CameraControllerPlugin::default())
-        .add_plugins(TerrainPlugin::default())
+        .add_plugins(CameraControllerPlugin)
+        .add_plugins(TerrainPlugin)
         .add_plugins(FrameUIPlugin)
         .add_plugins(MaterialPlugin::<CoolMaterial>::default())
         .add_systems(Startup, startup)

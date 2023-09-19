@@ -4,7 +4,7 @@ use bevy::utils::HashMap;
 use crate::terrain::chunk::coords::TerrainChunkCoord;
 use crate::terrain::settings::TerrainSettings;
 
-use super::visible::VisibleTerrainRange;
+use super::visible_range::VisibleTerrainRange;
 
 #[derive(Debug, Default, Clone)]
 pub struct TerrainSingleVisibleArea {
@@ -14,7 +14,7 @@ pub struct TerrainSingleVisibleArea {
 }
 
 impl TerrainSingleVisibleArea {
-    pub fn iter_chunk(&self, callback: &mut impl FnMut(i64, i64, i64) -> ()) {
+    pub fn iter_chunk(&self, callback: &mut impl FnMut(i64, i64, i64)) {
         for x in self.cached_min_chunk_coord.x..self.cached_max_chunk_coord.x {
             for y in self.cached_min_chunk_coord.y..self.cached_max_chunk_coord.y {
                 for z in self.cached_min_chunk_coord.z..self.cached_max_chunk_coord.z {
@@ -107,11 +107,8 @@ impl TerrainVisibleAreas {
     }
 
     pub fn remove_current_visible_area(&mut self, entity: Entity) {
-        match self.visible_area_proxys.get_mut(&entity) {
-            Some(proxy) => {
-                proxy.remove_current();
-            }
-            None => {}
+        if let Some(proxy) = self.visible_area_proxys.get_mut(&entity) {
+            proxy.remove_current();
         }
     }
 
@@ -145,6 +142,7 @@ impl TerrainVisibleAreas {
 }
 
 // #[bevycheck::system]
+#[allow(clippy::type_complexity)]
 pub fn update_terrain_visible_areas(
     mut terrain_centers: ResMut<TerrainVisibleAreas>,
     terrain_settings: Res<TerrainSettings>,

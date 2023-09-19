@@ -24,7 +24,7 @@ impl VoxelAddress {
 
 impl VoxelAddress {
     pub fn get_parent_address(&self) -> VoxelAddress {
-        let mut parent_address = self.clone();
+        let mut parent_address = *self;
         parent_address.raw_address >>= 3;
         parent_address
     }
@@ -36,7 +36,7 @@ impl VoxelAddress {
 
     pub fn get_level(&self) -> usize {
         let mut level = 0;
-        let mut address = self.clone();
+        let mut address = *self;
         while address.raw_address != 0 {
             address.raw_address >>= 3;
             level += 1;
@@ -60,7 +60,7 @@ impl VoxelAddress {
 
     /// todo: add test
     pub fn get_neighbour_address(&self, face_index: FaceIndex) -> VoxelAddress {
-        let mut address = self.clone();
+        let mut address = *self;
 
         let mut neighbour_address = VoxelAddress::new();
         let mut shift_count = 0;
@@ -76,14 +76,12 @@ impl VoxelAddress {
             let (neighbour_sub_cell_index, same_parent) =
                 NEIGHBOUR_ADDRESS_TABLE[face_index as usize][sub_cell_index as usize];
 
-            neighbour_address.raw_address = neighbour_address.raw_address
-                | ((neighbour_sub_cell_index as usize) << shift_count);
+            neighbour_address.raw_address |= (neighbour_sub_cell_index as usize) << shift_count;
 
             address = address.get_parent_address();
             shift_count += 3;
             if same_parent {
-                neighbour_address.raw_address =
-                    (address.raw_address << shift_count) | neighbour_address.raw_address;
+                neighbour_address.raw_address |= address.raw_address << shift_count;
                 break;
             }
 

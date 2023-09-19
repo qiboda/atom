@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use bevy::prelude::*;
 
 use crate::terrain::isosurface::{
-    cms::octree::{address::VoxelAddress, cell::CellType, octree::Octree},
+    cms::build::{address::VoxelAddress, cell::CellType, octree::Octree},
     mesh::mesh_cache::MeshCache,
 };
 
@@ -27,12 +27,12 @@ impl Octree {
             debug_assert!(cell_type == &CellType::Leaf);
             if cell_type == &CellType::Leaf {
                 info!("cell.components {:?}", cell.components);
-                cell.components.as_mut().and_then(|components| {
+                cell.components.as_mut().map(|components| {
                     for component in components.iter_mut() {
                         Self::tessellate_component(mesh, component);
                         info!("tessellate_component");
                     }
-                    Some(())
+                    components
                 });
             }
         }
@@ -46,32 +46,36 @@ impl Octree {
 
         debug_assert!(num_of_indices >= 3);
 
-        if num_of_indices == 3 {
-            Self::make_tri(&mut mesh_cache, component);
-        } else if num_of_indices > 3 {
-            let mut centro_id_pos = Vec3::new(0.0, 0.0, 0.0);
-            let mut centro_id_normal = Vec3::new(0.0, 0.0, 0.0);
-
-            for comp in component.iter() {
-                centro_id_pos += mesh_cache.positions[*comp as usize];
-                centro_id_normal += mesh_cache.normals[*comp as usize];
+        match num_of_indices {
+            3 => {
+                Self::make_tri(&mut mesh_cache, component);
             }
+            num_of_indices if num_of_indices > 3 => {
+                let mut centro_id_pos = Vec3::new(0.0, 0.0, 0.0);
+                let mut centro_id_normal = Vec3::new(0.0, 0.0, 0.0);
 
-            let med_vertex = Vec3::new(
-                centro_id_pos.x / num_of_indices as f32,
-                centro_id_pos.y / num_of_indices as f32,
-                centro_id_pos.z / num_of_indices as f32,
-            );
+                for comp in component.iter() {
+                    centro_id_pos += mesh_cache.positions[*comp as usize];
+                    centro_id_normal += mesh_cache.normals[*comp as usize];
+                }
 
-            centro_id_normal = centro_id_normal.normalize();
+                let med_vertex = Vec3::new(
+                    centro_id_pos.x / num_of_indices as f32,
+                    centro_id_pos.y / num_of_indices as f32,
+                    centro_id_pos.z / num_of_indices as f32,
+                );
 
-            mesh_cache.positions.push(med_vertex);
-            mesh_cache.normals.push(centro_id_normal);
+                centro_id_normal = centro_id_normal.normalize();
 
-            debug_assert!(mesh_cache.positions.len() > 0);
-            component.push((mesh_cache.positions.len() - 1) as u32);
+                mesh_cache.positions.push(med_vertex);
+                mesh_cache.normals.push(centro_id_normal);
 
-            Self::make_tri_fan(&mut mesh_cache, component);
+                debug_assert!(!mesh_cache.positions.is_empty());
+                component.push((mesh_cache.positions.len() - 1) as u32);
+
+                Self::make_tri_fan(&mut mesh_cache, component);
+            }
+            _ => {}
         }
     }
 
@@ -88,17 +92,14 @@ impl Octree {
         debug!("make_tri_fan: {:?}", component);
         // 逆时针
         for i in 0..(component.len() - 2) {
-            mesh.get_indices_mut()
-                .push(component[component.len() - 1] as u32);
-            mesh.get_indices_mut().push(component[i + 1] as u32);
-            mesh.get_indices_mut().push(component[i] as u32);
+            mesh.get_indices_mut().push(component[component.len() - 1]);
+            mesh.get_indices_mut().push(component[i + 1]);
+            mesh.get_indices_mut().push(component[i]);
         }
 
         // 逆时针
-        mesh.get_indices_mut()
-            .push(component[component.len() - 2] as u32);
-        mesh.get_indices_mut()
-            .push(component[component.len() - 1] as u32);
-        mesh.get_indices_mut().push(component[0] as u32);
+        mesh.get_indices_mut().push(component[component.len() - 2]);
+        mesh.get_indices_mut().push(component[component.len() - 1]);
+        mesh.get_indices_mut().push(component[0]);
     }
 }

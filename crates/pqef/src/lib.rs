@@ -26,6 +26,7 @@ pub struct Quadric {
 }
 
 impl Quadric {
+    #[allow(clippy::too_many_arguments)]
     pub fn from_coefficients(
         a00: f32,
         a01: f32,
@@ -172,9 +173,9 @@ impl Quadric {
 
         let mut b = cross_pqr * det_pqr;
 
-        b = b - (pmq.cross(pxq) + qmr.cross(qxr) + rmp.cross(rxp)) * sigma;
+        b -= (pmq.cross(pxq) + qmr.cross(qxr) + rmp.cross(rxp)) * sigma;
 
-        b = b + (mean_p + mean_q + mean_r) * ss2;
+        b += (mean_p + mean_q + mean_r) * ss2;
 
         let c = det_pqr * det_pqr
             + (pxq.dot(pxq) + qxr.dot(qxr) + rxp.dot(rxp)) * sigma
@@ -210,9 +211,9 @@ impl Quadric {
 
         let mut a = math::self_outer_product(cross_pqr);
 
-        a = a - math::first_order_tri_quad(pmq, sigma_r);
-        a = a - math::first_order_tri_quad(qmr, sigma_p);
-        a = a - math::first_order_tri_quad(rmp, sigma_q);
+        a -= math::first_order_tri_quad(pmq, sigma_r);
+        a -= math::first_order_tri_quad(qmr, sigma_p);
+        a -= math::first_order_tri_quad(rmp, sigma_q);
 
         a = a + ci_pq + ci_qr + ci_rp;
 
@@ -222,13 +223,13 @@ impl Quadric {
 
         let mut b = cross_pqr * det_pqr;
 
-        b = b - pmq.cross(sigma_r * pxq);
-        b = b - qmr.cross(sigma_p * qxr);
-        b = b - rmp.cross(sigma_q * rxp);
+        b -= pmq.cross(sigma_r * pxq);
+        b -= qmr.cross(sigma_p * qxr);
+        b -= rmp.cross(sigma_q * rxp);
 
-        b = b + ci_pq * mean_r;
-        b = b + ci_qr * mean_p;
-        b = b + ci_rp * mean_q;
+        b += ci_pq * mean_r;
+        b += ci_qr * mean_p;
+        b += ci_rp * mean_q;
 
         let mut c = det_pqr * det_pqr;
 
@@ -247,7 +248,7 @@ impl Quadric {
 }
 
 impl Quadric {
-    pub fn a(self: &Self) -> Mat3A {
+    pub fn a(&self) -> Mat3A {
         let mut a = Mat3A::default();
 
         a.x_axis.x = self.a00;
@@ -263,13 +264,13 @@ impl Quadric {
         a
     }
 
-    pub fn b(self: &Self) -> Vec3A {
+    pub fn b(&self) -> Vec3A {
         Vec3A::new(self.b0, self.b1, self.b2)
     }
 
     /// A^-1 * b
     /// A^-1 = A* / det(A)
-    pub fn minimizer(self: &Self) -> Vec3A {
+    pub fn minimizer(&self) -> Vec3A {
         let a = self.a00;
         let b = self.a01;
         let c = self.a02;
@@ -304,7 +305,7 @@ impl Quadric {
         Vec3A::new(nom0 * denom, nom1 * denom, nom2 * denom)
     }
 
-    pub fn residual_l2_error(self: &Self, p: Pos3A) -> f32 {
+    pub fn residual_l2_error(&self, p: Pos3A) -> f32 {
         let ax = Vec3A::new(
             self.a00 * p.x + self.a01 * p.y + self.a02 * p.z,
             self.a01 * p.x + self.a11 * p.y + self.a12 * p.z,
@@ -491,7 +492,6 @@ impl Mul<Quadric> for f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn construct() {

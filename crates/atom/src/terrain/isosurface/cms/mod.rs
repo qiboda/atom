@@ -1,7 +1,7 @@
+pub mod build;
 pub mod bundle;
 pub mod extract;
 pub mod meshing;
-pub mod octree;
 pub mod sample;
 
 use std::sync::{Arc, RwLock};
@@ -14,8 +14,8 @@ use crate::terrain::{
     ecology::layer::EcologyLayerSampler,
     isosurface::{
         cms::{
+            build::octree::Octree,
             bundle::{CMSBundle, CMSTask, CMSVertexIndexInfo},
-            octree::octree::Octree,
             sample::surface_sampler::SurfaceSampler,
         },
         mesh::mesh_cache::MeshCache,
@@ -27,8 +27,8 @@ use crate::terrain::{
 };
 
 use self::{
+    build::octree::{make_octree_structure, mark_transitional_faces},
     bundle::CMSComponent,
-    octree::octree::{make_octree_structure, mark_transitional_faces},
 };
 
 use super::{
@@ -55,6 +55,7 @@ impl Plugin for CMSPlugin {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn cms_init(
     mut commands: Commands,
     terrain_settings: Res<TerrainSettings>,
@@ -83,7 +84,7 @@ fn cms_init(
         commands.entity(entity).insert(CMSBundle {
             cms: CMSComponent {
                 vertex_index_info: Arc::new(RwLock::new(CMSVertexIndexInfo::default())),
-                mesh_cache: Arc::new(RwLock::new(MeshCache::new())),
+                mesh_cache: Arc::new(RwLock::new(MeshCache::default())),
                 octree: Arc::new(RwLock::new(Octree::default())),
                 surface_sampler: Arc::new(RwLock::new(SurfaceSampler::new(
                     world_offset,
@@ -117,8 +118,8 @@ fn cms_update_sampler(
                 }
                 Some(_) => {
                     info!("cms_task.state == IsosurfaceExtractionState::Sample: task is some");
-                    if let Some(_) =
-                        future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
+                    if future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
+                        .is_some()
                     {
                         info!("cms_task.state == IsosurfaceExtractionState::Sample: task is some and ok");
                         cms_task.state = super::IsosurfaceExtractionState::BuildOctree;
@@ -183,8 +184,8 @@ fn cms_update_octree(
                 }
                 Some(_) => {
                     info!("cms_task.state == IsosurfaceExtractionState::Octree: task is some");
-                    if let Some(_) =
-                        future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
+                    if future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
+                        .is_some()
                     {
                         cms_task.state = super::IsosurfaceExtractionState::Extract;
                         cms_task.task = None;
@@ -225,8 +226,8 @@ fn cms_update_extrace(
                     cms_task.task = Some(task);
                 }
                 Some(_) => {
-                    if let Some(_) =
-                        future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
+                    if future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
+                        .is_some()
                     {
                         cms_task.state = super::IsosurfaceExtractionState::Meshing;
                         cms_task.task = None;
@@ -254,8 +255,8 @@ fn cms_update_meshing(mut cms_query: Query<(&mut CMSComponent, &mut CMSTask)>) {
                     cms_task.task = Some(task);
                 }
                 Some(_) => {
-                    if let Some(_) =
-                        future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
+                    if future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
+                        .is_some()
                     {
                         cms_task.state = super::IsosurfaceExtractionState::CreateMesh;
                         cms_task.task = None;
@@ -296,7 +297,7 @@ fn cms_update_create_mesh(
                 &mut meshes,
                 &mut materials,
                 *terrain_chunk_coord,
-                &ecology_layer_sampler,
+                ecology_layer_sampler,
             );
             cms_task.state = super::IsosurfaceExtractionState::Done;
         }

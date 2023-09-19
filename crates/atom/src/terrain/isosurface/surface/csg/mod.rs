@@ -230,7 +230,9 @@ fn build_shape() -> Box<CSGMin> {
         }),
     });
 
-    let n = Box::new(CSGMin {
+    
+
+    Box::new(CSGMin {
         left: n,
         right: Box::new(CSGMin {
             left: Box::new(CSGPlane {
@@ -242,7 +244,5 @@ fn build_shape() -> Box<CSGMin> {
                 normal: Vec3::new(0.0, 0.0, 1.0),
             }),
         }),
-    });
-
-    n
+    })
 }
