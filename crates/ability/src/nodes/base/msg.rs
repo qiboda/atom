@@ -1,8 +1,7 @@
 use std::any::TypeId;
 
 use bevy::prelude::{
-    default, info, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query,
-    Update,
+    info, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query, Update,
 };
 
 use lazy_static::lazy_static;
@@ -95,7 +94,7 @@ impl EffectNode for EffectNodeMsg {
 
 ///////////////////////// Node Bundle /////////////////////////
 
-#[derive(Bundle, Debug)]
+#[derive(Bundle, Debug, Default)]
 pub struct MsgNodeBundle {
     pub effect_node: EffectNodeMsg,
     pub effect_node_base: EffectNodeBaseBundle,
@@ -104,20 +103,11 @@ pub struct MsgNodeBundle {
 impl MsgNodeBundle {
     pub fn new() -> Self {
         Self {
-            effect_node: EffectNodeMsg { ..default() },
+            effect_node: EffectNodeMsg::default(),
             effect_node_base: EffectNodeBaseBundle {
                 effect_node_state: EffectNodeState::default(),
                 uuid: EffectNodeUuid::new(),
             },
-        }
-    }
-}
-
-impl Default for MsgNodeBundle {
-    fn default() -> Self {
-        Self {
-            effect_node: EffectNodeMsg { ..default() },
-            effect_node_base: EffectNodeBaseBundle::default(),
         }
     }
 }

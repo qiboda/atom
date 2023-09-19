@@ -10,21 +10,11 @@ use bevy_xpbd_3d::{
     prelude::Collider,
 };
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone, Component, Default)]
 pub struct MeshCache {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
     pub indices: Vec<u32>,
-}
-
-impl MeshCache {
-    pub fn new() -> Self {
-        Self {
-            positions: Vec::new(),
-            normals: Vec::new(),
-            indices: Vec::new(),
-        }
-    }
 }
 
 impl MeshCache {
@@ -34,7 +24,7 @@ impl MeshCache {
 
     fn check(&self) {
         debug_assert!(
-            self.positions.len() > 0
+            !self.positions.is_empty()
                 && self.positions.len() == self.normals.len()
                 && self.indices.len() % 3 == 0
         );

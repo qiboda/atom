@@ -1,5 +1,5 @@
 use std::{
-    ops::Range,
+    ops::{Not, Range},
     sync::{Arc, RwLock},
 };
 
@@ -8,8 +8,7 @@ use bevy::{prelude::*, utils::HashMap};
 use strum::{EnumCount, IntoEnumIterator};
 
 use crate::terrain::isosurface::{
-    cms::meshing::vertex_index::VertexIndices,
-    cms::octree::{
+    cms::build::{
         address::VoxelAddress,
         cell::Cell,
         face::{Face, FaceType},
@@ -21,9 +20,8 @@ use crate::terrain::isosurface::{
             FACE_VERTEX, VERTEX_MAP,
         },
     },
-    cms::{
-        bundle::CMSVertexIndexInfo, sample::surface_sampler::SurfaceSampler,
-    },
+    cms::meshing::vertex_index::VertexIndices,
+    cms::{bundle::CMSVertexIndexInfo, sample::surface_sampler::SurfaceSampler},
     mesh::mesh_cache::MeshCache,
     surface::shape_surface::ShapeSurface,
 };
@@ -153,6 +151,7 @@ impl Octree {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn make_strip(
         edge0: Option<Face2DEdge>,
         edge1: Option<Face2DEdge>,
@@ -268,7 +267,7 @@ impl Octree {
             debug!("mesh_info.vertex_index_data.get(&crossing_index_0) is None");
         }
 
-        if dupli == false {
+        if dupli.not() {
             Self::make_vertex(
                 strip,
                 edge_dir,
@@ -309,7 +308,7 @@ impl Octree {
 
         debug_assert!(direction.is_some());
 
-        return direction.unwrap();
+        direction.unwrap()
     }
 
     /// 检测是否有精确的符号变化。
@@ -367,9 +366,9 @@ impl Octree {
         // 因为传入的两个顶点是Strip的顶点，所以不可能符号相等。此处代码不会执行。
         debug_assert!(false);
 
-        return u32::MAX;
+        u32::MAX
     }
-
+    #[allow(clippy::too_many_arguments)]
     fn make_vertex(
         strip: &mut Strip,
         edge_dir: EdgeDirection,
@@ -398,7 +397,7 @@ impl Octree {
         Self::find_gradient(
             &mut gradient,
             crossing_vertex_point_pos,
-            &sample_info,
+            sample_info,
             shape_surface,
         );
         debug!(
@@ -448,47 +447,43 @@ impl Octree {
         // 误差足够小，或者迭代次数足够多，就认为找到了交点。
         if val.abs() < f32::EPSILON || quality == 0 {
             return pos;
-        } else {
-            if val < 0.0 {
-                if v0 > 0.0 {
-                    pos = Self::find_crossing_point_pos(
-                        quality - 1,
-                        &point,
-                        point0,
-                        sample_info,
-                        shape_surface,
-                    );
-                } else if v1 > 0.0 {
-                    pos = Self::find_crossing_point_pos(
-                        quality - 1,
-                        &point,
-                        point1,
-                        sample_info,
-                        shape_surface,
-                    );
-                }
-            } else {
-                if v0 < 0.0 {
-                    pos = Self::find_crossing_point_pos(
-                        quality - 1,
-                        point0,
-                        &point,
-                        sample_info,
-                        shape_surface,
-                    );
-                } else if v1 < 0.0 {
-                    pos = Self::find_crossing_point_pos(
-                        quality - 1,
-                        point1,
-                        &point,
-                        sample_info,
-                        shape_surface,
-                    );
-                }
+        } else if val < 0.0 {
+            if v0 > 0.0 {
+                pos = Self::find_crossing_point_pos(
+                    quality - 1,
+                    &point,
+                    point0,
+                    sample_info,
+                    shape_surface,
+                );
+            } else if v1 > 0.0 {
+                pos = Self::find_crossing_point_pos(
+                    quality - 1,
+                    &point,
+                    point1,
+                    sample_info,
+                    shape_surface,
+                );
             }
+        } else if v0 < 0.0 {
+            pos = Self::find_crossing_point_pos(
+                quality - 1,
+                point0,
+                &point,
+                sample_info,
+                shape_surface,
+            );
+        } else if v1 < 0.0 {
+            pos = Self::find_crossing_point_pos(
+                quality - 1,
+                point1,
+                &point,
+                sample_info,
+                shape_surface,
+            );
         }
 
-        return pos;
+        pos
     }
 
     fn find_gradient(
@@ -562,12 +557,12 @@ impl Octree {
                             all_twin_cell_address[i] = twin_address;
                             all_twin_cell_face_index[i] = Some(twin_face_index);
 
-                            let mut all_strip = &mut all_strips[i];
+                            let all_strip = &mut all_strips[i];
                             Self::traverse_face(
                                 &self.cell_addresses,
                                 all_twin_cell_address[i],
                                 twin_face_index,
-                                &mut all_strip,
+                                all_strip,
                             );
 
                             debug!(
@@ -598,7 +593,7 @@ impl Octree {
                         twin_cell_address, index, all_strip
                     );
 
-                    if all_strip.len() == 0 {
+                    if all_strip.is_empty() {
                         debug!("all_strip.len() == 0 and continue");
                         continue;
                     }
@@ -666,13 +661,13 @@ impl Octree {
                                         );
                                     }
 
-                                    return false;
+                                     false
                                 });
 
                             debug!("all_strip: num: {}", all_strip.len());
 
-                            if all_strip.len() <= 0
-                                || added_in_iteration <= 0
+                            if all_strip.is_empty()
+                                || added_in_iteration == 0
                                 || long_strip.get_loop()
                             {
                                 debug!("all_strip.retain first break");
@@ -682,7 +677,7 @@ impl Octree {
                             }
                         }
 
-                        if long_strip.get_loop() == false && all_strip.len() > 0 {
+                        if long_strip.get_loop().not() && all_strip.is_empty().not() {
                             loop {
                                 added_in_iteration = 0;
 
@@ -711,10 +706,10 @@ impl Octree {
                                         vertex_indices.remove(0);
                                         long_strip.set_loop(true);
                                     }
-                                    return false;
+                                    false
                                 });
 
-                                if all_strip.len() <= 0
+                                if all_strip.is_empty()
                                     || added_in_iteration <= 0
                                     || long_strip.get_loop()
                                 {
@@ -738,7 +733,7 @@ impl Octree {
                                     .get_face_mut(twin_face_index)
                                     .get_strips()
                                     .contains(&long_strip)
-                                    == false
+                                    .not()
                         );
 
                         // long_strip.set_skip(false);
@@ -756,7 +751,7 @@ impl Octree {
                         transit_segs.push(vertex_indices);
 
                         debug!("all_strip len: {}", all_strip.len());
-                        if all_strip.len() == 0 {
+                        if all_strip.is_empty() {
                             break;
                         } else {
                             debug!(
@@ -768,7 +763,7 @@ impl Octree {
                         }
                     }
 
-                    if transit_segs.len() != 0 {
+                    if transit_segs.is_empty().not() {
                         twin_cell
                             .faces
                             .get_face_mut(twin_face_index)
@@ -813,7 +808,7 @@ impl Octree {
                             continue;
                         }
 
-                        if strip.get_skip() == false {
+                        if strip.get_skip().not() {
                             debug!("traverse_face strip push: {:?}", strip);
                             strips.push(strip.clone());
                             debug!("transit entity: {:?}", cell_address);
@@ -844,7 +839,7 @@ impl Octree {
 
             // 循环是为了建立多个Component
             loop {
-                if cell_strips.len() == 0 {
+                if cell_strips.is_empty() {
                     break;
                 }
 
@@ -855,14 +850,13 @@ impl Octree {
                 };
 
                 info!("trace component: components: {:?}", components);
-                if components.len() > 0 {
-                    if cell.components.is_none() {
-                        cell.components = Some(Vec::new());
-                    }
+                if components.is_empty().not() && cell.components.is_none() {
+                    cell.components = Some(Vec::new());
                 }
                 cell.components.as_mut().map(|cell_components| {
                     cell_components.push(components.clone());
                     info!("trace component: push components: {:?}", components);
+                    cell_components
                 });
 
                 info!(
@@ -905,7 +899,7 @@ impl Octree {
                 }
                 FaceType::TransitFace => {
                     debug!("collect strip transit face");
-                    debug_assert!(face.get_transit_segs().len() == 0);
+                    debug_assert!(face.get_transit_segs().is_empty());
                     for strip in face.get_strips().iter() {
                         if strip.get_vertex_index(0).is_some() {
                             debug!(
@@ -946,7 +940,7 @@ impl Octree {
             }
         }
 
-        debug_assert!(cell_strips.len() > 0);
+        debug_assert!(cell_strips.is_empty().not());
     }
 
     fn link_strips(
@@ -954,18 +948,18 @@ impl Octree {
         cell_strips: &mut Vec<Strip>,
         transit_segs: &mut Vec<Vec<u32>>,
     ) {
-        debug_assert!(components.len() == 0);
+        debug_assert!(components.is_empty());
         debug_assert!(cell_strips[0].get_vertex_index(0).is_some());
 
         let mut added_in_iteration;
         let mut backwards = false;
 
-        for i in 0..cell_strips.len() {
+        (0..cell_strips.len()).for_each(|i| {
             debug!("link_strips: {:?}", cell_strips[i].get_vertex());
-        }
-        for i in 0..transit_segs.len() {
+        });
+        (0..transit_segs.len()).for_each(|i| {
             debug!("link_transit_seg: {:?}", transit_segs[i]);
-        }
+        });
 
         components.push(cell_strips[0].get_vertex_index(0).unwrap());
 
@@ -985,11 +979,11 @@ impl Octree {
                         backwards = false;
                         let mut transit = false;
 
-                        if transit_segs.len() > 0 {
+                        if transit_segs.is_empty().not() {
                             Self::insert_data_from_twin(
                                 components,
-                                &transit_segs,
-                                &strip,
+                                transit_segs,
+                                strip,
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
@@ -999,7 +993,7 @@ impl Octree {
                             // }
                         }
 
-                        if transit == false {
+                        if transit.not() {
                             if let Some(data) = s_data1 {
                                 components.push(data);
                                 added_in_iteration += 1;
@@ -1013,11 +1007,11 @@ impl Octree {
                         backwards = true;
                         let mut transit = false;
 
-                        if transit_segs.len() > 0 {
+                        if transit_segs.is_empty().not() {
                             Self::insert_data_from_twin(
                                 components,
-                                &transit_segs,
-                                &strip,
+                                transit_segs,
+                                strip,
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
@@ -1027,7 +1021,7 @@ impl Octree {
                             // }
                         }
 
-                        if transit == false {
+                        if transit.not() {
                             if let Some(data) = s_data0 {
                                 components.push(data);
                                 added_in_iteration += 1;
@@ -1044,7 +1038,7 @@ impl Octree {
                         return true;
                     }
                 }
-                return false;
+                false
             });
 
             debug!(
@@ -1078,11 +1072,11 @@ impl Octree {
                         backwards = false;
                         let mut transit = false;
 
-                        if transit_segs.len() > 0 {
+                        if transit_segs.is_empty().not() {
                             Self::insert_data_from_twin(
                                 components,
-                                &transit_segs,
-                                &strip,
+                                transit_segs,
+                                strip,
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
@@ -1092,7 +1086,7 @@ impl Octree {
                             // }
                         }
 
-                        if transit == false {
+                        if transit.not() {
                             if let Some(data) = s_data1 {
                                 components.insert(0, data);
                                 added_in_iteration += 1;
@@ -1106,11 +1100,11 @@ impl Octree {
                         backwards = true;
                         let mut transit = false;
 
-                        if transit_segs.len() > 0 {
+                        if transit_segs.is_empty().not() {
                             Self::insert_data_from_twin(
                                 components,
-                                &transit_segs,
-                                &strip,
+                                transit_segs,
+                                strip,
                                 &mut transit,
                                 &mut added_in_iteration,
                                 &backwards,
@@ -1120,7 +1114,7 @@ impl Octree {
                             // }
                         }
 
-                        if transit == false {
+                        if transit.not() {
                             if let Some(data) = s_data0 {
                                 components.insert(0, data);
                                 added_in_iteration += 1;
@@ -1137,7 +1131,7 @@ impl Octree {
                         return true;
                     }
                 }
-                return false;
+                false
             });
 
             debug!(
@@ -1161,7 +1155,7 @@ impl Octree {
 
     fn insert_data_from_twin(
         components: &mut Vec<u32>,
-        transit_segs: &Vec<Vec<u32>>,
+        transit_segs: &[Vec<u32>],
         strip: &Strip,
         transit: &mut bool,
         added_in_iteration: &mut i32,
@@ -1182,9 +1176,9 @@ impl Octree {
                         components.push(seg[i]);
                     }
                 } else {
-                    for i in 0..seg.len() {
+                    (0..seg.len()).for_each(|i| {
                         components.push(seg[i]);
-                    }
+                    });
                 }
                 // transit_segs.remove(i);
                 *added_in_iteration += 1;
@@ -1203,7 +1197,7 @@ impl Octree {
         }
     }
 
-    fn compare_strip_to_seg(strip: &Strip, seg: &Vec<u32>) -> bool {
+    fn compare_strip_to_seg(strip: &Strip, seg: &[u32]) -> bool {
         let s0 = strip.get_vertex_index(0);
         let s1 = strip.get_vertex_index(1);
 

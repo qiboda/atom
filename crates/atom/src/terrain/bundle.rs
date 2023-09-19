@@ -3,7 +3,7 @@ use bevy::{
     transform::TransformBundle,
 };
 
-use super::terrain::TerrainData;
+use super::terrain_data::TerrainData;
 
 #[derive(Bundle, Default)]
 pub struct TerrainBundle {

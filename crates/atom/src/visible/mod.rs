@@ -4,8 +4,8 @@ use crate::terrain::TerrainSystemSet;
 
 use self::visible_areas::{remove_terrain_visible_areas, update_terrain_visible_areas};
 
-pub mod visible;
 pub mod visible_areas;
+pub mod visible_range;
 
 #[derive(Default, Debug)]
 pub struct TerrainVisibleAreaPlugin;

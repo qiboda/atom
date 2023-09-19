@@ -39,8 +39,8 @@ impl Plugin for IsosurfaceExtractionPlugin {
             shape_surface: Arc::new(RwLock::new(ShapeSurface {
                 densy_function: Box::new(NoiseSurface {
                     seed: rand::random(),
-                    frequency: 0.1,
-                    lacunarity: 0.01,
+                    frequency: 0.3,
+                    lacunarity: 0.02,
                     gain: 5.0,
                     octaves: 3,
                 }),
@@ -48,7 +48,7 @@ impl Plugin for IsosurfaceExtractionPlugin {
             })),
         })
         // .add_plugins(CMSPlugin::default());
-        .add_plugins(DualContourPlugin::default())
-        .add_plugins(EcologyPlugin::default());
+        .add_plugins(DualContourPlugin)
+        .add_plugins(EcologyPlugin);
     }
 }

@@ -49,12 +49,12 @@ impl CellOctree {
         precision: f32,
         sdf: &ShapeSurface,
     ) {
-        let Some(mut root_cell) = Cell::new(root_cell, &sdf, 0, max_depth == 0) else {
+        let Some(mut root_cell) = Cell::new(root_cell, sdf, 0, max_depth == 0) else {
             return;
         };
 
         if root_cell.is_leaf {
-            let _qef = root_cell.estimate_vertex(&sdf, precision);
+            let _qef = root_cell.estimate_vertex(sdf, precision);
             Self::new(0, vec![root_cell]);
             return;
         }
@@ -63,13 +63,11 @@ impl CellOctree {
             max_depth,
             error_tolerance,
             precision,
-            &sdf,
+            sdf,
             root_cell,
         );
 
-        maybe_root_id.map(|root_id| {
-            self.root_id = root_id;
-        });
+        if let Some(root_id) = maybe_root_id { self.root_id = root_id; }
     }
 
     // Recursive because it's easier and slightly more efficient for post-order
@@ -103,8 +101,8 @@ impl CellOctree {
 
             if child_cell.is_leaf {
                 let (regularized_qef, exact_qef) = child_cell.estimate_vertex(sdf, precision);
-                sum_descendant_regularized_qef = sum_descendant_regularized_qef + regularized_qef;
-                sum_descendant_exact_qef = sum_descendant_exact_qef + exact_qef;
+                sum_descendant_regularized_qef += regularized_qef;
+                sum_descendant_exact_qef += exact_qef;
 
                 any_nonempty_children = true;
                 let child_id = self.all_cells.len() as CellId;
@@ -129,9 +127,8 @@ impl CellOctree {
                         exact_qef,
                     } => {
                         any_nonempty_children = true;
-                        sum_descendant_regularized_qef =
-                            sum_descendant_regularized_qef + regularized_qef;
-                        sum_descendant_exact_qef = sum_descendant_exact_qef + exact_qef;
+                        sum_descendant_regularized_qef += regularized_qef;
+                        sum_descendant_exact_qef += exact_qef;
                         *has_vert = true;
                     }
                 }
@@ -244,13 +241,13 @@ impl Cell {
     fn get_children(&self, sdf: &ShapeSurface, is_leaf: bool) -> [Option<Self>; 8] {
         assert!(!self.is_leaf);
         let child_extents = self.extent.split(self.extent.center());
-        child_extents.map(|extent| Self::new(extent, &sdf, self.depth + 1, is_leaf))
+        child_extents.map(|extent| Self::new(extent, sdf, self.depth + 1, is_leaf))
     }
 
     #[inline]
     fn estimate_vertex(&mut self, sdf: &ShapeSurface, precision: f32) -> (Quadric, Quadric) {
         let (regularized_qef, exact_qef) =
-            estimate_interior_vertex_qef(&self.extent, &self.samples, &sdf, precision);
+            estimate_interior_vertex_qef(&self.extent, &self.samples, sdf, precision);
         self.estimate_vertex_with_qef(&regularized_qef, &exact_qef);
         (regularized_qef, exact_qef)
     }
