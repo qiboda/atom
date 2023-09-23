@@ -2,7 +2,7 @@ use std::{borrow::Cow, ops::Deref};
 
 use bevy::prelude::Name;
 
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Tag(Name);
 
 impl Tag {

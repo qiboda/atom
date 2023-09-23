@@ -10,7 +10,7 @@ pub trait FromTagRegistry {
 
 /// register layer tag.
 /// 1. support query layer tag from tag type struct or tag name.
-#[derive(Default, Component)]
+#[derive(Default, Component, Debug)]
 pub struct LayerTagRegistry {
     layers: HashMap<TypeId, Box<dyn LayerTag>>,
 }
@@ -31,20 +31,31 @@ impl LayerTagRegistry {
     }
 }
 
+impl LayerTagRegistry {
+    pub fn request<T: LayerTag + Clone>(&self) -> Option<T> {
+        let layertag = self.get::<T>();
+        layertag.cloned()
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::fmt;
+
     use bevy::reflect::Reflect;
 
     use crate::layertag::LayerTag;
 
     use super::{FromTagRegistry, LayerTagRegistry};
 
-    #[derive(Reflect)]
-    struct TestTag {}
+    #[derive(Reflect, Debug, Clone, PartialEq, Eq)]
+    struct TestTag {
+        pub value: i32,
+    }
 
     impl FromTagRegistry for TestTag {
         fn from_tag_registry() -> Self {
-            Self {}
+            Self { value: 0 }
         }
     }
 
@@ -53,8 +64,13 @@ mod tests {
             &[]
         }
     }
+    impl fmt::Display for TestTag {
+        fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Result::Ok(())
+        }
+    }
 
-    #[derive(Reflect)]
+    #[derive(Reflect, Debug, Clone)]
     struct TestTag2 {}
 
     impl FromTagRegistry for TestTag2 {
@@ -68,6 +84,11 @@ mod tests {
             &[]
         }
     }
+    impl fmt::Display for TestTag2 {
+        fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Result::Ok(())
+        }
+    }
 
     #[test]
     fn register_layertag() {
@@ -75,5 +96,22 @@ mod tests {
         registry.register::<TestTag>();
         assert!(registry.get::<TestTag>().is_some());
         assert!(registry.get::<TestTag2>().is_none());
+    }
+
+    #[test]
+    fn request_layertag() {
+        let mut registry = LayerTagRegistry::default();
+        registry.register::<TestTag>();
+        let new_tag_inst = registry.request::<TestTag>();
+        assert!(new_tag_inst.is_some());
+        assert!(new_tag_inst == Some(TestTag::from_tag_registry()));
+        assert!(registry.request::<TestTag2>().is_none());
+
+        let mut new_tag_inst_2 = registry.request::<TestTag>();
+        new_tag_inst_2.as_mut().map(|v| {
+            v.value = 3;
+            v
+        });
+        assert_ne!(new_tag_inst_2, registry.request::<TestTag>());
     }
 }

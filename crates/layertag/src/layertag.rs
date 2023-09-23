@@ -1,11 +1,11 @@
-use std::ops::ControlFlow;
+use std::{fmt::Debug, ops::ControlFlow};
 
 use bevy::reflect::Reflect;
 
 use crate::tag::Tag;
 
 /// A tag that can be used to identify a layer, and with struct data.
-pub trait LayerTag: Reflect {
+pub trait LayerTag: Reflect + Debug {
     fn tag(&self) -> &[Tag];
 
     /// two tag exact match
@@ -65,12 +65,14 @@ pub trait LayerTag: Reflect {
 
 #[cfg(test)]
 mod test {
+    use core::fmt;
+
     use crate::{layertag::LayerTag, tag::Tag};
     use bevy::reflect::Reflect;
 
     use once_cell::sync::OnceCell;
 
-    #[derive(Reflect)]
+    #[derive(Reflect, Debug, Clone)]
     struct TestTag {}
 
     impl LayerTag for TestTag {
@@ -81,7 +83,13 @@ mod test {
         }
     }
 
-    #[derive(Reflect)]
+    impl fmt::Display for TestTag {
+        fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Result::Ok(())
+        }
+    }
+
+    #[derive(Reflect, Debug, Clone)]
     struct TestTag2 {}
 
     impl LayerTag for TestTag2 {
@@ -92,7 +100,7 @@ mod test {
         }
     }
 
-    #[derive(Reflect)]
+    #[derive(Reflect, Debug, Clone)]
     struct TestTag3 {}
 
     impl LayerTag for TestTag3 {
