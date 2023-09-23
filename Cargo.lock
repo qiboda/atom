@@ -2275,8 +2275,17 @@ name = "layertag"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "layertag_derive",
  "once_cell",
- "smallvec",
+]
+
+[[package]]
+name = "layertag_derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.30",
 ]
 
 [[package]]
