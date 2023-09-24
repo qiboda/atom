@@ -1,8 +1,8 @@
-use bevy::reflect::Reflect;
+use bevy::{reflect::Reflect, prelude::Component};
 
 use super::modifier::AttributeModifier;
 
-pub trait AttributeSet: Reflect {
+pub trait AttributeSet: Reflect + Component {
     type AttributeSetEnum;
 
     fn get_attr_final_value(&self, attribute_set_enum: Self::AttributeSetEnum) -> Option<f32>;
