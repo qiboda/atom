@@ -65,7 +65,7 @@ impl Parse for Args {
     }
 }
 
-fn get_layer_tag_attribute(attrs: &Vec<Attribute>) -> proc_macro2::TokenStream {
+fn get_layer_tag_attribute(attrs: &[Attribute]) -> proc_macro2::TokenStream {
     let mut tags: proc_macro2::TokenStream = proc_macro2::TokenStream::new();
     for attr in attrs.iter() {
         if let syn::Meta::List(meta_list) = &attr.meta {

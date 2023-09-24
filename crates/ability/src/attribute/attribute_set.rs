@@ -1,6 +1,6 @@
 use bevy::reflect::Reflect;
 
-use super::{modifier::AttributeModifier, Attribute};
+use super::modifier::AttributeModifier;
 
 pub trait AttributeSet: Reflect {
     type AttributeSetEnum;
