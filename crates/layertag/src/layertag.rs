@@ -1,10 +1,11 @@
 use std::{fmt::Debug, ops::ControlFlow};
 
-use bevy::reflect::Reflect;
+use bevy::reflect::{reflect_trait, Reflect};
 
 use crate::tag::Tag;
 
 /// A tag that can be used to identify a layer, and with struct data.
+#[reflect_trait]
 pub trait LayerTag: Reflect + Debug {
     fn tag(&self) -> &[Tag];
 

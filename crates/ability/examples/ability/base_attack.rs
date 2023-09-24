@@ -7,46 +7,14 @@ use bevy::prelude::*;
 
 use ability::nodes::{
     base::{
-        entry::{EffectNodeEntry, EffectNodeEntryPlugin, EntryNodeBundle},
-        msg::{EffectNodeMsg, EffectNodeMsgPlugin, MsgNodeBundle},
-        multiple::EffectNodeMultiplePlugin,
-        timer::{EffectNodeTimer, EffectNodeTimerPlugin, TimerNodeBundle},
+        entry::{EffectNodeEntry, EntryNodeBundle},
+        msg::{EffectNodeMsg, MsgNodeBundle},
+        timer::{EffectNodeTimer, TimerNodeBundle},
     },
     blackboard::EffectValue,
     build_graph,
-    event::EffectEvent,
-    graph::{EffectGraph, EffectGraphBuilder, EffectGraphBundle, EffectGraphContext, EffectPinKey},
-    EffectGraphPlugin,
+    graph::{EffectGraph, EffectGraphBuilder, EffectGraphContext, EffectPinKey},
 };
-
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugins(EffectGraphPlugin::default())
-        .add_plugins(EffectNodeMsgPlugin::default())
-        .add_plugins(EffectNodeTimerPlugin)
-        .add_plugins(EffectNodeEntryPlugin::default())
-        .add_plugins(EffectNodeMultiplePlugin::default())
-        .add_plugins(EffectNodeGraphBaseAttackPlugin::default())
-        .add_systems(Startup, setup)
-        .add_systems(Update, cast_base_skill)
-        .run();
-}
-
-fn cast_base_skill(
-    input: Res<Input<KeyCode>>,
-    query: Query<&EffectGraphContext>,
-    mut event_writer: EventWriter<EffectEvent>,
-) {
-    if input.just_pressed(KeyCode::Q) {
-        for context in query.iter() {
-            if let Some(entry_node) = context.entry_node {
-                let event = EffectEvent::Start(entry_node);
-                event_writer.send(event);
-            }
-        }
-    }
-}
 
 #[derive(Default)]
 pub struct EffectNodeGraphBaseAttackPlugin {}
@@ -55,10 +23,6 @@ impl Plugin for EffectNodeGraphBaseAttackPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(First, build_graph::<EffectNodeGraphBaseAttack>);
     }
-}
-
-fn setup(mut commands: Commands) {
-    commands.spawn(EffectGraphBundle::<EffectNodeGraphBaseAttack>::default());
 }
 
 #[derive(Debug, Component, Default)]

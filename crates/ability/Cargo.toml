@@ -11,7 +11,8 @@ bevy-trait-query = "0.3.0"
 bevy-trait-query-impl = "0.3.0"
 lazy_static = "1.4.0"
 smallvec = "1.11.0"
+layertag = { path = "../layertag" }
 
 [[example]]
-name = "base_attack"
-path = "examples/base_attack.rs"
+name = "ability"
+path = "examples/ability/main.rs"

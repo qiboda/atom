@@ -1,8 +1,8 @@
 use ability::attribute::{attribute_set::AttributeSet, modifier::AttributeModifier, Attribute};
-use bevy::reflect::Reflect;
+use bevy::{prelude::Component, reflect::Reflect};
 
 #[derive(Debug, Default, Reflect)]
-struct ValueAttribute {
+pub(crate) struct ValueAttribute {
     value: f32,
 }
 
@@ -17,7 +17,7 @@ impl Attribute for ValueAttribute {
 }
 
 #[derive(Debug, Default, Reflect)]
-struct MoveSpeed {
+pub(crate) struct MoveSpeed {
     value: f32,
 }
 
@@ -32,14 +32,14 @@ impl Attribute for MoveSpeed {
 }
 
 // attribute set derive, to generate AttributeSetEnum with #[attribute] macro];
-#[derive(Debug, Default, Reflect)]
-struct BaseAttributeSet {
+#[derive(Debug, Default, Reflect, Component)]
+pub(crate) struct BaseAttributeSet {
     hp: ValueAttribute,
     move_speed: MoveSpeed,
 }
 
 #[derive(Debug, Reflect)]
-enum BaseAttributeSetType {
+pub(crate) enum BaseAttributeSetType {
     Hp,
     MoveSpeed,
 }
@@ -66,10 +66,20 @@ impl AttributeModifier for HpModifier {
     }
 }
 
-fn main() {
-    let mut attribute_set = BaseAttributeSet::default();
-    let modifier = HpModifier { value: 100.0 };
-    println!("{:?}", attribute_set.get_attr_final_value(BaseAttributeSetType::Hp));
-    attribute_set.apply_modify(modifier);
-    println!("{:?}", attribute_set.get_attr_final_value(BaseAttributeSetType::Hp));
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_attr() {
+        let mut attribute_set = BaseAttributeSet::default();
+        let modifier = HpModifier { value: 100.0 };
+        println!(
+            "{:?}",
+            attribute_set.get_attr_final_value(BaseAttributeSetType::Hp)
+        );
+        attribute_set.apply_modify(modifier);
+        println!(
+            "{:?}",
+            attribute_set.get_attr_final_value(BaseAttributeSetType::Hp)
+        );
+    }
 }
