@@ -44,7 +44,7 @@ mod tests {
 
     use bevy::reflect::Reflect;
 
-    use crate::layertag::LayerTag;
+    use crate::layertag::{LayerTag, LayerTagData};
 
     use super::{FromTagRegistry, LayerTagRegistry};
 
@@ -56,6 +56,18 @@ mod tests {
     impl FromTagRegistry for TestTag {
         fn from_tag_registry() -> Self {
             Self { value: 0 }
+        }
+    }
+
+    impl LayerTagData for TestTag {
+        fn cmp_data_same_type_inner(&self,rhs: &dyn LayerTag) -> bool {
+            assert!(self.tag() == rhs.tag());
+
+            if let Some(rhs) = rhs.as_reflect().downcast_ref::<Self>() {
+                self.value == rhs.value
+            } else {
+                false
+            }
         }
     }
 
@@ -76,6 +88,12 @@ mod tests {
     impl FromTagRegistry for TestTag2 {
         fn from_tag_registry() -> Self {
             Self {}
+        }
+    }
+
+    impl LayerTagData for TestTag2 {
+        fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
+            true
         }
     }
 

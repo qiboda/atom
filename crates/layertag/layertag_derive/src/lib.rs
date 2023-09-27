@@ -2,9 +2,8 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
     parse::{Parse, ParseStream, Parser},
-    parse_macro_input,
     punctuated::Punctuated,
-    Attribute, DeriveInput, Ident, Result, Token,
+    Attribute, Ident, Result, Token, parse_macro_input, DeriveInput,
 };
 
 #[proc_macro_derive(LayerTag)]
