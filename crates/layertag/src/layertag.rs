@@ -4,9 +4,15 @@ use bevy::reflect::{reflect_trait, Reflect};
 
 use crate::tag::Tag;
 
+/// A tag with data.
+#[reflect_trait]
+pub trait LayerTagData: Reflect + Debug {
+    fn cmp_data_same_type_inner(&self, rhs: &dyn LayerTag) -> bool;
+}
+
 /// A tag that can be used to identify a layer, and with struct data.
 #[reflect_trait]
-pub trait LayerTag: Reflect + Debug {
+pub trait LayerTag: LayerTagData {
     fn tag(&self) -> &[Tag];
 
     /// two tag exact match
@@ -62,6 +68,12 @@ pub trait LayerTag: Reflect + Debug {
             });
         ret
     }
+
+    /// campare tag data only same tag.
+    fn cmp_data_same_type(&self, rhs: &dyn LayerTag) -> bool {
+        assert!(self.tag() == rhs.tag());
+        self.cmp_data_same_type_inner(rhs)
+    }
 }
 
 #[cfg(test)]
@@ -73,14 +85,22 @@ mod test {
 
     use once_cell::sync::OnceCell;
 
+    use super::LayerTagData;
+
     #[derive(Reflect, Debug, Clone)]
-    struct TestTag {}
+    struct TestTag;
 
     impl LayerTag for TestTag {
         fn tag(&self) -> &[Tag] {
             static CELL: OnceCell<Vec<Tag>> = OnceCell::new();
             CELL.get_or_init(|| vec![Tag::new("a"), Tag::new("b"), Tag::new("c")])
                 .as_slice()
+        }
+    }
+
+    impl LayerTagData for TestTag {
+        fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
+            true
         }
     }
 
@@ -101,6 +121,12 @@ mod test {
         }
     }
 
+    impl LayerTagData for TestTag2 {
+        fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
+            true
+        }
+    }
+
     #[derive(Reflect, Debug, Clone)]
     struct TestTag3 {}
 
@@ -109,6 +135,12 @@ mod test {
             static CELL: OnceCell<Vec<Tag>> = OnceCell::new();
             CELL.get_or_init(|| vec![Tag::new("a"), Tag::new("b")])
                 .as_slice()
+        }
+    }
+
+    impl LayerTagData for TestTag3 {
+        fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
+            true
         }
     }
 

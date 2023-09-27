@@ -1,6 +1,6 @@
 use bevy::{prelude::*, reflect::TypePath};
 use layertag::{
-    layertag::LayerTag,
+    layertag::{LayerTag, LayerTagData},
     registry::{FromTagRegistry, LayerTagRegistry},
 };
 use std::{fmt::Debug, marker::PhantomData};
@@ -9,7 +9,13 @@ use layertag_derive::{layer_tag, LayerTag};
 
 #[derive(LayerTag, Clone, Debug, Reflect)]
 #[layer_tag("a", "b", "c")]
-pub struct TestTags {}
+pub struct TestTags;
+
+impl LayerTagData for TestTags {
+    fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
+        true
+    }
+}
 
 static TAG_A: &str = "a";
 static TAG_B: &str = "b";
@@ -28,6 +34,22 @@ where
 {
     #[reflect(ignore)]
     _data: PhantomData<T>,
+}
+
+impl<T> LayerTagData for GenTestTags<T>
+where
+    T: Default + Reflect + TypePath + Debug,
+{
+    #[doc = " campare tag data only same tag."]
+    fn cmp_data_same_type_inner(&self, rhs: &dyn LayerTag) -> bool {
+        assert!(self.tag() == rhs.tag());
+
+        if let Some(rhs) = rhs.as_reflect().downcast_ref::<Self>() {
+            self._data == rhs._data
+        } else {
+            false
+        }
+    }
 }
 
 fn main() {

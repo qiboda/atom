@@ -58,21 +58,51 @@ impl AbilityTag {
 }
 
 impl AbilityTag {
+    pub fn is_enable_custom<F>(&self, tag: &dyn LayerTag, condition: &F) -> bool
+    where
+        F: Fn(&dyn LayerTag, &dyn LayerTag, AbilityTagFilter) -> bool,
+    {
+        self.enable.iter().any(|x| {
+            tag.exact_match((*x).deref())
+                && tag.cmp_data_same_type(x.deref())
+                && condition(tag, x.deref(), AbilityTagFilter::Enable)
+        })
+    }
+
+    pub fn is_disable_custom<F>(&self, tag: &dyn LayerTag, condition: &F) -> bool
+    where
+        F: Fn(&dyn LayerTag, &dyn LayerTag, AbilityTagFilter) -> bool,
+    {
+        self.disable.iter().any(|x| {
+            tag.exact_match((*x).deref())
+                && tag.cmp_data_same_type(x.deref())
+                && condition(tag, x.deref(), AbilityTagFilter::Disable)
+        })
+    }
+
+    pub fn check_pass_custom<F>(&self, tag: &dyn LayerTag, condition: &F) -> bool
+    where
+        F: Fn(&dyn LayerTag, &dyn LayerTag, AbilityTagFilter) -> bool,
+    {
+        match self.ability_tag_filter {
+            AbilityTagFilter::Enable => self.is_enable_custom(tag, condition),
+            AbilityTagFilter::Disable => self.is_disable_custom(tag, condition),
+            AbilityTagFilter::EnableAndDisable => {
+                self.is_enable_custom(tag, condition)
+                    && self.is_disable_custom(tag, condition).not()
+            }
+        }
+    }
+
     pub fn is_enable(&self, tag: &dyn LayerTag) -> bool {
-        self.enable.iter().any(|x| tag.exact_match((*x).deref()))
+        self.is_enable_custom(tag, &|_, _, _| true)
     }
 
     pub fn is_disable(&self, tag: &dyn LayerTag) -> bool {
-        self.disable.iter().any(|x| tag.exact_match((*x).deref()))
+        self.is_disable_custom(tag, &|_, _, _| true)
     }
 
     pub fn check_pass(&self, tag: &dyn LayerTag) -> bool {
-        match self.ability_tag_filter {
-            AbilityTagFilter::Enable => self.is_enable(tag),
-            AbilityTagFilter::Disable => self.is_disable(tag),
-            AbilityTagFilter::EnableAndDisable => {
-                self.is_enable(tag) && self.is_disable(tag).not()
-            }
-        }
+        self.check_pass_custom(tag, &|_, _, _| true)
     }
 }
