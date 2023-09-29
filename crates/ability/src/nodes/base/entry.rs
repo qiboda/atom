@@ -31,7 +31,7 @@ impl Plugin for EffectNodeEntryPlugin {
 ///////////////////////// Node Component /////////////////////////
 
 #[derive(Debug, Default, Component)]
-pub struct EffectNodeEntry {}
+pub struct EffectNodeEntry;
 
 impl EffectNodeEntry {
     pub const OUTPUT_EXEC_FINISH: &'static str = "finish";
@@ -83,7 +83,7 @@ pub struct EntryNodeBundle {
 impl EntryNodeBundle {
     pub fn new() -> Self {
         Self {
-            node: EffectNodeEntry::default(),
+            node: EffectNodeEntry,
             base: EffectNodeBaseBundle {
                 effect_node_state: EffectNodeState::default(),
                 uuid: EffectNodeUuid::new(),

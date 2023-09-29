@@ -25,7 +25,6 @@ pub enum EffectNodeState {
     Running,
     Paused,
     Aborted,
-    // when all children node is finished, the graph to set this idle.
     Finished,
 }
 

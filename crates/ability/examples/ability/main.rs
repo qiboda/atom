@@ -2,7 +2,7 @@ mod attribute;
 mod base_attack;
 
 use ability::{
-    ability::AbilityBase,
+    ability::{AbilityBase, AbilityState, reset_graph_node_state},
     bundle::{AbilityBundle, AbilitySubsystemBundle},
     nodes::{
         base::{
@@ -10,17 +10,17 @@ use ability::{
             multiple::EffectNodeMultiplePlugin, timer::EffectNodeTimerPlugin,
         },
         event::EffectEvent,
-        graph::{EffectGraphBundle, EffectGraphContext},
-        EffectGraphPlugin,
+        graph::EffectGraphContext,
+        EffectGraphPlugin, bundle::EffectGraphBundle,
     },
 };
 use attribute::BaseAttributeSet;
-use base_attack::{EffectNodeGraphBaseAttack, EffectNodeGraphBaseAttackPlugin};
+use base_attack::{EffectNodeGraphBaseAttack, EffectNodeGraphPlugin};
 
 use bevy::{
     prelude::{
         App, BuildChildren, Commands, Component, EventWriter, Input, KeyCode, Query, Res, Startup,
-        Update,
+        Update, Last,
     },
     DefaultPlugins,
 };
@@ -36,9 +36,10 @@ fn main() {
         .add_plugins(EffectNodeTimerPlugin)
         .add_plugins(EffectNodeEntryPlugin::default())
         .add_plugins(EffectNodeMultiplePlugin::default())
-        .add_plugins(EffectNodeGraphBaseAttackPlugin::default())
+        .add_plugins(EffectNodeGraphPlugin::<EffectNodeGraphBaseAttack>::default())
         .add_systems(Startup, startup)
         .add_systems(Update, cast_base_skill)
+        .add_systems(Last, reset_graph_node_state)
         .run();
 }
 
@@ -63,20 +64,24 @@ fn startup(mut commands: Commands) {
         .id();
 }
 
+
 /// only can cast once, because node has not reset state.
 fn cast_base_skill(
     input: Res<Input<KeyCode>>,
     query: Query<&EffectGraphContext>,
-    ability_query: Query<&AbilityBase>,
+    mut ability_query: Query<&mut AbilityBase>,
     mut event_writer: EventWriter<EffectEvent>,
 ) {
     if input.just_pressed(KeyCode::Q) {
-        for ability in ability_query.iter() {
-            if let Some(graph) = ability.get_graph() {
-                let graph_context = query.get(graph).unwrap();
-                if let Some(entry_node) = graph_context.entry_node {
-                    let event = EffectEvent::Start(entry_node);
-                    event_writer.send(event);
+        for mut ability in ability_query.iter_mut() {
+            if ability.get_state() == AbilityState::Unactived {
+                if let Some(graph) = ability.get_graph() {
+                    let graph_context = query.get(graph).unwrap();
+                    if let Some(entry_node) = graph_context.entry_node {
+                        ability.set_state(AbilityState::Actived);
+                        let event = EffectEvent::Start(entry_node);
+                        event_writer.send(event);
+                    }
                 }
             }
         }
