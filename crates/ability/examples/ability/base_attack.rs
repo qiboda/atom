@@ -17,11 +17,11 @@ use ability::nodes::{
 };
 
 #[derive(Default)]
-pub struct EffectNodeGraphBaseAttackPlugin {}
+pub struct EffectNodeGraphPlugin<T>(std::marker::PhantomData<T>);
 
-impl Plugin for EffectNodeGraphBaseAttackPlugin {
+impl<T: Component + EffectGraphBuilder> Plugin for EffectNodeGraphPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.add_systems(First, build_graph::<EffectNodeGraphBaseAttack>);
+        app.add_systems(First, build_graph::<T>);
     }
 }
 
@@ -43,8 +43,11 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         let msg_node_uuid = msg_node.effect_node_base.uuid;
 
         let msg_node_entity = commands.spawn(msg_node).set_parent(parent).id();
+        effect_graph_context.insert_node_state(msg_node_entity);
         let timer_node_entity = commands.spawn(timer_node).set_parent(parent).id();
+        effect_graph_context.insert_node_state(timer_node_entity);
         let entry_node_entity = commands.spawn(entry_node).set_parent(parent).id();
+        effect_graph_context.insert_node_state(entry_node_entity);
 
         effect_graph_context.entry_node = Some(entry_node_entity);
 

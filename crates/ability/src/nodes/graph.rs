@@ -1,9 +1,11 @@
+use std::ops::Not;
+
 use bevy::{prelude::*, utils::HashMap};
 
 use super::{blackboard::EffectValue, node::EffectNodeUuid};
 
-/// all children node  is graph nodes.
-pub trait EffectGraph {}
+/// all children node is graph nodes.
+pub trait EffectGraph: EffectGraphBuilder {}
 
 pub trait EffectGraphBuilder {
     fn build(
@@ -30,6 +32,9 @@ pub struct EffectGraphContext {
     pub inputs: HashMap<EffectPinKey, EffectValue>,
 
     pub entry_node: Option<Entity>,
+
+    // bool is active or not
+    pub nodes: Vec<Entity>,
 }
 
 impl EffectGraphContext {
@@ -39,6 +44,7 @@ impl EffectGraphContext {
             outputs: HashMap::default(),
             inputs: HashMap::default(),
             entry_node: None,
+            nodes: vec![],
         }
     }
 }
@@ -67,8 +73,9 @@ impl EffectGraphContext {
     }
 }
 
-#[derive(Debug, Bundle, Default)]
-pub struct EffectGraphBundle<EffectGraphType: EffectGraph + Component + Default> {
-    pub context: EffectGraphContext,
-    pub graph: EffectGraphType,
+impl EffectGraphContext {
+    pub fn insert_node_state(&mut self, node: Entity) {
+        assert!(self.nodes.iter().any(|entity| entity == &node).not());
+        self.nodes.push(node);
+    }
 }

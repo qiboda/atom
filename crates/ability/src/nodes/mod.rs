@@ -1,4 +1,6 @@
-use bevy::prelude::{info, Added, App, Commands, Component, Entity, EventReader, Plugin, Query};
+use bevy::prelude::{
+    info, Added, App, Commands, Component, Entity, EventReader, Last, Plugin, Query,
+};
 
 use self::{
     event::EffectEvent,

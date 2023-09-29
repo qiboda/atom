@@ -1,4 +1,7 @@
-use std::ops::{Deref, Not};
+use std::{
+    fmt::Debug,
+    ops::{Deref, Not},
+};
 
 use bevy::{prelude::Component, utils::HashMap};
 use layertag::layertag::LayerTag;
