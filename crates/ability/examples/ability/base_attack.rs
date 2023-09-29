@@ -5,26 +5,16 @@
 
 use bevy::prelude::*;
 
-use ability::nodes::{
+use ability::graph::{
     base::{
         entry::{EffectNodeEntry, EntryNodeBundle},
-        msg::{EffectNodeMsg, MsgNodeBundle},
+        log::{EffectNodeMsg, MsgNodeBundle},
         timer::{EffectNodeTimer, TimerNodeBundle},
     },
     blackboard::EffectValue,
-    build_graph,
-    graph::{EffectGraph, EffectGraphBuilder, EffectGraphContext, EffectPinKey},
+    builder::{EffectGraph, EffectGraphBuilder},
+    context::{EffectGraphContext, EffectPinKey},
 };
-
-#[derive(Default)]
-pub struct EffectNodeGraphPlugin<T>(std::marker::PhantomData<T>);
-
-impl<T: Component + EffectGraphBuilder> Plugin for EffectNodeGraphPlugin<T> {
-    fn build(&self, app: &mut App) {
-        app.add_systems(First, build_graph::<T>);
-    }
-}
-
 #[derive(Debug, Component, Default)]
 pub struct EffectNodeGraphBaseAttack {}
 

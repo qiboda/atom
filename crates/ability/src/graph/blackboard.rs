@@ -362,7 +362,7 @@ mod test {
 
     use bevy::reflect::Reflect;
 
-    use crate::nodes::blackboard::BlackBoardValue;
+    use crate::graph::blackboard::BlackBoardValue;
 
     use super::EffectValue;
 

@@ -8,7 +8,7 @@ use bevy::{
     reflect::Reflect,
 };
 
-use crate::nodes::{graph::EffectGraphContext, node::EffectNodeState};
+use crate::graph::{context::EffectGraphContext, node::EffectNodeState};
 
 #[derive(Debug, Default, Reflect, Copy, Clone, PartialEq)]
 pub enum AbilityState {

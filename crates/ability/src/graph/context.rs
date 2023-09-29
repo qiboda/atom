@@ -4,18 +4,6 @@ use bevy::{prelude::*, utils::HashMap};
 
 use super::{blackboard::EffectValue, node::EffectNodeUuid};
 
-/// all children node is graph nodes.
-pub trait EffectGraph: EffectGraphBuilder {}
-
-pub trait EffectGraphBuilder {
-    fn build(
-        &self,
-        commands: &mut Commands,
-        effect_graph_context: &mut EffectGraphContext,
-        parent: Entity,
-    );
-}
-
 #[derive(Debug, Component, PartialEq, Eq, Clone, Hash)]
 pub struct EffectPinKey {
     pub node: Entity,
