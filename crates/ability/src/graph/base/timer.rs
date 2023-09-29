@@ -7,7 +7,7 @@ use bevy::{
 
 use lazy_static::lazy_static;
 
-use crate::nodes::{
+use crate::graph::{
     blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
     event::EffectEvent,
@@ -15,7 +15,7 @@ use crate::nodes::{
         EffectDynamicNode, EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin,
         EffectNodePinGroup, EffectNodeState, EffectNodeUuid,
     },
-    receive_effect_event, graph::{EffectGraphContext, EffectPinKey},
+    receive_effect_event, context::{EffectGraphContext, EffectPinKey},
 };
 
 #[derive(Debug)]

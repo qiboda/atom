@@ -9,7 +9,7 @@ use bevy::{
     reflect::Reflect,
 };
 
-use crate::nodes::{
+use crate::graph::{
     blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
     event::EffectEvent,
@@ -17,7 +17,7 @@ use crate::nodes::{
         EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin, EffectNodePinGroup,
         EffectNodeState, EffectNodeUuid,
     },
-    receive_effect_event, graph::{EffectPinKey, EffectGraphContext},
+    receive_effect_event, context::{EffectPinKey, EffectGraphContext},
 };
 
 ///////////////////////// Plugin /////////////////////////

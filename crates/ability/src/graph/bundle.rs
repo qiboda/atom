@@ -1,6 +1,9 @@
 use bevy::prelude::{Bundle, Component};
 
-use super::{node::{EffectNodeState, EffectNodeUuid}, graph::{EffectGraphContext, EffectGraph}};
+use super::{
+    context::EffectGraphContext,
+    node::{EffectNodeState, EffectNodeUuid}, builder::EffectGraph,
+};
 
 #[derive(Debug, Bundle, Default)]
 pub struct EffectNodeBaseBundle {

@@ -1,19 +1,17 @@
-use std::any::TypeId;
-
 use bevy::prelude::{
     info, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query, Update,
 };
 
 use lazy_static::lazy_static;
 
-use crate::nodes::{
+use crate::graph::{
     blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
     event::EffectEvent,
-    graph::{EffectGraphContext, EffectPinKey},
+    context::{EffectGraphContext, EffectPinKey},
     node::{
-        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin, EffectNodePinGroup,
-        EffectNodeState, EffectNodeUuid,
+        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePinGroup, EffectNodeState,
+        EffectNodeUuid,
     },
     receive_effect_event,
 };
@@ -21,46 +19,28 @@ use crate::nodes::{
 ///////////////////////// Plugin /////////////////////////
 
 #[derive(Debug, Default)]
-pub struct EffectNodeMsgPlugin {}
+pub struct EffectNodeEntryPlugin {}
 
-impl Plugin for EffectNodeMsgPlugin {
+impl Plugin for EffectNodeEntryPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, receive_effect_event::<EffectNodeMsg>)
-            .add_systems(Update, update_msg);
-    }
-}
-
-impl EffectNodeMsgPlugin {
-    pub fn new() -> Self {
-        Self {}
+        app.add_systems(PreUpdate, receive_effect_event::<EffectNodeEntry>)
+            .add_systems(Update, update_entry);
     }
 }
 
 ///////////////////////// Node Component /////////////////////////
 
 #[derive(Debug, Default, Component)]
-pub struct EffectNodeMsg {}
+pub struct EffectNodeEntry;
 
-impl EffectNodeMsg {
-    pub const INPUT_EXEC_START: &'static str = "start";
-    pub const INPUT_PIN_MESSAGE: &'static str = "message";
-
+impl EffectNodeEntry {
     pub const OUTPUT_EXEC_FINISH: &'static str = "finish";
-    pub const OUTPUT_PIN_MESSAGE: &'static str = "message";
 }
 
-impl EffectNodePinGroup for EffectNodeMsg {
+impl EffectNodePinGroup for EffectNodeEntry {
     fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
         lazy_static! {
-            static ref INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
-                exec: EffectNodeExec {
-                    name: EffectNodeMsg::INPUT_EXEC_START
-                },
-                pins: vec![EffectNodePin {
-                    name: EffectNodeMsg::INPUT_PIN_MESSAGE,
-                    pin_type: TypeId::of::<String>(),
-                }],
-            }];
+            static ref INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![];
         };
         &INPUT_PIN_GROUPS
     }
@@ -69,7 +49,7 @@ impl EffectNodePinGroup for EffectNodeMsg {
         lazy_static! {
             static ref OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
                 exec: EffectNodeExec {
-                    name: EffectNodeMsg::OUTPUT_EXEC_FINISH
+                    name: EffectNodeEntry::OUTPUT_EXEC_FINISH
                 },
                 pins: vec![],
             }];
@@ -78,7 +58,7 @@ impl EffectNodePinGroup for EffectNodeMsg {
     }
 }
 
-impl EffectNode for EffectNodeMsg {
+impl EffectNode for EffectNodeEntry {
     fn start(&mut self) {}
 
     fn clear(&mut self) {}
@@ -95,16 +75,16 @@ impl EffectNode for EffectNodeMsg {
 ///////////////////////// Node Bundle /////////////////////////
 
 #[derive(Bundle, Debug, Default)]
-pub struct MsgNodeBundle {
-    pub effect_node: EffectNodeMsg,
-    pub effect_node_base: EffectNodeBaseBundle,
+pub struct EntryNodeBundle {
+    pub node: EffectNodeEntry,
+    pub base: EffectNodeBaseBundle,
 }
 
-impl MsgNodeBundle {
+impl EntryNodeBundle {
     pub fn new() -> Self {
         Self {
-            effect_node: EffectNodeMsg::default(),
-            effect_node_base: EffectNodeBaseBundle {
+            node: EffectNodeEntry,
+            base: EffectNodeBaseBundle {
                 effect_node_state: EffectNodeState::default(),
                 uuid: EffectNodeUuid::new(),
             },
@@ -112,46 +92,40 @@ impl MsgNodeBundle {
     }
 }
 
-fn update_msg(
+fn update_entry(
     mut query_graph: Query<&mut EffectGraphContext>,
     mut query: Query<(
         Entity,
-        &EffectNodeMsg,
+        &EffectNodeEntry,
         &mut EffectNodeState,
         &EffectNodeUuid,
         &Parent,
     )>,
     mut event_writer: EventWriter<EffectEvent>,
 ) {
-    for (entity, _msg, mut state, uuid, parent) in query.iter_mut() {
+    for (entity, _entry, mut state, uuid, parent) in query.iter_mut() {
         if *state == EffectNodeState::Running {
             let graph_context = query_graph.get_mut(parent.get()).unwrap();
-
-            let duration_input_key = EffectPinKey {
+            let key = EffectPinKey {
                 node: entity,
                 node_id: *uuid,
-                key: EffectNodeMsg::INPUT_PIN_MESSAGE,
+                key: EffectNodeEntry::OUTPUT_EXEC_FINISH,
             };
-            let duration_value = graph_context.get_input_value(&duration_input_key);
-
-            if let Some(EffectValue::String(message)) = duration_value {
-                info!("{}", message);
-            }
-
-            if let Some(EffectValue::Vec(entities)) =
-                graph_context.get_output_value(&EffectPinKey {
-                    node: entity,
-                    node_id: *uuid,
-                    key: EffectNodeMsg::OUTPUT_EXEC_FINISH,
-                })
-            {
+            info!("next node key: {:?}", key);
+            info!("next node context outputs: {:?}", graph_context.outputs);
+            info!(
+                "next node context get outputs: {:?}",
+                graph_context.get_output_value(&key)
+            );
+            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
+                info!("next node entities: {:?}", entities);
+                info!("next node: {:?}", entities);
                 for entity in entities.iter() {
                     if let EffectValue::Entity(entity) = entity {
                         event_writer.send(EffectEvent::Start(*entity));
                     }
                 }
             }
-
             *state = EffectNodeState::Finished;
         }
     }
