@@ -30,7 +30,7 @@ impl FromTagRegistry for TestTags {
 #[layer_tag(TAG_A, TAG_B, "d")]
 pub struct GenTestTags<T>
 where
-    T: Default + Reflect + TypePath + Debug,
+    T: Default + Reflect + TypePath + Debug + Clone,
 {
     #[reflect(ignore)]
     _data: PhantomData<T>,
@@ -38,7 +38,7 @@ where
 
 impl<T> LayerTagData for GenTestTags<T>
 where
-    T: Default + Reflect + TypePath + Debug,
+    T: Default + Reflect + TypePath + Debug + Clone,
 {
     #[doc = " campare tag data only same tag."]
     fn cmp_data_same_type_inner(&self, rhs: &dyn LayerTag) -> bool {

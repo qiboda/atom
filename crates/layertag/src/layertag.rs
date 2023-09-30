@@ -4,9 +4,13 @@ use bevy::reflect::{reflect_trait, Reflect};
 
 use crate::tag::Tag;
 
+pub trait LayerTagClone {
+    fn box_clone(&self) -> Box<dyn LayerTag>;
+}
+
 /// A tag with data.
 #[reflect_trait]
-pub trait LayerTagData: Reflect + Debug {
+pub trait LayerTagData: Reflect + Debug + LayerTagClone {
     fn cmp_data_same_type_inner(&self, rhs: &dyn LayerTag) -> bool;
 }
 
@@ -85,10 +89,16 @@ mod test {
 
     use once_cell::sync::OnceCell;
 
-    use super::LayerTagData;
+    use super::{LayerTagClone, LayerTagData};
 
     #[derive(Reflect, Debug, Clone)]
     struct TestTag;
+
+    impl LayerTagClone for TestTag {
+        fn box_clone(&self) -> Box<dyn LayerTag> {
+            Box::new(self.clone())
+        }
+    }
 
     impl LayerTag for TestTag {
         fn tag(&self) -> &[Tag] {
@@ -121,6 +131,12 @@ mod test {
         }
     }
 
+    impl LayerTagClone for TestTag2 {
+        fn box_clone(&self) -> Box<dyn LayerTag> {
+            Box::new(self.clone())
+        }
+    }
+
     impl LayerTagData for TestTag2 {
         fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
             true
@@ -129,6 +145,12 @@ mod test {
 
     #[derive(Reflect, Debug, Clone)]
     struct TestTag3 {}
+
+    impl LayerTagClone for TestTag3 {
+        fn box_clone(&self) -> Box<dyn LayerTag> {
+            Box::new(self.clone())
+        }
+    }
 
     impl LayerTag for TestTag3 {
         fn tag(&self) -> &[Tag] {

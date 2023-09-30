@@ -28,6 +28,7 @@ pub enum EffectNodeState {
     Finished,
 }
 
+/// use for deserialize and serialize
 #[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct EffectNodeUuid {
     pub uuid: Uuid,
