@@ -15,6 +15,7 @@ use ability::graph::{
     builder::{EffectGraph, EffectGraphBuilder},
     context::{EffectGraphContext, EffectPinKey},
 };
+
 #[derive(Debug, Component, Default)]
 pub struct EffectNodeGraphBaseAttack {}
 

@@ -1,4 +1,3 @@
-pub mod ability_tag;
 pub mod event;
 
 use std::fmt::Debug;

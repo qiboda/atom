@@ -15,6 +15,12 @@ pub fn derive_layertag(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = derive_input.generics.split_for_impl();
 
     let ts = quote!(
+        impl #impl_generics layertag::layertag::LayerTagClone for #ident #ty_generics #where_clause {
+            fn box_clone(&self) -> Box<dyn layertag::layertag::LayerTag> {
+                Box::new(self.clone())
+            }
+        }
+
         impl #impl_generics layertag::layertag::LayerTag for #ident #ty_generics #where_clause {
             fn tag(&self) -> &[layertag::tag::Tag] {
                 static CELL:once_cell::sync::OnceCell<Vec<layertag::tag::Tag>> = once_cell::sync::OnceCell::new();
