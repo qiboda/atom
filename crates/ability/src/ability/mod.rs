@@ -3,9 +3,11 @@ pub mod event;
 use std::fmt::Debug;
 
 use bevy::{
-    prelude::{Component, Entity, Query},
-    reflect::Reflect,
+    prelude::{Component, Query},
+    reflect::Reflect
 };
+
+use crate::graph::context::GraphRef;
 
 #[derive(Debug, Default, Reflect, Copy, Clone, PartialEq)]
 pub enum AbilityState {
@@ -22,11 +24,11 @@ pub enum AbilityState {
 #[derive(Debug, Reflect, Component, Default, Clone)]
 pub struct AbilityBase {
     state: AbilityState,
-    graph: Option<Entity>,
+    graph: Option<GraphRef>,
 }
 
 impl AbilityBase {
-    pub fn new(graph: Entity) -> Self {
+    pub fn new(graph: GraphRef) -> Self {
         Self {
             state: AbilityState::Unactived,
             graph: Some(graph),
@@ -41,11 +43,11 @@ impl AbilityBase {
         self.state = state;
     }
 
-    pub fn get_graph(&self) -> Option<Entity> {
+    pub fn get_graph(&self) -> Option<GraphRef> {
         self.graph
     }
 
-    pub fn set_graph(&mut self, graph: Entity) {
+    pub fn set_graph(&mut self, graph: GraphRef) {
         self.graph = Some(graph);
     }
 }

@@ -10,7 +10,7 @@ use ability::{
             multiple::EffectNodeMultiplePlugin, timer::EffectNodeTimerPlugin,
         },
         bundle::EffectGraphBundle,
-        context::EffectGraphContext,
+        context::{EffectGraphContext, GraphRef},
         event::EffectEvent,
         EffectGraphPlugin, EffectNodeGraphPlugin,
     },
@@ -20,8 +20,8 @@ use base_attack::EffectNodeGraphBaseAttack;
 
 use bevy::{
     prelude::{
-        App, BuildChildren, Commands, Component, EventWriter, Input, KeyCode, Query, Res, Startup,
-        Update, info,
+        info, App, BuildChildren, Commands, Component, EventWriter, Input, KeyCode, Query, Res,
+        Startup, Update,
     },
     DefaultPlugins,
 };
@@ -58,7 +58,7 @@ fn startup(mut commands: Commands) {
 
     let _ability_entity = commands
         .spawn(AbilityBundle {
-            ability: AbilityBase::new(base_attack_graph_entity),
+            ability: AbilityBase::new(GraphRef::new(base_attack_graph_entity)),
             tag_contaier: Default::default(),
         })
         .set_parent(ability_subsystem_entity)
@@ -77,7 +77,7 @@ fn cast_base_skill(
         for ability in ability_query.iter_mut() {
             if ability.get_state() == AbilityState::Unactived {
                 if let Some(graph) = ability.get_graph() {
-                    let graph_context = query.get(graph).unwrap();
+                    let graph_context = query.get(graph.get_entity()).unwrap();
                     if let Some(entry_node) = graph_context.entry_node {
                         // ability.set_state(AbilityState::Actived);
                         let event = EffectEvent::Start(entry_node);
