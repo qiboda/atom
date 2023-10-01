@@ -4,7 +4,7 @@ use bevy::{prelude::*, utils::HashMap};
 
 use super::{blackboard::EffectValue, node::EffectNodeUuid};
 
-#[derive(Component, Debug, PartialEq, Eq, Clone, Hash, Reflect)]
+#[derive(Component, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect)]
 pub struct GraphRef(Entity);
 
 impl GraphRef {
