@@ -1,9 +1,13 @@
-use std::{fmt::Debug, ops::ControlFlow};
+use std::{
+    fmt::Debug,
+    ops::{ControlFlow, Deref, DerefMut},
+};
 
-use bevy::reflect::{reflect_trait, Reflect};
+use bevy::reflect::{reflect_trait, FromReflect, Reflect, TypePath};
 
 use crate::tag::Tag;
 
+#[reflect_trait]
 pub trait LayerTagClone {
     fn box_clone(&self) -> Box<dyn LayerTag>;
 }
@@ -77,6 +81,114 @@ pub trait LayerTag: LayerTagData {
     fn cmp_data_same_type(&self, rhs: &dyn LayerTag) -> bool {
         assert!(self.tag() == rhs.tag());
         self.cmp_data_same_type_inner(rhs)
+    }
+}
+
+impl TypePath for Box<dyn LayerTag> {
+    fn type_path() -> &'static str {
+        core::concat!(
+            core::concat!(core::module_path!(), "::"),
+            "Box<dyn LayerTag>"
+        )
+    }
+
+    fn short_type_path() -> &'static str {
+        "Box<dyn LayerTag>"
+    }
+
+    fn type_ident() -> Option<&'static str> {
+        Some("Box<dyn LayerTag>")
+    }
+
+    fn crate_name() -> Option<&'static str> {
+        Some(core::module_path!().split(':').next().unwrap())
+    }
+
+    fn module_path() -> Option<&'static str> {
+        Some(core::module_path!())
+    }
+}
+
+impl Reflect for Box<dyn LayerTag> {
+    fn type_name(&self) -> &str {
+        core::any::type_name::<Self>()
+    }
+
+    fn get_represented_type_info(&self) -> Option<&'static bevy::reflect::TypeInfo> {
+        self.deref().get_represented_type_info()
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+        self
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn into_reflect(self: Box<Self>) -> Box<dyn Reflect> {
+        self
+    }
+
+    fn as_reflect(&self) -> &dyn Reflect {
+        self
+    }
+
+    fn as_reflect_mut(&mut self) -> &mut dyn Reflect {
+        self
+    }
+
+    fn apply(&mut self, value: &dyn Reflect) {
+        self.deref_mut().apply(value)
+    }
+
+    fn set(&mut self, value: Box<dyn Reflect>) -> Result<(), Box<dyn Reflect>> {
+        *self = <dyn Reflect>::take(value)?;
+        Ok(())
+    }
+
+    fn reflect_ref(&self) -> bevy::reflect::ReflectRef {
+        self.deref().reflect_ref()
+    }
+
+    fn reflect_mut(&mut self) -> bevy::reflect::ReflectMut {
+        self.deref_mut().reflect_mut()
+    }
+
+    fn reflect_owned(self: Box<Self>) -> bevy::reflect::ReflectOwned {
+        // ReflectOwned::Value(self)
+        self.deref().box_clone().reflect_owned()
+    }
+
+    fn reflect_hash(&self) -> Option<u64> {
+        self.deref().reflect_hash()
+    }
+
+    fn reflect_partial_eq(&self, _value: &dyn Reflect) -> Option<bool> {
+        self.deref().reflect_partial_eq(_value)
+    }
+
+    fn serializable(&self) -> Option<bevy::reflect::serde::Serializable> {
+        None
+    }
+
+    fn is_dynamic(&self) -> bool {
+        false
+    }
+
+    fn clone_value(&self) -> Box<dyn Reflect> {
+        self.deref().clone_value()
+    }
+}
+
+impl FromReflect for Box<dyn LayerTag> {
+    fn from_reflect(reflect: &dyn Reflect) -> Option<Self> {
+        let v = reflect.downcast_ref::<Box<dyn LayerTag>>()?;
+        Some(v.box_clone())
     }
 }
 

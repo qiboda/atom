@@ -1,4 +1,4 @@
-use bevy::prelude::Bundle;
+use bevy::{prelude::Bundle, reflect::Reflect};
 use layertag::container::LayerTagContainer;
 
 use crate::{ability::AbilityBase, attribute::attribute_set::AttributeSet};
@@ -25,7 +25,7 @@ pub struct AbilitySubsystemBundle<T: AttributeSet> {
     pub state_set: LayerTagContainer,
 }
 
-#[derive(Bundle)]
+#[derive(Bundle, Reflect, Clone)]
 pub struct AbilityBundle {
     pub ability: AbilityBase,
     pub tag_contaier: LayerTagContainer,

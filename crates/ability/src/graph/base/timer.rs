@@ -1,6 +1,7 @@
 use bevy::{
     prelude::{
-        App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query, Res, Update,
+        App, Bundle, Commands, Component, Entity, EventWriter, Parent, Plugin,
+        Query, Res, Update,
     },
     time::Time,
 };
@@ -10,12 +11,12 @@ use lazy_static::lazy_static;
 use crate::graph::{
     blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
-    event::EffectEvent,
+    context::{EffectGraphContext, EffectPinKey},
+    event::{EffectEvent, EffectNodeEventPlugin},
     node::{
         EffectDynamicNode, EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin,
         EffectNodePinGroup, EffectNodeState, EffectNodeUuid,
     },
-    receive_effect_event, context::{EffectGraphContext, EffectPinKey},
 };
 
 #[derive(Debug)]
@@ -23,7 +24,7 @@ pub struct EffectNodeTimerPlugin;
 
 impl Plugin for EffectNodeTimerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, receive_effect_event::<EffectNodeTimer>)
+        app.add_plugins(EffectNodeEventPlugin::<EffectNodeTimer>::default())
             .add_systems(Update, update_timer);
     }
 }
@@ -48,16 +49,24 @@ impl TimerNodeBundle {
 
 #[derive(Clone, Debug, Default, Component)]
 pub struct EffectNodeTimer {
-    pub elapse: f32,
+    pub elapse: Vec<f32>,
 }
 
 impl EffectNode for EffectNodeTimer {
-    fn start(&mut self) {
-        self.elapse = 0.0;
+    fn start(
+        &mut self,
+        _commands: &mut Commands,
+        _node_entity: Entity,
+        _node_uuid: &EffectNodeUuid,
+        _node_state: &mut EffectNodeState,
+        _graph_context: &mut EffectGraphContext,
+        _event_writer: &mut EventWriter<EffectEvent>,
+    ) {
+        self.elapse.push(0.0);
     }
 
     fn clear(&mut self) {
-        self.elapse = 0.0;
+        self.elapse.clear();
     }
 
     fn abort(&mut self) {
@@ -76,6 +85,7 @@ impl EffectDynamicNode for EffectNodeTimer {}
 impl EffectNodeTimer {
     pub const INPUT_EXEC_START: &'static str = "start";
     pub const INPUT_PIN_DURATION: &'static str = "duration";
+
     pub const OUTPUT_EXEC_FINISH: &'static str = "finish";
 }
 
@@ -113,29 +123,29 @@ fn update_timer(
     mut query: Query<(
         Entity,
         &mut EffectNodeTimer,
-        &mut EffectNodeState,
+        &EffectNodeState,
         &EffectNodeUuid,
         &Parent,
     )>,
     mut event_writer: EventWriter<EffectEvent>,
     time: Res<Time>,
 ) {
-    for (entity, mut timer, mut state, uuid, parent) in query.iter_mut() {
-        if *state == EffectNodeState::Running {
-            let elapse = timer.elapse + time.delta_seconds();
-            timer.elapse = elapse;
+    for (entity, mut timer, _state, uuid, parent) in query.iter_mut() {
+        let graph_context = graph_query.get(parent.get()).unwrap();
 
-            let graph_context = graph_query.get(parent.get()).unwrap();
+        let input_key = EffectPinKey {
+            node: entity,
+            node_id: *uuid,
+            key: EffectNodeTimer::INPUT_PIN_DURATION,
+        };
+        if let Some(EffectValue::F32(duration_value)) = graph_context.get_input_value(&input_key) {
+            timer
+                .elapse
+                .iter_mut()
+                .for_each(|x| *x += time.delta_seconds());
 
-            let input_key = EffectPinKey {
-                node: entity,
-                node_id: *uuid,
-                key: EffectNodeTimer::INPUT_PIN_DURATION,
-            };
-            if let Some(EffectValue::F32(duration_value)) =
-                graph_context.get_input_value(&input_key)
-            {
-                if timer.elapse >= *duration_value {
+            timer.elapse.retain(|x| {
+                if x >= duration_value {
                     if let Some(EffectValue::Vec(entities)) =
                         graph_context.get_output_value(&EffectPinKey {
                             node: entity,
@@ -149,10 +159,10 @@ fn update_timer(
                             }
                         }
                     }
-
-                    *state = EffectNodeState::Finished;
+                    return false;
                 }
-            }
+                true
+            });
         }
     }
 }

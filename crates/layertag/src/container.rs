@@ -5,11 +5,19 @@ use std::{
 };
 
 use crate::layertag::LayerTag;
-use bevy::prelude::Component;
+use bevy::{prelude::Component, reflect::Reflect};
 
-#[derive(Debug, Component, Default)]
+#[derive(Debug, Component, Default, Reflect)]
 pub struct LayerTagContainer {
     tags: Vec<Box<dyn LayerTag>>,
+}
+
+impl Clone for LayerTagContainer {
+    fn clone(&self) -> Self {
+        Self {
+            tags: self.tags.iter().map(|x| x.box_clone()).collect(),
+        }
+    }
 }
 
 impl LayerTagContainer {
@@ -42,7 +50,11 @@ impl LayerTagContainer {
         op.operate(self, apply);
     }
 
-    pub fn condition(&self, condition: impl LayerTagContainerCondition, rhs: &LayerTagContainer) -> bool {
+    pub fn condition(
+        &self,
+        condition: impl LayerTagContainerCondition,
+        rhs: &LayerTagContainer,
+    ) -> bool {
         condition.condition(self, rhs)
     }
 }
@@ -91,8 +103,17 @@ struct LayerTagContainerConditionWithout;
 
 impl LayerTagContainerCondition for LayerTagContainerConditionWithout {
     fn condition(&self, container: &LayerTagContainer, without: &LayerTagContainer) -> bool {
-        without
-            .iter()
-            .all(|x| container.iter().any(|y| x.deref().exact_match(y.deref())).not())
+        without.iter().all(|x| {
+            container
+                .iter()
+                .any(|y| x.deref().exact_match(y.deref()))
+                .not()
+        })
     }
 }
+
+#[derive(Component, Debug, Default, Reflect)]
+pub struct RequiredLayerTagContainer(LayerTagContainer);
+
+#[derive(Component, Debug, Default, Reflect)]
+pub struct DisableLayerTagContainer(LayerTagContainer);

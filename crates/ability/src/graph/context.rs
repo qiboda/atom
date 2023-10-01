@@ -4,6 +4,19 @@ use bevy::{prelude::*, utils::HashMap};
 
 use super::{blackboard::EffectValue, node::EffectNodeUuid};
 
+#[derive(Component, Debug, PartialEq, Eq, Clone, Hash, Reflect)]
+pub struct GraphRef(Entity);
+
+impl GraphRef {
+    pub fn new(entity: Entity) -> Self {
+        Self(entity)
+    }
+
+    pub fn get_entity(&self) -> Entity {
+        self.0
+    }
+}
+
 #[derive(Debug, Component, PartialEq, Eq, Clone, Hash)]
 pub struct EffectPinKey {
     pub node: Entity,
@@ -46,6 +59,10 @@ impl EffectGraphContext {
         self.inputs.get(key)
     }
 
+    pub fn get_output_value_mut(&mut self, key: &EffectPinKey) -> Option<&mut EffectValue> {
+        self.outputs.get_mut(key)
+    }
+
     pub fn get_output_value(&self, key: &EffectPinKey) -> Option<&EffectValue> {
         self.outputs.get(key)
     }
@@ -62,7 +79,7 @@ impl EffectGraphContext {
 }
 
 impl EffectGraphContext {
-    pub fn insert_node_state(&mut self, node: Entity) {
+    pub fn insert_node(&mut self, node: Entity) {
         assert!(self.nodes.iter().any(|entity| entity == &node).not());
         self.nodes.push(node);
     }

@@ -1,5 +1,5 @@
 use bevy::prelude::{
-    info, App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PreUpdate, Query, Update,
+    App, Bundle, Commands, Component, Entity, EventWriter, Plugin
 };
 
 use lazy_static::lazy_static;
@@ -7,13 +7,12 @@ use lazy_static::lazy_static;
 use crate::graph::{
     blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
-    event::EffectEvent,
     context::{EffectGraphContext, EffectPinKey},
+    event::{EffectEvent, EffectNodeEventPlugin},
     node::{
         EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePinGroup, EffectNodeState,
         EffectNodeUuid,
     },
-    receive_effect_event,
 };
 
 ///////////////////////// Plugin /////////////////////////
@@ -23,8 +22,7 @@ pub struct EffectNodeEntryPlugin {}
 
 impl Plugin for EffectNodeEntryPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, receive_effect_event::<EffectNodeEntry>)
-            .add_systems(Update, update_entry);
+        app.add_plugins(EffectNodeEventPlugin::<EffectNodeEntry>::default());
     }
 }
 
@@ -59,7 +57,28 @@ impl EffectNodePinGroup for EffectNodeEntry {
 }
 
 impl EffectNode for EffectNodeEntry {
-    fn start(&mut self) {}
+    fn start(
+        &mut self,
+        _commands: &mut Commands,
+        node_entity: Entity,
+        node_uuid: &EffectNodeUuid,
+        _node_state: &mut EffectNodeState,
+        graph_context: &mut EffectGraphContext,
+        event_writer: &mut EventWriter<EffectEvent>,
+    ) {
+        let key = EffectPinKey {
+            node: node_entity,
+            node_id: *node_uuid,
+            key: EffectNodeEntry::OUTPUT_EXEC_FINISH,
+        };
+        if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
+            for entity in entities.iter() {
+                if let EffectValue::Entity(entity) = entity {
+                    event_writer.send(EffectEvent::Start(*entity));
+                }
+            }
+        }
+    }
 
     fn clear(&mut self) {}
 
@@ -92,41 +111,18 @@ impl EntryNodeBundle {
     }
 }
 
-fn update_entry(
-    mut query_graph: Query<&mut EffectGraphContext>,
-    mut query: Query<(
-        Entity,
-        &EffectNodeEntry,
-        &mut EffectNodeState,
-        &EffectNodeUuid,
-        &Parent,
-    )>,
-    mut event_writer: EventWriter<EffectEvent>,
-) {
-    for (entity, _entry, mut state, uuid, parent) in query.iter_mut() {
-        if *state == EffectNodeState::Running {
-            let graph_context = query_graph.get_mut(parent.get()).unwrap();
-            let key = EffectPinKey {
-                node: entity,
-                node_id: *uuid,
-                key: EffectNodeEntry::OUTPUT_EXEC_FINISH,
-            };
-            info!("next node key: {:?}", key);
-            info!("next node context outputs: {:?}", graph_context.outputs);
-            info!(
-                "next node context get outputs: {:?}",
-                graph_context.get_output_value(&key)
-            );
-            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
-                info!("next node entities: {:?}", entities);
-                info!("next node: {:?}", entities);
-                for entity in entities.iter() {
-                    if let EffectValue::Entity(entity) = entity {
-                        event_writer.send(EffectEvent::Start(*entity));
-                    }
-                }
-            }
-            *state = EffectNodeState::Finished;
-        }
-    }
-}
+// fn update_entry(
+//     mut query_graph: Query<&mut EffectGraphContext>,
+//     mut query: Query<(
+//         Entity,
+//         &EffectNodeEntry,
+//         &mut EffectNodeState,
+//         &EffectNodeUuid,
+//         &Parent,
+//     )>,
+//     mut event_writer: EventWriter<EffectEvent>,
+// ) {
+//     for (entity, _entry, mut state, uuid, parent) in query.iter_mut() {
+//         if *state == EffectNodeState::Running {}
+//     }
+// }
