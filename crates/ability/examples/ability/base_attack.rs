@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use ability::graph::{
     base::{
         entry::{EffectNodeEntry, EntryNodeBundle},
-        log::{EffectNodeMsg, MsgNodeBundle},
+        log::{EffectNodeLog, LogNodeBundle},
         timer::{EffectNodeTimer, TimerNodeBundle},
     },
     blackboard::EffectValue,
@@ -30,15 +30,15 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         let entry_node_uuid = entry_node.base.uuid;
         let timer_node = TimerNodeBundle::new();
         let timer_node_uuid = timer_node.base.uuid;
-        let msg_node = MsgNodeBundle::new();
+        let msg_node = LogNodeBundle::new();
         let msg_node_uuid = msg_node.effect_node_base.uuid;
 
         let msg_node_entity = commands.spawn(msg_node).set_parent(parent).id();
-        effect_graph_context.insert_node_state(msg_node_entity);
+        effect_graph_context.insert_node(msg_node_entity);
         let timer_node_entity = commands.spawn(timer_node).set_parent(parent).id();
-        effect_graph_context.insert_node_state(timer_node_entity);
+        effect_graph_context.insert_node(timer_node_entity);
         let entry_node_entity = commands.spawn(entry_node).set_parent(parent).id();
-        effect_graph_context.insert_node_state(entry_node_entity);
+        effect_graph_context.insert_node(entry_node_entity);
 
         effect_graph_context.entry_node = Some(entry_node_entity);
 
@@ -73,7 +73,7 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
             EffectPinKey {
                 node: msg_node_entity,
                 node_id: msg_node_uuid,
-                key: EffectNodeMsg::INPUT_PIN_MESSAGE,
+                key: EffectNodeLog::INPUT_PIN_MESSAGE,
             },
             EffectValue::String("message log".into()),
         );

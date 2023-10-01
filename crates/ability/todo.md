@@ -39,3 +39,11 @@
 9. ability state to component
 
 10. ability graph ref to component
+
+11. impl effect as buff and debuff, as if dota2 modifier. effect need a single graph, because  will grant to other units sometimes.
+
+12. gameplay cue don't need, just a graph node.
+
+13. ability to effectgraph: insert effect to call effect graph.
+
+14. use one of lazy_static and once_cell.

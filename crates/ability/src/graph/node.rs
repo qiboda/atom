@@ -1,9 +1,24 @@
 use std::any::TypeId;
 
-use bevy::{prelude::Component, reflect::reflect_trait, utils::Uuid};
+use bevy::{
+    prelude::{Commands, Component, Entity, EventWriter},
+    reflect::reflect_trait,
+    utils::Uuid,
+};
+
+use super::{context::EffectGraphContext, event::EffectEvent};
 
 pub trait EffectNode {
-    fn start(&mut self);
+    fn start(
+        &mut self,
+        commands: &mut Commands,
+        node_entity: Entity,
+        node_uuid: &EffectNodeUuid,
+        node_state: &mut EffectNodeState,
+        graph_context: &mut EffectGraphContext,
+        event_writer: &mut EventWriter<EffectEvent>,
+    );
+
     fn clear(&mut self);
     fn abort(&mut self);
 
@@ -21,11 +36,8 @@ pub trait EffectDynamicNode: EffectNode {}
 #[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
 pub enum EffectNodeState {
     #[default]
-    Idle,
-    Running,
+    Default,
     Paused,
-    Aborted,
-    Finished,
 }
 
 /// use for deserialize and serialize

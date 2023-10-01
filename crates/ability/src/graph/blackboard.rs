@@ -27,7 +27,7 @@ pub enum EffectValue {
     BoxReflect(Box<dyn Reflect>),
 }
 
-trait BlackBoardValue {
+pub trait BlackBoardValue {
     fn get<'a, T>(&'a self) -> Result<T, T::Error>
     where
         T: TryFrom<&'a Self>;
@@ -38,6 +38,22 @@ trait BlackBoardValue {
 }
 
 impl BlackBoardValue for EffectValue {
+    fn get<'a, T>(&'a self) -> Result<T, T::Error>
+    where
+        T: TryFrom<&'a Self>,
+    {
+        self.try_into()
+    }
+
+    fn get_mut<'a, T>(&'a mut self) -> Result<T, T::Error>
+    where
+        T: TryFrom<&'a mut Self>,
+    {
+        self.try_into()
+    }
+}
+
+impl BlackBoardValue for &EffectValue {
     fn get<'a, T>(&'a self) -> Result<T, T::Error>
     where
         T: TryFrom<&'a Self>,
