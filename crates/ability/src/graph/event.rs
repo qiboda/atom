@@ -1,8 +1,12 @@
 use bevy::prelude::*;
 
+use crate::graph::node::{
+    EffectNodeAbortContext, EffectNodePauseContext, EffectNodeResumeContext, EffectNodeStartContext,
+};
+
 use super::{
     context::EffectGraphContext,
-    node::{EffectNode, EffectNodeState, EffectNodeUuid},
+    node::{EffectNode, EffectNodeExecuteState, EffectNodeTickState, EffectNodeUuid},
 };
 
 // #[derive(SystemSet, Hash, Debug, PartialEq, Eq, Clone)]
@@ -99,35 +103,45 @@ pub fn receive_effect_event<T: EffectNode + Component>(
 
 pub fn handle_effect_event<T: EffectNode + Component>(
     mut commands: Commands,
-    mut query: Query<(&mut T, &EffectNodeUuid, &mut EffectNodeState, &Parent)>,
+    mut query: Query<(
+        &mut T,
+        &EffectNodeUuid,
+        &mut EffectNodeExecuteState,
+        &mut EffectNodeTickState,
+        &Parent,
+    )>,
     pending: Res<EffectNodePending<T>>,
     mut graph_query: Query<&mut EffectGraphContext>,
     mut event_writer: EventWriter<EffectEvent>,
 ) {
     for start_entity in pending.pending_start.iter() {
-        if let Ok((mut node, node_uuid, mut state, parent)) = query.get_mut(*start_entity) {
-            if *state != EffectNodeState::Paused {
-                info!(
-                    "node {} start: {:?}",
-                    std::any::type_name::<T>(),
-                    start_entity
-                );
-                let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
-                node.start(
-                    &mut commands,
-                    *start_entity,
-                    node_uuid,
-                    &mut state,
-                    &mut graph_context,
-                    &mut event_writer,
-                );
-            }
+        if let Ok((mut node, node_uuid, mut state, mut tick_state, parent)) =
+            query.get_mut(*start_entity)
+        {
+            info!(
+                "node {} start: {:?}",
+                std::any::type_name::<T>(),
+                start_entity
+            );
+            let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
+            let context = EffectNodeStartContext {
+                commands: &mut commands,
+                node_entity: *start_entity,
+                node_uuid,
+                node_tick_state: &mut tick_state,
+                node_state: &mut state,
+                graph_context: &mut graph_context,
+                event_writer: &mut event_writer,
+            };
+            node.start(context);
         }
     }
 
     for pause_entity in pending.pending_pause.iter() {
-        if let Ok((mut node, _node_uuid, state, parent)) = query.get_mut(*pause_entity) {
-            if *state == EffectNodeState::Paused {
+        if let Ok((mut node, node_uuid, mut node_state, mut tick_state, parent)) =
+            query.get_mut(*pause_entity)
+        {
+            if *tick_state == EffectNodeTickState::Paused {
                 continue;
             }
             info!(
@@ -135,55 +149,59 @@ pub fn handle_effect_event<T: EffectNode + Component>(
                 std::any::type_name::<T>(),
                 pause_entity
             );
-            let mut _graph_context = graph_query.get_mut(parent.get()).unwrap();
-            node.pause(
-                    // &mut commands,
-                    // *pause_entity,
-                    // node_uuid,
-                    // &mut state,
-                    // &mut graph_context,
-                    // &mut event_writer,
-                );
+            let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
+            let context = EffectNodePauseContext {
+                node_entity: *pause_entity,
+                node_uuid,
+                node_tick_state: &mut tick_state,
+                node_state: &mut node_state,
+                graph_context: &mut graph_context,
+            };
+            node.pause(context);
         }
     }
 
     for resume_entity in pending.pending_resume.iter() {
-        if let Ok((mut node, _node_uuid, state, parent)) = query.get_mut(*resume_entity) {
-            if *state == EffectNodeState::Paused {
+        if let Ok((mut node, node_uuid, mut node_state, mut tick_state, parent)) =
+            query.get_mut(*resume_entity)
+        {
+            if *tick_state == EffectNodeTickState::Paused {
                 info!(
                     "node {} resume: {:?}",
                     std::any::type_name::<T>(),
                     resume_entity
                 );
-                let mut _graph_context = graph_query.get_mut(parent.get()).unwrap();
-                node.resume(
-                    // &mut commands,
-                    // *resume_entity,
-                    // node_uuid,
-                    // &mut state,
-                    // &mut graph_context,
-                    // &mut event_writer,
-                );
+                let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
+                let context = EffectNodeResumeContext {
+                    node_entity: *resume_entity,
+                    node_uuid,
+                    node_tick_state: &mut tick_state,
+                    node_state: &mut node_state,
+                    graph_context: &mut graph_context,
+                };
+                node.resume(context);
             }
         }
     }
 
     for abort_entity in pending.pending_abort.iter() {
-        if let Ok((mut node, _node_uuid, mut _state, _parent)) = query.get_mut(*abort_entity) {
+        if let Ok((mut node, node_uuid, mut node_state, mut tick_state, parent)) =
+            query.get_mut(*abort_entity)
+        {
             info!(
                 "node {} abort: {:?}",
                 std::any::type_name::<T>(),
                 abort_entity
             );
-            // let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
-            node.abort(
-                    // &mut commands,
-                    // *abort_entity,
-                    // node_uuid,
-                    // &mut state,
-                    // &mut graph_context,
-                    // &mut event_writer,
-                );
+            let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
+            let context = EffectNodeAbortContext {
+                node_entity: *abort_entity,
+                node_uuid,
+                node_tick_state: &mut tick_state,
+                node_state: &mut node_state,
+                graph_context: &mut graph_context,
+            };
+            node.abort(context);
         }
     }
 }

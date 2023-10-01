@@ -3,18 +3,18 @@ use std::any::TypeId;
 use lazy_static::lazy_static;
 
 use bevy::{
-    prelude::{App, Bundle, Commands, Component, Entity, Plugin, EventWriter},
+    prelude::{App, Bundle, Component, Entity, Plugin},
     reflect::Reflect,
 };
 
 use crate::graph::{
     blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
-    context::{EffectGraphContext, EffectPinKey},
+    context::EffectPinKey,
     event::{EffectEvent, EffectNodeEventPlugin},
     node::{
-        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin, EffectNodePinGroup,
-        EffectNodeState, EffectNodeUuid,
+        EffectNode, EffectNodeAbortContext, EffectNodeExec, EffectNodeExecGroup,
+        EffectNodeExecuteState, EffectNodePin, EffectNodePinGroup, EffectNodeStartContext, EffectNodeTickState, EffectNodeUuid,
     },
 };
 
@@ -92,28 +92,20 @@ impl EffectNodePinGroup for EffectNodeMultiple {
 }
 
 impl EffectNode for EffectNodeMultiple {
-    fn start(
-        &mut self,
-        _commands: &mut Commands,
-        node_entity: Entity,
-        node_uuid: &EffectNodeUuid,
-        _node_state: &mut EffectNodeState,
-        graph_context: &mut EffectGraphContext,
-        event_writer: &mut EventWriter<EffectEvent>,
-    ) {
+    fn start(&mut self, context: EffectNodeStartContext) {
         let a_input_key = EffectPinKey {
-            node: node_entity,
-            node_id: *node_uuid,
+            node: context.node_entity,
+            node_id: *context.node_uuid,
             key: EffectNodeMultiple::INPUT_PIN_A,
         };
-        let a_value = graph_context.get_input_value(&a_input_key);
+        let a_value = context.graph_context.get_input_value(&a_input_key);
 
         let b_input_key = EffectPinKey {
-            node: node_entity,
-            node_id: *node_uuid,
+            node: context.node_entity,
+            node_id: *context.node_uuid,
             key: EffectNodeMultiple::INPUT_PIN_B,
         };
-        let b_value = graph_context.get_input_value(&b_input_key);
+        let b_value = context.graph_context.get_input_value(&b_input_key);
 
         let mut c = EffectValue::F32(0.0);
         if let (Some(&EffectValue::F32(a)), Some(&EffectValue::F32(b))) = (a_value, b_value) {
@@ -121,37 +113,32 @@ impl EffectNode for EffectNodeMultiple {
         }
 
         let c_output_key = EffectPinKey {
-            node: node_entity,
-            node_id: *node_uuid,
+            node: context.node_entity,
+            node_id: *context.node_uuid,
             key: EffectNodeMultiple::OUTPUT_PIN_C,
         };
 
-        if let Some(c_value) = graph_context.get_input_value_mut(&c_output_key) {
+        if let Some(c_value) = context.graph_context.get_input_value_mut(&c_output_key) {
             *c_value = c;
         }
 
-        if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&EffectPinKey {
-            node: node_entity,
-            node_id: *node_uuid,
-            key: EffectNodeMultiple::OUTPUT_EXEC_FINISH,
-        }) {
+        if let Some(EffectValue::Vec(entities)) =
+            context.graph_context.get_output_value(&EffectPinKey {
+                node: context.node_entity,
+                node_id: *context.node_uuid,
+                key: EffectNodeMultiple::OUTPUT_EXEC_FINISH,
+            })
+        {
             for entity in entities.iter() {
                 if let EffectValue::Entity(entity) = entity {
-                    event_writer.send(EffectEvent::Start(*entity));
+                    context.event_writer.send(EffectEvent::Start(*entity));
                 }
             }
         }
     }
 
-    fn clear(&mut self) {}
+    fn abort(&mut self, _context: EffectNodeAbortContext) {}
 
-    fn abort(&mut self) {}
-
-    fn update(&mut self) {}
-
-    fn pause(&mut self) {}
-
-    fn resume(&mut self) {}
 }
 
 ///////////////////////// Node Bundle /////////////////////////
@@ -167,7 +154,8 @@ impl MultipleNodeBundle {
         Self {
             effect_node: EffectNodeMultiple::default(),
             effect_node_base: EffectNodeBaseBundle {
-                effect_node_state: EffectNodeState::default(),
+                execute_state: EffectNodeExecuteState::default(),
+                tick_state: EffectNodeTickState::default(),
                 uuid: EffectNodeUuid::new(),
             },
         }

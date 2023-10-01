@@ -1,6 +1,9 @@
+use std::ops::Not;
+
 use bevy::{
     prelude::{
-        App, Bundle, Commands, Component, Entity, EventWriter, Parent, Plugin, PostUpdate, Query, RemovedComponents,
+        App, Bundle, Component, Entity, EventWriter, Parent, Plugin, PostUpdate, Query,
+        RemovedComponents,
     },
     reflect::Reflect,
 };
@@ -22,8 +25,9 @@ use crate::{
         context::{EffectGraphContext, EffectPinKey},
         event::{EffectEvent, EffectNodeEventPlugin},
         node::{
-            EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin, EffectNodePinGroup,
-            EffectNodeState, EffectNodeUuid,
+            EffectNode, EffectNodeAbortContext, EffectNodeExec, EffectNodeExecGroup,
+            EffectNodeExecuteState, EffectNodePin, EffectNodePinGroup, EffectNodeStartContext,
+            EffectNodeTickState, EffectNodeUuid,
         },
     },
 };
@@ -108,32 +112,26 @@ impl EffectNodePinGroup for EffectNodeGrantEffect {
 }
 
 impl EffectNode for EffectNodeGrantEffect {
-    fn start(
-        &mut self,
-        commands: &mut Commands,
-        entity: Entity,
-        uuid: &EffectNodeUuid,
-        _node_state: &mut EffectNodeState,
-        graph_context: &mut EffectGraphContext,
-        event_writer: &mut EventWriter<EffectEvent>,
-    ) {
+    fn start(&mut self, context: EffectNodeStartContext) {
         let effect_input_key = EffectPinKey {
-            node: entity,
-            node_id: *uuid,
+            node: context.node_entity,
+            node_id: *context.node_uuid,
             key: EffectNodeGrantEffect::INPUT_PIN_EFFECT_BUNDLE,
         };
-        let effect_value = graph_context.get_input_value(&effect_input_key);
+        let effect_value = context.graph_context.get_input_value(&effect_input_key);
         let effect_timer_input_key = EffectPinKey {
-            node: entity,
-            node_id: *uuid,
+            node: context.node_entity,
+            node_id: *context.node_uuid,
             key: EffectNodeGrantEffect::INPUT_PIN_EFFECT_TIMER_VEC,
         };
-        let effect_timer_value = graph_context.get_input_value(&effect_timer_input_key);
+        let effect_timer_value = context
+            .graph_context
+            .get_input_value(&effect_timer_input_key);
 
         if let (Some(effect), Some(effect_timer_vec)) = (effect_value, effect_timer_value) {
             if let Ok(effect) = effect.get::<&Box<dyn Reflect>>() {
                 let effect_bundle = effect.downcast_ref::<AbilityBundle>().unwrap();
-                let mut entity_command = commands.spawn(effect_bundle.clone());
+                let mut entity_command = context.commands.spawn(effect_bundle.clone());
                 if let Ok(timer_vec) = effect_timer_vec.get::<&Vec<EffectValue>>() {
                     for timer in timer_vec.iter() {
                         if let Ok(timer_value) = timer.get::<&Box<dyn Reflect>>() {
@@ -160,41 +158,38 @@ impl EffectNode for EffectNodeGrantEffect {
 
                 // execute next node
                 let entity_key = EffectPinKey {
-                    node: entity,
-                    node_id: *uuid,
+                    node: context.node_entity,
+                    node_id: *context.node_uuid,
                     key: EffectNodeGrantEffect::OUTPUT_PIN_STARTR_EFFECT_ENTITY,
                 };
 
-                graph_context.insert_output_value(entity_key, EffectValue::Entity(effect_entity));
+                context
+                    .graph_context
+                    .insert_output_value(entity_key, EffectValue::Entity(effect_entity));
 
                 let key = EffectPinKey {
-                    node: entity,
-                    node_id: *uuid,
+                    node: context.node_entity,
+                    node_id: *context.node_uuid,
                     key: EffectNodeGrantEffect::OUTPUT_EXEC_START,
                 };
-                if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
+                if let Some(EffectValue::Vec(entities)) =
+                    context.graph_context.get_output_value(&key)
+                {
                     for entity in entities.iter() {
                         if let EffectValue::Entity(entity) = entity {
-                            event_writer.send(EffectEvent::Start(*entity));
+                            context.event_writer.send(EffectEvent::Start(*entity));
                         }
                     }
+                }
+
+                if self.effects.is_empty().not() {
+                    *context.node_state = EffectNodeExecuteState::Actived;
                 }
             }
         }
     }
 
-    fn clear(&mut self) {
-        assert!(self.effects.is_empty());
-        self.effects.clear();
-    }
-
-    fn abort(&mut self) {}
-
-    fn update(&mut self) {}
-
-    fn pause(&mut self) {}
-
-    fn resume(&mut self) {}
+    fn abort(&mut self, _context: EffectNodeAbortContext) {}
 }
 
 ///////////////////////// Node Bundle /////////////////////////
@@ -210,7 +205,8 @@ impl EffectNodeGrantEffectBundle {
         Self {
             node: EffectNodeGrantEffect::default(),
             base: EffectNodeBaseBundle {
-                effect_node_state: EffectNodeState::default(),
+                execute_state: EffectNodeExecuteState::default(),
+                tick_state: EffectNodeTickState::default(),
                 uuid: EffectNodeUuid::new(),
             },
         }
@@ -223,13 +219,23 @@ fn react_on_remove_effect(
         Entity,
         &mut EffectNodeGrantEffect,
         &EffectNodeUuid,
-        &EffectNodeState,
+        &mut EffectNodeExecuteState,
         &Parent,
     )>,
     mut removed_effects: RemovedComponents<AbilityEffect>,
     mut event_writer: EventWriter<EffectEvent>,
 ) {
-    for (node_entity, mut grant_effect, node_uuid, _state, parent) in query.iter_mut() {
+    for (node_entity, mut grant_effect, node_uuid, mut node_state, parent) in query.iter_mut() {
+        if *node_state == EffectNodeExecuteState::Idle {
+            continue;
+        }
+
+        // set idle state before remove effect(delay a frame to set idle), 
+        // avoid to graph be removed before next node active.
+        if grant_effect.effects.is_empty() {
+            *node_state = EffectNodeExecuteState::Idle;
+        }
+
         let mut remove_success = vec![];
         grant_effect.effects.retain(|effect_entity| {
             for removed_effect_entity in removed_effects.iter() {
