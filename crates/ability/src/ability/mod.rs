@@ -1,62 +1,64 @@
 pub mod event;
 
-use std::fmt::Debug;
-
 use bevy::{
-    prelude::{Component, Query},
-    reflect::Reflect
+    prelude::{
+        App, Component, Entity, Last, Plugin, PostUpdate, Query, RemovedComponents, ResMut,
+        Resource,
+    },
+    reflect::Reflect,
+    utils::HashMap,
 };
 
-use crate::graph::context::GraphRef;
+use crate::graph::{context::GraphRef, state::EffectGraphState};
 
-#[derive(Debug, Default, Reflect, Copy, Clone, PartialEq)]
-pub enum AbilityState {
-    #[default]
-    Uninitialized,
-    Unactived,
-    Actived,
+#[derive(Debug, Default)]
+pub struct AbilityPlugin;
+
+impl Plugin for AbilityPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(AbilityGraph::default())
+            .add_systems(PostUpdate, reset_graph_node_state)
+            .add_systems(Last, on_remove_ability);
+    }
 }
+
+#[derive(Debug, Component, Default, Reflect, Copy, Clone)]
+pub struct Ability;
 
 /// add ability to entity
 /// active ability
 /// unactive ability
 /// receive input
-#[derive(Debug, Reflect, Component, Default, Clone)]
-pub struct AbilityBase {
-    state: AbilityState,
-    graph: Option<GraphRef>,
+#[derive(Debug, Component, Default, Reflect, Copy, Clone, PartialEq)]
+pub enum AbilityState {
+    #[default]
+    Unactived,
+    Actived,
 }
 
-impl AbilityBase {
-    pub fn new(graph: GraphRef) -> Self {
-        Self {
-            state: AbilityState::Unactived,
-            graph: Some(graph),
-        }
-    }
-
-    pub fn get_state(&self) -> AbilityState {
-        self.state
-    }
-
-    pub fn set_state(&mut self, state: AbilityState) {
-        self.state = state;
-    }
-
-    pub fn get_graph(&self) -> Option<GraphRef> {
-        self.graph
-    }
-
-    pub fn set_graph(&mut self, graph: GraphRef) {
-        self.graph = Some(graph);
-    }
+#[derive(Debug, Resource, Default, Clone)]
+pub struct AbilityGraph {
+    pub map: HashMap<Entity, GraphRef>,
 }
 
 /// set active from ability start, so set unactived when all children finished.
-pub fn reset_graph_node_state(mut ability_query: Query<&mut AbilityBase>) {
+pub fn reset_graph_node_state(mut ability_query: Query<&mut AbilityState>) {
     for mut ability_base in ability_query.iter_mut() {
-        if ability_base.get_state() == AbilityState::Actived {
-            ability_base.set_state(AbilityState::Unactived);
+        if *ability_base == AbilityState::Actived {
+            *ability_base = AbilityState::Unactived;
+        }
+    }
+}
+
+pub fn on_remove_ability(
+    mut removed_ability: RemovedComponents<Ability>,
+    mut ability_graph: ResMut<AbilityGraph>,
+    mut query: Query<&mut EffectGraphState>,
+) {
+    for ability in removed_ability.iter() {
+        if let Some(graph_ref) = ability_graph.map.remove(&ability) {
+            let mut graph_state = query.get_mut(graph_ref.get_entity()).unwrap();
+            *graph_state = EffectGraphState::ToRemove;
         }
     }
 }

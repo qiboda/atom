@@ -1,19 +1,17 @@
 use std::any::TypeId;
 
-use bevy::prelude::{
-    info, App, Bundle, Commands, Component, Entity, Plugin, EventWriter,
-};
+use bevy::prelude::{info, App, Bundle, Component, Plugin};
 
 use lazy_static::lazy_static;
 
 use crate::graph::{
     blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
-    context::{EffectGraphContext, EffectPinKey},
+    context::EffectPinKey,
     event::{EffectEvent, EffectNodeEventPlugin},
     node::{
         EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin, EffectNodePinGroup,
-        EffectNodeState, EffectNodeUuid,
+        EffectNodeStartContext, EffectNodeExecuteState, EffectNodeUuid, EffectNodeTickState, EffectNodeAbortContext,
     },
 };
 
@@ -24,9 +22,7 @@ pub struct EffectNodeLogPlugin {}
 
 impl Plugin for EffectNodeLogPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EffectNodeEventPlugin::<EffectNodeLog>::default())
-            // .add_systems(Update, update_msg);
-            ;
+        app.add_plugins(EffectNodeEventPlugin::<EffectNodeLog>::default());
     }
 }
 
@@ -79,48 +75,34 @@ impl EffectNodePinGroup for EffectNodeLog {
 }
 
 impl EffectNode for EffectNodeLog {
-    fn start(
-        &mut self,
-        _commands: &mut Commands,
-        node_entity: Entity,
-        node_uuid: &EffectNodeUuid,
-        _node_state: &mut EffectNodeState,
-        graph_context: &mut EffectGraphContext,
-        event_writer: &mut EventWriter<EffectEvent>,
-    ) {
+    fn start(&mut self, context: EffectNodeStartContext) {
         let duration_input_key = EffectPinKey {
-            node: node_entity,
-            node_id: *node_uuid,
+            node: context.node_entity,
+            node_id: *context.node_uuid,
             key: EffectNodeLog::INPUT_PIN_MESSAGE,
         };
-        let duration_value = graph_context.get_input_value(&duration_input_key);
+        let duration_value = context.graph_context.get_input_value(&duration_input_key);
 
         if let Some(EffectValue::String(message)) = duration_value {
             info!("{}", message);
         }
 
-        if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&EffectPinKey {
-            node: node_entity,
-            node_id: *node_uuid,
-            key: EffectNodeLog::OUTPUT_EXEC_FINISH,
-        }) {
+        if let Some(EffectValue::Vec(entities)) =
+            context.graph_context.get_output_value(&EffectPinKey {
+                node: context.node_entity,
+                node_id: *context.node_uuid,
+                key: EffectNodeLog::OUTPUT_EXEC_FINISH,
+            })
+        {
             for entity in entities.iter() {
                 if let EffectValue::Entity(entity) = entity {
-                    event_writer.send(EffectEvent::Start(*entity));
+                    context.event_writer.send(EffectEvent::Start(*entity));
                 }
             }
         }
     }
 
-    fn clear(&mut self) {}
-
-    fn abort(&mut self) {}
-
-    fn update(&mut self) {}
-
-    fn pause(&mut self) {}
-
-    fn resume(&mut self) {}
+    fn abort(&mut self, _context: EffectNodeAbortContext) {}
 }
 
 ///////////////////////// Node Bundle /////////////////////////
@@ -136,27 +118,10 @@ impl LogNodeBundle {
         Self {
             effect_node: EffectNodeLog::default(),
             effect_node_base: EffectNodeBaseBundle {
-                effect_node_state: EffectNodeState::default(),
+                execute_state: EffectNodeExecuteState::default(),
+                tick_state: EffectNodeTickState::default(),
                 uuid: EffectNodeUuid::new(),
             },
         }
     }
 }
-
-// fn update_msg(
-//     mut query_graph: Query<&mut EffectGraphContext>,
-//     mut query: Query<(
-//         Entity,
-//         &EffectNodeMsg,
-//         &mut EffectNodeState,
-//         &EffectNodeUuid,
-//         &Parent,
-//     )>,
-//     mut event_writer: EventWriter<EffectEvent>,
-// ) {
-//     for (entity, _msg, mut state, uuid, parent) in query.iter_mut() {
-//         if *state == EffectNodeState::Running {
-//             let graph_context = query_graph.get_mut(parent.get()).unwrap();
-//         }
-//     }
-// }

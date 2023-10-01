@@ -9,35 +9,65 @@ use bevy::{
 use super::{context::EffectGraphContext, event::EffectEvent};
 
 pub trait EffectNode {
-    fn start(
-        &mut self,
-        commands: &mut Commands,
-        node_entity: Entity,
-        node_uuid: &EffectNodeUuid,
-        node_state: &mut EffectNodeState,
-        graph_context: &mut EffectGraphContext,
-        event_writer: &mut EventWriter<EffectEvent>,
-    );
+    fn start(&mut self, start_context: EffectNodeStartContext);
 
-    fn clear(&mut self);
-    fn abort(&mut self);
+    fn abort(&mut self, abort_context: EffectNodeAbortContext);
 
-    fn update(&mut self);
+    fn pause(&mut self, pause_context: EffectNodePauseContext) {
+        *pause_context.node_tick_state = EffectNodeTickState::Paused;
+    }
 
-    fn pause(&mut self);
-
-    fn resume(&mut self);
+    fn resume(&mut self, resume_context: EffectNodeResumeContext) {
+        *resume_context.node_tick_state = EffectNodeTickState::Ticked;
+    }
 }
 
-pub trait EffectStaticNode: EffectNode {}
+pub struct EffectNodeStartContext<'a, 'w: 'a, 's: 'a, 'e: 'a> {
+    pub commands: &'a mut Commands<'w, 's>,
+    pub node_entity: Entity,
+    pub node_uuid: &'a EffectNodeUuid,
+    pub node_tick_state: &'a mut EffectNodeTickState,
+    pub node_state: &'a mut EffectNodeExecuteState,
+    pub graph_context: &'a mut EffectGraphContext,
+    pub event_writer: &'a mut EventWriter<'e, EffectEvent>,
+}
 
-pub trait EffectDynamicNode: EffectNode {}
+pub struct EffectNodePauseContext<'a> {
+    pub node_entity: Entity,
+    pub node_uuid: &'a EffectNodeUuid,
+    pub node_tick_state: &'a mut EffectNodeTickState,
+    pub node_state: &'a mut EffectNodeExecuteState,
+    pub graph_context: &'a mut EffectGraphContext,
+}
+
+pub struct EffectNodeResumeContext<'a> {
+    pub node_entity: Entity,
+    pub node_uuid: &'a EffectNodeUuid,
+    pub node_tick_state: &'a mut EffectNodeTickState,
+    pub node_state: &'a mut EffectNodeExecuteState,
+    pub graph_context: &'a mut EffectGraphContext,
+}
+
+pub struct EffectNodeAbortContext<'a> {
+    pub node_entity: Entity,
+    pub node_uuid: &'a EffectNodeUuid,
+    pub node_tick_state: &'a mut EffectNodeTickState,
+    pub node_state: &'a mut EffectNodeExecuteState,
+    pub graph_context: &'a mut EffectGraphContext,
+}
 
 #[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
-pub enum EffectNodeState {
+pub enum EffectNodeTickState {
     #[default]
-    Default,
+    Ticked,
     Paused,
+}
+
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
+pub enum EffectNodeExecuteState {
+    #[default]
+    Idle,
+    Actived,
 }
 
 /// use for deserialize and serialize

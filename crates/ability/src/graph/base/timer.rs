@@ -1,8 +1,7 @@
+use std::ops::Not;
+
 use bevy::{
-    prelude::{
-        App, Bundle, Commands, Component, Entity, EventWriter, Parent, Plugin,
-        Query, Res, Update,
-    },
+    prelude::{App, Bundle, Component, Entity, EventWriter, Parent, Plugin, Query, Res, Update},
     time::Time,
 };
 
@@ -14,8 +13,9 @@ use crate::graph::{
     context::{EffectGraphContext, EffectPinKey},
     event::{EffectEvent, EffectNodeEventPlugin},
     node::{
-        EffectDynamicNode, EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodePin,
-        EffectNodePinGroup, EffectNodeState, EffectNodeUuid,
+        EffectNode, EffectNodeAbortContext, EffectNodeExec, EffectNodeExecGroup,
+        EffectNodeExecuteState, EffectNodePin, EffectNodePinGroup, EffectNodeStartContext,
+        EffectNodeTickState, EffectNodeUuid,
     },
 };
 
@@ -40,7 +40,8 @@ impl TimerNodeBundle {
         Self {
             timer: EffectNodeTimer::default(),
             base: EffectNodeBaseBundle {
-                effect_node_state: EffectNodeState::default(),
+                execute_state: EffectNodeExecuteState::default(),
+                tick_state: EffectNodeTickState::default(),
                 uuid: EffectNodeUuid::new(),
             },
         }
@@ -53,34 +54,15 @@ pub struct EffectNodeTimer {
 }
 
 impl EffectNode for EffectNodeTimer {
-    fn start(
-        &mut self,
-        _commands: &mut Commands,
-        _node_entity: Entity,
-        _node_uuid: &EffectNodeUuid,
-        _node_state: &mut EffectNodeState,
-        _graph_context: &mut EffectGraphContext,
-        _event_writer: &mut EventWriter<EffectEvent>,
-    ) {
+    fn start(&mut self, context: EffectNodeStartContext) {
         self.elapse.push(0.0);
+        if self.elapse.is_empty().not() {
+            *context.node_state = EffectNodeExecuteState::Actived;
+        }
     }
 
-    fn clear(&mut self) {
-        self.elapse.clear();
-    }
-
-    fn abort(&mut self) {
-        self.clear();
-    }
-
-    fn pause(&mut self) {}
-
-    fn resume(&mut self) {}
-
-    fn update(&mut self) {}
+    fn abort(&mut self, _context: EffectNodeAbortContext) {}
 }
-
-impl EffectDynamicNode for EffectNodeTimer {}
 
 impl EffectNodeTimer {
     pub const INPUT_EXEC_START: &'static str = "start";
@@ -123,14 +105,24 @@ fn update_timer(
     mut query: Query<(
         Entity,
         &mut EffectNodeTimer,
-        &EffectNodeState,
+        &mut EffectNodeExecuteState,
         &EffectNodeUuid,
         &Parent,
     )>,
     mut event_writer: EventWriter<EffectEvent>,
     time: Res<Time>,
 ) {
-    for (entity, mut timer, _state, uuid, parent) in query.iter_mut() {
+    for (entity, mut timer, mut node_state, uuid, parent) in query.iter_mut() {
+        if *node_state == EffectNodeExecuteState::Idle {
+            continue;
+        }
+
+        // set idle state before remove effect(delay a frame to set idle),
+        // avoid to graph be removed before next node active.
+        if timer.elapse.is_empty() {
+            *node_state = EffectNodeExecuteState::Idle;
+        }
+
         let graph_context = graph_query.get(parent.get()).unwrap();
 
         let input_key = EffectPinKey {
