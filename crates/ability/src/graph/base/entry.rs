@@ -1,20 +1,21 @@
 use bevy::prelude::*;
 
-use once_cell::sync::OnceCell;
-
-use crate::graph::{
-    blackboard::EffectValue,
-    bundle::EffectNodeBaseBundle,
-    context::{EffectGraphContext, EffectPinKey},
-    event::{
-        effect_node_pause_event, effect_node_resume_event, node_can_abort, node_can_check_start,
-        node_can_pause, node_can_resume, node_can_start, EffectNodePendingEvents,
-        EffectNodeStartEvent,
+use crate::{
+    graph::{
+        blackboard::EffectValue,
+        bundle::EffectNodeBaseBundle,
+        context::{EffectGraphContext, EffectPinKey},
+        event::{
+            effect_node_pause_event, effect_node_resume_event, node_can_abort,
+            node_can_check_start, node_can_pause, node_can_resume, node_can_start,
+            EffectNodePendingEvents, EffectNodeStartEvent,
+        },
+        node::{
+            EffectNode, EffectNodeExecuteState, EffectNodePinGroup, EffectNodeTickState,
+            EffectNodeUuid,
+        },
     },
-    node::{
-        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodeExecuteState,
-        EffectNodePinGroup, EffectNodeTickState, EffectNodeUuid,
-    },
+    impl_effect_node_pin_group,
 };
 
 ///////////////////////// Plugin /////////////////////////
@@ -42,51 +43,14 @@ impl Plugin for EffectNodeEntryPlugin {
 #[derive(Debug, Default, Component)]
 pub struct EffectNodeEntry;
 
-impl EffectNodeEntry {
-    pub const OUTPUT_EXEC_START: &'static str = "start";
-    pub const OUTPUT_EXEC_END: &'static str = "end";
-    pub const OUTPUT_EXEC_ABORT: &'static str = "abort";
-    pub const OUTPUT_EXEC_CHECK_START: &'static str = "check";
-}
-
-impl EffectNodePinGroup for EffectNodeEntry {
-    fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
-        CELL.get_or_init(std::vec::Vec::new)
-    }
-
-    fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
-        CELL.get_or_init(|| {
-            vec![
-                EffectNodeExecGroup {
-                    exec: EffectNodeExec {
-                        name: EffectNodeEntry::OUTPUT_EXEC_START,
-                    },
-                    pins: vec![],
-                },
-                EffectNodeExecGroup {
-                    exec: EffectNodeExec {
-                        name: EffectNodeEntry::OUTPUT_EXEC_END,
-                    },
-                    pins: vec![],
-                },
-                EffectNodeExecGroup {
-                    exec: EffectNodeExec {
-                        name: EffectNodeEntry::OUTPUT_EXEC_CHECK_START,
-                    },
-                    pins: vec![],
-                },
-                EffectNodeExecGroup {
-                    exec: EffectNodeExec {
-                        name: EffectNodeEntry::OUTPUT_EXEC_ABORT,
-                    },
-                    pins: vec![],
-                },
-            ]
-        })
-    }
-}
+impl_effect_node_pin_group!(EffectNodeEntry,
+    output => (
+        check_start, pins => (),
+        start, pins => (),
+        end, pins => (),
+        abort, pins => ()
+    )
+);
 
 impl EffectNode for EffectNodeEntry {}
 

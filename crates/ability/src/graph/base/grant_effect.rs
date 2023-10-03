@@ -1,7 +1,6 @@
 use std::ops::{Deref, Not};
 
 use bevy::prelude::*;
-use once_cell::sync::OnceCell;
 
 use crate::{
     bundle::{EffectBundleTrait, ReflectEffectBundleTrait},
@@ -15,10 +14,11 @@ use crate::{
             node_can_start, EffectNodePendingEvents, EffectNodeStartEvent,
         },
         node::{
-            EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodeExecuteState, EffectNodePin,
-            EffectNodePinGroup, EffectNodeTickState, EffectNodeUuid,
+            EffectNode, EffectNodeExecuteState, EffectNodePinGroup, EffectNodeTickState,
+            EffectNodeUuid,
         },
     },
+    impl_effect_node_pin_group,
 };
 
 ///////////////////////// Plugin /////////////////////////
@@ -47,58 +47,15 @@ pub struct EffectNodeGrantEffect {
     pub effects: Vec<Entity>,
 }
 
-impl EffectNodeGrantEffect {
-    pub const INPUT_EXEC_START: &'static str = "start";
-    pub const INPUT_PIN_EFFECT_BUNDLE: &'static str = "effect_bundle";
-
-    pub const OUTPUT_EXEC_START: &'static str = "start";
-    pub const OUTPUT_EXEC_FINISH: &'static str = "finish";
-    pub const OUTPUT_PIN_STARTR_EFFECT_ENTITY: &'static str = "start_effect_entity";
-    pub const OUTPUT_PIN_FINISH_EFFECT_ENTITY: &'static str = "end_effect_entity";
-}
-
-impl EffectNodePinGroup for EffectNodeGrantEffect {
-    fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
-        CELL.get_or_init(|| {
-            vec![EffectNodeExecGroup {
-                exec: EffectNodeExec {
-                    name: EffectNodeGrantEffect::INPUT_EXEC_START,
-                },
-                pins: vec![EffectNodePin {
-                    name: EffectNodeGrantEffect::INPUT_PIN_EFFECT_BUNDLE,
-                    pin_type: std::any::TypeId::of::<Box<dyn EffectBundleTrait>>(),
-                }],
-            }]
-        })
-    }
-
-    fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
-        CELL.get_or_init(|| {
-            vec![
-                EffectNodeExecGroup {
-                    exec: EffectNodeExec {
-                        name: EffectNodeGrantEffect::OUTPUT_EXEC_START,
-                    },
-                    pins: vec![EffectNodePin {
-                        name: EffectNodeGrantEffect::OUTPUT_PIN_STARTR_EFFECT_ENTITY,
-                        pin_type: std::any::TypeId::of::<Entity>(),
-                    }],
-                },
-                EffectNodeExecGroup {
-                    exec: EffectNodeExec {
-                        name: EffectNodeGrantEffect::OUTPUT_EXEC_FINISH,
-                    },
-                    pins: vec![EffectNodePin {
-                        name: EffectNodeGrantEffect::OUTPUT_PIN_FINISH_EFFECT_ENTITY,
-                        pin_type: std::any::TypeId::of::<Entity>(),
-                    }],
-                },
-            ]
-        })
-    }
-}
+impl_effect_node_pin_group!(EffectNodeGrantEffect,
+    input => (
+        start, pins => (effect_bundle: Box<dyn EffectBundleTrait>)
+    )
+    output => (
+        start, pins => (start_effect_entity: Entity),
+        finish, pins => (end_effect_entity: Entity)
+    )
+);
 
 impl EffectNode for EffectNodeGrantEffect {}
 
@@ -167,7 +124,7 @@ fn effect_node_start_event(
                 let entity_key = EffectPinKey {
                     node: *node_entity,
                     node_id: *node_uuid,
-                    key: EffectNodeGrantEffect::OUTPUT_PIN_STARTR_EFFECT_ENTITY,
+                    key: EffectNodeGrantEffect::OUTPUT_PIN_START_EFFECT_ENTITY,
                 };
 
                 graph_context.insert_output_value(entity_key, EffectValue::Entity(effect_entity));
@@ -233,7 +190,7 @@ fn react_on_remove_effect(
             let entity_key = EffectPinKey {
                 node: node_entity,
                 node_id: *node_uuid,
-                key: EffectNodeGrantEffect::OUTPUT_PIN_STARTR_EFFECT_ENTITY,
+                key: EffectNodeGrantEffect::OUTPUT_PIN_END_EFFECT_ENTITY,
             };
 
             graph_context.insert_output_value(entity_key, EffectValue::Entity(*removed));

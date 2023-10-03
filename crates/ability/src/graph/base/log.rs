@@ -1,21 +1,20 @@
-use std::any::TypeId;
-
 use bevy::prelude::*;
 
-use once_cell::sync::OnceCell;
-
-use crate::graph::{
-    blackboard::EffectValue,
-    bundle::EffectNodeBaseBundle,
-    context::{EffectGraphContext, EffectPinKey},
-    event::{
-        effect_node_pause_event, effect_node_resume_event, node_can_pause, node_can_resume,
-        node_can_start, EffectNodePendingEvents, EffectNodeStartEvent,
+use crate::{
+    graph::{
+        blackboard::EffectValue,
+        bundle::EffectNodeBaseBundle,
+        context::{EffectGraphContext, EffectPinKey},
+        event::{
+            effect_node_pause_event, effect_node_resume_event, node_can_pause, node_can_resume,
+            node_can_start, EffectNodePendingEvents, EffectNodeStartEvent,
+        },
+        node::{
+            EffectNode, EffectNodeExecuteState, EffectNodePinGroup, EffectNodeTickState,
+            EffectNodeUuid,
+        },
     },
-    node::{
-        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodeExecuteState, EffectNodePin,
-        EffectNodePinGroup, EffectNodeTickState, EffectNodeUuid,
-    },
+    impl_effect_node_pin_group,
 };
 
 ///////////////////////// Plugin /////////////////////////
@@ -47,42 +46,14 @@ impl EffectNodeLogPlugin {
 #[derive(Debug, Default, Component)]
 pub struct EffectNodeLog {}
 
-impl EffectNodeLog {
-    pub const INPUT_EXEC_START: &'static str = "start";
-    pub const INPUT_PIN_MESSAGE: &'static str = "message";
-
-    pub const OUTPUT_EXEC_FINISH: &'static str = "finish";
-    pub const OUTPUT_PIN_MESSAGE: &'static str = "message";
-}
-
-impl EffectNodePinGroup for EffectNodeLog {
-    fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
-        CELL.get_or_init(|| {
-            vec![EffectNodeExecGroup {
-                exec: EffectNodeExec {
-                    name: EffectNodeLog::INPUT_EXEC_START,
-                },
-                pins: vec![EffectNodePin {
-                    name: EffectNodeLog::INPUT_PIN_MESSAGE,
-                    pin_type: TypeId::of::<String>(),
-                }],
-            }]
-        })
-    }
-
-    fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
-        CELL.get_or_init(|| {
-            vec![EffectNodeExecGroup {
-                exec: EffectNodeExec {
-                    name: EffectNodeLog::OUTPUT_EXEC_FINISH,
-                },
-                pins: vec![],
-            }]
-        })
-    }
-}
+impl_effect_node_pin_group!(EffectNodeLog,
+    input => (
+        start, pins => (message: String)
+    )
+    output => (
+        finish, pins => ()
+    )
+);
 
 impl EffectNode for EffectNodeLog {}
 
