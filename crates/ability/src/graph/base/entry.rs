@@ -10,10 +10,7 @@ use crate::{
             node_can_check_start, node_can_pause, node_can_resume, node_can_start,
             EffectNodePendingEvents, EffectNodeStartEvent,
         },
-        node::{
-            EffectNode, EffectNodeExecuteState, EffectNodePinGroup, EffectNodeTickState,
-            EffectNodeUuid,
-        },
+        node::{EffectNode, EffectNodeExecuteState, EffectNodeTickState, EffectNodeUuid},
     },
     impl_effect_node_pin_group,
 };
