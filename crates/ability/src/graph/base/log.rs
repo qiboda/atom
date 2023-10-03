@@ -2,7 +2,7 @@ use std::any::TypeId;
 
 use bevy::prelude::*;
 
-use lazy_static::lazy_static;
+use once_cell::sync::OnceCell;
 
 use crate::graph::{
     blackboard::EffectValue,
@@ -57,30 +57,30 @@ impl EffectNodeLog {
 
 impl EffectNodePinGroup for EffectNodeLog {
     fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(|| {
+            vec![EffectNodeExecGroup {
                 exec: EffectNodeExec {
-                    name: EffectNodeLog::INPUT_EXEC_START
+                    name: EffectNodeLog::INPUT_EXEC_START,
                 },
                 pins: vec![EffectNodePin {
                     name: EffectNodeLog::INPUT_PIN_MESSAGE,
                     pin_type: TypeId::of::<String>(),
                 }],
-            }];
-        };
-        &INPUT_PIN_GROUPS
+            }]
+        })
     }
 
     fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(|| {
+            vec![EffectNodeExecGroup {
                 exec: EffectNodeExec {
-                    name: EffectNodeLog::OUTPUT_EXEC_FINISH
+                    name: EffectNodeLog::OUTPUT_EXEC_FINISH,
                 },
                 pins: vec![],
-            }];
-        }
-        &OUTPUT_PIN_GROUPS
+            }]
+        })
     }
 }
 

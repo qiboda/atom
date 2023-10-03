@@ -2,7 +2,7 @@ use std::ops::Not;
 
 use bevy::{prelude::*, time::Time};
 
-use lazy_static::lazy_static;
+use once_cell::sync::OnceCell;
 
 use crate::graph::{
     blackboard::EffectValue,
@@ -69,8 +69,9 @@ impl EffectNodeTimer {
 
 impl EffectNodePinGroup for EffectNodeTimer {
     fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(|| {
+            vec![EffectNodeExecGroup {
                 exec: EffectNodeExec {
                     name: EffectNodeTimer::INPUT_EXEC_START,
                 },
@@ -78,21 +79,20 @@ impl EffectNodePinGroup for EffectNodeTimer {
                     name: EffectNodeTimer::INPUT_PIN_DURATION,
                     pin_type: std::any::TypeId::of::<f32>(),
                 }],
-            }];
-        }
-        &INPUT_PIN_GROUPS
+            }]
+        })
     }
 
     fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(|| {
+            vec![EffectNodeExecGroup {
                 exec: EffectNodeExec {
                     name: EffectNodeTimer::OUTPUT_EXEC_FINISH,
                 },
                 pins: vec![],
-            }];
-        }
-        &OUTPUT_PIN_GROUPS
+            }]
+        })
     }
 }
 

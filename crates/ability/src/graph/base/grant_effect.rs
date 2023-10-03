@@ -1,8 +1,7 @@
 use std::ops::{Deref, Not};
 
 use bevy::prelude::*;
-
-use lazy_static::lazy_static;
+use once_cell::sync::OnceCell;
 
 use crate::{
     bundle::{EffectBundleTrait, ReflectEffectBundleTrait},
@@ -60,44 +59,44 @@ impl EffectNodeGrantEffect {
 
 impl EffectNodePinGroup for EffectNodeGrantEffect {
     fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(|| {
+            vec![EffectNodeExecGroup {
                 exec: EffectNodeExec {
-                    name: EffectNodeGrantEffect::INPUT_EXEC_START
+                    name: EffectNodeGrantEffect::INPUT_EXEC_START,
                 },
                 pins: vec![EffectNodePin {
                     name: EffectNodeGrantEffect::INPUT_PIN_EFFECT_BUNDLE,
                     pin_type: std::any::TypeId::of::<Box<dyn EffectBundleTrait>>(),
-                },],
-            }];
-        };
-        &INPUT_PIN_GROUPS
+                }],
+            }]
+        })
     }
 
     fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(|| {
+            vec![
                 EffectNodeExecGroup {
                     exec: EffectNodeExec {
-                        name: EffectNodeGrantEffect::OUTPUT_EXEC_START
+                        name: EffectNodeGrantEffect::OUTPUT_EXEC_START,
                     },
                     pins: vec![EffectNodePin {
                         name: EffectNodeGrantEffect::OUTPUT_PIN_STARTR_EFFECT_ENTITY,
                         pin_type: std::any::TypeId::of::<Entity>(),
-                    },],
+                    }],
                 },
                 EffectNodeExecGroup {
                     exec: EffectNodeExec {
-                        name: EffectNodeGrantEffect::OUTPUT_EXEC_FINISH
+                        name: EffectNodeGrantEffect::OUTPUT_EXEC_FINISH,
                     },
                     pins: vec![EffectNodePin {
                         name: EffectNodeGrantEffect::OUTPUT_PIN_FINISH_EFFECT_ENTITY,
                         pin_type: std::any::TypeId::of::<Entity>(),
-                    },],
-                }
-            ];
-        }
-        &OUTPUT_PIN_GROUPS
+                    }],
+                },
+            ]
+        })
     }
 }
 
