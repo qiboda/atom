@@ -1,8 +1,7 @@
 use std::any::TypeId;
 
-use lazy_static::lazy_static;
-
 use bevy::{prelude::*, reflect::Reflect};
+use once_cell::sync::OnceCell;
 
 use crate::graph::{
     blackboard::EffectValue,
@@ -59,10 +58,11 @@ impl EffectNodeMultiple {
 
 impl EffectNodePinGroup for EffectNodeMultiple {
     fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(|| {
+            vec![EffectNodeExecGroup {
                 exec: EffectNodeExec {
-                    name: EffectNodeMultiple::INPUT_EXEC_START
+                    name: EffectNodeMultiple::INPUT_EXEC_START,
                 },
                 pins: vec![
                     EffectNodePin {
@@ -74,25 +74,23 @@ impl EffectNodePinGroup for EffectNodeMultiple {
                         pin_type: TypeId::of::<f32>(),
                     },
                 ],
-            }];
-        }
-        &INPUT_PIN_GROUPS
+            }]
+        })
     }
 
     fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![EffectNodeExecGroup {
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(|| {
+            vec![EffectNodeExecGroup {
                 exec: EffectNodeExec {
-                    name: EffectNodeMultiple::OUTPUT_EXEC_FINISH
+                    name: EffectNodeMultiple::OUTPUT_EXEC_FINISH,
                 },
                 pins: vec![EffectNodePin {
                     name: EffectNodeMultiple::OUTPUT_PIN_C,
                     pin_type: TypeId::of::<f32>(),
                 }],
-            }];
-        }
-
-        &OUTPUT_PIN_GROUPS
+            }]
+        })
     }
 }
 

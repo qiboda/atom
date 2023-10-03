@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use lazy_static::lazy_static;
+use once_cell::sync::OnceCell;
 
 use crate::graph::{
     blackboard::EffectValue,
@@ -51,42 +51,40 @@ impl EffectNodeEntry {
 
 impl EffectNodePinGroup for EffectNodeEntry {
     fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref INPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![];
-        };
-        &INPUT_PIN_GROUPS
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(std::vec::Vec::new)
     }
 
     fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        lazy_static! {
-            static ref OUTPUT_PIN_GROUPS: Vec<EffectNodeExecGroup> = vec![
+        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
+        CELL.get_or_init(|| {
+            vec![
                 EffectNodeExecGroup {
                     exec: EffectNodeExec {
-                        name: EffectNodeEntry::OUTPUT_EXEC_START
+                        name: EffectNodeEntry::OUTPUT_EXEC_START,
                     },
                     pins: vec![],
                 },
                 EffectNodeExecGroup {
                     exec: EffectNodeExec {
-                        name: EffectNodeEntry::OUTPUT_EXEC_END
+                        name: EffectNodeEntry::OUTPUT_EXEC_END,
                     },
                     pins: vec![],
                 },
                 EffectNodeExecGroup {
                     exec: EffectNodeExec {
-                        name: EffectNodeEntry::OUTPUT_EXEC_CHECK_START
+                        name: EffectNodeEntry::OUTPUT_EXEC_CHECK_START,
                     },
                     pins: vec![],
                 },
                 EffectNodeExecGroup {
                     exec: EffectNodeExec {
-                        name: EffectNodeEntry::OUTPUT_EXEC_ABORT
+                        name: EffectNodeEntry::OUTPUT_EXEC_ABORT,
                     },
                     pins: vec![],
-                }
-            ];
-        }
-        &OUTPUT_PIN_GROUPS
+                },
+            ]
+        })
     }
 }
 
