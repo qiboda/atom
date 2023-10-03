@@ -2,18 +2,21 @@ mod attribute;
 mod base_attack;
 
 use ability::{
-    ability::{Ability, AbilityGraph, AbilityPlugin, AbilityState},
     bundle::{AbilityBundle, AbilitySubsystemBundle},
+    effect::{
+        event::EffectStartEvent, graph_map::EffectGraphMap, state::EffectState, EffectPlugin,
+    },
     graph::{
         base::{
             entry::EffectNodeEntryPlugin, log::EffectNodeLogPlugin,
             multiple::EffectNodeMultiplePlugin, timer::EffectNodeTimerPlugin,
         },
         bundle::EffectGraphBundle,
-        context::{EffectGraphContext, GraphRef},
-        event::EffectEvent,
+        context::GraphRef,
+        event::EffectNodeEventPlugin,
         EffectGraphPlugin, EffectNodeGraphPlugin,
     },
+    Ability,
 };
 use attribute::BaseAttributeSet;
 use base_attack::EffectNodeGraphBaseAttack;
@@ -33,20 +36,20 @@ fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins)
         .add_plugins(EffectGraphPlugin::default())
+        .add_plugins(EffectNodeEventPlugin)
         .add_plugins(EffectNodeLogPlugin::default())
         .add_plugins(EffectNodeTimerPlugin)
         .add_plugins(EffectNodeEntryPlugin::default())
         .add_plugins(EffectNodeMultiplePlugin::default())
         .add_plugins(EffectNodeGraphPlugin::<EffectNodeGraphBaseAttack>::default())
-        .add_plugins(AbilityPlugin)
+        .add_plugins(EffectPlugin)
         .add_systems(Startup, startup)
         .add_systems(Update, cast_base_skill)
         .add_systems(Update, remove_base_skill)
-        // .add_systems(Last, reset_graph_node_state)
         .run();
 }
 
-fn startup(mut commands: Commands, mut ability_graph: ResMut<AbilityGraph>) {
+fn startup(mut commands: Commands, mut ability_graph: ResMut<EffectGraphMap>) {
     let player_entity = commands.spawn(Player).id();
     // init attr from player data.
     let ability_subsystem_entity = commands
@@ -61,8 +64,7 @@ fn startup(mut commands: Commands, mut ability_graph: ResMut<AbilityGraph>) {
     let ability_entity = commands
         .spawn(AbilityBundle {
             ability: Ability,
-            tag_contaier: Default::default(),
-            state: AbilityState::Unactived,
+            state: EffectState::Unactived,
         })
         .set_parent(ability_subsystem_entity)
         .id();
@@ -75,23 +77,17 @@ fn startup(mut commands: Commands, mut ability_graph: ResMut<AbilityGraph>) {
 /// only can cast once, because node has not reset state.
 fn cast_base_skill(
     input: Res<Input<KeyCode>>,
-    query: Query<&EffectGraphContext>,
-    mut ability_query: Query<(Entity, &mut AbilityState)>,
-    mut event_writer: EventWriter<EffectEvent>,
-    ability_graph: Res<AbilityGraph>,
+    mut ability_query: Query<(Entity, &mut EffectState)>,
+    mut event_writer: EventWriter<EffectStartEvent>,
 ) {
     if input.just_pressed(KeyCode::Q) {
         info!("just_pressed: cast_base_skill");
         for (entity, state) in ability_query.iter_mut() {
-            if *state == AbilityState::Unactived {
-                if let Some(graph) = ability_graph.map.get(&entity) {
-                    let graph_context = query.get(graph.get_entity()).unwrap();
-                    if let Some(entry_node) = graph_context.entry_node {
-                        // ability.set_state(AbilityState::Actived);
-                        let event = EffectEvent::Start(entry_node);
-                        event_writer.send(event);
-                    }
-                }
+            if *state == EffectState::Unactived {
+                event_writer.send(EffectStartEvent {
+                    effect: entity,
+                    data: None,
+                });
             }
         }
     }

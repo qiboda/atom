@@ -1,13 +1,8 @@
+use std::ops::Not;
+
 use bevy::prelude::*;
 
-use crate::graph::node::{
-    EffectNodeAbortContext, EffectNodePauseContext, EffectNodeResumeContext, EffectNodeStartContext,
-};
-
-use super::{
-    context::EffectGraphContext,
-    node::{EffectNode, EffectNodeExecuteState, EffectNodeTickState, EffectNodeUuid},
-};
+use super::node::{EffectNode, EffectNodeTickState};
 
 // #[derive(SystemSet, Hash, Debug, PartialEq, Eq, Clone)]
 // pub enum EffectEventSet {
@@ -17,58 +12,121 @@ use super::{
 // }
 
 #[derive(Debug, Default)]
-pub struct EffectNodeEventPlugin<T: EffectNode + Component>(std::marker::PhantomData<T>);
+pub struct EffectNodeEventPlugin;
 
-impl<T: EffectNode + Component> Plugin for EffectNodeEventPlugin<T> {
+impl Plugin for EffectNodeEventPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource::<EffectNodePending<T>>(EffectNodePending::<T>::default())
+        app.add_event::<EffectNodeCheckStartEvent>()
+            .add_event::<EffectNodeStartEvent>()
+            .add_event::<EffectNodeAbortEvent>()
+            .add_event::<EffectNodePauseEvent>()
+            .add_event::<EffectNodeResumeEvent>()
+            .insert_resource::<EffectNodePendingEvents>(EffectNodePendingEvents::default())
             .add_systems(
                 PreUpdate,
                 (
-                    receive_effect_event::<T>,
-                    handle_effect_event::<T>,
-                    flush_pending::<T>,
-                )
-                    .chain(),
-            );
+                    receive_effect_node_check_start_event,
+                    receive_effect_node_start_event,
+                    receive_effect_node_abort_event,
+                    receive_effect_node_pause_event,
+                    receive_effect_node_resume_event,
+                ),
+            )
+            .add_systems(Last, (flush_pending,).chain());
     }
 }
 
 #[derive(Event)]
-pub enum EffectEvent {
-    Start(Entity),
-    Abort(Entity),
-    Pause(Entity),
-    Resume(Entity),
+pub struct EffectNodeCheckStartEvent {
+    pub node: Entity,
+}
+
+impl EffectNodeCheckStartEvent {
+    pub fn new(node: Entity) -> Self {
+        Self { node }
+    }
+}
+
+#[derive(Event)]
+pub struct EffectNodeStartEvent {
+    pub node: Entity,
+}
+
+impl EffectNodeStartEvent {
+    pub fn new(node: Entity) -> Self {
+        Self { node }
+    }
+}
+
+#[derive(Event)]
+pub struct EffectNodeAbortEvent {
+    pub node: Entity,
+}
+
+impl EffectNodeAbortEvent {
+    pub fn new(node: Entity) -> Self {
+        Self { node }
+    }
+}
+
+#[derive(Event)]
+pub struct EffectNodePauseEvent {
+    pub node: Entity,
+}
+
+impl EffectNodePauseEvent {
+    pub fn new(node: Entity) -> Self {
+        Self { node }
+    }
+}
+
+#[derive(Event)]
+pub struct EffectNodeResumeEvent {
+    pub node: Entity,
+}
+
+impl EffectNodeResumeEvent {
+    pub fn new(node: Entity) -> Self {
+        Self { node }
+    }
 }
 
 /**
  * Pending effect node.
  * Every effect node Pendng this component.
  */
-#[derive(Resource, Debug)]
-pub struct EffectNodePending<T: EffectNode> {
+#[derive(Resource, Debug, Default)]
+pub struct EffectNodePendingEvents {
+    pub pending_check_can_start: Vec<Entity>,
     pub pending_start: Vec<Entity>,
     pub pending_pause: Vec<Entity>,
     pub pending_resume: Vec<Entity>,
     pub pending_abort: Vec<Entity>,
-    pub marker: std::marker::PhantomData<T>,
 }
 
-impl<T: EffectNode> Default for EffectNodePending<T> {
-    fn default() -> Self {
-        Self {
-            pending_start: Default::default(),
-            pending_pause: Default::default(),
-            pending_resume: Default::default(),
-            pending_abort: Default::default(),
-            marker: Default::default(),
-        }
-    }
+pub fn node_can_check_start() -> impl Fn(Res<EffectNodePendingEvents>) -> bool {
+    |pending: Res<EffectNodePendingEvents>| pending.pending_check_can_start.is_empty().not()
+}
+
+pub fn node_can_start() -> impl Fn(Res<EffectNodePendingEvents>) -> bool {
+    |pending: Res<EffectNodePendingEvents>| pending.pending_start.is_empty().not()
+}
+
+pub fn node_can_abort() -> impl Fn(Res<EffectNodePendingEvents>) -> bool {
+    |pending: Res<EffectNodePendingEvents>| pending.pending_abort.is_empty().not()
+}
+
+pub fn node_can_pause() -> impl Fn(Res<EffectNodePendingEvents>) -> bool {
+    |pending: Res<EffectNodePendingEvents>| pending.pending_pause.is_empty().not()
+}
+
+pub fn node_can_resume() -> impl Fn(Res<EffectNodePendingEvents>) -> bool {
+    |pending: Res<EffectNodePendingEvents>| pending.pending_resume.is_empty().not()
 }
 
 /// flush in last
-pub fn flush_pending<T: EffectNode + Component>(mut pending: ResMut<EffectNodePending<T>>) {
+pub fn flush_pending(mut pending: ResMut<EffectNodePendingEvents>) {
+    pending.pending_check_can_start.clear();
     pending.pending_start.clear();
     pending.pending_pause.clear();
     pending.pending_resume.clear();
@@ -79,129 +137,100 @@ pub fn flush_pending<T: EffectNode + Component>(mut pending: ResMut<EffectNodePe
  * Receive effect event.
  * Every effect node should add this system in PreUpdate Stage.
  */
-pub fn receive_effect_event<T: EffectNode + Component>(
-    mut pending: ResMut<EffectNodePending<T>>,
-    mut event_reader: EventReader<EffectEvent>,
+pub fn receive_effect_node_check_start_event(
+    mut pending: ResMut<EffectNodePendingEvents>,
+    mut event_reader: EventReader<EffectNodeCheckStartEvent>,
 ) {
     for event in event_reader.iter() {
-        match event {
-            EffectEvent::Start(entity) => {
-                pending.pending_start.push(*entity);
-            }
-            EffectEvent::Pause(entity) => {
-                pending.pending_pause.push(*entity);
-            }
-            EffectEvent::Resume(entity) => {
-                pending.pending_resume.push(*entity);
-            }
-            EffectEvent::Abort(entity) => {
-                pending.pending_abort.push(*entity);
-            }
-        }
+        pending.pending_check_can_start.push(event.node);
     }
 }
 
-pub fn handle_effect_event<T: EffectNode + Component>(
-    mut commands: Commands,
-    mut query: Query<(
-        &mut T,
-        &EffectNodeUuid,
-        &mut EffectNodeExecuteState,
-        &mut EffectNodeTickState,
-        &Parent,
-    )>,
-    pending: Res<EffectNodePending<T>>,
-    mut graph_query: Query<&mut EffectGraphContext>,
-    mut event_writer: EventWriter<EffectEvent>,
+/**
+ * Receive effect event.
+ * Every effect node should add this system in PreUpdate Stage.
+ */
+pub fn receive_effect_node_start_event(
+    mut pending: ResMut<EffectNodePendingEvents>,
+    mut event_reader: EventReader<EffectNodeStartEvent>,
 ) {
-    for start_entity in pending.pending_start.iter() {
-        if let Ok((mut node, node_uuid, mut state, mut tick_state, parent)) =
-            query.get_mut(*start_entity)
-        {
-            info!(
-                "node {} start: {:?}",
-                std::any::type_name::<T>(),
-                start_entity
-            );
-            let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
-            let context = EffectNodeStartContext {
-                commands: &mut commands,
-                node_entity: *start_entity,
-                node_uuid,
-                node_tick_state: &mut tick_state,
-                node_state: &mut state,
-                graph_context: &mut graph_context,
-                event_writer: &mut event_writer,
-            };
-            node.start(context);
-        }
+    for event in event_reader.iter() {
+        pending.pending_start.push(event.node);
     }
+}
 
-    for pause_entity in pending.pending_pause.iter() {
-        if let Ok((mut node, node_uuid, mut node_state, mut tick_state, parent)) =
-            query.get_mut(*pause_entity)
-        {
+/**
+ * Receive effect event.
+ * Every effect node should add this system in PreUpdate Stage.
+ */
+pub fn receive_effect_node_abort_event(
+    mut pending: ResMut<EffectNodePendingEvents>,
+    mut event_reader: EventReader<EffectNodeAbortEvent>,
+) {
+    for event in event_reader.iter() {
+        pending.pending_abort.push(event.node);
+    }
+}
+
+/**
+ * Receive effect event.
+ * Every effect node should add this system in PreUpdate Stage.
+ */
+pub fn receive_effect_node_pause_event(
+    mut pending: ResMut<EffectNodePendingEvents>,
+    mut event_reader: EventReader<EffectNodePauseEvent>,
+) {
+    for event in event_reader.iter() {
+        pending.pending_pause.push(event.node);
+    }
+}
+
+/**
+ * Receive effect event.
+ * Every effect node should add this system in PreUpdate Stage.
+ */
+pub fn receive_effect_node_resume_event(
+    mut pending: ResMut<EffectNodePendingEvents>,
+    mut event_reader: EventReader<EffectNodeResumeEvent>,
+) {
+    for event in event_reader.iter() {
+        pending.pending_resume.push(event.node);
+    }
+}
+
+pub fn effect_node_pause_event<T: EffectNode + Component>(
+    mut query: Query<&mut EffectNodeTickState, With<T>>,
+    mut event_reader: EventReader<EffectNodePauseEvent>,
+) {
+    for event in event_reader.iter() {
+        if let Ok(mut tick_state) = query.get_mut(event.node) {
             if *tick_state == EffectNodeTickState::Paused {
                 continue;
             }
             info!(
                 "node {} pause: {:?}",
                 std::any::type_name::<T>(),
-                pause_entity
+                event.node
             );
-            let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
-            let context = EffectNodePauseContext {
-                node_entity: *pause_entity,
-                node_uuid,
-                node_tick_state: &mut tick_state,
-                node_state: &mut node_state,
-                graph_context: &mut graph_context,
-            };
-            node.pause(context);
+            *tick_state = EffectNodeTickState::Paused;
         }
     }
+}
 
-    for resume_entity in pending.pending_resume.iter() {
-        if let Ok((mut node, node_uuid, mut node_state, mut tick_state, parent)) =
-            query.get_mut(*resume_entity)
-        {
+pub fn effect_node_resume_event<T: EffectNode + Component>(
+    mut query: Query<&mut EffectNodeTickState, With<T>>,
+    mut event_reader: EventReader<EffectNodeResumeEvent>,
+) {
+    for event in event_reader.iter() {
+        if let Ok(mut tick_state) = query.get_mut(event.node) {
             if *tick_state == EffectNodeTickState::Paused {
                 info!(
                     "node {} resume: {:?}",
                     std::any::type_name::<T>(),
-                    resume_entity
+                    event.node
                 );
-                let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
-                let context = EffectNodeResumeContext {
-                    node_entity: *resume_entity,
-                    node_uuid,
-                    node_tick_state: &mut tick_state,
-                    node_state: &mut node_state,
-                    graph_context: &mut graph_context,
-                };
-                node.resume(context);
+                *tick_state = EffectNodeTickState::Ticked;
             }
-        }
-    }
-
-    for abort_entity in pending.pending_abort.iter() {
-        if let Ok((mut node, node_uuid, mut node_state, mut tick_state, parent)) =
-            query.get_mut(*abort_entity)
-        {
-            info!(
-                "node {} abort: {:?}",
-                std::any::type_name::<T>(),
-                abort_entity
-            );
-            let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
-            let context = EffectNodeAbortContext {
-                node_entity: *abort_entity,
-                node_uuid,
-                node_tick_state: &mut tick_state,
-                node_state: &mut node_state,
-                graph_context: &mut graph_context,
-            };
-            node.abort(context);
         }
     }
 }

@@ -1,9 +1,6 @@
 use bevy::prelude::{Added, App, Commands, Component, Entity, First, Last, Plugin, Query};
 
-use self::{
-    builder::EffectGraphBuilder, context::EffectGraphContext, event::EffectEvent,
-    state::update_to_remove,
-};
+use self::{builder::EffectGraphBuilder, context::EffectGraphContext, state::update_to_remove};
 
 pub mod base;
 pub mod blackboard;
@@ -19,8 +16,7 @@ pub struct EffectGraphPlugin {}
 
 impl Plugin for EffectGraphPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<EffectEvent>()
-            .add_systems(Last, update_to_remove);
+        app.add_systems(Last, update_to_remove);
     }
 }
 
