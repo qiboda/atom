@@ -43,12 +43,15 @@ mod tests {
     use std::fmt;
 
     use bevy::reflect::Reflect;
+    extern crate self as layertag;
+    use layertag_derive::LayerTag;
 
-    use crate::layertag::{LayerTag, LayerTagClone, LayerTagData};
+    use crate::layertag::{LayerTag, LayerTagData};
 
     use super::{FromTagRegistry, LayerTagRegistry};
 
-    #[derive(Reflect, Debug, Clone, PartialEq, Eq)]
+    #[derive(LayerTag, Reflect, Debug, Clone, PartialEq, Eq)]
+    #[layer_tag()]
     struct TestTag {
         pub value: i32,
     }
@@ -71,35 +74,18 @@ mod tests {
         }
     }
 
-    impl LayerTagClone for TestTag {
-        fn box_clone(&self) -> Box<dyn LayerTag> {
-            Box::new(self.clone())
-        }
-    }
-
-    impl LayerTag for TestTag {
-        fn tag(&self) -> &[crate::tag::Tag] {
-            &[]
-        }
-    }
     impl fmt::Display for TestTag {
         fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
             fmt::Result::Ok(())
         }
     }
 
-    #[derive(Reflect, Debug, Clone)]
+    #[derive(Reflect, Debug, Clone, LayerTag)]
     struct TestTag2 {}
 
     impl FromTagRegistry for TestTag2 {
         fn from_tag_registry() -> Self {
             Self {}
-        }
-    }
-
-    impl LayerTagClone for TestTag2 {
-        fn box_clone(&self) -> Box<dyn LayerTag> {
-            Box::new(self.clone())
         }
     }
 
@@ -109,11 +95,6 @@ mod tests {
         }
     }
 
-    impl LayerTag for TestTag2 {
-        fn tag(&self) -> &[crate::tag::Tag] {
-            &[]
-        }
-    }
     impl fmt::Display for TestTag2 {
         fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
             fmt::Result::Ok(())

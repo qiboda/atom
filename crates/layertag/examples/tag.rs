@@ -5,11 +5,14 @@ use layertag::{
 };
 use std::{fmt::Debug, marker::PhantomData};
 
-use layertag_derive::{layer_tag, LayerTag};
+use layertag_derive::LayerTag;
 
 #[derive(LayerTag, Clone, Debug, Reflect)]
 #[layer_tag("a", "b", "c")]
-pub struct TestTags;
+pub struct TestTags {
+    #[layer_tag_counter]
+    counter: usize,
+}
 
 impl LayerTagData for TestTags {
     fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
@@ -22,7 +25,7 @@ static TAG_B: &str = "b";
 
 impl FromTagRegistry for TestTags {
     fn from_tag_registry() -> Self {
-        Self {}
+        Self { counter: 0 }
     }
 }
 
