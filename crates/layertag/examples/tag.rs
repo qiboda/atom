@@ -14,12 +14,6 @@ pub struct TestTags {
     counter: usize,
 }
 
-impl LayerTagData for TestTags {
-    fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
-        true
-    }
-}
-
 static TAG_A: &str = "a";
 static TAG_B: &str = "b";
 
