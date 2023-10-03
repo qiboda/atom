@@ -16,6 +16,7 @@ pub fn derive_layertag(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = derive_input.generics.split_for_impl();
 
     let counter = get_layer_tag_counter_attribute(&derive_input);
+    let data = impl_layer_tag_data(&derive_input);
 
     let ts = quote!(
         impl #impl_generics layertag::layertag::LayerTagClone for #ident #ty_generics #where_clause {
@@ -34,6 +35,8 @@ pub fn derive_layertag(input: TokenStream) -> TokenStream {
         }
 
         #counter
+
+        #data
     );
 
     ts.into()
@@ -152,4 +155,38 @@ fn get_layer_tag_counter_attribute(derive_input: &DeriveInput) -> proc_macro2::T
     }
 
     counter
+}
+
+fn impl_layer_tag_data(derive_input: &DeriveInput) -> proc_macro2::TokenStream {
+    let mut data: proc_macro2::TokenStream = proc_macro2::TokenStream::new();
+
+    let ident = derive_input.ident.clone();
+    let (impl_generics, ty_generics, where_clause) = derive_input.generics.split_for_impl();
+
+    let mut non_counter_field_count = 0;
+    if let Data::Struct(data) = &derive_input.data {
+        data.fields.iter().for_each(|field| {
+            non_counter_field_count += 1;
+            let attrs = &field.attrs;
+            for attr in attrs {
+                if let syn::Meta::Path(path) = &attr.meta {
+                    if path.is_ident("layer_tag_counter") {
+                        non_counter_field_count -= 1;
+                    }
+                }
+            }
+        });
+    }
+
+    if non_counter_field_count <= 0 {
+        data.extend::<proc_macro2::TokenStream>(quote!(
+            impl #impl_generics layertag::layertag::LayerTagData for #ident #ty_generics #where_clause {
+                fn cmp_data_same_type_inner(&self, _rhs: &dyn layertag::layertag::LayerTag) -> bool {
+                    true
+                }
+            }
+        ));
+    }
+
+    data
 }

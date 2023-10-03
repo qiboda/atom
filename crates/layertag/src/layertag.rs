@@ -213,17 +213,11 @@ mod test {
 
     use crate::tag::Tag;
 
-    use super::{LayerTag, LayerTagData};
+    use super::LayerTag;
 
     #[derive(LayerTag, Reflect, Debug, Clone)]
     #[layer_tag("a", "b", "c")]
     struct TestTag;
-
-    impl LayerTagData for TestTag {
-        fn cmp_data_same_type_inner(&self, _rhs: &dyn crate::layertag::LayerTag) -> bool {
-            true
-        }
-    }
 
     impl fmt::Display for TestTag {
         fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -235,21 +229,9 @@ mod test {
     #[layer_tag("a", "b", "d")]
     struct TestTag2 {}
 
-    impl LayerTagData for TestTag2 {
-        fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
-            true
-        }
-    }
-
     #[derive(LayerTag, Reflect, Debug, Clone)]
     #[layer_tag("a", "b")]
     struct TestTag3 {}
-
-    impl LayerTagData for TestTag3 {
-        fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
-            true
-        }
-    }
 
     #[allow(clippy::bool_assert_comparison)]
     #[test]

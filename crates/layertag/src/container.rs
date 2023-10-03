@@ -140,10 +140,7 @@ impl LayerTagContainerCondition for LayerTagContainerConditionWithout {
 mod tests {
     extern crate self as layertag;
     use bevy::reflect::Reflect;
-    use layertag::layertag::LayerTag;
     use layertag_derive::LayerTag;
-
-    use crate::layertag::LayerTagData;
 
     use super::LayerTagContainer;
 
@@ -152,12 +149,6 @@ mod tests {
     struct TagA {
         #[layer_tag_counter]
         pub value: usize,
-    }
-
-    impl LayerTagData for TagA {
-        fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
-            true
-        }
     }
 
     #[test]

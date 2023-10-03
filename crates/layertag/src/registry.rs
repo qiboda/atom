@@ -89,12 +89,6 @@ mod tests {
         }
     }
 
-    impl LayerTagData for TestTag2 {
-        fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
-            true
-        }
-    }
-
     impl fmt::Display for TestTag2 {
         fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
             fmt::Result::Ok(())
