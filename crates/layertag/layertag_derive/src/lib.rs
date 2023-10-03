@@ -2,17 +2,20 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
     parse::{Parse, ParseStream, Parser},
+    parse_macro_input,
     punctuated::Punctuated,
-    Attribute, Ident, Result, Token, parse_macro_input, DeriveInput,
+    Attribute, Data, DeriveInput, Ident, Result, Token,
 };
 
-#[proc_macro_derive(LayerTag)]
+#[proc_macro_derive(LayerTag, attributes(layer_tag, layer_tag_counter))]
 pub fn derive_layertag(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
 
-    let ident = derive_input.ident;
+    let ident = derive_input.ident.clone();
     let tags = get_layer_tag_attribute(&derive_input.attrs);
     let (impl_generics, ty_generics, where_clause) = derive_input.generics.split_for_impl();
+
+    let counter = get_layer_tag_counter_attribute(&derive_input);
 
     let ts = quote!(
         impl #impl_generics layertag::layertag::LayerTagClone for #ident #ty_generics #where_clause {
@@ -29,14 +32,11 @@ pub fn derive_layertag(input: TokenStream) -> TokenStream {
                 }).as_slice()
             }
         }
+
+        #counter
     );
 
     ts.into()
-}
-
-#[proc_macro_attribute]
-pub fn layer_tag(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    item
 }
 
 enum Arg {
@@ -96,4 +96,60 @@ fn get_layer_tag_attribute(attrs: &[Attribute]) -> proc_macro2::TokenStream {
         }
     }
     tags
+}
+
+fn get_layer_tag_counter_attribute(derive_input: &DeriveInput) -> proc_macro2::TokenStream {
+    let mut counter: proc_macro2::TokenStream = proc_macro2::TokenStream::new();
+
+    let ident = derive_input.ident.clone();
+    let (impl_generics, ty_generics, where_clause) = derive_input.generics.split_for_impl();
+
+    if let Data::Struct(data) = &derive_input.data {
+        data.fields.iter().for_each(|field| {
+            if let Some(field_ident) = &field.ident {
+                let attrs = &field.attrs;
+                for attr in attrs {
+                    if let syn::Meta::Path(path) = &attr.meta {
+                        if path.is_ident("layer_tag_counter") {
+                            counter.extend::<proc_macro2::TokenStream>(quote!(
+                                impl #impl_generics layertag::layertag::LayerTagCounter for #ident #ty_generics #where_clause {
+                                    fn increase_count(&mut self) {
+                                        self.#field_ident += 1;
+                                    }
+
+                                    fn decrease_count(&mut self) {
+                                        self.#field_ident -= 1;
+                                    }
+
+                                    fn count(&self) -> usize {
+                                        self.#field_ident
+                                    }
+
+                                    fn reset_count(&mut self) {
+                                        self.#field_ident = 0;
+                                    }
+                                }
+                            ));
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    if counter.is_empty() {
+        counter.extend::<proc_macro2::TokenStream>(quote!(
+            impl #impl_generics layertag::layertag::LayerTagCounter for #ident #ty_generics #where_clause {
+                fn increase_count(&mut self) {}
+
+                fn decrease_count(&mut self) {}
+
+                fn count(&self) -> usize { 0 }
+
+                fn reset_count(&mut self) {}
+            }
+        ));
+    }
+
+    counter
 }

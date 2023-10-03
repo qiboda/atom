@@ -12,9 +12,19 @@ pub trait LayerTagClone {
     fn box_clone(&self) -> Box<dyn LayerTag>;
 }
 
+pub trait LayerTagCounter {
+    fn increase_count(&mut self);
+
+    fn decrease_count(&mut self);
+
+    fn count(&self) -> usize;
+
+    fn reset_count(&mut self);
+}
+
 /// A tag with data.
 #[reflect_trait]
-pub trait LayerTagData: Reflect + Debug + LayerTagClone {
+pub trait LayerTagData: Reflect + Debug + LayerTagClone + LayerTagCounter {
     fn cmp_data_same_type_inner(&self, rhs: &dyn LayerTag) -> bool;
 }
 
@@ -196,32 +206,21 @@ impl FromReflect for Box<dyn LayerTag> {
 mod test {
     use core::fmt;
 
-    use crate::{layertag::LayerTag, tag::Tag};
     use bevy::reflect::Reflect;
 
-    use once_cell::sync::OnceCell;
+    extern crate self as layertag;
+    use layertag_derive::LayerTag;
 
-    use super::{LayerTagClone, LayerTagData};
+    use crate::tag::Tag;
 
-    #[derive(Reflect, Debug, Clone)]
+    use super::{LayerTag, LayerTagData};
+
+    #[derive(LayerTag, Reflect, Debug, Clone)]
+    #[layer_tag("a", "b", "c")]
     struct TestTag;
 
-    impl LayerTagClone for TestTag {
-        fn box_clone(&self) -> Box<dyn LayerTag> {
-            Box::new(self.clone())
-        }
-    }
-
-    impl LayerTag for TestTag {
-        fn tag(&self) -> &[Tag] {
-            static CELL: OnceCell<Vec<Tag>> = OnceCell::new();
-            CELL.get_or_init(|| vec![Tag::new("a"), Tag::new("b"), Tag::new("c")])
-                .as_slice()
-        }
-    }
-
     impl LayerTagData for TestTag {
-        fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
+        fn cmp_data_same_type_inner(&self, _rhs: &dyn crate::layertag::LayerTag) -> bool {
             true
         }
     }
@@ -232,22 +231,9 @@ mod test {
         }
     }
 
-    #[derive(Reflect, Debug, Clone)]
+    #[derive(LayerTag, Reflect, Debug, Clone)]
+    #[layer_tag("a", "b", "d")]
     struct TestTag2 {}
-
-    impl LayerTag for TestTag2 {
-        fn tag(&self) -> &[Tag] {
-            static CELL: OnceCell<Vec<Tag>> = OnceCell::new();
-            CELL.get_or_init(|| vec![Tag::new("a"), Tag::new("b"), Tag::new("d")])
-                .as_slice()
-        }
-    }
-
-    impl LayerTagClone for TestTag2 {
-        fn box_clone(&self) -> Box<dyn LayerTag> {
-            Box::new(self.clone())
-        }
-    }
 
     impl LayerTagData for TestTag2 {
         fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
@@ -255,22 +241,9 @@ mod test {
         }
     }
 
-    #[derive(Reflect, Debug, Clone)]
+    #[derive(LayerTag, Reflect, Debug, Clone)]
+    #[layer_tag("a", "b")]
     struct TestTag3 {}
-
-    impl LayerTagClone for TestTag3 {
-        fn box_clone(&self) -> Box<dyn LayerTag> {
-            Box::new(self.clone())
-        }
-    }
-
-    impl LayerTag for TestTag3 {
-        fn tag(&self) -> &[Tag] {
-            static CELL: OnceCell<Vec<Tag>> = OnceCell::new();
-            CELL.get_or_init(|| vec![Tag::new("a"), Tag::new("b")])
-                .as_slice()
-        }
-    }
 
     impl LayerTagData for TestTag3 {
         fn cmp_data_same_type_inner(&self, _rhs: &dyn LayerTag) -> bool {
