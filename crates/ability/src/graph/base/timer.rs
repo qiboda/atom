@@ -1,9 +1,6 @@
 use std::ops::Not;
 
-use bevy::{
-    prelude::{App, Bundle, Component, Entity, EventWriter, Parent, Plugin, Query, Res, Update},
-    time::Time,
-};
+use bevy::{prelude::*, time::Time};
 
 use lazy_static::lazy_static;
 
@@ -11,11 +8,13 @@ use crate::graph::{
     blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
     context::{EffectGraphContext, EffectPinKey},
-    event::{EffectEvent, EffectNodeEventPlugin},
+    event::{
+        effect_node_pause_event, effect_node_resume_event, node_can_pause, node_can_resume,
+        node_can_start, EffectNodePendingEvents, EffectNodeStartEvent,
+    },
     node::{
-        EffectNode, EffectNodeAbortContext, EffectNodeExec, EffectNodeExecGroup,
-        EffectNodeExecuteState, EffectNodePin, EffectNodePinGroup, EffectNodeStartContext,
-        EffectNodeTickState, EffectNodeUuid,
+        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodeExecuteState, EffectNodePin,
+        EffectNodePinGroup, EffectNodeTickState, EffectNodeUuid,
     },
 };
 
@@ -24,8 +23,14 @@ pub struct EffectNodeTimerPlugin;
 
 impl Plugin for EffectNodeTimerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EffectNodeEventPlugin::<EffectNodeTimer>::default())
-            .add_systems(Update, update_timer);
+        app.add_systems(Update, update_timer).add_systems(
+            Update,
+            (
+                effect_node_start_event.run_if(node_can_start()),
+                effect_node_pause_event::<EffectNodeTimer>.run_if(node_can_pause()),
+                effect_node_resume_event::<EffectNodeTimer>.run_if(node_can_resume()),
+            ),
+        );
     }
 }
 
@@ -53,16 +58,7 @@ pub struct EffectNodeTimer {
     pub elapse: Vec<f32>,
 }
 
-impl EffectNode for EffectNodeTimer {
-    fn start(&mut self, context: EffectNodeStartContext) {
-        self.elapse.push(0.0);
-        if self.elapse.is_empty().not() {
-            *context.node_state = EffectNodeExecuteState::Actived;
-        }
-    }
-
-    fn abort(&mut self, _context: EffectNodeAbortContext) {}
-}
+impl EffectNode for EffectNodeTimer {}
 
 impl EffectNodeTimer {
     pub const INPUT_EXEC_START: &'static str = "start";
@@ -100,6 +96,26 @@ impl EffectNodePinGroup for EffectNodeTimer {
     }
 }
 
+fn effect_node_start_event(
+    mut query: Query<(&mut EffectNodeTimer, &mut EffectNodeExecuteState)>,
+    pending: Res<EffectNodePendingEvents>,
+) {
+    for node_entity in pending.pending_start.iter() {
+        if let Ok((mut node, mut state)) = query.get_mut(*node_entity) {
+            info!(
+                "node {} start: {:?}",
+                std::any::type_name::<EffectNodeTimer>(),
+                node_entity
+            );
+
+            node.elapse.push(0.0);
+            if node.elapse.is_empty().not() {
+                *state = EffectNodeExecuteState::Actived;
+            }
+        }
+    }
+}
+
 fn update_timer(
     graph_query: Query<&EffectGraphContext>,
     mut query: Query<(
@@ -109,7 +125,7 @@ fn update_timer(
         &EffectNodeUuid,
         &Parent,
     )>,
-    mut event_writer: EventWriter<EffectEvent>,
+    mut event_writer: EventWriter<EffectNodeStartEvent>,
     time: Res<Time>,
 ) {
     for (entity, mut timer, mut node_state, uuid, parent) in query.iter_mut() {
@@ -121,6 +137,7 @@ fn update_timer(
         // avoid to graph be removed before next node active.
         if timer.elapse.is_empty() {
             *node_state = EffectNodeExecuteState::Idle;
+            return;
         }
 
         let graph_context = graph_query.get(parent.get()).unwrap();
@@ -147,7 +164,7 @@ fn update_timer(
                     {
                         for entity in entities.iter() {
                             if let EffectValue::Entity(entity) = entity {
-                                event_writer.send(EffectEvent::Start(*entity));
+                                event_writer.send(EffectNodeStartEvent::new(*entity));
                             }
                         }
                     }

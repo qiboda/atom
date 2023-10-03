@@ -376,7 +376,10 @@ impl<'a> TryFrom<&'a mut EffectValue> for &'a mut Box<dyn Reflect> {
 mod test {
     use std::borrow::Cow;
 
-    use bevy::reflect::Reflect;
+    use bevy::{
+        prelude::{AppTypeRegistry, World},
+        reflect::{reflect_trait, Reflect},
+    };
 
     use crate::graph::blackboard::BlackBoardValue;
 
@@ -411,6 +414,50 @@ mod test {
         if let Ok(v) = v {
             assert!(v.downcast_ref::<Vec<i32>>() == Some(&Box::new(vec![32])));
         }
+    }
+
+    #[test]
+    fn black_board_get_trait() {
+        let mut world = World::new();
+        let registry = AppTypeRegistry::default();
+        world.insert_resource(registry);
+
+        // Normally in rust we would be out of luck at this point. Lets use our new reflection powers to
+        // do something cool!
+        #[derive(Reflect)]
+        #[reflect(ATrait)]
+        struct A {
+            i: i32,
+        }
+
+        #[reflect_trait]
+        trait ATrait {
+            fn get_value(&self) -> i32;
+        }
+
+        impl ATrait for A {
+            fn get_value(&self) -> i32 {
+                self.i
+            }
+        }
+
+        let br_box = EffectValue::BoxReflect(Box::new(A { i: 32 }));
+
+        let type_registry = world.get_resource::<AppTypeRegistry>().unwrap();
+        type_registry.write().register::<A>();
+
+        let type_registry = type_registry.read();
+
+        if let EffectValue::BoxReflect(v) = br_box {
+            let reflect_atrait = type_registry
+                .get_type_data::<ReflectATrait>(v.type_id())
+                .unwrap();
+
+            let my_trait: &dyn ATrait = reflect_atrait.get(&*v).unwrap();
+            assert!(my_trait.get_value() == 32);
+            return;
+        }
+        panic!()
     }
 
     #[test]

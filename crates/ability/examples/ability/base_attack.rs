@@ -46,7 +46,7 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
             EffectPinKey {
                 node: entry_node_entity,
                 node_id: entry_node_uuid,
-                key: EffectNodeEntry::OUTPUT_EXEC_FINISH,
+                key: EffectNodeEntry::OUTPUT_EXEC_START,
             },
             EffectValue::Vec(vec![EffectValue::Entity(timer_node_entity)]),
         );

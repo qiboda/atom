@@ -2,19 +2,19 @@ use std::any::TypeId;
 
 use lazy_static::lazy_static;
 
-use bevy::{
-    prelude::{App, Bundle, Component, Entity, Plugin},
-    reflect::Reflect,
-};
+use bevy::{prelude::*, reflect::Reflect};
 
 use crate::graph::{
     blackboard::EffectValue,
     bundle::EffectNodeBaseBundle,
-    context::EffectPinKey,
-    event::{EffectEvent, EffectNodeEventPlugin},
+    context::{EffectGraphContext, EffectPinKey},
+    event::{
+        effect_node_pause_event, effect_node_resume_event, node_can_pause, node_can_resume,
+        node_can_start, EffectNodePendingEvents, EffectNodeStartEvent,
+    },
     node::{
-        EffectNode, EffectNodeAbortContext, EffectNodeExec, EffectNodeExecGroup,
-        EffectNodeExecuteState, EffectNodePin, EffectNodePinGroup, EffectNodeStartContext, EffectNodeTickState, EffectNodeUuid,
+        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodeExecuteState, EffectNodePin,
+        EffectNodePinGroup, EffectNodeTickState, EffectNodeUuid,
     },
 };
 
@@ -25,9 +25,14 @@ pub struct EffectNodeMultiplePlugin {}
 
 impl Plugin for EffectNodeMultiplePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EffectNodeEventPlugin::<EffectNodeMultiple>::default())
-            // .add_systems(Update, update_msg);
-            ;
+        app.add_systems(
+            Update,
+            (
+                effect_node_start_event.run_if(node_can_start()),
+                effect_node_pause_event::<EffectNodeMultiple>.run_if(node_can_pause()),
+                effect_node_resume_event::<EffectNodeMultiple>.run_if(node_can_resume()),
+            ),
+        );
     }
 }
 
@@ -91,55 +96,7 @@ impl EffectNodePinGroup for EffectNodeMultiple {
     }
 }
 
-impl EffectNode for EffectNodeMultiple {
-    fn start(&mut self, context: EffectNodeStartContext) {
-        let a_input_key = EffectPinKey {
-            node: context.node_entity,
-            node_id: *context.node_uuid,
-            key: EffectNodeMultiple::INPUT_PIN_A,
-        };
-        let a_value = context.graph_context.get_input_value(&a_input_key);
-
-        let b_input_key = EffectPinKey {
-            node: context.node_entity,
-            node_id: *context.node_uuid,
-            key: EffectNodeMultiple::INPUT_PIN_B,
-        };
-        let b_value = context.graph_context.get_input_value(&b_input_key);
-
-        let mut c = EffectValue::F32(0.0);
-        if let (Some(&EffectValue::F32(a)), Some(&EffectValue::F32(b))) = (a_value, b_value) {
-            c = EffectValue::F32(a * b);
-        }
-
-        let c_output_key = EffectPinKey {
-            node: context.node_entity,
-            node_id: *context.node_uuid,
-            key: EffectNodeMultiple::OUTPUT_PIN_C,
-        };
-
-        if let Some(c_value) = context.graph_context.get_input_value_mut(&c_output_key) {
-            *c_value = c;
-        }
-
-        if let Some(EffectValue::Vec(entities)) =
-            context.graph_context.get_output_value(&EffectPinKey {
-                node: context.node_entity,
-                node_id: *context.node_uuid,
-                key: EffectNodeMultiple::OUTPUT_EXEC_FINISH,
-            })
-        {
-            for entity in entities.iter() {
-                if let EffectValue::Entity(entity) = entity {
-                    context.event_writer.send(EffectEvent::Start(*entity));
-                }
-            }
-        }
-    }
-
-    fn abort(&mut self, _context: EffectNodeAbortContext) {}
-
-}
+impl EffectNode for EffectNodeMultiple {}
 
 ///////////////////////// Node Bundle /////////////////////////
 
@@ -158,6 +115,67 @@ impl MultipleNodeBundle {
                 tick_state: EffectNodeTickState::default(),
                 uuid: EffectNodeUuid::new(),
             },
+        }
+    }
+}
+
+fn effect_node_start_event(
+    mut query: Query<(&EffectNodeUuid, &Parent), With<EffectNodeMultiple>>,
+    mut graph_query: Query<&mut EffectGraphContext>,
+    mut events: EventWriter<EffectNodeStartEvent>,
+    pending: Res<EffectNodePendingEvents>,
+) {
+    for node_entity in pending.pending_start.iter() {
+        if let Ok((node_uuid, parent)) = query.get_mut(*node_entity) {
+            info!(
+                "node {} start: {:?}",
+                std::any::type_name::<EffectNodeMultiple>(),
+                node_entity
+            );
+
+            let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
+
+            let a_input_key = EffectPinKey {
+                node: *node_entity,
+                node_id: *node_uuid,
+                key: EffectNodeMultiple::INPUT_PIN_A,
+            };
+            let a_value = graph_context.get_input_value(&a_input_key);
+
+            let b_input_key = EffectPinKey {
+                node: *node_entity,
+                node_id: *node_uuid,
+                key: EffectNodeMultiple::INPUT_PIN_B,
+            };
+            let b_value = graph_context.get_input_value(&b_input_key);
+
+            let mut c = EffectValue::F32(0.0);
+            if let (Some(&EffectValue::F32(a)), Some(&EffectValue::F32(b))) = (a_value, b_value) {
+                c = EffectValue::F32(a * b);
+            }
+
+            let c_output_key = EffectPinKey {
+                node: *node_entity,
+                node_id: *node_uuid,
+                key: EffectNodeMultiple::OUTPUT_PIN_C,
+            };
+
+            if let Some(c_value) = graph_context.get_input_value_mut(&c_output_key) {
+                *c_value = c;
+            }
+
+            let key = EffectPinKey {
+                node: *node_entity,
+                node_id: *node_uuid,
+                key: EffectNodeMultiple::OUTPUT_EXEC_FINISH,
+            };
+            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
+                for entity in entities.iter() {
+                    if let EffectValue::Entity(entity) = entity {
+                        events.send(EffectNodeStartEvent::new(*entity));
+                    }
+                }
+            }
         }
     }
 }

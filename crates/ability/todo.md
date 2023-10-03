@@ -22,9 +22,9 @@
 
 1. add ability.
 
-2. remove ability, 同时移除graph。
+2. ability effect timer and loop can exist in effect graph. timer end also can exist in effect graph. ability effect grant to player by check add and remove condition, and need to commit a context to effect graph. so ability effect is a simple ability.
 
-3. ability command
+3. ability command, start an ability, find a ability by ability id or unique enum value in self children abilities. send a event(can not invocked directly, missing context, and rpeated ability execute).
 
 4. ability handle input.
 
@@ -47,3 +47,7 @@
 13. ability to effectgraph: insert effect to call effect graph.
 
 14. use one of lazy_static and once_cell.
+
+15. effect event use one-shot-system when bevy 0.13
+
+16. layertag support count.

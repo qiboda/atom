@@ -64,9 +64,9 @@ pub trait LayerTagContainerOp {
     fn operate(&self, container: &mut LayerTagContainer, apply: &LayerTagContainer);
 }
 
-pub struct AddLayerTagContainer;
+pub struct LayerTagContainerOpAdd;
 
-impl LayerTagContainerOp for AddLayerTagContainer {
+impl LayerTagContainerOp for LayerTagContainerOpAdd {
     fn operate(&self, container: &mut LayerTagContainer, apply: &LayerTagContainer) {
         // todo: check apply is valid or not?
         apply.iter().for_each(|x| {
@@ -75,9 +75,9 @@ impl LayerTagContainerOp for AddLayerTagContainer {
     }
 }
 
-pub struct RemoveLayerTagContainer;
+pub struct LayerTagContainerOpRemove;
 
-impl LayerTagContainerOp for RemoveLayerTagContainer {
+impl LayerTagContainerOp for LayerTagContainerOpRemove {
     fn operate(&self, container: &mut LayerTagContainer, apply: &LayerTagContainer) {
         apply.iter().for_each(|x| {
             container.remove_enable_tag(x.deref());
@@ -89,7 +89,7 @@ pub trait LayerTagContainerCondition {
     fn condition(&self, lhs: &LayerTagContainer, rhs: &LayerTagContainer) -> bool;
 }
 
-struct LayerTagContainerConditionRequired;
+pub struct LayerTagContainerConditionRequired;
 
 impl LayerTagContainerCondition for LayerTagContainerConditionRequired {
     fn condition(&self, container: &LayerTagContainer, required: &LayerTagContainer) -> bool {
@@ -99,7 +99,7 @@ impl LayerTagContainerCondition for LayerTagContainerConditionRequired {
     }
 }
 
-struct LayerTagContainerConditionWithout;
+pub struct LayerTagContainerConditionWithout;
 
 impl LayerTagContainerCondition for LayerTagContainerConditionWithout {
     fn condition(&self, container: &LayerTagContainer, without: &LayerTagContainer) -> bool {
@@ -111,9 +111,3 @@ impl LayerTagContainerCondition for LayerTagContainerConditionWithout {
         })
     }
 }
-
-#[derive(Component, Debug, Default, Reflect)]
-pub struct RequiredLayerTagContainer(LayerTagContainer);
-
-#[derive(Component, Debug, Default, Reflect)]
-pub struct DisableLayerTagContainer(LayerTagContainer);

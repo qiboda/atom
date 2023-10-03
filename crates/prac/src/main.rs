@@ -1,28 +1,30 @@
-use std::ops::{Deref, DerefMut};
+use bevy::core::FrameCount;
+use bevy::prelude::*;
+use bevy::DefaultPlugins;
 
-#[derive(Default, Debug, PartialEq, Eq)]
-struct A {
-    pub a: i32,
-}
-
-impl DerefMut for A {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        println!("DerefMut");
-        &mut self.a
-    }
-}
-
-impl Deref for A {
-    type Target = i32;
-
-    fn deref(&self) -> &Self::Target {
-        println!("Deref");
-        &self.a
-    }
-}
+#[derive(Event, Debug)]
+struct MyEvent {}
 
 fn main() {
-    let a = A::default();
+    let mut app = bevy::app::App::new();
+    app.add_plugins(DefaultPlugins)
+        .add_event::<MyEvent>()
+        .add_systems(Update, (update_event, update_event_two))
+        .run();
+}
 
-    assert!(*a == 0);
+fn update_event(mut events: ResMut<Events<MyEvent>>, frame_count: Res<FrameCount>) {
+    for event in events.get_reader().iter(&events) {
+        info!("events read: {:?}, {}", event, frame_count.0);
+    }
+
+    events.send(MyEvent {});
+}
+
+fn update_event_two(mut events: ResMut<Events<MyEvent>>, frame_count: Res<FrameCount>) {
+    for event in events.get_reader().iter(&events) {
+        info!("events two read: {:?}, {}", event, frame_count.0);
+    }
+
+    events.send(MyEvent {});
 }
