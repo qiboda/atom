@@ -2,20 +2,21 @@ use std::ops::Not;
 
 use bevy::{prelude::*, time::Time};
 
-use once_cell::sync::OnceCell;
-
-use crate::graph::{
-    blackboard::EffectValue,
-    bundle::EffectNodeBaseBundle,
-    context::{EffectGraphContext, EffectPinKey},
-    event::{
-        effect_node_pause_event, effect_node_resume_event, node_can_pause, node_can_resume,
-        node_can_start, EffectNodePendingEvents, EffectNodeStartEvent,
+use crate::{
+    graph::{
+        blackboard::EffectValue,
+        bundle::EffectNodeBaseBundle,
+        context::{EffectGraphContext, EffectPinKey},
+        event::{
+            effect_node_pause_event, effect_node_resume_event, node_can_pause, node_can_resume,
+            node_can_start, EffectNodePendingEvents, EffectNodeStartEvent,
+        },
+        node::{
+            EffectNode, EffectNodeExecuteState, EffectNodePinGroup, EffectNodeTickState,
+            EffectNodeUuid,
+        },
     },
-    node::{
-        EffectNode, EffectNodeExec, EffectNodeExecGroup, EffectNodeExecuteState, EffectNodePin,
-        EffectNodePinGroup, EffectNodeTickState, EffectNodeUuid,
-    },
+    impl_effect_node_pin_group,
 };
 
 #[derive(Debug)]
@@ -60,41 +61,14 @@ pub struct EffectNodeTimer {
 
 impl EffectNode for EffectNodeTimer {}
 
-impl EffectNodeTimer {
-    pub const INPUT_EXEC_START: &'static str = "start";
-    pub const INPUT_PIN_DURATION: &'static str = "duration";
-
-    pub const OUTPUT_EXEC_FINISH: &'static str = "finish";
-}
-
-impl EffectNodePinGroup for EffectNodeTimer {
-    fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
-        CELL.get_or_init(|| {
-            vec![EffectNodeExecGroup {
-                exec: EffectNodeExec {
-                    name: EffectNodeTimer::INPUT_EXEC_START,
-                },
-                pins: vec![EffectNodePin {
-                    name: EffectNodeTimer::INPUT_PIN_DURATION,
-                    pin_type: std::any::TypeId::of::<f32>(),
-                }],
-            }]
-        })
-    }
-
-    fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup> {
-        static CELL: OnceCell<Vec<EffectNodeExecGroup>> = OnceCell::new();
-        CELL.get_or_init(|| {
-            vec![EffectNodeExecGroup {
-                exec: EffectNodeExec {
-                    name: EffectNodeTimer::OUTPUT_EXEC_FINISH,
-                },
-                pins: vec![],
-            }]
-        })
-    }
-}
+impl_effect_node_pin_group!(EffectNodeTimer,
+    input => (
+        start, pins => (duration: f32)
+    )
+    output => (
+        finish, pins => ()
+    )
+);
 
 fn effect_node_start_event(
     mut query: Query<(&mut EffectNodeTimer, &mut EffectNodeExecuteState)>,

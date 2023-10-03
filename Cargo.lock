@@ -27,6 +27,7 @@ dependencies = [
  "bevy-trait-query-impl",
  "layertag",
  "once_cell",
+ "paste",
  "smallvec",
 ]
 
