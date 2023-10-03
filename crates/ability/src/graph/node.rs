@@ -77,11 +77,14 @@ pub trait EffectNodePinGroup {
 
 #[macro_export]
 macro_rules! impl_effect_node_pin_group {
+    ($node:ty) => {
+        impl_effect_node_pin_group!($node, input => () output => ());
+    };
     ($node:ty, output => ($($out_exec:ident, pins => ($($out_pin:ident: $out_type:ty), *)), +) ) => {
         impl_effect_node_pin_group!($node, input => () output => ($($out_exec, pins => ($($out_pin: $out_type), *)), +));
     };
-    ($node:ty, input => ($($in_exec:ident, pins => ($($in_pin:ident: $in_type:ty), +)), +) ) => {
-        impl_effect_node_pin_group!($node, input => ($($in_exec, pins => ($($in_pin: $in_type), +)), +) output => ());
+    ($node:ty, input => ($($in_exec:ident, pins => ($($in_pin:ident: $in_type:ty), *)), +) ) => {
+        impl_effect_node_pin_group!($node, input => ($($in_exec, pins => ($($in_pin: $in_type), *)), +) output => ());
     };
     ($node:ty, input => ($($in_exec:ident, pins => ($($in_pin:ident: $in_type:ty), *)), *) output => ($($out_exec:ident, pins => ($($out_pin:ident: $out_type:ty), *)), *)) => {
 
@@ -105,7 +108,7 @@ macro_rules! impl_effect_node_pin_group {
             )*
         }
 
-        impl EffectNodePinGroup for $node {
+        impl $crate::graph::node::EffectNodePinGroup for $node {
             fn get_input_pin_group(&self) -> &Vec<$crate::graph::node::EffectNodeExecGroup> {
                 static CELL: once_cell::sync::OnceCell<Vec<$crate::graph::node::EffectNodeExecGroup>> = once_cell::sync::OnceCell::new();
                 CELL.get_or_init(|| {
@@ -155,15 +158,42 @@ macro_rules! impl_effect_node_pin_group {
     };
 }
 
-struct EffectNodeTimer;
+#[cfg(test)]
+mod tests {
 
-impl_effect_node_pin_group!(EffectNodeTimer, input => (
-        exec, pins => (
-            start :i32, duration: f32
+    struct EffectNodeInput;
+
+    impl_effect_node_pin_group!(EffectNodeInput, input => (
+            exec, pins => (
+                start :i32, duration: f32
+            )
         )
-    )
-);
+    );
 
-pub fn foo() {
-    let _a = EffectNodeTimer::INPUT_EXEC_EXEC;
+    struct EffectNodeInputNone;
+
+    impl_effect_node_pin_group!(EffectNodeInputNone, input => (
+            exec, pins => ()
+        )
+    );
+
+    struct EffectNodeOutput;
+
+    impl_effect_node_pin_group!(EffectNodeOutput, output => (
+            exec, pins => (
+                start :i32, duration: f32
+            )
+        )
+    );
+
+    struct EffectNodeOutputNone;
+
+    impl_effect_node_pin_group!(EffectNodeOutputNone, input => (
+            exec, pins => ()
+        )
+    );
+
+    struct EffectNodeNone;
+
+    impl_effect_node_pin_group!(EffectNodeNone);
 }
