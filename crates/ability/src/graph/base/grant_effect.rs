@@ -87,7 +87,7 @@ fn effect_node_start_event(
     )>,
     mut graph_query: Query<&mut EffectGraphContext>,
     pending: Res<EffectNodePendingEvents>,
-    mut events: EventWriter<EffectNodeStartEvent>,
+    mut event_writer: EventWriter<EffectNodeStartEvent>,
     type_registry: Res<AppTypeRegistry>,
 ) {
     for node_entity in pending.pending_start.iter() {
@@ -100,12 +100,11 @@ fn effect_node_start_event(
 
             let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
 
-            let effect_input_key = EffectPinKey {
-                node: *node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeGrantEffect::INPUT_PIN_EFFECT_BUNDLE,
-            };
-            let effect_value = graph_context.get_input_value(&effect_input_key);
+            let effect_value = graph_context.get_input_value(&EffectPinKey::new(
+                *node_entity,
+                *node_uuid,
+                EffectNodeGrantEffect::INPUT_PIN_EFFECT_BUNDLE,
+            ));
 
             if let Some(EffectValue::BoxReflect(v)) = effect_value {
                 let read_guard = type_registry.read();
@@ -120,24 +119,17 @@ fn effect_node_start_event(
                 // execute next node
                 let entity_key = EffectPinKey {
                     node: *node_entity,
-                    node_id: *node_uuid,
+                    node_uuid: *node_uuid,
                     key: EffectNodeGrantEffect::OUTPUT_PIN_START_EFFECT_ENTITY,
                 };
 
                 graph_context.insert_output_value(entity_key, EffectValue::Entity(effect_entity));
-
-                let key = EffectPinKey {
-                    node: *node_entity,
-                    node_id: *node_uuid,
-                    key: EffectNodeGrantEffect::OUTPUT_EXEC_START,
-                };
-                if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
-                    for entity in entities.iter() {
-                        if let EffectValue::Entity(entity) = entity {
-                            events.send(EffectNodeStartEvent::new(*entity));
-                        }
-                    }
-                }
+                graph_context.exec_next_nodes(
+                    *node_entity,
+                    *node_uuid,
+                    EffectNodeGrantEffect::OUTPUT_EXEC_START,
+                    &mut event_writer,
+                );
 
                 if node.effects.is_empty().not() {
                     *state = EffectNodeExecuteState::Actived;
@@ -186,24 +178,18 @@ fn react_on_remove_effect(
             // execute next node
             let entity_key = EffectPinKey {
                 node: node_entity,
-                node_id: *node_uuid,
+                node_uuid: *node_uuid,
                 key: EffectNodeGrantEffect::OUTPUT_PIN_END_EFFECT_ENTITY,
             };
 
             graph_context.insert_output_value(entity_key, EffectValue::Entity(*removed));
 
-            let key = EffectPinKey {
-                node: node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeGrantEffect::OUTPUT_EXEC_FINISH,
-            };
-            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
-                for entity in entities.iter() {
-                    if let EffectValue::Entity(entity) = entity {
-                        event_writer.send(EffectNodeStartEvent::new(*entity));
-                    }
-                }
-            }
+            graph_context.exec_next_nodes(
+                node_entity,
+                *node_uuid,
+                EffectNodeGrantEffect::OUTPUT_EXEC_FINISH,
+                &mut event_writer,
+            );
         }
     }
 }

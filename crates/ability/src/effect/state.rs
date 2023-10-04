@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 
 use crate::graph::{
-    context::EffectGraphContext, event::EffectNodeStartEvent, state::EffectGraphState,
+    context::EffectGraphContext,
+    event::{EffectNodeEvent, EffectNodeStartEvent},
+    state::EffectGraphState,
 };
 
 use super::graph_map::EffectGraphMap;

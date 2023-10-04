@@ -79,7 +79,7 @@ impl MultipleNodeBundle {
 fn effect_node_start_event(
     mut query: Query<(&EffectNodeUuid, &Parent), With<EffectNodeMultiple>>,
     mut graph_query: Query<&mut EffectGraphContext>,
-    mut events: EventWriter<EffectNodeStartEvent>,
+    mut event_writer: EventWriter<EffectNodeStartEvent>,
     pending: Res<EffectNodePendingEvents>,
 ) {
     for node_entity in pending.pending_start.iter() {
@@ -92,47 +92,37 @@ fn effect_node_start_event(
 
             let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
 
-            let a_input_key = EffectPinKey {
-                node: *node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeMultiple::INPUT_PIN_A,
-            };
-            let a_value = graph_context.get_input_value(&a_input_key);
+            let a_value = graph_context.get_input_value(&EffectPinKey::new(
+                *node_entity,
+                *node_uuid,
+                EffectNodeMultiple::INPUT_PIN_A,
+            ));
 
-            let b_input_key = EffectPinKey {
-                node: *node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeMultiple::INPUT_PIN_B,
-            };
-            let b_value = graph_context.get_input_value(&b_input_key);
+            let b_value = graph_context.get_input_value(&EffectPinKey::new(
+                *node_entity,
+                *node_uuid,
+                EffectNodeMultiple::INPUT_PIN_B,
+            ));
 
             let mut c = EffectValue::F32(0.0);
             if let (Some(&EffectValue::F32(a)), Some(&EffectValue::F32(b))) = (a_value, b_value) {
                 c = EffectValue::F32(a * b);
             }
 
-            let c_output_key = EffectPinKey {
-                node: *node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeMultiple::OUTPUT_PIN_C,
-            };
-
-            if let Some(c_value) = graph_context.get_input_value_mut(&c_output_key) {
+            if let Some(c_value) = graph_context.get_output_value_mut(&EffectPinKey::new(
+                *node_entity,
+                *node_uuid,
+                EffectNodeMultiple::OUTPUT_PIN_C,
+            )) {
                 *c_value = c;
             }
 
-            let key = EffectPinKey {
-                node: *node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeMultiple::OUTPUT_EXEC_FINISH,
-            };
-            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
-                for entity in entities.iter() {
-                    if let EffectValue::Entity(entity) = entity {
-                        events.send(EffectNodeStartEvent::new(*entity));
-                    }
-                }
-            }
+            graph_context.exec_next_nodes(
+                *node_entity,
+                *node_uuid,
+                EffectNodeMultiple::OUTPUT_EXEC_FINISH,
+                &mut event_writer,
+            );
         }
     }
 }
