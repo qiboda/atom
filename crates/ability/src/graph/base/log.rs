@@ -78,7 +78,7 @@ impl LogNodeBundle {
 fn effect_node_start_event(
     mut query: Query<(&EffectNodeUuid, &Parent), With<EffectNodeLog>>,
     graph_query: Query<&EffectGraphContext>,
-    mut events: ResMut<Events<EffectNodeStartEvent>>,
+    mut event_writer: EventWriter<EffectNodeStartEvent>,
     pending: Res<EffectNodePendingEvents>,
 ) {
     for node_entity in pending.pending_start.iter() {
@@ -91,29 +91,22 @@ fn effect_node_start_event(
 
             let graph_context = graph_query.get(parent.get()).unwrap();
 
-            let duration_input_key = EffectPinKey {
-                node: *node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeLog::INPUT_PIN_MESSAGE,
-            };
-            let duration_value = graph_context.get_input_value(&duration_input_key);
+            let message_value = graph_context.get_input_value(&EffectPinKey::new(
+                *node_entity,
+                *node_uuid,
+                EffectNodeLog::INPUT_PIN_MESSAGE,
+            ));
 
-            if let Some(EffectValue::String(message)) = duration_value {
+            if let Some(EffectValue::String(message)) = message_value {
                 info!("{}", message);
             }
 
-            let key = EffectPinKey {
-                node: *node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeLog::OUTPUT_EXEC_FINISH,
-            };
-            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
-                for entity in entities.iter() {
-                    if let EffectValue::Entity(entity) = entity {
-                        events.send(EffectNodeStartEvent::new(*entity));
-                    }
-                }
-            }
+            graph_context.exec_next_nodes(
+                *node_entity,
+                *node_uuid,
+                EffectNodeLog::OUTPUT_EXEC_FINISH,
+                &mut event_writer,
+            );
         }
     }
 }

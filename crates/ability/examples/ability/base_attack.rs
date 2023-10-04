@@ -45,7 +45,7 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         effect_graph_context.insert_output_value(
             EffectPinKey {
                 node: entry_node_entity,
-                node_id: entry_node_uuid,
+                node_uuid: entry_node_uuid,
                 key: EffectNodeEntry::OUTPUT_EXEC_START,
             },
             EffectValue::Vec(vec![EffectValue::Entity(timer_node_entity)]),
@@ -54,7 +54,7 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         effect_graph_context.outputs.insert(
             EffectPinKey {
                 node: timer_node_entity,
-                node_id: timer_node_uuid,
+                node_uuid: timer_node_uuid,
                 key: EffectNodeTimer::OUTPUT_EXEC_FINISH,
             },
             EffectValue::Vec(vec![EffectValue::Entity(msg_node_entity)]),
@@ -63,7 +63,7 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         effect_graph_context.inputs.insert(
             EffectPinKey {
                 node: timer_node_entity,
-                node_id: timer_node_uuid,
+                node_uuid: timer_node_uuid,
                 key: EffectNodeTimer::INPUT_PIN_DURATION,
             },
             EffectValue::F32(5.0),
@@ -72,7 +72,7 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         effect_graph_context.inputs.insert(
             EffectPinKey {
                 node: msg_node_entity,
-                node_id: msg_node_uuid,
+                node_uuid: msg_node_uuid,
                 key: EffectNodeLog::INPUT_PIN_MESSAGE,
             },
             EffectValue::String("message log".into()),

@@ -113,12 +113,9 @@ fn update_timer(
 
         let graph_context = graph_query.get(parent.get()).unwrap();
 
-        let input_key = EffectPinKey {
-            node: entity,
-            node_id: *uuid,
-            key: EffectNodeTimer::INPUT_PIN_DURATION,
-        };
-        if let Some(EffectValue::F32(duration_value)) = graph_context.get_input_value(&input_key) {
+        if let Some(EffectValue::F32(duration_value)) = graph_context.get_input_value(
+            &EffectPinKey::new(entity, *uuid, EffectNodeTimer::INPUT_PIN_DURATION),
+        ) {
             timer
                 .elapse
                 .iter_mut()
@@ -126,19 +123,12 @@ fn update_timer(
 
             timer.elapse.retain(|x| {
                 if x >= duration_value {
-                    if let Some(EffectValue::Vec(entities)) =
-                        graph_context.get_output_value(&EffectPinKey {
-                            node: entity,
-                            node_id: *uuid,
-                            key: EffectNodeTimer::OUTPUT_EXEC_FINISH,
-                        })
-                    {
-                        for entity in entities.iter() {
-                            if let EffectValue::Entity(entity) = entity {
-                                event_writer.send(EffectNodeStartEvent::new(*entity));
-                            }
-                        }
-                    }
+                    graph_context.exec_next_nodes(
+                        entity,
+                        *uuid,
+                        EffectNodeTimer::OUTPUT_EXEC_FINISH,
+                        &mut event_writer,
+                    );
                     return false;
                 }
                 true

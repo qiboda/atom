@@ -2,9 +2,8 @@ use bevy::prelude::*;
 
 use crate::{
     graph::{
-        blackboard::EffectValue,
         bundle::EffectNodeBaseBundle,
-        context::{EffectGraphContext, EffectPinKey},
+        context::EffectGraphContext,
         event::{
             effect_node_pause_event, effect_node_resume_event, node_can_abort,
             node_can_check_start, node_can_pause, node_can_resume, node_can_start,
@@ -86,19 +85,14 @@ fn effect_node_check_start_event(
                 node_entity
             );
 
-            let key = EffectPinKey {
-                node: *node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeEntry::OUTPUT_EXEC_CHECK_START,
-            };
             let graph_context = graph_query.get(parent.get()).unwrap();
-            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
-                for entity in entities.iter() {
-                    if let EffectValue::Entity(entity) = entity {
-                        start_event_writer.send(EffectNodeStartEvent::new(*entity));
-                    }
-                }
-            }
+
+            graph_context.exec_next_nodes(
+                *node_entity,
+                *node_uuid,
+                EffectNodeEntry::OUTPUT_EXEC_CHECK_START,
+                &mut start_event_writer,
+            );
         }
     }
 }
@@ -106,7 +100,7 @@ fn effect_node_check_start_event(
 fn effect_node_start_event(
     mut query: Query<(&EffectNodeUuid, &Parent), With<EffectNodeEntry>>,
     graph_query: Query<&EffectGraphContext>,
-    mut events: EventWriter<EffectNodeStartEvent>,
+    mut event_writer: EventWriter<EffectNodeStartEvent>,
     pendig: Res<EffectNodePendingEvents>,
 ) {
     for entry in pendig.pending_start.iter() {
@@ -117,18 +111,12 @@ fn effect_node_start_event(
                 entry
             );
             let graph_context = graph_query.get(parent.get()).unwrap();
-            let key = EffectPinKey {
-                node: *entry,
-                node_id: *node_uuid,
-                key: EffectNodeEntry::OUTPUT_EXEC_START,
-            };
-            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
-                for entity in entities.iter() {
-                    if let EffectValue::Entity(entity) = entity {
-                        events.send(EffectNodeStartEvent::new(*entity));
-                    }
-                }
-            }
+            graph_context.exec_next_nodes(
+                *entry,
+                *node_uuid,
+                EffectNodeEntry::OUTPUT_EXEC_START,
+                &mut event_writer,
+            );
         }
     }
 }
@@ -147,18 +135,12 @@ fn effect_node_abort_event(
                 node_entity
             );
             let graph_context = graph_query.get(parent.get()).unwrap();
-            let key = EffectPinKey {
-                node: *node_entity,
-                node_id: *node_uuid,
-                key: EffectNodeEntry::OUTPUT_EXEC_ABORT,
-            };
-            if let Some(EffectValue::Vec(entities)) = graph_context.get_output_value(&key) {
-                for entity in entities.iter() {
-                    if let EffectValue::Entity(entity) = entity {
-                        start_event_writer.send(EffectNodeStartEvent::new(*entity));
-                    }
-                }
-            }
+            graph_context.exec_next_nodes(
+                *node_entity,
+                *node_uuid,
+                EffectNodeEntry::OUTPUT_EXEC_ABORT,
+                &mut start_event_writer,
+            );
         }
     }
 }

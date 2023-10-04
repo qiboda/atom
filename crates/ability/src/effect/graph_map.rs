@@ -2,7 +2,7 @@ use bevy::{prelude::*, utils::HashMap};
 
 use crate::graph::{
     context::{EffectGraphContext, GraphRef},
-    event::EffectNodeCheckStartEvent,
+    event::{EffectNodeCheckStartEvent, EffectNodeEvent},
 };
 
 use super::state::EffectState;

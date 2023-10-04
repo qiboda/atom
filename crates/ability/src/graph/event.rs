@@ -36,13 +36,17 @@ impl Plugin for EffectNodeEventPlugin {
     }
 }
 
+pub trait EffectNodeEvent {
+    fn new(node: Entity) -> Self;
+}
+
 #[derive(Event)]
 pub struct EffectNodeCheckStartEvent {
     pub node: Entity,
 }
 
-impl EffectNodeCheckStartEvent {
-    pub fn new(node: Entity) -> Self {
+impl EffectNodeEvent for EffectNodeCheckStartEvent {
+    fn new(node: Entity) -> Self {
         Self { node }
     }
 }
@@ -52,8 +56,8 @@ pub struct EffectNodeStartEvent {
     pub node: Entity,
 }
 
-impl EffectNodeStartEvent {
-    pub fn new(node: Entity) -> Self {
+impl EffectNodeEvent for EffectNodeStartEvent {
+    fn new(node: Entity) -> Self {
         Self { node }
     }
 }
@@ -63,8 +67,8 @@ pub struct EffectNodeAbortEvent {
     pub node: Entity,
 }
 
-impl EffectNodeAbortEvent {
-    pub fn new(node: Entity) -> Self {
+impl EffectNodeEvent for EffectNodeAbortEvent {
+    fn new(node: Entity) -> Self {
         Self { node }
     }
 }
@@ -74,8 +78,8 @@ pub struct EffectNodePauseEvent {
     pub node: Entity,
 }
 
-impl EffectNodePauseEvent {
-    pub fn new(node: Entity) -> Self {
+impl EffectNodeEvent for EffectNodePauseEvent {
+    fn new(node: Entity) -> Self {
         Self { node }
     }
 }
@@ -85,8 +89,8 @@ pub struct EffectNodeResumeEvent {
     pub node: Entity,
 }
 
-impl EffectNodeResumeEvent {
-    pub fn new(node: Entity) -> Self {
+impl EffectNodeEvent for EffectNodeResumeEvent {
+    fn new(node: Entity) -> Self {
         Self { node }
     }
 }
