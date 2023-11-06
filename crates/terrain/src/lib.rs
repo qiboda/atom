@@ -30,7 +30,7 @@ use terrain::{settings::TerrainSettings, TerrainPlugin};
 use ui::FrameUIPlugin;
 use visible::visible_range::VisibleTerrainRange;
 
-fn main() {
+pub fn bevy_entry() -> App {
     let mut app = App::new();
 
     app.insert_resource(TerrainSettings::new(1.0, 16))
@@ -57,12 +57,9 @@ fn main() {
         .add_plugins(FrameUIPlugin)
         .add_plugins(MaterialPlugin::<CoolMaterial>::default())
         .add_systems(Startup, startup)
-        .add_systems(Last, exit_game)
-        .run();
+        .add_systems(Last, exit_game);
 
-    // app.add_plugins(DefaultPlugins.build().disable::<LogPlugin>());
-    // bevy_mod_debugdump::print_main_schedule(&mut app);
-    // bevy_mod_debugdump::print_render_graph(&mut app);
+    app
 }
 
 // #[bevycheck::system]

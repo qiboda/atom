@@ -1,3 +1,5 @@
-# force all crates use root assets folder
 [env]
-BEVY_ASSET_ROOT = "./"
+# force all crates use root assets folder
+BEVY_ASSET_ROOT = { value = "./", relative = true }
+
+ATOM_SAVED_ROOT = { value = "./saved", relative = true }
