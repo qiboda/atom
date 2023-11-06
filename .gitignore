@@ -1,6 +1,6 @@
 /target
-dep
-main_schedule.dot
-main_schedule.png
-output.png
-crates/atom/target
+crates/terrain/target
+saved/graphs/*
+saved/logs/*
+wgpu_trace
+.idea
