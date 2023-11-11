@@ -50,7 +50,7 @@ pub trait LayerTag: LayerTagData {
     /// "a.b" == "a.b.c"
     /// "a.b.d" != "a.b.c.d"
     /// ```
-    fn partical_match(&self, rhs: &dyn LayerTag) -> bool {
+    fn partial_match(&self, rhs: &dyn LayerTag) -> bool {
         let r = self
             .tag()
             .iter()
@@ -87,17 +87,17 @@ pub trait LayerTag: LayerTagData {
         ret
     }
 
-    /// campare tag data only same tag.
+    /// compare tag data only same tag.
     fn cmp_data_same_type(&self, rhs: &dyn LayerTag) -> bool {
-        assert!(self.tag() == rhs.tag());
+        assert_eq!(self.tag(), rhs.tag());
         self.cmp_data_same_type_inner(rhs)
     }
 }
 
 impl TypePath for Box<dyn LayerTag> {
     fn type_path() -> &'static str {
-        core::concat!(
-            core::concat!(core::module_path!(), "::"),
+        concat!(
+            concat!(module_path!(), "::"),
             "Box<dyn LayerTag>"
         )
     }
@@ -111,11 +111,11 @@ impl TypePath for Box<dyn LayerTag> {
     }
 
     fn crate_name() -> Option<&'static str> {
-        Some(core::module_path!().split(':').next().unwrap())
+        Some(module_path!().split(':').next().unwrap())
     }
 
     fn module_path() -> Option<&'static str> {
-        Some(core::module_path!())
+        Some(module_path!())
     }
 }
 
@@ -174,6 +174,10 @@ impl Reflect for Box<dyn LayerTag> {
         self.deref().box_clone().reflect_owned()
     }
 
+    fn clone_value(&self) -> Box<dyn Reflect> {
+        self.deref().clone_value()
+    }
+
     fn reflect_hash(&self) -> Option<u64> {
         self.deref().reflect_hash()
     }
@@ -188,10 +192,6 @@ impl Reflect for Box<dyn LayerTag> {
 
     fn is_dynamic(&self) -> bool {
         false
-    }
-
-    fn clone_value(&self) -> Box<dyn Reflect> {
-        self.deref().clone_value()
     }
 }
 
@@ -221,7 +221,7 @@ mod test {
 
     impl fmt::Display for TestTag {
         fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Result::Ok(())
+            Ok(())
         }
     }
 
@@ -244,8 +244,8 @@ mod test {
         assert_eq!(test_tag_dup.exact_match(&test_tag), true);
         assert_eq!(test_tag.exact_match(&test_tag_2), false);
 
-        assert_eq!(test_tag.partical_match(&test_tag_2), false);
-        assert_eq!(test_tag.partical_match(&test_tag_3), true);
+        assert_eq!(test_tag.partial_match(&test_tag_2), false);
+        assert_eq!(test_tag.partial_match(&test_tag_3), true);
 
         assert_eq!(
             test_tag.same_prefix(&test_tag_2),

@@ -1,8 +1,7 @@
 use std::sync::Arc;
+use bevy::log::info;
 
-use bevy::prelude::{
-    info, Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res, Startup,
-};
+use bevy::prelude::{Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res, Startup};
 
 use self::{
     category::forest::ForestEcologyMaterial,

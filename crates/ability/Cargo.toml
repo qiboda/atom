@@ -6,11 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.11.2"
-bevy-trait-query = "0.3.0"
-bevy-trait-query-impl = "0.3.0"
+bevy = { workspace = true }
+bevy-trait-query = "0.4.0"
+bevy-trait-query-impl = "0.4.0"
 once_cell = "1.18.0"
-smallvec = "1.11.0"
+smallvec = "1.11.2"
 layertag = { path = "../layertag" }
 paste = "1.0.14"
 

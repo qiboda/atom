@@ -198,7 +198,7 @@ pub struct Cell {
     pub extent: CellExtent,
 
     pub samples: [f32; 8],
-    pub children: [Option<CellId>; 8], // PERF: nonzero/nonmax?
+    pub children: [Option<CellId>; 8], // PERF: non-zero/non-max?
 
     // TODO: remove these when meshes are managed separately
     /// We don't use `Vec3A` because it's 16-byte-aligned.

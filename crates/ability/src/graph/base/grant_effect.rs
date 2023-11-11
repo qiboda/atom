@@ -108,11 +108,11 @@ fn effect_node_start_event(
 
             if let Some(EffectValue::BoxReflect(v)) = effect_value {
                 let read_guard = type_registry.read();
-                let reflect_atrait = read_guard
+                let reflect_a_trait = read_guard
                     .get_type_data::<ReflectEffectBundleTrait>(v.type_id())
                     .unwrap();
 
-                let effect_bundle: &dyn EffectBundleTrait = reflect_atrait.get(v.deref()).unwrap();
+                let effect_bundle: &dyn EffectBundleTrait = reflect_a_trait.get(v.deref()).unwrap();
                 let effect_entity = effect_bundle.spawn_bundle(&mut commands);
                 node.effects.push(effect_entity);
 
@@ -164,7 +164,7 @@ fn react_on_remove_effect(
 
         let mut remove_success = vec![];
         grant_effect.effects.retain(|effect_entity| {
-            for removed_effect_entity in removed_effects.iter() {
+            for removed_effect_entity in removed_effects.read() {
                 if *effect_entity == removed_effect_entity {
                     remove_success.push(removed_effect_entity);
                     return false;
