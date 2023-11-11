@@ -16,7 +16,7 @@ pub mod mesh_cache;
 
 pub fn create_mesh(
     commands: &mut Commands,
-    terrain_chunk_eneity: Entity,
+    terrain_chunk_entity: Entity,
     mesh_cache: Arc<RwLock<MeshCache>>,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<TerrainMaterial>>,
@@ -71,7 +71,7 @@ pub fn create_mesh(
             ))
             .id();
 
-        let mut terrian = commands.get_entity(terrain_chunk_eneity).unwrap();
-        terrian.add_child(id);
+        let mut terrain = commands.get_entity(terrain_chunk_entity).unwrap();
+        terrain.add_child(id);
     }
 }

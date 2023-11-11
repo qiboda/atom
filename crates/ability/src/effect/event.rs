@@ -36,9 +36,9 @@ pub fn receive_start_effect(
     mut event_reader: EventReader<EffectStartEvent>,
     mut effect_query: Query<&mut EffectState>,
 ) {
-    for event in event_reader.iter() {
+    for event in event_reader.read() {
         if let Ok(mut state) = effect_query.get_mut(event.effect) {
-            if *state == EffectState::Unactived {
+            if *state == EffectState::Inactive {
                 *state = EffectState::CheckCanActive;
             }
         }

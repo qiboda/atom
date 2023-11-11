@@ -34,17 +34,17 @@ impl TerrainSingleVisibleArea {
 #[derive(Debug, Default, Clone)]
 pub struct TerrainSingleVisibleAreaProxy {
     /// default is old
-    pub terrain_singel_visible_area_a: TerrainSingleVisibleArea,
+    pub terrain_single_visible_area_a: TerrainSingleVisibleArea,
     /// default is new
-    pub terrain_singel_visible_area_b: TerrainSingleVisibleArea,
+    pub terrain_single_visible_area_b: TerrainSingleVisibleArea,
     pub current_is_a: bool,
 }
 
 impl TerrainSingleVisibleAreaProxy {
     pub fn new(new_single_visible_area: &TerrainSingleVisibleArea) -> Self {
         Self {
-            terrain_singel_visible_area_a: TerrainSingleVisibleArea::default(),
-            terrain_singel_visible_area_b: new_single_visible_area.clone(),
+            terrain_single_visible_area_a: TerrainSingleVisibleArea::default(),
+            terrain_single_visible_area_b: new_single_visible_area.clone(),
             current_is_a: false,
         }
     }
@@ -52,41 +52,41 @@ impl TerrainSingleVisibleAreaProxy {
     pub fn set_current(&mut self, new_single_visible_area: &TerrainSingleVisibleArea) {
         self.current_is_a = !self.current_is_a;
         if self.current_is_a {
-            self.terrain_singel_visible_area_a = new_single_visible_area.clone();
+            self.terrain_single_visible_area_a = new_single_visible_area.clone();
         } else {
-            self.terrain_singel_visible_area_b = new_single_visible_area.clone();
+            self.terrain_single_visible_area_b = new_single_visible_area.clone();
         }
     }
 
     pub fn remove_current(&mut self) {
         if self.current_is_a {
-            self.terrain_singel_visible_area_a = TerrainSingleVisibleArea::default();
+            self.terrain_single_visible_area_a = TerrainSingleVisibleArea::default();
         } else {
-            self.terrain_singel_visible_area_b = TerrainSingleVisibleArea::default();
+            self.terrain_single_visible_area_b = TerrainSingleVisibleArea::default();
         }
         self.current_is_a = !self.current_is_a;
     }
 
     pub fn get_current(&self) -> &TerrainSingleVisibleArea {
         if self.current_is_a {
-            &self.terrain_singel_visible_area_a
+            &self.terrain_single_visible_area_a
         } else {
-            &self.terrain_singel_visible_area_b
+            &self.terrain_single_visible_area_b
         }
     }
 
     pub fn get_last(&self) -> &TerrainSingleVisibleArea {
         if self.current_is_a {
-            &self.terrain_singel_visible_area_b
+            &self.terrain_single_visible_area_b
         } else {
-            &self.terrain_singel_visible_area_a
+            &self.terrain_single_visible_area_a
         }
     }
 }
 
 #[derive(Debug, Resource, Default)]
 pub struct TerrainVisibleAreas {
-    visible_area_proxys: HashMap<Entity, TerrainSingleVisibleAreaProxy>,
+    visible_area_proxy_map: HashMap<Entity, TerrainSingleVisibleAreaProxy>,
 }
 
 impl TerrainVisibleAreas {
@@ -95,10 +95,10 @@ impl TerrainVisibleAreas {
         entity: Entity,
         new_single_visible_area: &TerrainSingleVisibleArea,
     ) {
-        match self.visible_area_proxys.get_mut(&entity) {
+        match self.visible_area_proxy_map.get_mut(&entity) {
             Some(proxy) => proxy.set_current(new_single_visible_area),
             None => {
-                self.visible_area_proxys.insert(
+                self.visible_area_proxy_map.insert(
                     entity,
                     TerrainSingleVisibleAreaProxy::new(new_single_visible_area),
                 );
@@ -107,34 +107,34 @@ impl TerrainVisibleAreas {
     }
 
     pub fn remove_current_visible_area(&mut self, entity: Entity) {
-        if let Some(proxy) = self.visible_area_proxys.get_mut(&entity) {
+        if let Some(proxy) = self.visible_area_proxy_map.get_mut(&entity) {
             proxy.remove_current();
         }
     }
 
     pub fn get_last_visible_area(&self, entity: Entity) -> Option<&TerrainSingleVisibleArea> {
-        match self.visible_area_proxys.get(&entity) {
+        match self.visible_area_proxy_map.get(&entity) {
             Some(proxy) => Some(proxy.get_last()),
             None => None,
         }
     }
 
     pub fn get_current_visible_area(&self, entity: Entity) -> Option<&TerrainSingleVisibleArea> {
-        match self.visible_area_proxys.get(&entity) {
+        match self.visible_area_proxy_map.get(&entity) {
             Some(proxy) => Some(proxy.get_current()),
             None => None,
         }
     }
 
     pub fn get_all_current_visible_area(&self) -> Vec<&TerrainSingleVisibleArea> {
-        self.visible_area_proxys
+        self.visible_area_proxy_map
             .values()
             .map(|proxy| proxy.get_current())
             .collect()
     }
 
     pub fn get_all_last_visible_area(&self) -> Vec<&TerrainSingleVisibleArea> {
-        self.visible_area_proxys
+        self.visible_area_proxy_map
             .values()
             .map(|proxy| proxy.get_last())
             .collect()
@@ -191,7 +191,7 @@ pub fn remove_terrain_visible_areas(
     mut terrain_centers: ResMut<TerrainVisibleAreas>,
     mut removed_events: RemovedComponents<VisibleTerrainRange>,
 ) {
-    removed_events.iter().for_each(|removed_entity| {
+    removed_events.read().for_each(|removed_entity| {
         terrain_centers.remove_current_visible_area(removed_entity);
     });
 }

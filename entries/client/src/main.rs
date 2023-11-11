@@ -1,10 +1,12 @@
-use bevy::app::RunFixedUpdateLoop;
 use terrain::bevy_entry;
+
 #[cfg(feature = "debug_dump")]
-use bevy::prelude::*;
-#[cfg(feature = "debug_dump")]
-use bevy_mod_debugdump::{render_graph_dot, schedule_graph, schedule_graph_dot};
-use bevy_mod_debugdump::render_graph;
+use {
+    bevy::prelude::*,
+    bevy::app::RunFixedUpdateLoop,
+    bevy_mod_debugdump::{render_graph_dot, schedule_graph, schedule_graph_dot},
+    bevy_mod_debugdump::render_graph,
+};
 
 #[cfg(feature = "debug_dump")]
 fn output_dot_file(filename: &str, dot: &str) {
@@ -25,33 +27,33 @@ fn output_dot_file(filename: &str, dot: &str) {
 }
 
 #[cfg(feature = "debug_dump")]
-fn debug_dump(mut app: &mut App) {
+fn debug_dump(app: &mut App) {
     let schedule_settings = schedule_graph::settings::Settings {
         ..Default::default()
     };
-    let startup_dot = schedule_graph_dot(&mut app, Startup, &schedule_settings);
+    let startup_dot = schedule_graph_dot(app, Startup, &schedule_settings);
     output_dot_file("Startup", &startup_dot);
-    let post_startup_dot = schedule_graph_dot(&mut app, PostStartup, &schedule_settings);
+    let post_startup_dot = schedule_graph_dot(app, PostStartup, &schedule_settings);
     output_dot_file("PostStartup", &post_startup_dot);
-    let first_dot = schedule_graph_dot(&mut app, First, &schedule_settings);
+    let first_dot = schedule_graph_dot(app, First, &schedule_settings);
     output_dot_file("First", &first_dot);
-    let pre_update_dot = schedule_graph_dot(&mut app, PreUpdate, &schedule_settings);
+    let pre_update_dot = schedule_graph_dot(app, PreUpdate, &schedule_settings);
     output_dot_file("PreUpdate", &pre_update_dot);
-    let update_dot = schedule_graph_dot(&mut app, Update, &schedule_settings);
+    let update_dot = schedule_graph_dot(app, Update, &schedule_settings);
     output_dot_file("Update", &update_dot);
-    let fixed_update_dot = schedule_graph_dot(&mut app, RunFixedUpdateLoop, &schedule_settings);
+    let fixed_update_dot = schedule_graph_dot(app, RunFixedUpdateLoop, &schedule_settings);
     output_dot_file("FixedUpdate", &fixed_update_dot);
-    // let state_transition_dot = schedule_graph_dot(&mut app, StateTransition, &schedule_settings);
+    // let state_transition_dot = schedule_graph_dot( app, StateTransition, &schedule_settings);
     // output_dot_file("StateTransition", &state_transition_dot);
-    let post_update_dot = schedule_graph_dot(&mut app, PostUpdate, &schedule_settings);
+    let post_update_dot = schedule_graph_dot(app, PostUpdate, &schedule_settings);
     output_dot_file("PostUpdate", &post_update_dot);
-    let last_dot = schedule_graph_dot(&mut app, Last, &schedule_settings);
+    let last_dot = schedule_graph_dot(app, Last, &schedule_settings);
     output_dot_file("Last", &last_dot);
 
     let render_settings = render_graph::settings::Settings {
         ..Default::default()
     };
-    let render_dot = render_graph_dot(&app, &render_settings);
+    let render_dot = render_graph_dot(app, &render_settings);
     output_dot_file("RenderGraph", &render_dot);
 }
 

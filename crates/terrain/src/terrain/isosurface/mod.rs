@@ -7,7 +7,7 @@ use super::ecology::EcologyPlugin;
 
 use self::{
     dc::DualContourPlugin,
-    surface::{densy_function::NoiseSurface, shape_surface::IsosurfaceContext},
+    surface::{density_function::NoiseSurface, shape_surface::IsosurfaceContext},
 };
 
 pub mod cms;
@@ -37,7 +37,7 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(IsosurfaceContext {
             shape_surface: Arc::new(RwLock::new(ShapeSurface {
-                densy_function: Box::new(NoiseSurface {
+                density_function: Box::new(NoiseSurface {
                     seed: rand::random(),
                     frequency: 0.3,
                     lacunarity: 0.02,

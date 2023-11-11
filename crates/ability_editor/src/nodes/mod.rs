@@ -29,7 +29,7 @@ pub fn receive_effect_event<T: EffectNode + Component>(
     mut query: Query<(&mut T, &mut EffectNodeState)>,
     mut event: EventReader<EffectEvent>,
 ) {
-    for event in event.iter() {
+    for event in event.read() {
         match event {
             EffectEvent::Start(entity) => {
                 if let Ok((mut node, mut state)) = query.get_mut(*entity) {

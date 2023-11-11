@@ -13,7 +13,7 @@ use self::{
         EffectStartEvent,
     },
     graph_map::EffectGraphMap,
-    state::{on_remove_effect, update_to_active_state, update_to_unactive_state},
+    state::{on_remove_effect, update_to_active_state, update_to_inactive_state},
     tag::{
         effect_tag_revert_apply_system, effect_tag_start_apply_system,
         effect_tag_start_check_system,
@@ -45,9 +45,9 @@ impl Plugin for EffectPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    update_to_unactive_state,
+                    update_to_inactive_state,
                     effect_tag_revert_apply_system,
-                    update_to_unactive_state,
+                    update_to_inactive_state,
                 )
                     .chain(),
             )

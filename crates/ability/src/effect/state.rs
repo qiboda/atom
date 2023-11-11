@@ -10,30 +10,30 @@ use super::graph_map::EffectGraphMap;
 
 /// add ability to entity
 /// active ability
-/// unactive ability
+/// inactive ability
 /// receive input
 #[derive(Debug, Component, Default, Reflect, Copy, Clone, PartialEq)]
 pub enum EffectState {
     #[default]
-    Unactived,
+    Inactive,
     CheckCanActive,
     ActiveBefore,
-    Actived,
-    BeforeUnactived,
+    Active,
+    BeforeInactive,
 }
 
-/// set active from ability start, so set unactived when all children finished.
-pub fn update_to_unactive_state(mut effect_query: Query<&mut EffectState>) {
+/// set active from ability start, so set inactive when all children finished.
+pub fn update_to_inactive_state(mut effect_query: Query<&mut EffectState>) {
     for mut effect_state in effect_query.iter_mut() {
         match *effect_state {
-            EffectState::Unactived => {}
+            EffectState::Inactive => {}
             EffectState::CheckCanActive => {}
             EffectState::ActiveBefore => {}
-            EffectState::Actived => {
-                *effect_state = EffectState::BeforeUnactived;
+            EffectState::Active => {
+                *effect_state = EffectState::BeforeInactive;
             }
-            EffectState::BeforeUnactived => {
-                *effect_state = EffectState::Unactived;
+            EffectState::BeforeInactive => {
+                *effect_state = EffectState::Inactive;
             }
         }
     }
@@ -47,12 +47,12 @@ pub fn update_to_active_state(
 ) {
     for (entity, mut state) in state_query.iter_mut() {
         match *state {
-            EffectState::Unactived => {}
+            EffectState::Inactive => {}
             EffectState::CheckCanActive => {
                 *state = EffectState::ActiveBefore;
             }
             EffectState::ActiveBefore => {
-                *state = EffectState::Actived;
+                *state = EffectState::Active;
 
                 let graph = effect_graph_map.map.get(&entity).unwrap();
                 let graph_context = graph_query.get(graph.get_entity()).unwrap();
@@ -60,8 +60,8 @@ pub fn update_to_active_state(
                     event_writer.send(EffectNodeStartEvent::new(entry_node));
                 }
             }
-            EffectState::Actived => {}
-            EffectState::BeforeUnactived => {}
+            EffectState::Active => {}
+            EffectState::BeforeInactive => {}
         }
     }
 }
@@ -71,7 +71,7 @@ pub fn on_remove_effect(
     mut effect_graph_map: ResMut<EffectGraphMap>,
     mut query: Query<&mut EffectGraphState>,
 ) {
-    for ability in removed_ability.iter() {
+    for ability in removed_ability.read() {
         if let Some(graph_ref) = effect_graph_map.map.remove(&ability) {
             let mut graph_state = query.get_mut(graph_ref.get_entity()).unwrap();
             *graph_state = EffectGraphState::ToRemove;

@@ -4,7 +4,7 @@ use bevy::prelude::*;
 pub struct CameraControllerPlugin;
 
 impl Plugin for CameraControllerPlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
+    fn build(&self, app: &mut App) {
         app.add_systems(Update, camera_movement);
     }
 }

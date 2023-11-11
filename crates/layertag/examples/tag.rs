@@ -37,9 +37,9 @@ impl<T> LayerTagData for GenTestTags<T>
 where
     T: Default + Reflect + TypePath + Debug + Clone,
 {
-    #[doc = " campare tag data only same tag."]
+    #[doc = "compare tag data only same tag."]
     fn cmp_data_same_type_inner(&self, rhs: &dyn LayerTag) -> bool {
-        assert!(self.tag() == rhs.tag());
+        assert_eq!(self.tag(), rhs.tag());
 
         if let Some(rhs) = rhs.as_reflect().downcast_ref::<Self>() {
             self._data == rhs._data

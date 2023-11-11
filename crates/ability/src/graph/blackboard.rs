@@ -29,25 +29,25 @@ pub enum EffectValue {
 
 pub trait BlackBoardValue {
     fn get<'a, T>(&'a self) -> Result<T, T::Error>
-    where
-        T: TryFrom<&'a Self>;
+        where
+            T: TryFrom<&'a Self>;
 
     fn get_mut<'a, T>(&'a mut self) -> Result<T, T::Error>
-    where
-        T: TryFrom<&'a mut Self>;
+        where
+            T: TryFrom<&'a mut Self>;
 }
 
 impl BlackBoardValue for EffectValue {
     fn get<'a, T>(&'a self) -> Result<T, T::Error>
-    where
-        T: TryFrom<&'a Self>,
+        where
+            T: TryFrom<&'a Self>,
     {
         self.try_into()
     }
 
     fn get_mut<'a, T>(&'a mut self) -> Result<T, T::Error>
-    where
-        T: TryFrom<&'a mut Self>,
+        where
+            T: TryFrom<&'a mut Self>,
     {
         self.try_into()
     }
@@ -55,15 +55,15 @@ impl BlackBoardValue for EffectValue {
 
 impl BlackBoardValue for &EffectValue {
     fn get<'a, T>(&'a self) -> Result<T, T::Error>
-    where
-        T: TryFrom<&'a Self>,
+        where
+            T: TryFrom<&'a Self>,
     {
         self.try_into()
     }
 
     fn get_mut<'a, T>(&'a mut self) -> Result<T, T::Error>
-    where
-        T: TryFrom<&'a mut Self>,
+        where
+            T: TryFrom<&'a mut Self>,
     {
         self.try_into()
     }
@@ -397,22 +397,22 @@ mod test {
     #[test]
     fn black_board_value_try_from() {
         let br_i32 = EffectValue::I32(100);
-        assert!((&br_i32).try_into() == Ok(&100i32));
+        assert_eq!((&br_i32).try_into(), Ok(&100i32));
 
         let br_vec = EffectValue::Vec(vec![EffectValue::I32(100)]);
         if let Ok(vec_value) = TryInto::<&Vec<EffectValue>>::try_into(&br_vec) {
             for elem in vec_value {
-                assert!(elem.try_into() == Ok(&100));
+                assert_eq!(elem.try_into(), Ok(&100));
             }
         }
 
-        let br_str = EffectValue::String("laksdjfk".into());
-        assert!((&br_str).try_into() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
+        let br_str = EffectValue::String("bear".into());
+        assert_eq!((&br_str).try_into(), Ok(&Cow::<'static, str>::Owned("bear".into())));
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = TryInto::<&Box<dyn Reflect>>::try_into(&br_box);
         if let Ok(v) = v {
-            assert!(v.downcast_ref::<Vec<i32>>() == Some(&Box::new(vec![32])));
+            assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
         }
     }
 
@@ -449,43 +449,43 @@ mod test {
         let type_registry = type_registry.read();
 
         if let EffectValue::BoxReflect(v) = br_box {
-            let reflect_atrait = type_registry
+            let reflect_a_trait = type_registry
                 .get_type_data::<ReflectATrait>(v.type_id())
                 .unwrap();
 
-            let my_trait: &dyn ATrait = reflect_atrait.get(&*v).unwrap();
-            assert!(my_trait.get_value() == 32);
+            let my_trait: &dyn ATrait = reflect_a_trait.get(&*v).unwrap();
+            assert_eq!(my_trait.get_value(), 32);
             return;
         }
         panic!()
     }
 
     #[test]
-    fn black_boardrvalue_get() {
+    fn black_board_rvalue_get() {
         let br_i32 = EffectValue::I32(100);
-        assert!(br_i32.get() == Ok(&100i32));
+        assert_eq!(br_i32.get(), Ok(&100i32));
 
-        let br_str = EffectValue::String("laksdjfk".into());
-        assert!(br_str.get() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
+        let br_str = EffectValue::String("dog".into());
+        assert_eq!(br_str.get(), Ok(&Cow::<'static, str>::Owned("dog".into())));
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = br_box.get::<&Box<dyn Reflect>>();
         if let Ok(v) = v {
-            assert!(v.downcast_ref::<Vec<i32>>() == Some(&Box::new(vec![32])));
+            assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
         }
 
         let mut br_i32 = EffectValue::I32(100);
-        assert!(br_i32.get_mut() == Ok(&mut 100i32));
+        assert_eq!(br_i32.get_mut(), Ok(&mut 100i32));
         *br_i32.get_mut::<&mut i32>().unwrap() = 200;
-        assert!(br_i32.get() == Ok(&200i32));
+        assert_eq!(br_i32.get(), Ok(&200i32));
 
-        let br_str = EffectValue::String("laksdjfk".into());
-        assert!(br_str.get() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
+        let br_str = EffectValue::String("key".into());
+        assert_eq!(br_str.get() , Ok(&Cow::<'static, str>::Owned("key".into())));
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = br_box.get::<&Box<dyn Reflect>>();
         if let Ok(v) = v {
-            assert!(v.downcast_ref::<Vec<i32>>() == Some(&Box::new(vec![32])));
+            assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
         }
     }
 }

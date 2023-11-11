@@ -64,7 +64,7 @@ mod tests {
 
     impl LayerTagData for TestTag {
         fn cmp_data_same_type_inner(&self, rhs: &dyn LayerTag) -> bool {
-            assert!(self.tag() == rhs.tag());
+            assert_eq!(self.tag(), rhs.tag());
 
             if let Some(rhs) = rhs.as_reflect().downcast_ref::<Self>() {
                 self.value == rhs.value
@@ -76,7 +76,7 @@ mod tests {
 
     impl fmt::Display for TestTag {
         fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Result::Ok(())
+            Ok(())
         }
     }
 
@@ -91,7 +91,7 @@ mod tests {
 
     impl fmt::Display for TestTag2 {
         fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Result::Ok(())
+            Ok(())
         }
     }
 
@@ -109,7 +109,7 @@ mod tests {
         registry.register::<TestTag>();
         let new_tag_inst = registry.request::<TestTag>();
         assert!(new_tag_inst.is_some());
-        assert!(new_tag_inst == Some(TestTag::from_tag_registry()));
+        assert_eq!(new_tag_inst, Some(TestTag::from_tag_registry()));
         assert!(registry.request::<TestTag2>().is_none());
 
         let mut new_tag_inst_2 = registry.request::<TestTag>();
