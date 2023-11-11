@@ -4,7 +4,7 @@ use bevy::{
     render::render_resource::AsBindGroup,
 };
 
-#[derive(AsBindGroup, TypeUuid, TypePath, Clone, Default)]
+#[derive(AsBindGroup, TypeUuid, TypePath, Clone, Default, Asset)]
 #[uuid = "155a821f-9832-48e4-b460-0e8805cbbce5"]
 pub struct CoolMaterial {
     #[uniform(0)]

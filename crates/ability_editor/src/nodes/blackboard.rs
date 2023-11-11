@@ -360,44 +360,44 @@ mod test {
     #[test]
     fn black_board_value_try_from() {
         let br_i32 = EffectValue::I32(100);
-        assert!((&br_i32).try_into() == Ok(&100i32));
+        assert_eq!((&br_i32).try_into(), Ok(&100i32));
 
-        let br_str = EffectValue::String("laksdjfk".into());
-        assert!((&br_str).try_into() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
+        let br_str = EffectValue::String("cat".into());
+        assert_eq!((&br_str).try_into(), Ok(&Cow::<'static, str>::Owned("cat".into())));
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = TryInto::<&Box<dyn Reflect>>::try_into(&br_box);
         if let Ok(v) = v {
-            assert!(v.downcast_ref::<Vec<i32>>() == Some(&Box::new(vec![32])));
+            assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
         }
     }
 
     #[test]
     fn black_board_value_get() {
         let br_i32 = EffectValue::I32(100);
-        assert!(br_i32.get() == Ok(&100i32));
+        assert_eq!(br_i32.get(), Ok(&100i32));
 
-        let br_str = EffectValue::String("laksdjfk".into());
-        assert!(br_str.get() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
+        let br_str = EffectValue::String("double".into());
+        assert_eq!(br_str.get(), Ok(&Cow::<'static, str>::Owned("double".into())));
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = br_box.get::<&Box<dyn Reflect>>();
         if let Ok(v) = v {
-            assert!(v.downcast_ref::<Vec<i32>>() == Some(&Box::new(vec![32])));
+            assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
         }
 
         let mut br_i32 = EffectValue::I32(100);
-        assert!(br_i32.get_mut() == Ok(&mut 100i32));
+        assert_eq!(br_i32.get_mut() , Ok(&mut 100i32));
         *br_i32.get_mut::<&mut i32>().unwrap() = 200;
-        assert!(br_i32.get() == Ok(&200i32));
+        assert_eq!(br_i32.get(),Ok(&200i32));
 
-        let br_str = EffectValue::String("laksdjfk".into());
-        assert!(br_str.get() == Ok(&Cow::<'static, str>::Owned("laksdjfk".into())));
+        let br_str = EffectValue::String("float".into());
+        assert_eq!(br_str.get(), Ok(&Cow::<'static, str>::Owned("float".into())));
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = br_box.get::<&Box<dyn Reflect>>();
         if let Ok(v) = v {
-            assert!(v.downcast_ref::<Vec<i32>>() == Some(&Box::new(vec![32])));
+            assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
         }
     }
 }

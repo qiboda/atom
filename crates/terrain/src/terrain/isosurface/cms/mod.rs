@@ -46,7 +46,7 @@ impl Plugin for CMSPlugin {
             (
                 cms_update_sampler,
                 cms_update_octree,
-                cms_update_extrace,
+                cms_update_extract,
                 cms_update_meshing,
                 cms_update_create_mesh,
             )
@@ -122,7 +122,7 @@ fn cms_update_sampler(
                         .is_some()
                     {
                         info!("cms_task.state == IsosurfaceExtractionState::Sample: task is some and ok");
-                        cms_task.state = super::IsosurfaceExtractionState::BuildOctree;
+                        cms_task.state = IsosurfaceExtractionState::BuildOctree;
                         cms_task.task = None;
                     }
                 }
@@ -187,7 +187,7 @@ fn cms_update_octree(
                     if future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
                         .is_some()
                     {
-                        cms_task.state = super::IsosurfaceExtractionState::Extract;
+                        cms_task.state = IsosurfaceExtractionState::Extract;
                         cms_task.task = None;
                     }
                 }
@@ -196,7 +196,7 @@ fn cms_update_octree(
     }
 }
 
-fn cms_update_extrace(
+fn cms_update_extract(
     mut cms_query: Query<(&mut CMSComponent, &mut CMSTask)>,
     isosurface_context: ResMut<IsosurfaceContext>,
 ) {
@@ -221,7 +221,7 @@ fn cms_update_extrace(
                             vertex_index,
                         );
                         octree.edit_transitional_face();
-                        octree.trace_comonent();
+                        octree.trace_component();
                     });
                     cms_task.task = Some(task);
                 }
@@ -229,7 +229,7 @@ fn cms_update_extrace(
                     if future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
                         .is_some()
                     {
-                        cms_task.state = super::IsosurfaceExtractionState::Meshing;
+                        cms_task.state = IsosurfaceExtractionState::Meshing;
                         cms_task.task = None;
                     }
                 }
@@ -258,7 +258,7 @@ fn cms_update_meshing(mut cms_query: Query<(&mut CMSComponent, &mut CMSTask)>) {
                     if future::block_on(future::poll_once(cms_task.task.as_mut().unwrap()))
                         .is_some()
                     {
-                        cms_task.state = super::IsosurfaceExtractionState::CreateMesh;
+                        cms_task.state = IsosurfaceExtractionState::CreateMesh;
                         cms_task.task = None;
                     }
                 }
@@ -299,7 +299,7 @@ fn cms_update_create_mesh(
                 *terrain_chunk_coord,
                 ecology_layer_sampler,
             );
-            cms_task.state = super::IsosurfaceExtractionState::Done;
+            cms_task.state = IsosurfaceExtractionState::Done;
         }
     }
 }

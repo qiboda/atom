@@ -1,4 +1,4 @@
-use bevy_math::{Mat3A, Vec3A};
+use bevy::math::{Mat3A, Vec3A};
 
 /// two vectors cross product, 3x1 * 1x3
 pub(crate) fn self_outer_product(v: Vec3A) -> Mat3A {

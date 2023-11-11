@@ -6,7 +6,7 @@ use bevy::{
 
 // StandardMaterial::default()
 
-#[derive(AsBindGroup, TypeUuid, TypePath, Clone, Default)]
+#[derive(AsBindGroup, TypeUuid, TypePath, Clone, Default, Asset)]
 #[uuid = "fd00e067-1a19-47e7-ae15-e05450d68230"]
 pub struct TerrainMaterial {
     #[uniform(0)]

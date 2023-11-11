@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use bevy::prelude::{Vec2, Vec3};
 
-pub trait DensyFunction: Sync + Send + Debug {
+pub trait DensityFunction: Sync + Send + Debug {
     // from world position
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32;
 
@@ -29,7 +29,7 @@ pub trait DensyFunction: Sync + Send + Debug {
 #[derive(Default, Debug)]
 pub struct Sphere;
 
-impl DensyFunction for Sphere {
+impl DensityFunction for Sphere {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
         x * x + y * y + z * z - 32.0
     }
@@ -39,7 +39,7 @@ impl DensyFunction for Sphere {
 #[derive(Default, Debug)]
 pub struct Torus;
 
-impl DensyFunction for Torus {
+impl DensityFunction for Torus {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
         let r_outer = 4.0;
         let r_inner = 2.0;
@@ -54,7 +54,7 @@ impl DensyFunction for Torus {
 #[derive(Default, Debug)]
 pub struct Panel;
 
-impl DensyFunction for Panel {
+impl DensityFunction for Panel {
     fn get_value(&self, _x: f32, y: f32, _z: f32) -> f32 {
         match y {
             y if y < 0.0 => -0.5,
@@ -67,7 +67,7 @@ impl DensyFunction for Panel {
 #[derive(Default, Debug)]
 pub struct Cube;
 
-impl DensyFunction for Cube {
+impl DensityFunction for Cube {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
         (x.abs() - 4.0).max((y.abs() - 4.0).max(z.abs() - 4.0))
     }
@@ -82,7 +82,7 @@ pub struct NoiseSurface {
     pub octaves: usize,
 }
 
-impl DensyFunction for NoiseSurface {
+impl DensityFunction for NoiseSurface {
     // todo: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
         y - noisy_bevy::fbm_simplex_2d(

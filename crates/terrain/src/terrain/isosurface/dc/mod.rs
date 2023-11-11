@@ -38,7 +38,7 @@ use std::sync::{Arc, RwLock};
 use bevy::math::Vec3A;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
-use bundle::{DualContoring, DualContoringBundle, DualContoringTask};
+use bundle::{DualContouring, DualContouringBundle, DualContouringTask};
 pub use cell_extent::*;
 pub use cell_octree::*;
 use futures_lite::future;
@@ -84,16 +84,16 @@ impl Plugin for DualContourPlugin {
 
 fn dual_contour_init(
     mut commands: Commands,
-    chunk_coord_query: Query<Entity, (Without<DualContoring>, With<TerrainChunk>)>,
+    chunk_coord_query: Query<Entity, (Without<DualContouring>, With<TerrainChunk>)>,
 ) {
     // info!("startup_dual_contour_init: {:?}", chunk_coord_query);
     for entity in chunk_coord_query.iter() {
-        commands.entity(entity).insert(DualContoringBundle {
-            dual_contoring: DualContoring {
+        commands.entity(entity).insert(DualContouringBundle {
+            dual_contouring: DualContouring {
                 octree: Arc::new(RwLock::new(CellOctree::new(CellId::MAX, vec![]))),
                 mesh_cache: Arc::new(RwLock::new(MeshCache::default())),
             },
-            dual_contoring_task: DualContoringTask {
+            dual_contouring_task: DualContouringTask {
                 state: DualContourState::BuildingOctree,
                 task: None,
             },
@@ -105,17 +105,17 @@ fn dual_contour_build_octree(
     mut terrain_query: Query<
         (
             &TerrainChunkCoord,
-            &mut DualContoring,
-            &mut DualContoringTask,
+            &mut DualContouring,
+            &mut DualContouringTask,
         ),
         With<TerrainChunk>,
     >,
     terrain_setting: Res<TerrainSettings>,
     surface_context: Res<IsosurfaceContext>,
 ) {
-    for (chunk_coord, dual_contoring, mut dual_contoring_task) in terrain_query.iter_mut() {
-        if dual_contoring_task.state == DualContourState::BuildingOctree {
-            match dual_contoring_task.task {
+    for (chunk_coord, dual_contouring, mut dual_contouring_task) in terrain_query.iter_mut() {
+        if dual_contouring_task.state == DualContourState::BuildingOctree {
+            match dual_contouring_task.task {
                 None => {
                     let chunk_size = terrain_setting.get_chunk_size();
 
@@ -131,7 +131,7 @@ fn dual_contour_build_octree(
                         world_offset + chunk_size + outer_add,
                     );
 
-                    let dc = dual_contoring.octree.clone();
+                    let dc = dual_contouring.octree.clone();
                     let surface_shape = surface_context.shape_surface.clone();
 
                     let thread_pool = AsyncComputeTaskPool::get();
@@ -141,16 +141,16 @@ fn dual_contour_build_octree(
                         dc.build(root_cell_extent, 7, 0.00001, 0.1, &surface_shape);
                     });
 
-                    dual_contoring_task.task = Some(task);
+                    dual_contouring_task.task = Some(task);
                 }
                 Some(_) => {
                     if future::block_on(future::poll_once(
-                        dual_contoring_task.task.as_mut().unwrap(),
+                        dual_contouring_task.task.as_mut().unwrap(),
                     ))
                     .is_some()
                     {
-                        dual_contoring_task.state = DualContourState::DualContouring;
-                        dual_contoring_task.task = None;
+                        dual_contouring_task.state = DualContourState::DualContouring;
+                        dual_contouring_task.task = None;
                     }
                 }
             }
@@ -159,17 +159,17 @@ fn dual_contour_build_octree(
 }
 
 fn dual_contour_meshing(
-    mut dc_query: Query<(&mut DualContoring, &mut DualContoringTask), With<TerrainChunk>>,
+    mut dc_query: Query<(&mut DualContouring, &mut DualContouringTask), With<TerrainChunk>>,
     surface_context: Res<IsosurfaceContext>,
 ) {
-    for (dual_contoring, mut dual_contoring_task) in dc_query.iter_mut() {
-        if dual_contoring_task.state == DualContourState::DualContouring {
-            match dual_contoring_task.task {
+    for (dual_contouring, mut dual_contouring_task) in dc_query.iter_mut() {
+        if dual_contouring_task.state == DualContourState::DualContouring {
+            match dual_contouring_task.task {
                 None => {
                     let thread_pool = AsyncComputeTaskPool::get();
 
-                    let dc = dual_contoring.octree.clone();
-                    let mesh_cache = dual_contoring.mesh_cache.clone();
+                    let dc = dual_contouring.octree.clone();
+                    let mesh_cache = dual_contouring.mesh_cache.clone();
                     let shape_surface = surface_context.shape_surface.clone();
 
                     let task = thread_pool.spawn(async move {
@@ -239,16 +239,16 @@ fn dual_contour_meshing(
                         mesh_cache.indices = tri_indices;
                     });
 
-                    dual_contoring_task.task = Some(task);
+                    dual_contouring_task.task = Some(task);
                 }
                 Some(_) => {
                     if future::block_on(future::poll_once(
-                        dual_contoring_task.task.as_mut().unwrap(),
+                        dual_contouring_task.task.as_mut().unwrap(),
                     ))
                     .is_some()
                     {
-                        dual_contoring_task.state = DualContourState::CreateMesh;
-                        dual_contoring_task.task = None;
+                        dual_contouring_task.state = DualContourState::CreateMesh;
+                        dual_contouring_task.task = None;
                     }
                 }
             }
@@ -260,8 +260,8 @@ pub fn dual_contouring_create_mesh(
     mut commands: Commands,
     mut cms_query: Query<(
         Entity,
-        &DualContoring,
-        &mut DualContoringTask,
+        &DualContouring,
+        &mut DualContouringTask,
         &TerrainChunkCoord,
         &EcologyLayerSampler,
     )>,

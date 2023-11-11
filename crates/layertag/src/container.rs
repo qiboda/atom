@@ -60,7 +60,7 @@ impl LayerTagContainer {
 
     pub fn remove_layer_tag(&mut self, tag: &dyn LayerTag) {
         self.tags.retain_mut(|x| {
-            if x.deref().exact_match(tag.deref()) {
+            if x.deref().exact_match(tag) {
                 x.decrease_count();
                 return x.count() > 0;
             }

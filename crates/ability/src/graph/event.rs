@@ -97,7 +97,7 @@ impl EffectNodeEvent for EffectNodeResumeEvent {
 
 /**
  * Pending effect node.
- * Every effect node Pendng this component.
+ * Every effect node Pending this component.
  */
 #[derive(Resource, Debug, Default)]
 pub struct EffectNodePendingEvents {
@@ -145,7 +145,7 @@ pub fn receive_effect_node_check_start_event(
     mut pending: ResMut<EffectNodePendingEvents>,
     mut event_reader: EventReader<EffectNodeCheckStartEvent>,
 ) {
-    for event in event_reader.iter() {
+    for event in event_reader.read() {
         pending.pending_check_can_start.push(event.node);
     }
 }
@@ -158,7 +158,7 @@ pub fn receive_effect_node_start_event(
     mut pending: ResMut<EffectNodePendingEvents>,
     mut event_reader: EventReader<EffectNodeStartEvent>,
 ) {
-    for event in event_reader.iter() {
+    for event in event_reader.read() {
         pending.pending_start.push(event.node);
     }
 }
@@ -171,7 +171,7 @@ pub fn receive_effect_node_abort_event(
     mut pending: ResMut<EffectNodePendingEvents>,
     mut event_reader: EventReader<EffectNodeAbortEvent>,
 ) {
-    for event in event_reader.iter() {
+    for event in event_reader.read() {
         pending.pending_abort.push(event.node);
     }
 }
@@ -184,7 +184,7 @@ pub fn receive_effect_node_pause_event(
     mut pending: ResMut<EffectNodePendingEvents>,
     mut event_reader: EventReader<EffectNodePauseEvent>,
 ) {
-    for event in event_reader.iter() {
+    for event in event_reader.read() {
         pending.pending_pause.push(event.node);
     }
 }
@@ -197,7 +197,7 @@ pub fn receive_effect_node_resume_event(
     mut pending: ResMut<EffectNodePendingEvents>,
     mut event_reader: EventReader<EffectNodeResumeEvent>,
 ) {
-    for event in event_reader.iter() {
+    for event in event_reader.read() {
         pending.pending_resume.push(event.node);
     }
 }
@@ -206,7 +206,7 @@ pub fn effect_node_pause_event<T: EffectNode + Component>(
     mut query: Query<&mut EffectNodeTickState, With<T>>,
     mut event_reader: EventReader<EffectNodePauseEvent>,
 ) {
-    for event in event_reader.iter() {
+    for event in event_reader.read() {
         if let Ok(mut tick_state) = query.get_mut(event.node) {
             if *tick_state == EffectNodeTickState::Paused {
                 continue;
@@ -225,7 +225,7 @@ pub fn effect_node_resume_event<T: EffectNode + Component>(
     mut query: Query<&mut EffectNodeTickState, With<T>>,
     mut event_reader: EventReader<EffectNodeResumeEvent>,
 ) {
-    for event in event_reader.iter() {
+    for event in event_reader.read() {
         if let Ok(mut tick_state) = query.get_mut(event.node) {
             if *tick_state == EffectNodeTickState::Paused {
                 info!(
