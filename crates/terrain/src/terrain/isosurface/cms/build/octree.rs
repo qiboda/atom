@@ -53,7 +53,7 @@ pub fn make_octree_structure(
     let voxel_num = terrain_settings.get_chunk_voxel_num();
     let voxel_num = UVec3::splat(voxel_num);
 
-    // todo: check is branch or leat cell.....
+    // todo: check is branch or leaf cell.....
     let mut address = VoxelAddress::new();
     address.set(
         VoxelAddress { raw_address: 1 },
@@ -122,7 +122,7 @@ fn subdivide_cell(
     sample_info: &mut SurfaceSampler,
     shape_surface: &mut ShapeSurface,
 ) {
-    // debug!("subdivide_cell: voxle num {}", voxel_num);
+    // debug!("subdivide_cell: voxel num {}", voxel_num);
 
     for (i, subcell_index) in SubCellIndex::iter().enumerate() {
         let c000 = UVec3::new(

@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.11.2"
+bevy = { workspace = true }
 once_cell = "1.18.0"
 layertag_derive = { path = "layertag_derive" }
 

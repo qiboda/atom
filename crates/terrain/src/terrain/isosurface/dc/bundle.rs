@@ -10,19 +10,19 @@ use crate::terrain::isosurface::mesh::mesh_cache::MeshCache;
 use super::{CellOctree, DualContourState};
 
 #[derive(Component, Debug)]
-pub struct DualContoring {
+pub struct DualContouring {
     pub octree: Arc<RwLock<CellOctree>>,
     pub mesh_cache: Arc<RwLock<MeshCache>>,
 }
 
 #[derive(Component, Debug)]
-pub struct DualContoringTask {
+pub struct DualContouringTask {
     pub state: DualContourState,
     pub task: Option<Task<()>>,
 }
 
 #[derive(Bundle, Debug)]
-pub struct DualContoringBundle {
-    pub dual_contoring: DualContoring,
-    pub dual_contoring_task: DualContoringTask,
+pub struct DualContouringBundle {
+    pub dual_contouring: DualContouring,
+    pub dual_contouring_task: DualContouringTask,
 }

@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
 
-use super::densy_function::DensyFunction;
+use super::density_function::DensityFunction;
 
 #[derive(Resource, Debug)]
 pub struct IsosurfaceContext {
@@ -11,7 +11,7 @@ pub struct IsosurfaceContext {
 
 #[derive(Debug)]
 pub struct ShapeSurface {
-    pub densy_function: Box<dyn DensyFunction>,
+    pub density_function: Box<dyn DensityFunction>,
 
     pub iso_level: Vec3,
 }
@@ -19,7 +19,7 @@ pub struct ShapeSurface {
 impl ShapeSurface {
     #[inline]
     pub fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        self.densy_function.get_value(x, y, z)
+        self.density_function.get_value(x, y, z)
     }
 
     #[inline]
@@ -40,7 +40,7 @@ impl ShapeSurface {
 
 impl ShapeSurface {
     pub fn get_range_values(&self, offset: Vec3, size: Vec3, grain_size: Vec3) -> Vec<f32> {
-        self.densy_function
+        self.density_function
             .get_range_values(offset, size, grain_size)
     }
 }

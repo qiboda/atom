@@ -5,11 +5,8 @@ pub mod terrain;
 pub mod ui;
 pub mod visible;
 
-use std::time::Duration;
-
 use bevy::{
     app::AppExit,
-    asset::ChangeWatcher,
     core_pipeline::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
@@ -21,6 +18,7 @@ use bevy::{
         RenderPlugin,
     },
 };
+use bevy::render::settings::RenderCreation;
 use bevy_obj::ObjPlugin;
 use log::CustomLogPlugin;
 
@@ -37,14 +35,18 @@ pub fn bevy_entry() -> App {
         .add_plugins((
             DefaultPlugins
                 .set(RenderPlugin {
-                    wgpu_settings: WgpuSettings {
-                        features: WgpuFeatures::POLYGON_MODE_LINE,
-                        ..default()
-                    },
+                    render_creation: RenderCreation::Automatic(
+                        WgpuSettings {
+                            features: WgpuFeatures::POLYGON_MODE_LINE,
+                            ..default()
+                        }
+                    ),
                 })
                 .set(AssetPlugin {
-                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
-                    asset_folder: "assets".to_string(),
+                    file_path: "assets".to_string(),
+                    processed_file_path: "".to_string(),
+                    watch_for_changes_override: Some(true),
+                    mode: AssetMode::Unprocessed,
                 })
                 .disable::<LogPlugin>(),
             ObjPlugin,

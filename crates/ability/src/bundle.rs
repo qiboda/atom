@@ -11,13 +11,13 @@ use crate::{
 };
 
 /// ability owner entity
-///     ability enitty 1
+///     ability entity 1
 ///     ability base
 ///        &ability graph
 ///     ability tag container
 ///     other
 ///
-///     ability enitty 2
+///     ability entity 2
 ///     ability base
 ///        &ability graph
 ///     ability tag container

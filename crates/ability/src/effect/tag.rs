@@ -61,7 +61,7 @@ pub fn effect_tag_start_check_system(
                     .0
                     .condition(LayerTagContainerConditionWithout, &disable_tag.0);
             if can_start.not() {
-                *effect_state = EffectState::Unactived;
+                *effect_state = EffectState::Inactive;
             }
         }
     }
@@ -101,7 +101,7 @@ pub fn effect_tag_revert_apply_system(
     )>,
 ) {
     for (parent, effect_state, added_tag, removed_tag) in query.iter() {
-        if *effect_state == EffectState::BeforeUnactived {
+        if *effect_state == EffectState::BeforeInactive {
             let mut state_layer_tag_container = state_set_query.get_mut(parent.get()).unwrap();
 
             if added_tag.revert == EffectLayerTagContainerRevert::Yes {

@@ -22,8 +22,9 @@ use attribute::BaseAttributeSet;
 use base_attack::EffectNodeGraphBaseAttack;
 
 use bevy::{
+    log::info,
     prelude::{
-        info, App, BuildChildren, Commands, Component, DespawnRecursiveExt, Entity, EventWriter,
+        App, BuildChildren, Commands, Component, DespawnRecursiveExt, Entity, EventWriter,
         Input, KeyCode, Query, Res, ResMut, Startup, Update, With,
     },
     DefaultPlugins,
@@ -64,7 +65,7 @@ fn startup(mut commands: Commands, mut ability_graph: ResMut<EffectGraphMap>) {
     let ability_entity = commands
         .spawn(AbilityBundle {
             ability: Ability,
-            state: EffectState::Unactived,
+            state: EffectState::Inactive,
         })
         .set_parent(ability_subsystem_entity)
         .id();
@@ -83,7 +84,7 @@ fn cast_base_skill(
     if input.just_pressed(KeyCode::Q) {
         info!("just_pressed: cast_base_skill");
         for (entity, state) in ability_query.iter_mut() {
-            if *state == EffectState::Unactived {
+            if *state == EffectState::Inactive {
                 event_writer.send(EffectStartEvent {
                     effect: entity,
                     data: None,

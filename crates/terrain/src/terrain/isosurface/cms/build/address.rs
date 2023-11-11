@@ -71,7 +71,7 @@ impl VoxelAddress {
             // if searching for right(+X), top(+Y) or front(+Z) neighbour
             // it should always have a greater slot value
             // if searching for left(-X), bottom(-Y) or back(-Z) neighbour
-            // the neightbour should always have a smaller slot value,
+            // the neighbour should always have a smaller slot value,
             // OTHERWISE it means it belongs to a different parent
             let (neighbour_sub_cell_index, same_parent) =
                 NEIGHBOUR_ADDRESS_TABLE[face_index as usize][sub_cell_index as usize];

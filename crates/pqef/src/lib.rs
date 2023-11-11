@@ -4,7 +4,7 @@ pub mod math;
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-use bevy_math::{Mat3A, Vec3A};
+use bevy::math::{Mat3A, Vec3A};
 
 type Pos3A = Vec3A;
 

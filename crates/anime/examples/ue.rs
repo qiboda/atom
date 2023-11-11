@@ -23,7 +23,7 @@ pub struct AnimationClipSet(pub Vec<Handle<AnimationClip>>);
 fn start_up(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut animation_clip_set: ResMut<AnimationClipSet>,
+    _animation_clip_set: ResMut<AnimationClipSet>,
 ) {
     // info!(
     //     "path: {}, bevy: {}",

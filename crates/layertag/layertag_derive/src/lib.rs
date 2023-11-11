@@ -48,7 +48,7 @@ enum Arg {
 }
 
 impl Parse for Arg {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();
         if lookahead.peek(Ident) {
             let ident = input.parse::<Ident>()?;

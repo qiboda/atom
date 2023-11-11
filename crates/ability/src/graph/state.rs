@@ -1,4 +1,5 @@
-use bevy::prelude::{info, Commands, Component, DespawnRecursiveExt, Entity, Query};
+use bevy::prelude::{Commands, Component, DespawnRecursiveExt, Entity, Query};
+use bevy::log::info;
 
 use super::{context::EffectGraphContext, node::EffectNodeExecuteState};
 
@@ -10,7 +11,7 @@ pub enum EffectGraphState {
 }
 
 pub fn update_to_remove(
-    mut cmmands: Commands,
+    mut commands: Commands,
     query: Query<(Entity, &EffectGraphState, &EffectGraphContext)>,
     node_state_query: Query<&EffectNodeExecuteState>,
 ) {
@@ -25,7 +26,7 @@ pub fn update_to_remove(
                 true
             })
         {
-            cmmands.entity(graph_entity).despawn_recursive();
+            commands.entity(graph_entity).despawn_recursive();
             info!("despawn graph: {:?}", graph_entity);
         }
     }

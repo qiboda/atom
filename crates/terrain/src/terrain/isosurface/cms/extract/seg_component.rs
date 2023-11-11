@@ -20,7 +20,6 @@ use crate::terrain::isosurface::{
             FACE_VERTEX, VERTEX_MAP,
         },
     },
-    cms::meshing::vertex_index::VertexIndices,
     cms::{bundle::CMSVertexIndexInfo, sample::surface_sampler::SurfaceSampler},
     mesh::mesh_cache::MeshCache,
     surface::shape_surface::ShapeSurface,
@@ -247,7 +246,7 @@ impl Octree {
                 <= 0.0
         );
 
-        let mut dupli = false;
+        let mut duplicate = false;
 
         debug!(
             "crossing_index_0: {}, edge_dir: {:?}",
@@ -258,8 +257,8 @@ impl Octree {
             if value_0.get_dir_vertex_index(edge_dir).is_some() {
                 debug!("vertex index: {:?}", value_0.get_dir_vertex_index(edge_dir));
                 strip.set_vertex_index(edge_index, value_0.get_dir_vertex_index(edge_dir).unwrap());
-                dupli = true;
-                debug!("make vertex dupli");
+                duplicate = true;
+                debug!("make vertex duplicate");
             } else {
                 debug!("crossing_index_0 get_dir_vertex_index is None");
             }
@@ -267,7 +266,7 @@ impl Octree {
             debug!("mesh_info.vertex_index_data.get(&crossing_index_0) is None");
         }
 
-        if dupli.not() {
+        if duplicate.not() {
             Self::make_vertex(
                 strip,
                 edge_dir,
@@ -414,7 +413,7 @@ impl Octree {
         let vertex_index = vertex_info
             .vertex_index_info
             .entry(crossing_index_0)
-            .or_insert(VertexIndices::new());
+            .or_default();
         debug_assert!(vertex_index.get_dir_vertex_index(edge_dir).is_none());
         vertex_index.set_dir_vertex_index(edge_dir, (mesh_info.positions.len() - 1) as u32);
     }
@@ -578,7 +577,7 @@ impl Octree {
 
             for i in 0..6 {
                 debug!(
-                    "edit_transitiona_face: entity: {:?}, face_index: {:?}, all_strip: {:?}",
+                    "edit_transition_face: entity: {:?}, face_index: {:?}, all_strip: {:?}",
                     all_twin_cell_address[i], all_twin_cell_face_index[i], all_strips[i]
                 );
             }
@@ -598,7 +597,7 @@ impl Octree {
                         continue;
                     }
 
-                    let mut transit_segs = Vec::new();
+                    let mut transit_segments = Vec::new();
 
                     loop {
                         let mut vertex_indices = Vec::new();
@@ -748,7 +747,7 @@ impl Octree {
                             twin_cell_address, long_strip
                         );
 
-                        transit_segs.push(vertex_indices);
+                        transit_segments.push(vertex_indices);
 
                         debug!("all_strip len: {}", all_strip.len());
                         if all_strip.is_empty() {
@@ -763,14 +762,14 @@ impl Octree {
                         }
                     }
 
-                    if transit_segs.is_empty().not() {
+                    if transit_segments.is_empty().not() {
                         twin_cell
                             .faces
                             .get_face_mut(twin_face_index)
-                            .set_transit_segs(transit_segs.clone());
+                            .set_transit_segs(transit_segments.clone());
                         debug!(
-                            "transit entity: {:?} transit segs: {:?}",
-                            twin_cell_address, transit_segs
+                            "transit entity: {:?} transit segments: {:?}",
+                            twin_cell_address, transit_segments
                         );
                     }
 
@@ -820,12 +819,12 @@ impl Octree {
         }
     }
 
-    pub fn trace_comonent(&mut self) {
-        info_span!("trace_comonent");
-        info!("trace_comonent");
+    pub fn trace_component(&mut self) {
+        info_span!("trace_component");
+        info!("trace_component");
         for cell_address in self.leaf_cells.iter() {
             let mut cell_strips = Vec::new();
-            let mut transit_segs = Vec::new();
+            let mut transit_segments = Vec::new();
             let mut components = Vec::new();
 
             let Some(cell) = self.cell_addresses.get(cell_address) else {
@@ -833,9 +832,9 @@ impl Octree {
             };
 
             // 获取一个cell的所有strip
-            self.collect_strips(cell, &mut cell_strips, &mut transit_segs);
+            self.collect_strips(cell, &mut cell_strips, &mut transit_segments);
 
-            // todo: transit segs number is not correct
+            // todo: transit segments number is not correct
 
             // 循环是为了建立多个Component
             loop {
@@ -843,7 +842,7 @@ impl Octree {
                     break;
                 }
 
-                Self::link_strips(&mut components, &mut cell_strips, &mut transit_segs);
+                Self::link_strips(&mut components, &mut cell_strips, &mut transit_segments);
 
                 let Some(cell) = self.cell_addresses.get_mut(cell_address) else {
                     continue;
@@ -873,7 +872,7 @@ impl Octree {
         &self,
         cell: &Cell,
         cell_strips: &mut Vec<Strip>,
-        transit_segs: &mut Vec<Vec<u32>>,
+        transit_segments: &mut Vec<Vec<u32>>,
     ) {
         for face_index in FaceIndex::iter() {
             let face = cell.faces.get_face(face_index);
@@ -928,12 +927,12 @@ impl Octree {
                         }
                     }
 
-                    debug!("twin.get_transit_segs(): {:?}", twin.get_transit_segs());
+                    debug!("twin.get_transit_segments(): {:?}", twin.get_transit_segs());
                     for seg in twin.get_transit_segs().iter() {
-                        transit_segs.push(seg.clone());
+                        transit_segments.push(seg.clone());
                     }
 
-                    // debug_assert!(transit_segs.len() > 0);
+                    // debug_assert!(transit_segments.len() > 0);
 
                     debug!("collect strip transit face end");
                 }
@@ -946,7 +945,7 @@ impl Octree {
     fn link_strips(
         components: &mut Vec<u32>,
         cell_strips: &mut Vec<Strip>,
-        transit_segs: &mut Vec<Vec<u32>>,
+        transit_segments: &mut Vec<Vec<u32>>,
     ) {
         debug_assert!(components.is_empty());
         debug_assert!(cell_strips[0].get_vertex_index(0).is_some());
@@ -957,8 +956,8 @@ impl Octree {
         (0..cell_strips.len()).for_each(|i| {
             debug!("link_strips: {:?}", cell_strips[i].get_vertex());
         });
-        (0..transit_segs.len()).for_each(|i| {
-            debug!("link_transit_seg: {:?}", transit_segs[i]);
+        (0..transit_segments.len()).for_each(|i| {
+            debug!("link_transit_seg: {:?}", transit_segments[i]);
         });
 
         components.push(cell_strips[0].get_vertex_index(0).unwrap());
@@ -979,10 +978,10 @@ impl Octree {
                         backwards = false;
                         let mut transit = false;
 
-                        if transit_segs.is_empty().not() {
+                        if transit_segments.is_empty().not() {
                             Self::insert_data_from_twin(
                                 components,
-                                transit_segs,
+                                transit_segments,
                                 strip,
                                 &mut transit,
                                 &mut added_in_iteration,
@@ -1007,10 +1006,10 @@ impl Octree {
                         backwards = true;
                         let mut transit = false;
 
-                        if transit_segs.is_empty().not() {
+                        if transit_segments.is_empty().not() {
                             Self::insert_data_from_twin(
                                 components,
-                                transit_segs,
+                                transit_segments,
                                 strip,
                                 &mut transit,
                                 &mut added_in_iteration,
@@ -1072,10 +1071,10 @@ impl Octree {
                         backwards = false;
                         let mut transit = false;
 
-                        if transit_segs.is_empty().not() {
+                        if transit_segments.is_empty().not() {
                             Self::insert_data_from_twin(
                                 components,
-                                transit_segs,
+                                transit_segments,
                                 strip,
                                 &mut transit,
                                 &mut added_in_iteration,
@@ -1100,10 +1099,10 @@ impl Octree {
                         backwards = true;
                         let mut transit = false;
 
-                        if transit_segs.is_empty().not() {
+                        if transit_segments.is_empty().not() {
                             Self::insert_data_from_twin(
                                 components,
-                                transit_segs,
+                                transit_segments,
                                 strip,
                                 &mut transit,
                                 &mut added_in_iteration,
@@ -1155,13 +1154,13 @@ impl Octree {
 
     fn insert_data_from_twin(
         components: &mut Vec<u32>,
-        transit_segs: &[Vec<u32>],
+        transit_segments: &[Vec<u32>],
         strip: &Strip,
         transit: &mut bool,
         added_in_iteration: &mut i32,
         backwards: &bool,
     ) {
-        for seg in transit_segs.iter() {
+        for seg in transit_segments.iter() {
             if Self::compare_strip_to_seg(strip, seg) {
                 // if debug {
                 //     debug!(
@@ -1180,7 +1179,7 @@ impl Octree {
                         components.push(seg[i]);
                     });
                 }
-                // transit_segs.remove(i);
+                // transit_segments.remove(i);
                 *added_in_iteration += 1;
                 *transit = true;
                 break;
