@@ -16,13 +16,11 @@ use crate::{
 ///        &ability graph
 ///     ability tag container
 ///     other
-///
 ///     ability entity 2
 ///     ability base
 ///        &ability graph
 ///     ability tag container
 ///     other
-///
 /// attribute set
 /// state set
 
