@@ -96,10 +96,7 @@ pub trait LayerTag: LayerTagData {
 
 impl TypePath for Box<dyn LayerTag> {
     fn type_path() -> &'static str {
-        concat!(
-            concat!(module_path!(), "::"),
-            "Box<dyn LayerTag>"
-        )
+        concat!(concat!(module_path!(), "::"), "Box<dyn LayerTag>")
     }
 
     fn short_type_path() -> &'static str {

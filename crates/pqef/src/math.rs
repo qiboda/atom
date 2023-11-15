@@ -6,8 +6,6 @@ pub(crate) fn self_outer_product(v: Vec3A) -> Mat3A {
     let b = v.y;
     let c = v.z;
 
-    
-
     Mat3A::from_cols(
         Vec3A::new(a * a, a * b, a * c),
         Vec3A::new(b * a, b * b, b * c),

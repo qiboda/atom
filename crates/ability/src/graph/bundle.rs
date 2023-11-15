@@ -1,8 +1,10 @@
 use bevy::prelude::{Bundle, Component};
 
 use super::{
+    builder::EffectGraph,
     context::EffectGraphContext,
-    node::{EffectNodeExecuteState, EffectNodeUuid, EffectNodeTickState}, builder::EffectGraph, state::EffectGraphState,
+    node::{EffectNodeExecuteState, EffectNodeTickState, EffectNodeUuid},
+    state::EffectGraphState,
 };
 
 #[derive(Debug, Bundle, Default)]

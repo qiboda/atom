@@ -5,6 +5,7 @@ pub mod terrain;
 pub mod ui;
 pub mod visible;
 
+use bevy::render::settings::RenderCreation;
 use bevy::{
     app::AppExit,
     core_pipeline::{
@@ -18,7 +19,6 @@ use bevy::{
         RenderPlugin,
     },
 };
-use bevy::render::settings::RenderCreation;
 use bevy_obj::ObjPlugin;
 use log::CustomLogPlugin;
 
@@ -35,12 +35,10 @@ pub fn bevy_entry() -> App {
         .add_plugins((
             DefaultPlugins
                 .set(RenderPlugin {
-                    render_creation: RenderCreation::Automatic(
-                        WgpuSettings {
-                            features: WgpuFeatures::POLYGON_MODE_LINE,
-                            ..default()
-                        }
-                    ),
+                    render_creation: RenderCreation::Automatic(WgpuSettings {
+                        features: WgpuFeatures::POLYGON_MODE_LINE,
+                        ..default()
+                    }),
                 })
                 .set(AssetPlugin {
                     file_path: "assets".to_string(),

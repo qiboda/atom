@@ -24,8 +24,8 @@ use base_attack::EffectNodeGraphBaseAttack;
 use bevy::{
     log::info,
     prelude::{
-        App, BuildChildren, Commands, Component, DespawnRecursiveExt, Entity, EventWriter,
-        Input, KeyCode, Query, Res, ResMut, Startup, Update, With,
+        App, BuildChildren, Commands, Component, DespawnRecursiveExt, Entity, EventWriter, Input,
+        KeyCode, Query, Res, ResMut, Startup, Update, With,
     },
     DefaultPlugins,
 };

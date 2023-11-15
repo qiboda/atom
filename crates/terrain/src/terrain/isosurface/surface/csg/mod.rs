@@ -230,8 +230,6 @@ fn build_shape() -> Box<CSGMin> {
         }),
     });
 
-    
-
     Box::new(CSGMin {
         left: n,
         right: Box::new(CSGMin {

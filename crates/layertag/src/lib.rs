@@ -1,5 +1,6 @@
 use bevy::prelude::{App, Plugin};
 
+pub mod container;
 /// layer state manager.
 ///
 /// support runtime add/remove any layer state.
@@ -7,7 +8,6 @@ use bevy::prelude::{App, Plugin};
 pub mod layertag;
 pub mod registry;
 pub mod tag;
-pub mod container;
 
 #[derive(Default)]
 pub struct LayerTagPlugin;

@@ -1,4 +1,4 @@
-use bevy::prelude::{Component};
+use bevy::prelude::Component;
 
 pub trait EffectNode {
     fn start(&mut self);

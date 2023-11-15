@@ -68,8 +68,8 @@ impl AttributeModifier for HpModifier {
 
 #[cfg(test)]
 mod test {
-    use ability::attribute::attribute_set::AttributeSet;
     use crate::attribute::{BaseAttributeSet, BaseAttributeSetType, HpModifier};
+    use ability::attribute::attribute_set::AttributeSet;
 
     #[test]
     fn test_attr() {
