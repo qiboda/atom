@@ -2,10 +2,11 @@ use terrain::bevy_entry;
 
 #[cfg(feature = "debug_dump")]
 use {
-    bevy::prelude::*,
     bevy::app::RunFixedUpdateLoop,
-    bevy_mod_debugdump::{render_graph_dot, schedule_graph, schedule_graph_dot},
+    bevy::prelude::*,
+    bevy::render::{pipelined_rendering::RenderExtractApp, ExtractSchedule, Render, RenderApp},
     bevy_mod_debugdump::render_graph,
+    bevy_mod_debugdump::{render_graph_dot, schedule_graph, schedule_graph_dot},
 };
 
 #[cfg(feature = "debug_dump")]
@@ -49,6 +50,17 @@ fn debug_dump(app: &mut App) {
     output_dot_file("PostUpdate", &post_update_dot);
     let last_dot = schedule_graph_dot(app, Last, &schedule_settings);
     output_dot_file("Last", &last_dot);
+
+    // todo: Fix runtime crash error.
+    // let extract_schedule_dot = schedule_graph_dot(
+    //     app.sub_app_mut(RenderExtractApp),
+    //     ExtractSchedule,
+    //     &schedule_settings,
+    // );
+    // output_dot_file("Extract", &extract_schedule_dot);
+
+    let render_dot = schedule_graph_dot(app.sub_app_mut(RenderApp), Render, &schedule_settings);
+    output_dot_file("Render", &render_dot);
 
     let render_settings = render_graph::settings::Settings {
         ..Default::default()
