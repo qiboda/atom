@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use bevy::log::info;
+use std::sync::Arc;
 
 use bevy::prelude::{Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res, Startup};
 

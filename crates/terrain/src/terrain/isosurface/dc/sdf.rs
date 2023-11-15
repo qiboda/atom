@@ -90,11 +90,11 @@ pub fn estimate_interior_vertex_qef(
             let normal = central_gradient(sdf, edge_cross_p, 0.0001).normalize();
 
             regularized_qef += Quadric::probabilistic_plane_quadric(
-                    edge_cross_p,
-                    normal,
-                    precision * extent.size().x,
-                    precision,
-                );
+                edge_cross_p,
+                normal,
+                precision * extent.size().x,
+                precision,
+            );
 
             exact_qef += Quadric::plane_quadric(edge_cross_p, normal);
         }

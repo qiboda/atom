@@ -1,7 +1,4 @@
-use bevy::{
-    prelude::*,
-    utils::HashMap,
-};
+use bevy::{prelude::*, utils::HashMap};
 
 use super::blackboard::EffectValue;
 

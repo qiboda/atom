@@ -2,7 +2,6 @@ use bevy::prelude::{Commands, Entity};
 
 use super::context::EffectGraphContext;
 
-
 /// all children node is graph nodes.
 pub trait EffectGraph: EffectGraphBuilder {}
 

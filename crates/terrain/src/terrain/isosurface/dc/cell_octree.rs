@@ -59,15 +59,12 @@ impl CellOctree {
             return;
         }
 
-        let (maybe_root_id, _) = self.build_recursive_from_branch(
-            max_depth,
-            error_tolerance,
-            precision,
-            sdf,
-            root_cell,
-        );
+        let (maybe_root_id, _) =
+            self.build_recursive_from_branch(max_depth, error_tolerance, precision, sdf, root_cell);
 
-        if let Some(root_id) = maybe_root_id { self.root_id = root_id; }
+        if let Some(root_id) = maybe_root_id {
+            self.root_id = root_id;
+        }
     }
 
     // Recursive because it's easier and slightly more efficient for post-order

@@ -29,25 +29,25 @@ pub enum EffectValue {
 
 pub trait BlackBoardValue {
     fn get<'a, T>(&'a self) -> Result<T, T::Error>
-        where
-            T: TryFrom<&'a Self>;
+    where
+        T: TryFrom<&'a Self>;
 
     fn get_mut<'a, T>(&'a mut self) -> Result<T, T::Error>
-        where
-            T: TryFrom<&'a mut Self>;
+    where
+        T: TryFrom<&'a mut Self>;
 }
 
 impl BlackBoardValue for EffectValue {
     fn get<'a, T>(&'a self) -> Result<T, T::Error>
-        where
-            T: TryFrom<&'a Self>,
+    where
+        T: TryFrom<&'a Self>,
     {
         self.try_into()
     }
 
     fn get_mut<'a, T>(&'a mut self) -> Result<T, T::Error>
-        where
-            T: TryFrom<&'a mut Self>,
+    where
+        T: TryFrom<&'a mut Self>,
     {
         self.try_into()
     }
@@ -55,15 +55,15 @@ impl BlackBoardValue for EffectValue {
 
 impl BlackBoardValue for &EffectValue {
     fn get<'a, T>(&'a self) -> Result<T, T::Error>
-        where
-            T: TryFrom<&'a Self>,
+    where
+        T: TryFrom<&'a Self>,
     {
         self.try_into()
     }
 
     fn get_mut<'a, T>(&'a mut self) -> Result<T, T::Error>
-        where
-            T: TryFrom<&'a mut Self>,
+    where
+        T: TryFrom<&'a mut Self>,
     {
         self.try_into()
     }
@@ -407,7 +407,10 @@ mod test {
         }
 
         let br_str = EffectValue::String("bear".into());
-        assert_eq!((&br_str).try_into(), Ok(&Cow::<'static, str>::Owned("bear".into())));
+        assert_eq!(
+            (&br_str).try_into(),
+            Ok(&Cow::<'static, str>::Owned("bear".into()))
+        );
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = TryInto::<&Box<dyn Reflect>>::try_into(&br_box);
@@ -480,7 +483,7 @@ mod test {
         assert_eq!(br_i32.get(), Ok(&200i32));
 
         let br_str = EffectValue::String("key".into());
-        assert_eq!(br_str.get() , Ok(&Cow::<'static, str>::Owned("key".into())));
+        assert_eq!(br_str.get(), Ok(&Cow::<'static, str>::Owned("key".into())));
 
         let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
         let v = br_box.get::<&Box<dyn Reflect>>();

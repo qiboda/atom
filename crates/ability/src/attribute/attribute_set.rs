@@ -1,4 +1,4 @@
-use bevy::{reflect::Reflect, prelude::Component};
+use bevy::{prelude::Component, reflect::Reflect};
 
 use super::modifier::AttributeModifier;
 
