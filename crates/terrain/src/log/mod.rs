@@ -88,7 +88,10 @@ impl Plugin for CustomLogPlugin {
                     meta.fields().field("tracy.frame_mark").is_none()
                 }));
 
-            let file_appender = tracing_appender::rolling::hourly("../../../../saved/logs", "log"); // This should be user configurable
+            let workspace_path = std::env::var("ATOM_SAVED_ROOT").unwrap();
+            let workspace_path = std::path::Path::new(&workspace_path);
+
+            let file_appender = tracing_appender::rolling::hourly(workspace_path.join("logs"), "log"); // This should be user configurable
             let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);
             let file_fmt_layer = tracing_subscriber::fmt::Layer::default()
                 .with_ansi(false) // disable terminal color escape sequences

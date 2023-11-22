@@ -1,6 +1,5 @@
 /target
-crates/terrain/target
-saved/graphs/*
-saved/logs/*
+saved/graphs/
+saved/logs/
 wgpu_trace
 .idea
