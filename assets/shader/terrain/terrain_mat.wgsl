@@ -3,7 +3,7 @@
 // group 1 is material, because only one group, so can not support multipe materials on on mesh.
 // group 2 is mesh animation
 
-#import bevy_pbr::mesh_vertex_output::MeshVertexOutput
+#import bevy_pbr::forward_io::VertexOutput
 
 
 @group(1) @binding(0)
@@ -41,8 +41,8 @@ var occlusion_map_sampler: sampler;
 
 @fragment
 fn fragment(
-    in: MeshVertexOutput
+    mesh: VertexOutput
 ) -> @location(0) vec4<f32> {
-    var uv = fract(in.position.xy / vec2<f32>(16.0, 16.0));
+    var uv = fract(mesh.position.xy / vec2<f32>(16.0, 16.0));
     return textureSample(base_color_texture, base_color_texture_sampler, uv);
 }

@@ -86,7 +86,7 @@ fn dual_contour_init(
     mut commands: Commands,
     chunk_coord_query: Query<Entity, (Without<DualContouring>, With<TerrainChunk>)>,
 ) {
-    // info!("startup_dual_contour_init: {:?}", chunk_coord_query);
+    info!("startup_dual_contour_init: {:?}", chunk_coord_query);
     for entity in chunk_coord_query.iter() {
         commands.entity(entity).insert(DualContouringBundle {
             dual_contouring: DualContouring {
@@ -115,6 +115,7 @@ fn dual_contour_build_octree(
 ) {
     for (chunk_coord, dual_contouring, mut dual_contouring_task) in terrain_query.iter_mut() {
         if dual_contouring_task.state == DualContourState::BuildingOctree {
+            info!("dual_contour build tree: {:?}", chunk_coord);
             match dual_contouring_task.task {
                 None => {
                     let chunk_size = terrain_setting.get_chunk_size();
@@ -164,6 +165,8 @@ fn dual_contour_meshing(
 ) {
     for (dual_contouring, mut dual_contouring_task) in dc_query.iter_mut() {
         if dual_contouring_task.state == DualContourState::DualContouring {
+            info!("dual_contour dual contoring");
+
             match dual_contouring_task.task {
                 None => {
                     let thread_pool = AsyncComputeTaskPool::get();
@@ -242,6 +245,7 @@ fn dual_contour_meshing(
                     dual_contouring_task.task = Some(task);
                 }
                 Some(_) => {
+                    info!("dual_contour dual contoring waiting task finish");
                     if future::block_on(future::poll_once(
                         dual_contouring_task.task.as_mut().unwrap(),
                     ))
@@ -277,6 +281,7 @@ pub fn dual_contouring_create_mesh(
     ) in cms_query.iter_mut()
     {
         if cms_task.state == DualContourState::CreateMesh {
+            info!("create mesh: {:?}", terrain_chunk_coord);
             let mesh_cache = cms_component.mesh_cache.clone();
 
             create_mesh(
