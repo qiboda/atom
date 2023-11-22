@@ -3,7 +3,7 @@
 // group 1 is material, because only one group, so can not support multipe materials on on mesh.
 // group 2 is mesh animation
 
-#import bevy_pbr::mesh_vertex_output MeshVertexOutput
+#import bevy_pbr::mesh_vertex_output::MeshVertexOutput
 
 
 @group(1) @binding(0)
