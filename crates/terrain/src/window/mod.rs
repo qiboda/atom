@@ -1,0 +1,15 @@
+use bevy::prelude::*;
+use bevy::window::PresentMode;
+
+pub fn toggle_vsync(input: Res<Input<KeyCode>>, mut windows: Query<&mut Window>) {
+    if input.just_pressed(KeyCode::V) {
+        let mut window = windows.single_mut();
+
+        window.present_mode = if matches!(window.present_mode, PresentMode::AutoVsync) {
+            PresentMode::AutoNoVsync
+        } else {
+            PresentMode::AutoVsync
+        };
+        info!("PRESENT_MODE: {:?}", window.present_mode);
+    }
+}

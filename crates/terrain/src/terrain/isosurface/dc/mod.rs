@@ -125,11 +125,11 @@ fn dual_contour_build_octree(
                         chunk_coord.y as f32,
                         chunk_coord.z as f32,
                     ) * chunk_size;
-                    let outer_add = Vec3A::new(1.0, 1.0, 1.0);
+                    // let outer_add = Vec3A::new(1.0, 1.0, 1.0);
 
                     let root_cell_extent = CellExtent::new(
-                        world_offset - outer_add,
-                        world_offset + chunk_size + outer_add,
+                        world_offset,
+                        world_offset + chunk_size,
                     );
 
                     let dc = dual_contouring.octree.clone();

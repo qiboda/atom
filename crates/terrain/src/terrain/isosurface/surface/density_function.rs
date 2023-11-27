@@ -75,7 +75,6 @@ impl DensityFunction for Cube {
 
 #[derive(Debug, Default)]
 pub struct NoiseSurface {
-    pub seed: i32,
     pub frequency: f32,
     pub lacunarity: f32,
     pub gain: f32,
@@ -85,6 +84,7 @@ pub struct NoiseSurface {
 impl DensityFunction for NoiseSurface {
     // todo: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
+        // return y;
         y - noisy_bevy::fbm_simplex_2d(
             Vec2::new(x, z) * self.frequency,
             self.octaves,

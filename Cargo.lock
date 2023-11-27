@@ -3555,6 +3555,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "project"
+version = "0.1.0"
+dependencies = [
+ "once_cell",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4086,6 +4093,7 @@ dependencies = [
  "futures-lite 2.0.1",
  "noisy_bevy",
  "pqef",
+ "project",
  "rand",
  "smallvec",
  "strum",

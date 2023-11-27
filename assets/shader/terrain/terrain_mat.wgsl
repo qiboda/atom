@@ -43,6 +43,8 @@ var occlusion_map_sampler: sampler;
 fn fragment(
     mesh: VertexOutput
 ) -> @location(0) vec4<f32> {
+//    return base_color;
+
     var uv = fract(mesh.position.xy / vec2<f32>(16.0, 16.0));
     return textureSample(base_color_texture, base_color_texture_sampler, uv);
 }

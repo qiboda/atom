@@ -10,6 +10,7 @@ resolver = "2"
 
 [workspace.dependencies]
 bevy = { version = "0.12.0", features = ["trace", "trace_tracy"] }
+once_cell = "1.18.0"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

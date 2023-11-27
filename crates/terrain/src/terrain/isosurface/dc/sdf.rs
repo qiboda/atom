@@ -9,7 +9,7 @@ use super::tables::EDGES3;
 /// May have false negatives, but never has false positives.
 pub fn branch_empty_check(extent_diagonal: f32, samples: &[f32; 8]) -> bool {
     // HACK: This padding helps with slight non-Euclidean warping of space.
-    const PAD_FACTOR: f32 = 1.5;
+    const PAD_FACTOR: f32 = 2.0;
     let padded_diag = PAD_FACTOR * extent_diagonal;
     for &d in samples {
         if d.abs() > padded_diag {
@@ -87,7 +87,8 @@ pub fn estimate_interior_vertex_qef(
 
             // Central differencing around the edge crossing.
             // Needs 6 samples.
-            let normal = central_gradient(sdf, edge_cross_p, 0.0001).normalize();
+            // todo: use half voxel as delta
+            let normal = central_gradient(sdf, edge_cross_p, 1.0 / 128.0).normalize();
 
             regularized_qef += Quadric::probabilistic_plane_quadric(
                 edge_cross_p,

@@ -13,6 +13,7 @@ bevy = { workspace = true }
 strum = { version = "0.25.0", features = ["derive", "strum_macros"] }
 strum_macros = "0.25.3"
 pqef = { path = "../pqef" }
+project = { path = "../project" }
 
 # noisy_bevy = { path = "../dep/noisy_bevy" }
 # simdnoise = { path = "../../../dep/rust-simd-noise" }

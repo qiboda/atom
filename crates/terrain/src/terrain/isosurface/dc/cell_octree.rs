@@ -1,3 +1,5 @@
+use std::ops::Not;
+use bevy::log::info;
 use bevy::prelude::Vec3;
 use pqef::Quadric;
 
@@ -55,7 +57,8 @@ impl CellOctree {
 
         if root_cell.is_leaf {
             let _qef = root_cell.estimate_vertex(sdf, precision);
-            Self::new(0, vec![root_cell]);
+            self.root_id = 0;
+            self.all_cells = vec![root_cell];
             return;
         }
 
@@ -133,7 +136,7 @@ impl CellOctree {
             }
         }
 
-        if !any_nonempty_children {
+        if any_nonempty_children.not() {
             // Empty branch.
             return (None, VertexState::EmptySpace);
         }
@@ -150,14 +153,14 @@ impl CellOctree {
                 &sum_descendant_regularized_qef,
                 &sum_descendant_exact_qef,
             );
-            if branch.qef_error <= error_tolerance {
-                // Simplify by choosing a vertex in this branch node.
-                branch.is_leaf = true; // pseudo-leaf
-                vertex_state = VertexState::HasVertex {
-                    regularized_qef: sum_descendant_regularized_qef,
-                    exact_qef: sum_descendant_exact_qef,
-                };
-            }
+            // if branch.qef_error <= error_tolerance {
+            //     // Simplify by choosing a vertex in this branch node.
+            //     branch.is_leaf = true; // pseudo-leaf
+            //     vertex_state = VertexState::HasVertex {
+            //         regularized_qef: sum_descendant_regularized_qef,
+            //         exact_qef: sum_descendant_exact_qef,
+            //     };
+            // }
         }
 
         if let VertexState::CannotSimplify = vertex_state {
@@ -216,7 +219,7 @@ impl Cell {
         let samples = cell_positions.map(|pos| sdf.get_value(pos.x, pos.y, pos.z));
 
         // Leaf cells must be bipolar. Branches are checked optimistically.
-        if (is_leaf && !cell_is_bipolar(&samples))
+        if (is_leaf && cell_is_bipolar(&samples).not())
             || branch_empty_check(extent.size().length(), &samples)
         {
             return None;

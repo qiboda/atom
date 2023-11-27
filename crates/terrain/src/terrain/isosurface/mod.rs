@@ -2,6 +2,8 @@ use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
 use surface::shape_surface::ShapeSurface;
+use crate::terrain::isosurface::cms::CMSPlugin;
+use crate::terrain::isosurface::surface::density_function::{Cube, Sphere};
 
 use super::ecology::EcologyPlugin;
 
@@ -37,8 +39,9 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(IsosurfaceContext {
             shape_surface: Arc::new(RwLock::new(ShapeSurface {
+                // density_function: Box::new(Cube),
                 density_function: Box::new(NoiseSurface {
-                    seed: rand::random(),
+                    // seed: rand::random(),
                     frequency: 0.3,
                     lacunarity: 0.02,
                     gain: 5.0,
@@ -47,8 +50,8 @@ impl Plugin for IsosurfaceExtractionPlugin {
                 iso_level: Vec3::ZERO,
             })),
         })
-        // .add_plugins(CMSPlugin::default());
-        .add_plugins(DualContourPlugin)
+        .add_plugins(CMSPlugin::default())
+        // .add_plugins(DualContourPlugin)
         .add_plugins(EcologyPlugin);
     }
 }

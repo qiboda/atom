@@ -4,6 +4,7 @@ pub mod material;
 pub mod terrain;
 pub mod ui;
 pub mod visible;
+pub mod window;
 
 use bevy::render::settings::RenderCreation;
 use bevy::{
@@ -27,6 +28,7 @@ use material::CoolMaterial;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
 use ui::FrameUIPlugin;
 use visible::visible_range::VisibleTerrainRange;
+use crate::window::toggle_vsync;
 
 pub fn bevy_entry() -> App {
     let mut app = App::new();
@@ -57,7 +59,7 @@ pub fn bevy_entry() -> App {
         .add_plugins(FrameUIPlugin)
         .add_plugins(MaterialPlugin::<CoolMaterial>::default())
         .add_systems(Startup, startup)
-        .add_systems(Last, exit_game);
+        .add_systems(Last, (exit_game, toggle_vsync));
 
     app
 }
