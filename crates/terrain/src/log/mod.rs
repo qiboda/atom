@@ -1,14 +1,17 @@
-use bevy::{prelude::*, utils::tracing};
+use bevy::{prelude::*, utils::tracing::{self, Subscriber}};
 
 use tracing_log::{log::Level, LogTracer};
 #[cfg(feature = "tracing-chrome")]
 use tracing_subscriber::fmt::{format::DefaultFields, FormattedFields};
-use tracing_subscriber::{prelude::*, EnvFilter, Registry};
+use tracing_subscriber::{prelude::*, EnvFilter, Registry, fmt::Layer, reload};
 use project::project_saved_root_path;
+use crate::terrain::trace::TERRAIN_TRACE_TARGET;
+
 
 #[derive(Resource, Debug)]
 pub struct FileLogRes {
     pub worker_guard: tracing_appender::non_blocking::WorkerGuard,
+    pub terrain_workder_guard: tracing_appender::non_blocking::WorkerGuard,
 }
 
 pub struct CustomLogPlugin {
@@ -41,7 +44,7 @@ impl Plugin for CustomLogPlugin {
         }
 
         let finished_subscriber;
-        let default_filter = { format!("{},{}", self.level, self.filter) };
+        let default_filter = { format!("{},{},terrain_trace=trace", self.level, self.filter) };
         let filter_layer = EnvFilter::try_from_default_env()
             .or_else(|_| EnvFilter::try_new(&default_filter))
             .unwrap();
@@ -94,12 +97,25 @@ impl Plugin for CustomLogPlugin {
             let file_appender = tracing_appender::rolling::hourly(saved_path.join("logs"), "log"); // This should be user configurable
             let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);
             let file_fmt_layer = tracing_subscriber::fmt::Layer::default()
-                .with_ansi(false) // disable terminal color escape sequences
-                .with_writer(non_blocking);
+                .with_writer(non_blocking)
+                .with_ansi(false); // disable terminal color escape sequences
 
-            app.insert_resource(FileLogRes { worker_guard }); // have to keep this from being dropped
 
-            let subscriber = subscriber.with(fmt_layer).with(file_fmt_layer);
+            let terrain_filter = EnvFilter::new(TERRAIN_TRACE_TARGET.to_owned() + "=trace");
+
+            let trace_path = saved_path.join("trace");
+            let appender = tracing_appender::rolling::never(trace_path, "trace");
+            let (non_blocking, terrain_workder_guard) = tracing_appender::non_blocking(appender);
+
+            let terrain_trace_fmt = tracing_subscriber::fmt::Layer::default()
+                .with_writer(non_blocking)
+                .with_ansi(false)
+                .with_filter(terrain_filter);
+
+
+            app.insert_resource(FileLogRes { worker_guard, terrain_workder_guard }); // have to keep this from being dropped
+
+            let subscriber = subscriber.with(file_fmt_layer).with(terrain_trace_fmt).with(fmt_layer);
 
             #[cfg(feature = "tracing-chrome")]
             let subscriber = subscriber.with(chrome_layer);

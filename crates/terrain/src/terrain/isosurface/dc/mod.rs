@@ -51,6 +51,7 @@ use crate::terrain::ecology::layer::EcologyLayerSampler;
 use crate::terrain::materials::terrain::TerrainMaterial;
 use crate::terrain::settings::TerrainSettings;
 use crate::terrain::TerrainSystemSet;
+use crate::{terrain_trace_span, terrain_trace};
 
 use super::mesh::create_mesh;
 use super::mesh::mesh_cache::MeshCache;
@@ -132,11 +133,17 @@ fn dual_contour_build_octree(
                         world_offset + chunk_size,
                     );
 
+                    let terrain_trace_span = terrain_trace_span!("dual_contour_build_octree", "chunk_coord: {:?}", chunk_coord);
+                    let _entered = terrain_trace_span.enter();
+
+                    terrain_trace!("dual_contour build tree: {:?}", chunk_coord);
+
                     let dc = dual_contouring.octree.clone();
                     let surface_shape = surface_context.shape_surface.clone();
 
                     let thread_pool = AsyncComputeTaskPool::get();
                     let task = thread_pool.spawn(async move {
+
                         let surface_shape = surface_shape.read().unwrap();
                         let mut dc = dc.write().unwrap();
                         dc.build(root_cell_extent, 7, 0.00001, 0.1, &surface_shape);

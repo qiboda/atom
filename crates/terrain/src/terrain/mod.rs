@@ -11,7 +11,7 @@ pub mod isosurface;
 pub mod materials;
 pub mod settings;
 pub mod terrain_data;
-mod trace;
+pub mod trace;
 
 use bevy::prelude::*;
 

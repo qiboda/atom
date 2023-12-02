@@ -28,6 +28,7 @@ use material::CoolMaterial;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
 use ui::FrameUIPlugin;
 use visible::visible_range::VisibleTerrainRange;
+use crate::terrain::trace::TerrainTracePlugin;
 use crate::window::toggle_vsync;
 
 pub fn bevy_entry() -> App {
@@ -50,6 +51,7 @@ pub fn bevy_entry() -> App {
                 })
                 .disable::<LogPlugin>(),
             ObjPlugin,
+            TerrainTracePlugin,
             CustomLogPlugin::default(),
             // WireframePlugin,
             // PhysicsPlugins::default(),

@@ -1,5 +1,4 @@
 use std::ops::Not;
-use bevy::log::info;
 use bevy::prelude::Vec3;
 use pqef::Quadric;
 

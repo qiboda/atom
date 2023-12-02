@@ -2,8 +2,6 @@ use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
 use surface::shape_surface::ShapeSurface;
-use crate::terrain::isosurface::cms::CMSPlugin;
-use crate::terrain::isosurface::surface::density_function::{Cube, Sphere};
 
 use super::ecology::EcologyPlugin;
 
@@ -50,8 +48,8 @@ impl Plugin for IsosurfaceExtractionPlugin {
                 iso_level: Vec3::ZERO,
             })),
         })
-        .add_plugins(CMSPlugin::default())
-        // .add_plugins(DualContourPlugin)
+        // .add_plugins(CMSPlugin::default())
+        .add_plugins(DualContourPlugin)
         .add_plugins(EcologyPlugin);
     }
 }
