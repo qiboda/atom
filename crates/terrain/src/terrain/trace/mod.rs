@@ -1,9 +1,4 @@
-use bevy::prelude::*;
-use bevy::utils::tracing;
-use bevy::utils::tracing::instrument::WithSubscriber;
-use tracing_subscriber;
-use tracing_subscriber::EnvFilter;
-use project::project_saved_root_path;
+use bevy::{prelude::*};
 
 pub struct TerrainTracePlugin;
 
@@ -47,18 +42,30 @@ macro_rules! terrain_trace_span {
 macro_rules! terrain_trace {
     // Name / target.
     ({ $($field:tt)* }, $($arg:tt)* ) => (
-        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, { $($filed)* }, $($arg)*)
+        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, { $($field)* }, $($arg)*)
     );
-    ($($k:ident).+ $($field:tt)+ ) => (
-        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, $($k).+ $($field)+)
+    ($($k:ident).+ $($field:tt)* ) => (
+        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, $($k).+ $($field)*)
     );
-    (?$($k:ident).+ $($field:tt)+ ) => (
-        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, ?$($k).+ $($field)+)
+    (?$($k:ident).+ $($field:tt)* ) => (
+        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, ?$($k).+ $($field)*)
     );
-    ( %$($k:ident).+ $($field:tt)+ ) => (
+    (%$($k:ident).+ $($field:tt)* ) => (
         bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, %$($k).+ $($field)+)
     );
     ($($arg:tt)+ ) => (
         bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, $($arg)+)
     );
+}
+
+pub fn terrain_trace_vertex(index: usize, location: Vec3) {
+    terrain_trace!(index, ?location, "vertex");
+}
+
+pub fn terrain_trace_line(start: Vec3, end: Vec3) {
+    terrain_trace!(?start, ?end, "line");
+}
+
+pub fn terrain_trace_triangle(t1: usize, t2: usize, t3: usize) {
+    terrain_trace!(t1, t2, t3, "triangle");
 }

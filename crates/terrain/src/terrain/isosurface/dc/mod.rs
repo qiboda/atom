@@ -33,6 +33,7 @@ mod mesh;
 mod sdf;
 mod tables;
 
+use std::cell::RefCell;
 use std::sync::{Arc, RwLock};
 
 use bevy::math::Vec3A;
@@ -51,7 +52,8 @@ use crate::terrain::ecology::layer::EcologyLayerSampler;
 use crate::terrain::materials::terrain::TerrainMaterial;
 use crate::terrain::settings::TerrainSettings;
 use crate::terrain::TerrainSystemSet;
-use crate::{terrain_trace_span, terrain_trace};
+use crate::terrain::trace::{terrain_trace_vertex, terrain_trace_triangle};
+use crate::{terrain_trace_span};
 
 use super::mesh::create_mesh;
 use super::mesh::mesh_cache::MeshCache;
@@ -133,11 +135,6 @@ fn dual_contour_build_octree(
                         world_offset + chunk_size,
                     );
 
-                    let terrain_trace_span = terrain_trace_span!("dual_contour_build_octree", "chunk_coord: {:?}", chunk_coord);
-                    let _entered = terrain_trace_span.enter();
-
-                    terrain_trace!("dual_contour build tree: {:?}", chunk_coord);
-
                     let dc = dual_contouring.octree.clone();
                     let surface_shape = surface_context.shape_surface.clone();
 
@@ -196,16 +193,22 @@ fn dual_contour_meshing(
 
                         let mut positions: Vec<Vec3A> = Vec::new();
                         let mut normals = Vec::new();
-                        let mut quad_indices = Vec::new();
-                        let mut tri_indices = Vec::new();
+                        let tri_indices = RefCell::new(Vec::new());
+
+                        let terrain_trace_span = terrain_trace_span!("dual_contour");
+                        let terrain_trace_span = terrain_trace_span.enter();
 
                         dc.dual_contour(
                             |_cell_id, cell| {
                                 min_leaf_depth = min_leaf_depth.min(cell.depth);
                                 max_leaf_depth = max_leaf_depth.max(cell.depth);
 
+
                                 cell.mesh_vertex_id = positions.len() as MeshVertexId;
                                 positions.push(cell.vertex_estimate.into());
+
+                                terrain_trace_vertex(positions.len(), (*positions.last().unwrap()).into());
+
                                 normals.push(
                                     central_gradient(
                                         &shape_surface,
@@ -216,24 +219,30 @@ fn dual_contour_meshing(
                                 );
                             },
                             |q| {
-                                quad_indices
-                                    .extend_from_slice(&[q[0], q[2], q[1], q[1], q[2], q[3]]);
+                                tri_indices.borrow_mut()
+                                    .extend_from_slice(&[q[0], q[2], q[1]]);
+                                tri_indices.borrow_mut()
+                                    .extend_from_slice(&[q[1], q[2], q[3]]);
                             },
                             |tri| {
-                                tri_indices.extend_from_slice(&tri);
+                                tri_indices.borrow_mut().extend_from_slice(&tri);
                             },
                         );
 
-                        tri_indices.append(&mut quad_indices);
+                        drop(terrain_trace_span);
 
                         // Now we need to create the mesh by copying the proper vertices out of the
                         // octree. Since not all vertices will be used, we need to recreate the
                         // vertex IDs based on the new mesh.
                         let all_cells = dc.all_cells();
-                        let mut tri_indices: Vec<_> = tri_indices
+                        let mut tri_indices: Vec<_> = tri_indices.into_inner()
                             .into_iter()
                             .map(|i| all_cells[i as usize].mesh_vertex_id)
                             .collect();
+
+                        for tri in tri_indices.chunks_exact(3) {
+                            terrain_trace_triangle(tri[0] as usize, tri[1] as usize, tri[2] as usize);
+                        }
 
                         repair_sharp_normals(0.95, &mut tri_indices, &mut positions, &mut normals);
 

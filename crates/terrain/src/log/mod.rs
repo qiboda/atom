@@ -1,12 +1,15 @@
-use bevy::{prelude::*, utils::tracing::{self, Subscriber}};
+use bevy::{
+    prelude::*,
+    utils::tracing::{self},
+};
 
+use crate::terrain::trace::TERRAIN_TRACE_TARGET;
+use project::project_saved_root_path;
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_log::{log::Level, LogTracer};
 #[cfg(feature = "tracing-chrome")]
 use tracing_subscriber::fmt::{format::DefaultFields, FormattedFields};
-use tracing_subscriber::{prelude::*, EnvFilter, Registry, fmt::Layer, reload};
-use project::project_saved_root_path;
-use crate::terrain::trace::TERRAIN_TRACE_TARGET;
-
+use tracing_subscriber::{prelude::*, EnvFilter, Registry};
 
 #[derive(Resource, Debug)]
 pub struct FileLogRes {
@@ -82,7 +85,12 @@ impl Plugin for CustomLogPlugin {
             #[cfg(feature = "tracing-tracy")]
             let tracy_layer = tracing_tracy::TracyLayer::new();
 
-            let fmt_layer = tracing_subscriber::fmt::Layer::default().with_writer(std::io::stderr);
+            let std_filter = EnvFilter::new("warning");
+            let fmt_layer = tracing_subscriber::fmt::Layer::default()
+                .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
+                .with_writer(std::io::stderr)
+                .with_filter(std_filter)
+                ;
 
             // bevy_render::renderer logs a `tracy.frame_mark` event every frame
             // at Level::INFO. Formatted logs should omit it.
@@ -97,25 +105,38 @@ impl Plugin for CustomLogPlugin {
             let file_appender = tracing_appender::rolling::hourly(saved_path.join("logs"), "log"); // This should be user configurable
             let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);
             let file_fmt_layer = tracing_subscriber::fmt::Layer::default()
+                .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
                 .with_writer(non_blocking)
                 .with_ansi(false); // disable terminal color escape sequences
-
 
             let terrain_filter = EnvFilter::new(TERRAIN_TRACE_TARGET.to_owned() + "=trace");
 
             let trace_path = saved_path.join("trace");
-            let appender = tracing_appender::rolling::never(trace_path, "trace");
+            let appender = RollingFileAppender::builder()
+                .rotation(Rotation::DAILY)
+                .filename_prefix("terrain_trace")
+                .build(trace_path)
+                .unwrap();
             let (non_blocking, terrain_workder_guard) = tracing_appender::non_blocking(appender);
 
             let terrain_trace_fmt = tracing_subscriber::fmt::Layer::default()
+                .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
+                .json()
+                .flatten_event(true)
                 .with_writer(non_blocking)
                 .with_ansi(false)
+                .with_thread_ids(true)
                 .with_filter(terrain_filter);
 
+            app.insert_resource(FileLogRes {
+                worker_guard,
+                terrain_workder_guard,
+            }); // have to keep this from being dropped
 
-            app.insert_resource(FileLogRes { worker_guard, terrain_workder_guard }); // have to keep this from being dropped
-
-            let subscriber = subscriber.with(file_fmt_layer).with(terrain_trace_fmt).with(fmt_layer);
+            let subscriber = subscriber
+                .with(file_fmt_layer)
+                .with(terrain_trace_fmt)
+                .with(fmt_layer);
 
             #[cfg(feature = "tracing-chrome")]
             let subscriber = subscriber.with(chrome_layer);
