@@ -4,13 +4,13 @@
 # edition = "2021"
 
 [workspace]
-members = ["crates/*", "entries/*"]
+members = ["crates/*", "entries/*", "tools/*"]
 resolver = "2"
 
 
 [workspace.dependencies]
 # bevy = { version = "0.12.0", features = ["trace", "trace_tracy"] }
-bevy = { version = "0.12.0", features = [] }
+bevy = { version = "0.12.1", features = [] }
 once_cell = "1.18.0"
 
 # Enable a small amount of optimization in debug mode

@@ -46,7 +46,7 @@ impl CellOctree {
         &mut self,
         root_cell: CellExtent,
         max_depth: u8,
-        error_tolerance: f32,
+        _error_tolerance: f32,
         precision: f32,
         sdf: &ShapeSurface,
     ) {
@@ -62,7 +62,7 @@ impl CellOctree {
         }
 
         let (maybe_root_id, _) =
-            self.build_recursive_from_branch(max_depth, error_tolerance, precision, sdf, root_cell);
+            self.build_recursive_from_branch(max_depth, _error_tolerance, precision, sdf, root_cell);
 
         if let Some(root_id) = maybe_root_id {
             self.root_id = root_id;
@@ -74,7 +74,7 @@ impl CellOctree {
     fn build_recursive_from_branch(
         &mut self,
         max_depth: u8,
-        error_tolerance: f32,
+        _error_tolerance: f32,
         precision: f32,
         sdf: &ShapeSurface,
         mut branch: Cell,
@@ -110,7 +110,7 @@ impl CellOctree {
             } else {
                 let (child_id, child_state) = self.build_recursive_from_branch(
                     max_depth,
-                    error_tolerance,
+                    _error_tolerance,
                     precision,
                     sdf,
                     child_cell,
