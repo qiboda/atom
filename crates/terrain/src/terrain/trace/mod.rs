@@ -1,4 +1,7 @@
-use bevy::{prelude::*};
+pub mod terrain_tracing;
+
+use bevy::prelude::*;
+use terrain_player_client::{EdgeData, OrderType, TriangleData, VertexData};
 
 pub struct TerrainTracePlugin;
 
@@ -59,13 +62,41 @@ macro_rules! terrain_trace {
 }
 
 pub fn terrain_trace_vertex(index: usize, location: Vec3) {
-    terrain_trace!(index, ?location, "vertex");
+    let order_type = OrderType::Vertex(VertexData { index, location });
+    let order_type = serde_json::to_string(&order_type).unwrap();
+    terrain_trace!(order_type);
 }
 
-pub fn terrain_trace_line(start: Vec3, end: Vec3) {
-    terrain_trace!(?start, ?end, "line");
+pub fn terrain_trace_edge(start_location: Vec3, end_location: Vec3) {
+    let order_type = OrderType::Edge(EdgeData {
+        start_location,
+        end_location,
+    });
+    let order_type = serde_json::to_string(&order_type).unwrap();
+    terrain_trace!(order_type);
 }
 
 pub fn terrain_trace_triangle(t1: usize, t2: usize, t3: usize) {
-    terrain_trace!(t1, t2, t3, "triangle");
+    let order_type = OrderType::Triangle(TriangleData {
+        vertex_index_0: t1,
+        vertex_index_1: t2,
+        vertex_index_2: t3,
+    });
+    let order_type = serde_json::to_string(&order_type).unwrap();
+    terrain_trace!(order_type);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_terrain_trace() {
+        let order_type = OrderType::Vertex(VertexData {
+            index: 1,
+            location: Vec3::new(1.0, 2.0, 3.0),
+        });
+        let json = serde_json::to_string(&order_type).unwrap();
+        println!("{}", json);
+    }
 }

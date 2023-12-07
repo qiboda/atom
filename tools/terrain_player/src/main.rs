@@ -40,10 +40,21 @@ fn main() {
 fn startup(args: Res<Args>, mut player_order: ResMut<PlayerOrders>) {
     if let Ok(file) = File::open(args.filename.clone()) {
         let reader = BufReader::new(file);
+        let mut line_num = 0;
         for line in reader.lines().flatten() {
-            if let Ok(order) = serde_json::from_str(line.as_str()) {
-                player_order.push_order(order);
+            match serde_json::from_str(line.as_str()) {
+                Ok(order) => {
+                    player_order.push_order(order);
+                    line_num += 1;
+                }
+                Err(err) => {
+                    error!("parse line error: {}, err: {}", line, err);
+                }
             }
         }
+        info!("file line num: {}", line_num);
+        info!("first line info: {:?}", player_order.get_order(0).unwrap());
+    } else {
+        error!("parse file name can not open: {:?}", args.filename);
     }
 }

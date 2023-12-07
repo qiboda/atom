@@ -2046,6 +2046,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-kinds"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e40a16955681d469ab3da85aaa6b42ff656b3c67b52e1d8d3dd36afe97fd462"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "epaint"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4197,9 +4208,11 @@ dependencies = [
  "pqef",
  "project",
  "rand",
+ "serde_json",
  "smallvec",
  "strum",
  "strum_macros",
+ "terrain_player_client",
  "tracing-appender",
  "tracing-chrome",
  "tracing-error",
@@ -4215,6 +4228,17 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "clap",
+ "serde",
+ "serde_json",
+ "terrain_player_client",
+]
+
+[[package]]
+name = "terrain_player_client"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "enum-kinds",
  "serde",
  "serde_json",
 ]

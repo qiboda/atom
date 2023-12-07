@@ -14,14 +14,8 @@ strum = { version = "0.25.0", features = ["derive", "strum_macros"] }
 strum_macros = "0.25.3"
 pqef = { path = "../pqef" }
 project = { path = "../project" }
+terrain_player_client = { path = "../../tools/terrain_player_client" }
 
-# noisy_bevy = { path = "../dep/noisy_bevy" }
-# simdnoise = { path = "../../../dep/rust-simd-noise" }
-# bevy_rapier3d = { path = "../dep/bevy_rapier/bevy_rapier3d" }
-# bevy-inspector-egui = "0.18.0"
-# bevy_editor_pls = "0.3.0"
-# bevy_mod_debugdump = { path = "../dep/bevy_mod_debugdump" }
-# bevy_terrain = { path = "../dep/bevy_terrain" }
 rand = "0.8.5"
 smallvec = "1.11.2"
 futures-lite = "2.0.1"
@@ -42,11 +36,12 @@ tracing-subscriber = { version = "0.3.18", features = [
     "registry",
     "env-filter",
     "json",
-    "local-time"
+    "local-time",
 ] }
 tracing-chrome = { version = "0.7.1", optional = true }
 tracing-tracy = { version = "0.10.4", optional = true }
 tracing-log = "0.2.0"
 tracing-error = { version = "0.2.0", optional = true }
 tracy-client = { version = "0.16", optional = true }
-tracing-appender = { version = "0.2.3", features = []}
+tracing-appender = { version = "0.2.3", features = [] }
+serde_json = "1.0.108"
