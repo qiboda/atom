@@ -3,7 +3,7 @@ use bevy::{
     utils::tracing::{self},
 };
 
-use crate::terrain::trace::TERRAIN_TRACE_TARGET;
+use crate::terrain::trace::{terrain_tracing::TerrainLayer, TERRAIN_TRACE_TARGET};
 use project::project_saved_root_path;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_log::{log::Level, LogTracer};
@@ -89,8 +89,7 @@ impl Plugin for CustomLogPlugin {
             let fmt_layer = tracing_subscriber::fmt::Layer::default()
                 .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
                 .with_writer(std::io::stderr)
-                .with_filter(std_filter)
-                ;
+                .with_filter(std_filter);
 
             // bevy_render::renderer logs a `tracy.frame_mark` event every frame
             // at Level::INFO. Formatted logs should omit it.
@@ -117,20 +116,16 @@ impl Plugin for CustomLogPlugin {
                 .filename_prefix("terrain_trace")
                 .build(trace_path)
                 .unwrap();
-            let (non_blocking, terrain_workder_guard) = tracing_appender::non_blocking(appender);
+            let (non_blocking, terrain_worker_guard) = tracing_appender::non_blocking(appender);
 
-            let terrain_trace_fmt = tracing_subscriber::fmt::Layer::default()
-                .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
-                .json()
-                .flatten_event(true)
+            let terrain_trace_fmt = TerrainLayer::new()
+                .with_pretty(false)
                 .with_writer(non_blocking)
-                .with_ansi(false)
-                .with_thread_ids(true)
                 .with_filter(terrain_filter);
 
             app.insert_resource(FileLogRes {
                 worker_guard,
-                terrain_workder_guard,
+                terrain_workder_guard: terrain_worker_guard,
             }); // have to keep this from being dropped
 
             let subscriber = subscriber

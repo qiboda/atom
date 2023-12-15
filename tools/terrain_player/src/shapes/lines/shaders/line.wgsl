@@ -11,38 +11,39 @@ var<uniform> material: LineMaterial;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
-#ifdef VERTEX_COLORS
+// #ifdef VERTEX_COLORS
     @location(1) color: vec4<f32>,
-#endif
+// #endif
 };
 
 struct VertexOutput {
-#ifdef VERTEX_COLORS
+    @builtin(position) clip_position: vec4<f32>,
+// #ifdef VERTEX_COLORS
     @location(0) color: vec4<f32>,
-#endif
+// #endif
 };
 
 @vertex
 fn vertex(vertex: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-#ifdef VERTEX_COLORS
+// #ifdef VERTEX_COLORS
     out.color = vertex.color;
-#endif
+// #endif
     return out;
 }
 
 struct FragmentInput {
     @location(0) uv: vec2<f32>,
-#ifdef VERTEX_COLORS
+// #ifdef VERTEX_COLORS
     @location(1) color: vec4<f32>,
-#endif
+// #endif
 };
 
 @fragment
 fn fragment(input: FragmentInput) -> @location(0) vec4<f32> {
-#ifdef VERTEX_COLORS
-    return material.color * input.color;
-else 
+// #ifdef VERTEX_COLORS
+    // return material.color * input.color;
+// else 
     return material.color;
-#endif
+// #endif
 }

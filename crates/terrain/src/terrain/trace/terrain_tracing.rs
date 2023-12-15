@@ -1,27 +1,44 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, io};
 
 use bevy::utils::tracing::{self, span};
 use serde_json::json;
-use tracing_subscriber::Layer;
+use tracing_subscriber::{fmt::MakeWriter, Layer};
 
-pub struct TerrainLayer {
+pub struct TerrainLayer<W = fn() -> io::Stdout> {
     pretty: bool,
+    make_writer: W,
 }
 
 impl TerrainLayer {
     pub fn new() -> Self {
-        Self { pretty: false }
+        Self {
+            pretty: false,
+            make_writer: std::io::stdout,
+        }
     }
 
     pub fn with_pretty(self, pretty: bool) -> Self {
-        Self { pretty }
+        Self { pretty, ..self }
     }
 }
 
-impl<S> Layer<S> for TerrainLayer
+impl<W> TerrainLayer<W> {
+    pub fn with_writer<W2>(self, make_writer: W2) -> TerrainLayer<W2>
+    where
+        W2: for<'writer> MakeWriter<'writer>,
+    {
+        TerrainLayer {
+            make_writer,
+            pretty: self.pretty,
+        }
+    }
+}
+
+impl<S, W> Layer<S> for TerrainLayer<W>
 where
     S: tracing::Subscriber,
     S: for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup>,
+    W: for<'writer> MakeWriter<'writer> + 'static,
 {
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
         static mut ORDER_ID: u64 = 0;
@@ -29,19 +46,20 @@ where
             ORDER_ID += 1;
         }
 
-        // All of the span context
-        let scope = ctx.event_scope(event).unwrap();
         let mut spans = vec![];
-        for span in scope.from_root() {
-            let extensions = span.extensions();
-            let storage = extensions.get::<TerrainSpanFieldStorage>().unwrap();
-            let field_data: &BTreeMap<String, serde_json::Value> = &storage.0;
-            spans.push(serde_json::json!({
-                "target": span.metadata().target(),
-                "name": span.name(),
-                "level": format!("{:?}", span.metadata().level()),
-                "fields": field_data,
-            }));
+        // All of the span context
+        if let Some(scope) = ctx.event_scope(event) {
+            for span in scope.from_root() {
+                let extensions = span.extensions();
+                let storage = extensions.get::<TerrainSpanFieldStorage>().unwrap();
+                let field_data: &BTreeMap<String, serde_json::Value> = &storage.0;
+                spans.push(serde_json::json!({
+                    "target": span.metadata().target(),
+                    "name": span.name(),
+                    "level": format!("{:?}", span.metadata().level()),
+                    "fields": field_data,
+                }));
+            }
         }
 
         // All of the event context
@@ -64,10 +82,15 @@ where
                 "spans": spans,
             });
         }
+
         if self.pretty {
-            println!("{}", serde_json::to_string_pretty(&event_json).unwrap());
+            let mut writer = self.make_writer.make_writer();
+            let json_string = serde_json::to_string_pretty(&event_json).unwrap() + "\n";
+            io::Write::write_all(&mut writer, json_string.as_bytes()).unwrap();
         } else {
-            println!("{}", serde_json::to_string(&event_json).unwrap());
+            let mut writer = self.make_writer.make_writer();
+            let json_string = serde_json::to_string(&event_json).unwrap() + "\n";
+            io::Write::write_all(&mut writer, json_string.as_bytes()).unwrap();
         }
     }
 
@@ -122,17 +145,29 @@ impl<'a> tracing::field::Visit for TerrainVisitor<'a> {
         field: &tracing::field::Field,
         value: &(dyn std::error::Error + 'static),
     ) {
-        self.0.insert(
-            field.name().to_string(),
-            serde_json::json!(format!("{:?}", value)),
-        );
+        let string_value = format!("{}", value);
+        if let Ok(v) = serde_json::from_str(&string_value.as_str()) {
+            self.0.insert(field.name().to_string(), v);
+        } else {
+            self.0.insert(field.name().to_string(), json!(string_value));
+        }
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        self.0.insert(
-            field.name().to_string(),
-            serde_json::json!(format!("{:?}", value)),
-        );
+        let mut value_string = format!("{:?}", value);
+        if let Some(value_str) = value_string.strip_prefix('"') {
+            value_string = value_str.to_string();
+        }
+        if let Some(value_str) = value_string.strip_suffix('"') {
+            value_string = value_str.to_string();
+        }
+        value_string = value_string.replace('\\', "");
+
+        if let Ok(v) = serde_json::from_str(&value_string) {
+            self.0.insert(field.name().to_string(), v);
+        } else {
+            self.0.insert(field.name().to_string(), json!(value_string));
+        }
     }
 }
 
@@ -141,30 +176,53 @@ struct TerrainSpanFieldStorage(BTreeMap<String, serde_json::Value>);
 
 #[cfg(test)]
 mod test {
+    use crate::terrain::trace::terrain_trace_vertex;
     use bevy::{
         log::{debug_span, info_span},
-        utils::tracing,
+        math::Vec3,
+        utils::tracing::{self},
     };
     use tracing_subscriber::layer::SubscriberExt;
 
     use crate::terrain::trace::terrain_tracing::TerrainLayer;
 
     #[test]
-    fn test_custom_layer() {
+    fn test_terrain_layer() {
         let layer = TerrainLayer::new();
         let subscriber = tracing_subscriber::registry().with(layer.with_pretty(true));
-        tracing::subscriber::set_global_default(subscriber).unwrap();
 
-        let outer_span = info_span!("outer", level = 0);
-        let _outer_entered = outer_span.enter();
+        tracing::subscriber::with_default(subscriber, || {
+            let outer_span = info_span!("outer", level = 0);
+            let _outer_entered = outer_span.enter();
 
-        let inner_span = debug_span!("inner", level = 1);
-        let _inner_entered = inner_span.enter();
+            let inner_span = debug_span!("inner", level = 1);
+            let _inner_entered = inner_span.enter();
 
-        let test = "saldfjlas";
-        let test2 = "saldfjlas";
-        let test3 = "saldfjlas";
-        tracing::info!(test, test2, test3);
-        tracing::info!(test, test2, test3);
+            let test = "saldfjlas";
+            let test2 = "saldfjlas";
+            let test3 = "saldfjlas";
+            tracing::info!(test, test2, test3);
+            tracing::info!(test, test2, test3);
+        });
+    }
+
+    #[test]
+    fn test_terrain_layer_none_span() {
+        let layer = TerrainLayer::new();
+        let subscriber = tracing_subscriber::registry().with(layer.with_pretty(true));
+        tracing::subscriber::with_default(subscriber, || {
+            let test = "saldfjlas";
+            let test2 = "saldfjlas";
+            tracing::info!(test, test2);
+        });
+    }
+
+    #[test]
+    fn test_terrain_layer_with_writer() {
+        let layer = TerrainLayer::new();
+        let subscriber = tracing_subscriber::registry().with(layer.with_pretty(true));
+        tracing::subscriber::with_default(subscriber, || {
+            terrain_trace_vertex(1, Vec3::ZERO);
+        });
     }
 }

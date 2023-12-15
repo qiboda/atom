@@ -1,3 +1,6 @@
+use bevy::log::warn;
+use bevy::render::mesh::PrimitiveTopology;
+use bevy::render::render_resource::PolygonMode;
 use bevy::{
     asset::Asset,
     pbr::{MAX_CASCADES_PER_LIGHT, MAX_DIRECTIONAL_LIGHTS},
@@ -9,7 +12,6 @@ use bevy::{
 
 use super::plugin::POINT_SHADER_HANDLE;
 
-
 #[derive(Debug, Clone, Copy, ShaderType)]
 pub struct PointsShaderSettings {
     pub point_size: f32,
@@ -20,9 +22,9 @@ pub struct PointsShaderSettings {
 impl Default for PointsShaderSettings {
     fn default() -> Self {
         Self {
-            point_size: 1.,
-            opacity: 1.,
-            color: Default::default(),
+            point_size: 0.01,
+            opacity: 1.0,
+            color: Color::default(),
         }
     }
 }
@@ -46,8 +48,8 @@ impl Default for PointsMaterial {
             settings: PointsShaderSettings::default(),
             depth_bias: 0.,
             alpha_mode: Default::default(),
-            use_vertex_color: true,
-            perspective: true,
+            use_vertex_color: false,
+            perspective: false,
             circle: false,
         }
     }
@@ -94,6 +96,8 @@ impl Material for PointsMaterial {
         key: bevy::pbr::MaterialPipelineKey<Self>,
     ) -> Result<(), bevy::render::render_resource::SpecializedMeshPipelineError> {
         descriptor.primitive.cull_mode = None;
+        descriptor.primitive.polygon_mode = PolygonMode::Fill;
+        descriptor.primitive.topology = PrimitiveTopology::TriangleList;
 
         let mut shader_defs = vec![];
         let mut vertex_attributes = vec![
@@ -117,6 +121,7 @@ impl Material for PointsMaterial {
         }
         if key.bind_group_data.perspective {
             shader_defs.push(ShaderDefVal::from("POINT_SIZE_PERSPECTIVE"));
+            warn!("POINT_SIZE_PERSPECTIVE");
         }
         if key.bind_group_data.circle {
             shader_defs.push(ShaderDefVal::from("POINT_SHAPE_CIRCLE"));

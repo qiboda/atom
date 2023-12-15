@@ -1,13 +1,13 @@
-use bevy::{prelude::*, asset::load_internal_asset};
+use bevy::{asset::load_internal_asset, prelude::*};
 
 use crate::shapes::lines::material::LineMaterial;
 
 pub const LINE_SHADER_HANDLE: Handle<Shader> =
     Handle::weak_from_u128(280840713593477678860567649031760994175);
 
-struct LinesPluigns;
+pub struct LinesPlugin;
 
-impl Plugin for LinesPluigns {
+impl Plugin for LinesPlugin {
     fn build(&self, app: &mut App) {
         load_internal_asset!(
             app,

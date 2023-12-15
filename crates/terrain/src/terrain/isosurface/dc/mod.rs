@@ -53,7 +53,7 @@ use crate::terrain::materials::terrain::TerrainMaterial;
 use crate::terrain::settings::TerrainSettings;
 use crate::terrain::TerrainSystemSet;
 use crate::terrain::trace::{terrain_trace_vertex, terrain_trace_triangle};
-use crate::{terrain_trace_span};
+use crate::terrain_trace_span;
 
 use super::mesh::create_mesh;
 use super::mesh::mesh_cache::MeshCache;
@@ -229,7 +229,6 @@ fn dual_contour_meshing(
                             },
                         );
 
-                        drop(terrain_trace_span);
 
                         // Now we need to create the mesh by copying the proper vertices out of the
                         // octree. Since not all vertices will be used, we need to recreate the
@@ -245,6 +244,8 @@ fn dual_contour_meshing(
                         }
 
                         repair_sharp_normals(0.95, &mut tri_indices, &mut positions, &mut normals);
+
+                        drop(terrain_trace_span);
 
                         info!(
                             "tri_indices:{} positions:{} normals:{}",

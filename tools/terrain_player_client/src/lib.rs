@@ -13,10 +13,8 @@ pub struct VertexData {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EdgeData {
-    #[serde(deserialize_with = "de_vec3", serialize_with = "se_vec3")]
-    pub start_location: Vec3,
-    #[serde(deserialize_with = "de_vec3", serialize_with = "se_vec3")]
-    pub end_location: Vec3,
+    pub start_index: usize,
+    pub end_index: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -35,16 +33,18 @@ pub enum OrderType {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Order {
-    pub timestamp: String,
-    pub level: String,
-    // #[serde(flatten)]
+pub struct Fields {
     pub order_type: OrderType,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Order {
+    pub order_id: NonZeroU64,
+    pub level: String,
+    pub fields: Fields,
     pub target: String,
-    pub span: Span,
     pub spans: Vec<Span>,
-    #[serde(rename = "threadId")]
-    pub thread_id: ThreadId,
+    pub thread_id: NonZeroU64,
 }
 
 #[derive(Debug, Clone)]
@@ -101,41 +101,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_thread_id_serialize() {
-        let thread_id = ThreadId(NonZeroU64::new(1).unwrap());
-        let json = serde_json::to_string(&thread_id).unwrap();
-        assert_eq!(json, r#""ThreadId(1)""#);
-    }
+    fn test_order_deserialize() {
+        let json = r#"{"fields":{"order_type":{"Vertex":{"index":3,"location":"Vec3(0.1875, 0, 0)"}}},"level":"Level(Trace)","name":"event crates\\terrain\\src\\terrain\\trace\\mod.rs:68","order_id":15,"spans":[{"fields":{},"level":"Level(Trace)","name":"dual_contour","target":"terrain_trace"}],"target":"terrain_trace","thread_id":6}"#;
 
-    #[test]
-    fn test_thread_id_deserialize() {
-        let json = r#""ThreadId(1)""#;
-        let thread_id: ThreadId = serde_json::from_str(json).unwrap();
-        assert_eq!(thread_id.0.get(), 1);
-    }
-
-    #[test]
-    fn test_order_serialize() {
-        let order = Order {
-            timestamp: "2021-08-31T09:00:00.000+08:00".to_string(),
-            level: "INFO".to_string(),
-            order_type: OrderType::Vertex(VertexData {
-                index: 0,
-                location: Vec3::new(0.0, 0.0, 0.0),
-            }),
-            target: "terrain::mesh::meshing".to_string(),
-            span: Span {
-                name: "meshing".to_string(),
-            },
-            spans: vec![Span {
-                name: "meshing".to_string(),
-            }],
-            thread_id: ThreadId(NonZeroU64::new(1).unwrap()),
-        };
-        let json = serde_json::to_string(&order).unwrap();
-        assert_eq!(
-            json,
-            r#"{"timestamp":"2021-08-31T09:00:00.000+08:00","level":"INFO","order_type":{"Vertex":{"index":0,"location":"Vec3(0, 0, 0)"}},"target":"terrain::mesh::meshing","span":{"name":"meshing"},"spans":[{"name":"meshing"}],"threadId":"ThreadId(1)"}"#
-        );
+        let order: Order = serde_json::from_str(json).unwrap();
+        assert_eq!(order.thread_id, NonZeroU64::new(6).unwrap());
     }
 }

@@ -10,8 +10,9 @@ resolver = "2"
 
 [workspace.dependencies]
 # bevy = { version = "0.12.0", features = ["trace", "trace_tracy"] }
-bevy = { version = "0.12.1", features = [] }
+bevy = { version = "0.12.1", features = ["file_watcher", "embedded_watcher"] }
 once_cell = "1.18.0"
+bevy_common_assets = {version = "0.8.0", features = ["toml"] }
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

@@ -63,22 +63,22 @@ impl Material for LineMaterial {
         descriptor.primitive.cull_mode = None;
         descriptor.primitive.polygon_mode = PolygonMode::Line;
 
-        let mut shader_defs = vec![];
+        // let mut shader_defs = vec![];
         let mut vertex_attributes = vec![Mesh::ATTRIBUTE_POSITION.at_shader_location(0)];
 
-        if key.bind_group_data.use_vertex_color && layout.contains(Mesh::ATTRIBUTE_COLOR) {
-            shader_defs.push(ShaderDefVal::from("VERTEX_COLORS"));
-            vertex_attributes.push(Mesh::ATTRIBUTE_COLOR.at_shader_location(1));
-        }
+        // if key.bind_group_data.use_vertex_color && layout.contains(Mesh::ATTRIBUTE_COLOR) {
+        //     shader_defs.push(ShaderDefVal::from("VERTEX_COLORS"));
+        vertex_attributes.push(Mesh::ATTRIBUTE_COLOR.at_shader_location(1));
+        // }
 
         let vertex_layout = layout.get_layout(&vertex_attributes)?;
         descriptor.vertex.buffers = vec![vertex_layout];
 
-        descriptor.vertex.shader_defs = shader_defs.clone();
+        // descriptor.vertex.shader_defs = shader_defs.clone();
 
-        if let Some(fragment) = &mut descriptor.fragment {
-            fragment.shader_defs = shader_defs;
-        }
+        // if let Some(fragment) = &mut descriptor.fragment {
+        //     fragment.shader_defs = shader_defs;
+        // }
 
         Ok(())
     }
