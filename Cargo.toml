@@ -4,7 +4,7 @@
 # edition = "2021"
 
 [workspace]
-members = ["crates/*", "entries/*", "tools/*"]
+members = ["crates/*", "entries/*"]
 resolver = "2"
 
 

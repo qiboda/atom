@@ -23,13 +23,13 @@ use bevy::{
 use bevy_obj::ObjPlugin;
 use log::CustomLogPlugin;
 
+use crate::window::toggle_vsync;
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
+use terrain_player_client::trace::TerrainTracePlugin;
 use ui::FrameUIPlugin;
 use visible::visible_range::VisibleTerrainRange;
-use crate::terrain::trace::TerrainTracePlugin;
-use crate::window::toggle_vsync;
 
 pub fn bevy_entry() -> App {
     let mut app = App::new();

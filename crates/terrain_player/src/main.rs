@@ -21,7 +21,7 @@ use shapes::{
     points::{material::PointsMaterial, mesh::PointsMesh},
     triangles::{material::TriangleMaterial, mesh::TrianglesMesh},
 };
-use terrain_player_client::OrderType;
+use terrain_player_client::order::OrderType;
 
 use crate::shapes::triangles::plugin::TrianglesPlugin;
 use crate::shapes::{lines::plugin::LinesPlugin, points::plugin::PointsPlugin};
@@ -119,8 +119,6 @@ fn spawn_point_and_line(
     mut points_materials: ResMut<Assets<PointsMaterial>>,
     mut triangle_materials: ResMut<Assets<TriangleMaterial>>,
 ) {
-    let vertices = geometry_data.vertices.clone();
-
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(shape::Cube::new(1.0).into()),
@@ -155,8 +153,8 @@ fn spawn_point_and_line(
     commands.spawn((
         MaterialMeshBundle {
             mesh: meshes.add(Mesh::from(TrianglesMesh::build_mesh(
-                Some(vec![[0.0; 3], [0.0; 3], [0.0; 3]]),
-                Some(vec![0, 1, 2]),
+                Some(vec![]),
+                Some(vec![]),
             ))),
             material: triangle_materials.add(TriangleMaterial::default()),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),

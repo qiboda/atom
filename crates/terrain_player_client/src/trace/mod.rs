@@ -1,8 +1,8 @@
 pub mod terrain_tracing;
 
+use crate::order::{EdgeData, OrderType, TriangleData, VertexData};
 use bevy::prelude::*;
 use serde_json::json;
-use terrain_player_client::{EdgeData, OrderType, TriangleData, VertexData};
 
 pub struct TerrainTracePlugin;
 
@@ -29,16 +29,16 @@ pub const TERRAIN_TRACE_TARGET: &str = "terrain_trace";
 #[macro_export]
 macro_rules! terrain_trace_span {
     ($name:expr) => {
-        bevy::utils::tracing::trace_span!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, $name)
+        bevy::utils::tracing::trace_span!(target: $crate::trace::TERRAIN_TRACE_TARGET, $name)
     };
     ($name:expr, $($fields:tt)*) => {
-        bevy::utils::tracing::trace_span!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, $name, $($fields)*)
+        bevy::utils::tracing::trace_span!(target: $crate::trace::TERRAIN_TRACE_TARGET, $name, $($fields)*)
     };
     (parent: $parent:expr, $name:expr) => {
-        bevy::utils::tracing::trace_span!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, parent: $parent, $name)
+        bevy::utils::tracing::trace_span!(target: $crate::trace::TERRAIN_TRACE_TARGET, parent: $parent, $name)
     };
     (parent: $parent:expr, $name:expr, $($fields:tt)*) => {
-        bevy::utils::tracing::trace_span!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, parent: $parent, $name, $($fields)*)
+        bevy::utils::tracing::trace_span!(target: $crate::trace::TERRAIN_TRACE_TARGET, parent: $parent, $name, $($fields)*)
     };
 }
 
@@ -46,21 +46,26 @@ macro_rules! terrain_trace_span {
 macro_rules! terrain_trace {
     // Name / target.
     ({ $($field:tt)* }, $($arg:tt)* ) => (
-        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, { $($field)* }, $($arg)*)
+        bevy::utils::tracing::trace!(target: $crate::trace::TERRAIN_TRACE_TARGET, { $($field)* }, $($arg)*)
     );
     ($($k:ident).+ $($field:tt)* ) => (
-        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, $($k).+ $($field)*)
+        bevy::utils::tracing::trace!(target: $crate::trace::TERRAIN_TRACE_TARGET, $($k).+ $($field)*)
     );
     (?$($k:ident).+ $($field:tt)* ) => (
-        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, ?$($k).+ $($field)*)
+        bevy::utils::tracing::trace!(target: $crate::trace::TERRAIN_TRACE_TARGET, ?$($k).+ $($field)*)
     );
     (%$($k:ident).+ $($field:tt)* ) => (
-        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, %$($k).+ $($field)*)
+        bevy::utils::tracing::trace!(target: $crate::trace::TERRAIN_TRACE_TARGET, %$($k).+ $($field)*)
     );
     ($($arg:tt)+ ) => (
-        bevy::utils::tracing::trace!(target: $crate::terrain::trace::TERRAIN_TRACE_TARGET, $($arg)+)
+        bevy::utils::tracing::trace!(target: $crate::trace::TERRAIN_TRACE_TARGET, $($arg)+)
     );
 }
+
+// pub fn terrain_chunk_trace_span(terrain_chunk_coord: TerrainChunkCoord) -> tracing::Span {
+//     let terrain_chunk_coord = serde_json::to_string(&json!(terrain_chunk_coord)).unwrap();
+//     terrain_trace_span!("terrain_chunk_trace", terrain_chunk_coord)
+// }
 
 pub fn terrain_trace_vertex(index: usize, location: Vec3) {
     let order_type = OrderType::Vertex(VertexData { index, location });
@@ -68,10 +73,10 @@ pub fn terrain_trace_vertex(index: usize, location: Vec3) {
     terrain_trace!(order_type);
 }
 
-pub fn terrain_trace_edge(start_location: Vec3, end_location: Vec3) {
+pub fn terrain_trace_edge(start_index: usize, end_index: usize) {
     let order_type = OrderType::Edge(EdgeData {
-        start_location,
-        end_location,
+        start_index,
+        end_index,
     });
 
     let order_type = serde_json::to_string(&json!(order_type)).unwrap();

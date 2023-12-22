@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
-use self::{chunk_data::TerrainChunkData, coords::TerrainChunkCoord};
+use self::chunk_data::TerrainChunkData;
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 pub mod chunk_data;
-pub mod coords;
 
 #[derive(Bundle, Default)]
 pub struct TerrainChunkBundle {

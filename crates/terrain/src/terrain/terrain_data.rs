@@ -11,7 +11,7 @@ use super::{
     TerrainSystemSet,
 };
 
-use super::chunk::coords::TerrainChunkCoord;
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 #[derive(Debug, Component, Default)]
 pub struct TerrainData {

@@ -144,7 +144,7 @@ impl CellOctree {
 
         // Post-order simplification can change branches into pseudo-leaves.
 
-        let mut vertex_state = VertexState::CannotSimplify;
+        let vertex_state = VertexState::CannotSimplify;
         if all_nonempty_children_can_merge && cell_is_bipolar(&branch.samples) {
             // Branch vertex should be estimated. Only keep if it meets
             // error criterion.

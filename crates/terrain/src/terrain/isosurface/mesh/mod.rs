@@ -3,8 +3,9 @@ use std::sync::{Arc, RwLock};
 use bevy::{math::Vec3A, prelude::*};
 use bevy_xpbd_3d::prelude::{Collider, RigidBody};
 
+use terrain_core::chunk::coords::TerrainChunkCoord;
+
 use crate::terrain::{
-    chunk::coords::TerrainChunkCoord,
     ecology::layer::{EcologyLayerSampler, Sampler},
     isosurface::dc::CellExtent,
     materials::terrain::TerrainMaterial,

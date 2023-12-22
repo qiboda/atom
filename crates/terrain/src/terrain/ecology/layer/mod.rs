@@ -2,7 +2,8 @@ use std::{fmt::Debug, ops::ControlFlow, sync::Arc};
 
 use bevy::prelude::*;
 
-use crate::terrain::{chunk::coords::TerrainChunkCoord, isosurface::dc::CellExtent};
+use crate::terrain::isosurface::dc::CellExtent;
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::category::EcologyMaterial;
 

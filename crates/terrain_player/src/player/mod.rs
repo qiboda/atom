@@ -1,7 +1,7 @@
 pub mod geometry_data;
 
 use bevy::prelude::*;
-use terrain_player_client::Order;
+use terrain_player_client::order::Order;
 
 #[derive(Resource, Default, Debug)]
 pub struct PlayerOrders {

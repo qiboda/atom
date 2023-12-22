@@ -3,8 +3,8 @@ use bevy::{
     utils::tracing::{self},
 };
 
-use crate::terrain::trace::{terrain_tracing::TerrainLayer, TERRAIN_TRACE_TARGET};
 use project::project_saved_root_path;
+use terrain_player_client::trace::{terrain_tracing::TerrainLayer, TERRAIN_TRACE_TARGET};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_log::{log::Level, LogTracer};
 #[cfg(feature = "tracing-chrome")]

@@ -1,8 +1,7 @@
-use std::num::NonZeroU64;
-
 use bevy::math::Vec3;
 use enum_kinds::EnumKind;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::num::NonZeroU64;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VertexData {
@@ -74,6 +73,7 @@ impl<'de> Deserialize<'de> for ThreadId {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Span {
     pub name: String,
+    pub terrain_chunk_coord: Option<[i64; 3]>,
 }
 
 fn de_vec3<'de, D>(de: D) -> Result<Vec3, D::Error>
@@ -98,7 +98,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::num::NonZeroU64;
+
+    use crate::order::Order;
 
     #[test]
     fn test_order_deserialize() {

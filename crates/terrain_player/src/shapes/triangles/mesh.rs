@@ -20,7 +20,7 @@ impl TrianglesMesh {
 
     pub fn get_indices_len(mesh: &Mesh) -> Option<usize> {
         if let Some(Indices::U32(indices)) = mesh.indices() {
-            Some(indices.len() - 1)
+            Some(indices.len())
         } else {
             None
         }
@@ -31,7 +31,7 @@ impl TrianglesMesh {
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
         } else {
             if let Some(positions) = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION) {
-                if positions.len() == 3 {
+                if positions.len() == 0 {
                     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
                 }
             }

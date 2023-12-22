@@ -1,8 +1,9 @@
 use std::ops::{Add, Sub};
 
 use bevy::prelude::Component;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Copy, Clone, Hash, Eq, PartialEq, Component)]
+#[derive(Debug, Default, Copy, Clone, Hash, Eq, PartialEq, Component, Serialize, Deserialize)]
 pub struct TerrainChunkCoord {
     pub x: i64,
     pub y: i64,

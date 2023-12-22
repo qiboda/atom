@@ -1,7 +1,8 @@
 use crate::player::PlayerOrders;
 use bevy::prelude::*;
-use terrain_player_client::OrderType;
+use terrain_player_client::order::OrderType;
 
+// todo: 分为每chunk顶点和索引。
 #[derive(Debug, Default, Resource)]
 pub struct GeometryData {
     pub vertices: Vec<[f32; 3]>,

@@ -158,8 +158,8 @@ pub const VERTEX_MAP: [[Face2DVertex; 2]; Face2DEdge::COUNT] = [
 
 */
 
-use strum::{EnumCount, FromRepr};
-use strum_macros::EnumIter;
+use strum::EnumCount;
+use strum_macros::{EnumIter, FromRepr};
 
 // also face
 #[derive(Debug, Clone, Copy, PartialEq, EnumIter, EnumCount, FromRepr)]

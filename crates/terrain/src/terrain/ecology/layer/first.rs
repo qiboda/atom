@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
-use crate::terrain::{
-    chunk::coords::TerrainChunkCoord, ecology::category::EcologyMaterial,
-    isosurface::dc::CellExtent,
-};
+use crate::terrain::{ecology::category::EcologyMaterial, isosurface::dc::CellExtent};
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::{EcologyLayer, Sampler};
 

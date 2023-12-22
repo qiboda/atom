@@ -176,7 +176,6 @@ struct TerrainSpanFieldStorage(BTreeMap<String, serde_json::Value>);
 
 #[cfg(test)]
 mod test {
-    use crate::terrain::trace::terrain_trace_vertex;
     use bevy::{
         log::{debug_span, info_span},
         math::Vec3,
@@ -184,7 +183,9 @@ mod test {
     };
     use tracing_subscriber::layer::SubscriberExt;
 
-    use crate::terrain::trace::terrain_tracing::TerrainLayer;
+    use super::super::terrain_trace_vertex;
+
+    use super::TerrainLayer;
 
     #[test]
     fn test_terrain_layer() {

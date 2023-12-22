@@ -45,15 +45,15 @@ pub use cell_octree::*;
 use futures_lite::future;
 pub use mesh::*;
 pub use sdf::*;
+use terrain_player_client::terrain_trace_span;
+use terrain_player_client::trace::{terrain_trace_triangle, terrain_trace_vertex};
 
-use crate::terrain::chunk::coords::TerrainChunkCoord;
 use crate::terrain::chunk::TerrainChunk;
 use crate::terrain::ecology::layer::EcologyLayerSampler;
 use crate::terrain::materials::terrain::TerrainMaterial;
 use crate::terrain::settings::TerrainSettings;
 use crate::terrain::TerrainSystemSet;
-use crate::terrain::trace::{terrain_trace_vertex, terrain_trace_triangle};
-use crate::terrain_trace_span;
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::mesh::create_mesh;
 use super::mesh::mesh_cache::MeshCache;
@@ -130,17 +130,13 @@ fn dual_contour_build_octree(
                     ) * chunk_size;
                     // let outer_add = Vec3A::new(1.0, 1.0, 1.0);
 
-                    let root_cell_extent = CellExtent::new(
-                        world_offset,
-                        world_offset + chunk_size,
-                    );
+                    let root_cell_extent = CellExtent::new(world_offset, world_offset + chunk_size);
 
                     let dc = dual_contouring.octree.clone();
                     let surface_shape = surface_context.shape_surface.clone();
 
                     let thread_pool = AsyncComputeTaskPool::get();
                     let task = thread_pool.spawn(async move {
-
                         let surface_shape = surface_shape.read().unwrap();
                         let mut dc = dc.write().unwrap();
                         dc.build(root_cell_extent, 7, 0.00001, 0.1, &surface_shape);
@@ -164,10 +160,17 @@ fn dual_contour_build_octree(
 }
 
 fn dual_contour_meshing(
-    mut dc_query: Query<(&mut DualContouring, &mut DualContouringTask), With<TerrainChunk>>,
+    mut dc_query: Query<
+        (
+            &mut DualContouring,
+            &mut DualContouringTask,
+            &TerrainChunkCoord,
+        ),
+        With<TerrainChunk>,
+    >,
     surface_context: Res<IsosurfaceContext>,
 ) {
-    for (dual_contouring, mut dual_contouring_task) in dc_query.iter_mut() {
+    for (dual_contouring, mut dual_contouring_task, terrain_chunk_coord) in dc_query.iter_mut() {
         if dual_contouring_task.state == DualContourState::DualContouring {
             info!("dual_contour dual contoring");
 
@@ -195,7 +198,9 @@ fn dual_contour_meshing(
                         let mut normals = Vec::new();
                         let tri_indices = RefCell::new(Vec::new());
 
-                        let terrain_trace_span = terrain_trace_span!("dual_contour");
+                        let terrain_trace_span =
+                            terrain_trace_span!("dual_contour", terrain_chunk_coord = "");
+
                         let terrain_trace_span = terrain_trace_span.enter();
 
                         dc.dual_contour(
@@ -203,11 +208,13 @@ fn dual_contour_meshing(
                                 min_leaf_depth = min_leaf_depth.min(cell.depth);
                                 max_leaf_depth = max_leaf_depth.max(cell.depth);
 
-
                                 cell.mesh_vertex_id = positions.len() as MeshVertexId;
                                 positions.push(cell.vertex_estimate.into());
 
-                                terrain_trace_vertex(positions.len(), (*positions.last().unwrap()).into());
+                                terrain_trace_vertex(
+                                    positions.len(),
+                                    (*positions.last().unwrap()).into(),
+                                );
 
                                 normals.push(
                                     central_gradient(
@@ -219,9 +226,11 @@ fn dual_contour_meshing(
                                 );
                             },
                             |q| {
-                                tri_indices.borrow_mut()
+                                tri_indices
+                                    .borrow_mut()
                                     .extend_from_slice(&[q[0], q[2], q[1]]);
-                                tri_indices.borrow_mut()
+                                tri_indices
+                                    .borrow_mut()
                                     .extend_from_slice(&[q[1], q[2], q[3]]);
                             },
                             |tri| {
@@ -229,18 +238,22 @@ fn dual_contour_meshing(
                             },
                         );
 
-
                         // Now we need to create the mesh by copying the proper vertices out of the
                         // octree. Since not all vertices will be used, we need to recreate the
                         // vertex IDs based on the new mesh.
                         let all_cells = dc.all_cells();
-                        let mut tri_indices: Vec<_> = tri_indices.into_inner()
+                        let mut tri_indices: Vec<_> = tri_indices
+                            .into_inner()
                             .into_iter()
                             .map(|i| all_cells[i as usize].mesh_vertex_id)
                             .collect();
 
                         for tri in tri_indices.chunks_exact(3) {
-                            terrain_trace_triangle(tri[0] as usize, tri[1] as usize, tri[2] as usize);
+                            terrain_trace_triangle(
+                                tri[0] as usize,
+                                tri[1] as usize,
+                                tri[2] as usize,
+                            );
                         }
 
                         repair_sharp_normals(0.95, &mut tri_indices, &mut positions, &mut normals);

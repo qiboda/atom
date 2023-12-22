@@ -10,7 +10,7 @@ use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
 use futures_lite::future;
 
 use crate::terrain::{
-    chunk::{coords::TerrainChunkCoord, TerrainChunk},
+    chunk::TerrainChunk,
     ecology::layer::EcologyLayerSampler,
     isosurface::{
         cms::{
@@ -25,6 +25,7 @@ use crate::terrain::{
     settings::TerrainSettings,
     TerrainSystemSet,
 };
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use self::{
     build::octree::{make_octree_structure, mark_transitional_faces},
