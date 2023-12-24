@@ -1,8 +1,9 @@
 pub mod terrain_tracing;
 
-use crate::order::{EdgeData, OrderType, TriangleData, VertexData};
-use bevy::prelude::*;
+use crate::order::{LineData, OrderType, TriangleData, VertexData};
+use bevy::{prelude::*, utils::tracing};
 use serde_json::json;
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 pub struct TerrainTracePlugin;
 
@@ -62,10 +63,10 @@ macro_rules! terrain_trace {
     );
 }
 
-// pub fn terrain_chunk_trace_span(terrain_chunk_coord: TerrainChunkCoord) -> tracing::Span {
-//     let terrain_chunk_coord = serde_json::to_string(&json!(terrain_chunk_coord)).unwrap();
-//     terrain_trace_span!("terrain_chunk_trace", terrain_chunk_coord)
-// }
+pub fn terrain_chunk_trace_span(terrain_chunk_coord: &TerrainChunkCoord) -> tracing::Span {
+    let terrain_chunk_coord = serde_json::to_string(&json!(terrain_chunk_coord)).unwrap();
+    terrain_trace_span!("terrain_chunk_trace", terrain_chunk_coord)
+}
 
 pub fn terrain_trace_vertex(index: usize, location: Vec3) {
     let order_type = OrderType::Vertex(VertexData { index, location });
@@ -74,7 +75,7 @@ pub fn terrain_trace_vertex(index: usize, location: Vec3) {
 }
 
 pub fn terrain_trace_edge(start_index: usize, end_index: usize) {
-    let order_type = OrderType::Edge(EdgeData {
+    let order_type = OrderType::Line(LineData {
         start_index,
         end_index,
     });

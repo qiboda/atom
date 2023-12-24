@@ -71,7 +71,7 @@ impl PointsMesh {
         }
     }
 
-    pub fn add_point(mesh: &mut Mesh, point: Vec3) {
+    pub fn add_point(mesh: &mut Mesh, point: &[f32; 3]) {
         if let Some(VertexAttributeValues::Float32x3(position)) =
             mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
         {
@@ -79,7 +79,7 @@ impl PointsMesh {
 
             // info!("position len: {}", idx);
 
-            (0..4).for_each(|_| position.push(point.to_array()));
+            (0..4).for_each(|_| position.push(point.clone()));
 
             if let Some(VertexAttributeValues::Float32x2(uv)) =
                 mesh.attribute_mut(Mesh::ATTRIBUTE_UV_0)

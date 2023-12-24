@@ -6,6 +6,7 @@ pub mod ui;
 pub mod visible;
 pub mod window;
 
+use crate::log::CustomLogPlugin;
 use bevy::render::settings::RenderCreation;
 use bevy::{
     app::AppExit,
@@ -21,7 +22,6 @@ use bevy::{
     },
 };
 use bevy_obj::ObjPlugin;
-use log::CustomLogPlugin;
 
 use crate::window::toggle_vsync;
 use camera::CameraControllerPlugin;
@@ -46,7 +46,7 @@ pub fn bevy_entry() -> App {
                 .set(AssetPlugin {
                     file_path: "assets".to_string(),
                     processed_file_path: "".to_string(),
-                    watch_for_changes_override: Some(true),
+                    watch_for_changes_override: Some(false),
                     mode: AssetMode::Unprocessed,
                 })
                 .disable::<LogPlugin>(),

@@ -46,7 +46,9 @@ use futures_lite::future;
 pub use mesh::*;
 pub use sdf::*;
 use terrain_player_client::terrain_trace_span;
-use terrain_player_client::trace::{terrain_trace_triangle, terrain_trace_vertex};
+use terrain_player_client::trace::{
+    terrain_chunk_trace_span, terrain_trace_triangle, terrain_trace_vertex,
+};
 
 use crate::terrain::chunk::TerrainChunk;
 use crate::terrain::ecology::layer::EcologyLayerSampler;
@@ -182,6 +184,8 @@ fn dual_contour_meshing(
                     let mesh_cache = dual_contouring.mesh_cache.clone();
                     let shape_surface = surface_context.shape_surface.clone();
 
+                    let terrain_chunk_coord = terrain_chunk_coord.clone();
+
                     let task = thread_pool.spawn(async move {
                         let mut dc = dc.write().unwrap();
                         let shape_surface = shape_surface.read().unwrap();
@@ -198,8 +202,7 @@ fn dual_contour_meshing(
                         let mut normals = Vec::new();
                         let tri_indices = RefCell::new(Vec::new());
 
-                        let terrain_trace_span =
-                            terrain_trace_span!("dual_contour", terrain_chunk_coord = "");
+                        let terrain_trace_span = terrain_chunk_trace_span(&terrain_chunk_coord);
 
                         let terrain_trace_span = terrain_trace_span.enter();
 

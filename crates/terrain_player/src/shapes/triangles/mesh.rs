@@ -26,19 +26,19 @@ impl TrianglesMesh {
         }
     }
 
-    pub fn add_all_vertices(mesh: &mut Mesh, vertices: Vec<[f32; 3]>) {
+    pub fn add_all_vertices(mesh: &mut Mesh, vertices: &Vec<[f32; 3]>) {
         if mesh.attribute(Mesh::ATTRIBUTE_POSITION).is_none() {
-            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices.clone());
         } else {
             if let Some(positions) = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION) {
                 if positions.len() == 0 {
-                    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
+                    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices.clone());
                 }
             }
         }
     }
 
-    pub fn add_triangle_indices(mesh: &mut Mesh, add_indices: [u32; 3]) {
+    pub fn add_triangle_indices(mesh: &mut Mesh, add_indices: &[u32; 3]) {
         assert!(mesh
             .attribute(Mesh::ATTRIBUTE_POSITION)
             .map(|attributes| {
