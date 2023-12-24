@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicU64;
 use std::{collections::BTreeMap, io};
 
 use bevy::utils::tracing::{self, span};
@@ -41,10 +42,7 @@ where
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
-        static mut ORDER_ID: u64 = 0;
-        unsafe {
-            ORDER_ID += 1;
-        }
+        static mut ORDER_ID: AtomicU64 = AtomicU64::new(0);
 
         let mut spans = vec![];
         // All of the span context
@@ -73,7 +71,7 @@ where
         let event_json;
         unsafe {
             event_json = json!({
-                "order_id": ORDER_ID,
+                "order_id": ORDER_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
                 "thread_id":  thread_id.parse::<u64>().unwrap(),
                 "target": event.metadata().target(),
                 "level": format!("{:?}",  event.metadata().level()),

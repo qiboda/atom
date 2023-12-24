@@ -1,5 +1,7 @@
 use leafwing_input_manager::{prelude::*, InputManagerBundle};
+use terrain::log::CustomLogPlugin;
 
+use std::num::NonZeroU64;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -9,19 +11,23 @@ use std::{
 use clap::{command, Parser};
 
 use bevy::prelude::*;
-use bevy::render::render_resource::TextureViewDimension::Cube;
 use bevy::render::view::NoFrustumCulling;
 use bevy_debug_grid::DebugGridPlugin;
 
-use crate::player::geometry_data::process_player_order;
+use crate::player::player::{Player, PlayerFilter};
+use crate::player::{
+    geometry_data::process_player_order,
+    player::{next_order, pre_order},
+};
 use camera::SmoothCameraPlugin;
-use player::{geometry_data::GeometryData, PlayerOrders};
+use player::geometry_data::AllGeometryData;
+use player::order::Orders;
 use shapes::{
     lines::material::LineMaterial,
     points::{material::PointsMaterial, mesh::PointsMesh},
     triangles::{material::TriangleMaterial, mesh::TrianglesMesh},
 };
-use terrain_player_client::order::OrderType;
+use terrain_player_client::order::{Order, OrderType};
 
 use crate::shapes::triangles::plugin::TrianglesPlugin;
 use crate::shapes::{lines::plugin::LinesPlugin, points::plugin::PointsPlugin};
@@ -43,40 +49,45 @@ fn main() {
 
     let mut app = App::new();
 
-    app.add_plugins(DefaultPlugins)
-        .add_plugins(InputManagerPlugin::<InputAction>::default())
-        .add_plugins(PointsPlugin)
-        .add_plugins(LinesPlugin)
-        .add_plugins(TrianglesPlugin)
-        .add_plugins(SmoothCameraPlugin)
-        .add_plugins(DebugGridPlugin::with_floor_grid())
-        .insert_resource(ClearColor(Color::rgb(0.3, 0.3, 0.3)))
-        .insert_resource(args)
-        .insert_resource(PlayerOrders::default())
-        .insert_resource(GeometryData::default())
-        .add_systems(
-            Startup,
-            (
-                startup,
-                process_player_order,
-                spawn_point_and_line,
-                spawn_input_action,
-            )
-                .chain(),
+    app.add_plugins((
+        DefaultPlugins.build().disable::<bevy::log::LogPlugin>(),
+        CustomLogPlugin::default(),
+    ))
+    .add_plugins(InputManagerPlugin::<InputAction>::default())
+    .add_plugins(PointsPlugin)
+    .add_plugins(LinesPlugin)
+    .add_plugins(TrianglesPlugin)
+    .add_plugins(SmoothCameraPlugin)
+    .add_plugins(DebugGridPlugin::with_floor_grid())
+    .insert_resource(ClearColor(Color::rgb(0.3, 0.3, 0.3)))
+    .insert_resource(args)
+    .insert_resource(Orders::default())
+    .insert_resource(Player::default())
+    .insert_resource(PlayerFilter::default())
+    .insert_resource(AllGeometryData::default())
+    .add_systems(
+        Startup,
+        (
+            startup,
+            process_player_order,
+            spawn_point_line_triangle,
+            spawn_input_action,
         )
-        .add_systems(Update, (next_order, pre_order));
+            .chain(),
+    )
+    .add_systems(Update, (next_order, pre_order));
 
     app.run();
 }
 
 // 单一光标。
 // 启动和清除不同的线程。
-fn startup(args: Res<Args>, mut player_order: ResMut<PlayerOrders>) {
+fn startup(args: Res<Args>, mut player_order: ResMut<Orders>) {
     if let Ok(file) = File::open(args.filename.clone()) {
         let reader = BufReader::new(file);
         let mut line_num = 0;
         for line in reader.lines().flatten() {
-            match serde_json::from_str(line.as_str()) {
+            match serde_json::from_str::<Order>(line.as_str()) {
                 Ok(order) => {
                     player_order.push_order(order);
                     line_num += 1;
@@ -93,13 +104,13 @@ fn startup(args: Res<Args>, mut player_order: ResMut<PlayerOrders>) {
 }
 
 #[derive(Component, Debug)]
-struct Point;
+pub struct Point;
 
 #[derive(Component, Debug)]
-struct Line;
+pub struct Line;
 
 #[derive(Component, Debug)]
-struct Triangle;
+pub struct Triangle;
 
 fn spawn_input_action(mut commands: Commands) {
     commands.spawn(InputManagerBundle::<InputAction> {
@@ -111,10 +122,10 @@ fn spawn_input_action(mut commands: Commands) {
     });
 }
 
-fn spawn_point_and_line(
+fn spawn_point_line_triangle(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut geometry_data: Res<GeometryData>,
+    mut all_geometry_data: Res<AllGeometryData>,
     mut line_materials: ResMut<Assets<LineMaterial>>,
     mut points_materials: ResMut<Assets<PointsMaterial>>,
     mut triangle_materials: ResMut<Assets<TriangleMaterial>>,
@@ -128,131 +139,49 @@ fn spawn_point_and_line(
         NoFrustumCulling,
     ));
 
-    commands.spawn((
-        MaterialMeshBundle {
-            mesh: meshes.add(Mesh::from(PointsMesh::default())),
-            material: points_materials.add(PointsMaterial::default()),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-            ..Default::default()
-        },
-        Point,
-        NoFrustumCulling,
-    ));
+    for (terrain_chunk_coord, _) in all_geometry_data.geometry_data_map.iter() {
+        commands.spawn((
+            MaterialMeshBundle {
+                mesh: meshes.add(Mesh::from(PointsMesh::default())),
+                material: points_materials.add(PointsMaterial::default()),
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+                ..Default::default()
+            },
+            Point,
+            NoFrustumCulling,
+            *terrain_chunk_coord,
+        ));
 
-    // commands.spawn((
-    //     MaterialMeshBundle {
-    //         mesh: meshes.add(Mesh::from(LineMesh::default())),
-    //         material: line_materials.add(LineMaterial::default()),
-    //         transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-    //         ..Default::default()
-    //     },
-    //     Line,
-    //     NoFrustumCulling,
-    // ));
+        // commands.spawn((
+        //     MaterialMeshBundle {
+        //         mesh: meshes.add(Mesh::from(LineMesh::default())),
+        //         material: line_materials.add(LineMaterial::default()),
+        //         transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+        //         ..Default::default()
+        //     },
+        //     Line,
+        //     NoFrustumCulling,
+        // ));
 
-    commands.spawn((
-        MaterialMeshBundle {
-            mesh: meshes.add(Mesh::from(TrianglesMesh::build_mesh(
-                Some(vec![]),
-                Some(vec![]),
-            ))),
-            material: triangle_materials.add(TriangleMaterial::default()),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-            ..Default::default()
-        },
-        Triangle,
-        NoFrustumCulling,
-    ));
+        commands.spawn((
+            MaterialMeshBundle {
+                mesh: meshes.add(Mesh::from(TrianglesMesh::build_mesh(
+                    Some(vec![]),
+                    Some(vec![]),
+                ))),
+                material: triangle_materials.add(TriangleMaterial::default()),
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+                ..Default::default()
+            },
+            Triangle,
+            NoFrustumCulling,
+            *terrain_chunk_coord,
+        ));
+    }
 }
 
 #[derive(Actionlike, Debug, PartialEq, Eq, Hash, Clone, Copy, Reflect)]
-enum InputAction {
+pub enum InputAction {
     NextOrder,
     PreOrder,
-}
-
-fn next_order(
-    input_query: Query<&ActionState<InputAction>>,
-    mut player_order: ResMut<PlayerOrders>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut geometry_data: Res<GeometryData>,
-    mut point_query: Query<&Handle<Mesh>, With<Point>>,
-    mut line_query: Query<&Handle<Mesh>, With<Line>>,
-    mut triangle_query: Query<&Handle<Mesh>, With<Triangle>>,
-) {
-    let action_state = input_query.single();
-
-    let mut count = 0;
-    loop {
-        // if action_state.pressed(InputAction::NextOrder) {
-        //     info!("next order");
-        if let Some(order) = player_order.next() {
-            match order.fields.order_type {
-                OrderType::Vertex(data) => {
-                    let mesh = point_query.single_mut();
-                    if let Some(mesh) = meshes.get_mut(mesh) {
-                        PointsMesh::add_point(mesh, data.location);
-                    }
-                }
-                OrderType::Edge(data) => {}
-                OrderType::Triangle(_data) => {
-                    let mesh = triangle_query.single_mut();
-                    if let Some(mesh) = meshes.get_mut(mesh) {
-                        if let Some(len) = TrianglesMesh::get_indices_len(mesh) {
-                            let mut indices = [0; 3];
-                            for i in 0..3 {
-                                if let Some(index) = geometry_data.triangle_indices.get(len + i) {
-                                    indices[i] = *index;
-                                }
-                            }
-                            TrianglesMesh::add_all_vertices(mesh, geometry_data.vertices.clone());
-                            TrianglesMesh::add_triangle_indices(mesh, indices);
-                        }
-                    }
-                }
-            }
-        }
-        // }
-
-        count += 1;
-        if count > 100 {
-            break;
-        }
-    }
-}
-
-fn pre_order(
-    input_query: Query<&ActionState<InputAction>>,
-    mut player_order: ResMut<PlayerOrders>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut point_query: Query<&Handle<Mesh>, With<Point>>,
-    mut line_query: Query<&Handle<Mesh>, With<Line>>,
-    mut triangle_materials: ResMut<Assets<TriangleMaterial>>,
-) {
-    let action_state = input_query.single();
-
-    if action_state.pressed(InputAction::PreOrder) {
-        // info!("pre order");
-        if let Some(order) = player_order.pre() {
-            match order.fields.order_type {
-                OrderType::Vertex(data) => {
-                    let mesh = point_query.single_mut();
-                    if let Some(mesh) = meshes.get_mut(mesh) {
-                        if let Some(index) = PointsMesh::get_last_index(mesh) {
-                            PointsMesh::remove_point_at_index(mesh, index);
-                        }
-                    }
-                }
-                OrderType::Edge(data) => {}
-                OrderType::Triangle(data) => {
-                    let mesh = point_query.single_mut();
-                    if let Some(mesh) = meshes.get_mut(mesh) {
-                        if let Some(len) = TrianglesMesh::get_indices_len(mesh) {
-                            TrianglesMesh::remove_last_triangle_indices(mesh);
-                        }
-                    }
-                }
-            }
-        }
-    }
 }

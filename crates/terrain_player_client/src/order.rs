@@ -2,6 +2,7 @@ use bevy::math::Vec3;
 use enum_kinds::EnumKind;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::num::NonZeroU64;
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VertexData {
@@ -11,7 +12,7 @@ pub struct VertexData {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct EdgeData {
+pub struct LineData {
     pub start_index: usize,
     pub end_index: usize,
 }
@@ -27,12 +28,12 @@ pub struct TriangleData {
 #[enum_kind(OrderTypeKind)]
 pub enum OrderType {
     Vertex(VertexData),
-    Edge(EdgeData),
+    Line(LineData),
     Triangle(TriangleData),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Fields {
+pub struct OrderFields {
     pub order_type: OrderType,
 }
 
@@ -40,10 +41,21 @@ pub struct Fields {
 pub struct Order {
     pub order_id: NonZeroU64,
     pub level: String,
-    pub fields: Fields,
+    pub fields: OrderFields,
     pub target: String,
     pub spans: Vec<Span>,
     pub thread_id: NonZeroU64,
+}
+
+impl Order {
+    pub fn get_terrain_chunk_coord(&self) -> TerrainChunkCoord {
+        let span = self
+            .spans
+            .iter()
+            .find(|span| span.name == "terrain_chunk_trace")
+            .unwrap();
+        span.fields.terrain_chunk_coord.clone()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -71,9 +83,14 @@ impl<'de> Deserialize<'de> for ThreadId {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SpanFields {
+    pub terrain_chunk_coord: TerrainChunkCoord,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Span {
     pub name: String,
-    pub terrain_chunk_coord: Option<[i64; 3]>,
+    pub fields: SpanFields,
 }
 
 fn de_vec3<'de, D>(de: D) -> Result<Vec3, D::Error>
@@ -104,9 +121,9 @@ mod tests {
 
     #[test]
     fn test_order_deserialize() {
-        let json = r#"{"fields":{"order_type":{"Vertex":{"index":3,"location":"Vec3(0.1875, 0, 0)"}}},"level":"Level(Trace)","name":"event crates\\terrain\\src\\terrain\\trace\\mod.rs:68","order_id":15,"spans":[{"fields":{},"level":"Level(Trace)","name":"dual_contour","target":"terrain_trace"}],"target":"terrain_trace","thread_id":6}"#;
+        let json = r#"{"fields":{"order_type":{"Vertex":{"index":6,"location":"Vec3(15.767418, 0.6059048, -0.0257036)"}}},"level":"Level(Trace)","name":"event crates\\terrain_player_client\\src\\trace\\mod.rs:74","order_id":22,"spans":[{"fields":{"terrain_chunk_coord":{"x":0,"y":0,"z":-1}},"level":"Level(Trace)","name":"terrain_chunk_trace","target":"terrain_trace"}],"target":"terrain_trace","thread_id":7}"#;
 
         let order: Order = serde_json::from_str(json).unwrap();
-        assert_eq!(order.thread_id, NonZeroU64::new(6).unwrap());
+        assert_eq!(order.thread_id, NonZeroU64::new(7).unwrap());
     }
 }
