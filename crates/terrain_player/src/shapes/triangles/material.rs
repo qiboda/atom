@@ -51,7 +51,7 @@ impl Material for TriangleMaterial {
         _pipeline: &bevy::pbr::MaterialPipeline<Self>,
         descriptor: &mut bevy::render::render_resource::RenderPipelineDescriptor,
         layout: &bevy::render::mesh::MeshVertexBufferLayout,
-        key: bevy::pbr::MaterialPipelineKey<Self>,
+        _key: bevy::pbr::MaterialPipelineKey<Self>,
     ) -> Result<(), bevy::render::render_resource::SpecializedMeshPipelineError> {
         descriptor.primitive.cull_mode = None;
         descriptor.primitive.polygon_mode = PolygonMode::Fill;

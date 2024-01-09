@@ -1,7 +1,7 @@
 use leafwing_input_manager::{prelude::*, InputManagerBundle};
 use terrain::log::CustomLogPlugin;
 
-use std::num::NonZeroU64;
+
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -125,8 +125,8 @@ fn spawn_input_action(mut commands: Commands) {
 fn spawn_point_line_triangle(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut all_geometry_data: Res<AllGeometryData>,
-    mut line_materials: ResMut<Assets<LineMaterial>>,
+    all_geometry_data: Res<AllGeometryData>,
+    _line_materials: ResMut<Assets<LineMaterial>>,
     mut points_materials: ResMut<Assets<PointsMaterial>>,
     mut triangle_materials: ResMut<Assets<TriangleMaterial>>,
 ) {

@@ -1,4 +1,4 @@
-use bevy::prelude::info;
+
 use bevy::{
     math::Vec2,
     prelude::{Color, Mesh, Vec3},

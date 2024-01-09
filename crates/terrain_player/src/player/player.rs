@@ -1,6 +1,5 @@
 use crate::{
     shapes::{points::mesh::PointsMesh, triangles::mesh::TrianglesMesh},
-    OrderType,
 };
 use std::num::NonZeroU64;
 use std::ops::Not;
@@ -59,11 +58,11 @@ pub fn next_order(
     mut player: ResMut<Player>,
     player_filter: Res<PlayerFilter>,
     point_query: Query<(&Handle<Mesh>, &TerrainChunkCoord), With<Point>>,
-    line_query: Query<(&Handle<Mesh>, &TerrainChunkCoord), With<Line>>,
+    _line_query: Query<(&Handle<Mesh>, &TerrainChunkCoord), With<Line>>,
     triangle_query: Query<(&Handle<Mesh>, &TerrainChunkCoord), With<Triangle>>,
     all_geometry_data: Res<AllGeometryData>,
 ) {
-    let action_state = input_query.single();
+    let _action_state = input_query.single();
 
     let mut count = 0;
     loop {
