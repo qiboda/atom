@@ -8,7 +8,7 @@ use terrain_core::chunk::coords::TerrainChunkCoord;
 use crate::terrain::{
     ecology::layer::{EcologyLayerSampler, Sampler},
     isosurface::dc::CellExtent,
-    materials::terrain::TerrainMaterial,
+    materials::terrain::{TerrainExtendedMaterial, TerrainMaterial},
 };
 
 use self::mesh_cache::MeshCache;
@@ -20,7 +20,7 @@ pub fn create_mesh(
     terrain_chunk_entity: Entity,
     mesh_cache: Arc<RwLock<MeshCache>>,
     meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<TerrainMaterial>>,
+    materials: &mut ResMut<Assets<TerrainExtendedMaterial>>,
     terrain_chunk_coord: TerrainChunkCoord,
     ecology_layer_sampler: &EcologyLayerSampler,
 ) {
@@ -38,19 +38,31 @@ pub fn create_mesh(
         info!("create_mesh ok, material: {:?}", ecology_material);
         match &ecology_material {
             Some(ecology_material) => {
-                material = materials.add(TerrainMaterial {
-                    base_color: Color::BLUE,
-                    base_color_texture: Some(ecology_material.get_albedo_texture()),
-                    normal_map_texture: Some(ecology_material.get_normal_texture()),
-                    metallic_texture: Some(ecology_material.get_metallic_texture()),
-                    roughness_texture: Some(ecology_material.get_roughness_texture()),
-                    occlusion_texture: Some(ecology_material.get_occlusion_texture()),
+                material = materials.add(TerrainExtendedMaterial {
+                    base: StandardMaterial {
+                        base_color: Color::RED,
+                        base_color_texture: Some(ecology_material.get_albedo_texture()),
+                        // perceptual_roughness: 1.0,
+                        // metallic: 1.0,
+                        // metallic_roughness_texture: Some(ecology_material.get_roughness_texture()),
+                        // normal_map_texture: Some(ecology_material.get_normal_texture()),
+                        // occlusion_texture: Some(ecology_material.get_occlusion_texture()),
+                        ..default()
+                    },
+                    extension: TerrainMaterial {
+                        base_color: Color::BLUE,
+                    },
                 })
             }
             None => {
-                material = materials.add(TerrainMaterial {
-                    base_color: Color::BLUE,
-                    ..default()
+                material = materials.add(TerrainExtendedMaterial {
+                    base: StandardMaterial {
+                        base_color: Color::BLUE,
+                        ..default()
+                    },
+                    extension: TerrainMaterial {
+                        base_color: Color::BLUE,
+                    },
                 })
             }
         }
@@ -61,7 +73,7 @@ pub fn create_mesh(
         );
         let id = commands
             .spawn((
-                MaterialMeshBundle::<TerrainMaterial> {
+                MaterialMeshBundle::<TerrainExtendedMaterial> {
                     mesh: meshes.add(Mesh::from(&*mesh_cache)),
                     material,
                     transform: Transform::from_translation(Vec3::splat(0.0)),

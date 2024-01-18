@@ -52,7 +52,7 @@ use terrain_player_client::trace::{
 
 use crate::terrain::chunk::TerrainChunk;
 use crate::terrain::ecology::layer::EcologyLayerSampler;
-use crate::terrain::materials::terrain::TerrainMaterial;
+use crate::terrain::materials::terrain::{TerrainExtendedMaterial, TerrainMaterial};
 use crate::terrain::settings::TerrainSettings;
 use crate::terrain::TerrainSystemSet;
 use terrain_core::chunk::coords::TerrainChunkCoord;
@@ -303,7 +303,7 @@ pub fn dual_contouring_create_mesh(
         &EcologyLayerSampler,
     )>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<TerrainMaterial>>,
+    mut materials: ResMut<Assets<TerrainExtendedMaterial>>,
 ) {
     for (
         terrain_chunk_entity,

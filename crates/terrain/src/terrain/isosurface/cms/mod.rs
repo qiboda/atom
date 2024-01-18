@@ -9,6 +9,7 @@ use std::sync::{Arc, RwLock};
 use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
 use futures_lite::future;
 
+use crate::terrain::materials::terrain::TerrainExtendedMaterial;
 use crate::terrain::{
     chunk::TerrainChunk,
     ecology::layer::EcologyLayerSampler,
@@ -278,7 +279,7 @@ fn cms_update_create_mesh(
         &EcologyLayerSampler,
     )>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<TerrainMaterial>>,
+    mut materials: ResMut<Assets<TerrainExtendedMaterial>>,
 ) {
     for (
         terrain_chunk_entity,

@@ -12,7 +12,7 @@ pub mod materials;
 pub mod settings;
 pub mod terrain_data;
 
-use bevy::prelude::*;
+use bevy::{pbr::ExtendedMaterial, prelude::*};
 
 use crate::visible::{visible_areas::TerrainVisibleAreas, TerrainVisibleAreaPlugin};
 
@@ -41,7 +41,9 @@ impl Plugin for TerrainPlugin {
                 )
                     .chain(),
             )
-            .add_plugins(MaterialPlugin::<TerrainMaterial>::default())
+            .add_plugins(MaterialPlugin::<
+                ExtendedMaterial<StandardMaterial, TerrainMaterial>,
+            >::default())
             .add_plugins(TerrainVisibleAreaPlugin)
             .add_plugins(TerrainDataPlugin)
             .add_plugins(IsosurfaceExtractionPlugin);

@@ -1,50 +1,64 @@
+#import bevy_pbr::{
+    pbr_fragment::pbr_input_from_standard_material,
+    pbr_functions::alpha_discard,
+}
+
+#ifdef PREPASS_PIPELINE
+#import bevy_pbr::{
+    prepass_io::{VertexOutput, FragmentOutput},
+    pbr_deferred_functions::deferred_output,
+}
+#else
+#import bevy_pbr::{
+    forward_io::{VertexOutput, FragmentOutput},
+    pbr_functions::{apply_pbr_lighting, main_pass_post_lighting_processing},
+}
+#endif
+
 
 // group 0 is mesh, so can use mesh_vertex_output
 // group 1 is material, because only one group, so can not support multipe materials on on mesh.
 // group 2 is mesh animation
 
-#import bevy_pbr::forward_io::VertexOutput
+struct TerrainMaterial {
+    base_color: vec4<f32>,
+}
 
-
-@group(1) @binding(0)
-var<uniform> base_color: vec4<f32>;
-
-@group(1) @binding(1)
-var base_color_texture: texture_2d<f32>;
-
-@group(1) @binding(2)
-var base_color_texture_sampler: sampler;
-
-@group(1) @binding(3)
-var normal_map_texture: texture_2d<f32>;
-
-@group(1) @binding(4)
-var normal_map_sampler: sampler;
-
-@group(1) @binding(5)
-var metallic_map_texture: texture_2d<f32>;
-
-@group(1) @binding(6)
-var metallic_map_sampler: sampler;
-
-@group(1) @binding(7)
-var roughness_map_texture: texture_2d<f32>;
-
-@group(1) @binding(8)
-var roughness_map_sampler: sampler;
-
-@group(1) @binding(9)
-var occlusion_map_texture: texture_2d<f32>;
-
-@group(1) @binding(10)
-var occlusion_map_sampler: sampler;
+@group(1) @binding(100)
+var<uniform> terrain_material: TerrainMaterial;
 
 @fragment
 fn fragment(
-    mesh: VertexOutput
-) -> @location(0) vec4<f32> {
-//    return base_color;
+    in: VertexOutput,
+    @builtin(front_facing) is_front: bool,
+) -> FragmentOutput {
+    // generate a PbrInput struct from the StandardMaterial bindings
+    var pbr_input = pbr_input_from_standard_material(in, is_front);
 
-    var uv = fract(mesh.position.xy / vec2<f32>(16.0, 16.0));
-    return textureSample(base_color_texture, base_color_texture_sampler, uv);
+    // we can optionally modify the input before lighting and alpha_discard is applied
+//    pbr_input.material.base_color.b = pbr_input.material.base_color.r;
+
+    // alpha discard
+    pbr_input.material.base_color = alpha_discard(pbr_input.material, pbr_input.material.base_color);
+
+#ifdef PREPASS_PIPELINE
+    // in deferred mode we can't modify anything after that, as lighting is run in a separate fullscreen shader.
+    let out = deferred_output(in, pbr_input);
+#else
+    var out: FragmentOutput;
+    // apply lighting
+    out.color = apply_pbr_lighting(pbr_input);
+
+    // we can optionally modify the lit color before post-processing is applied
+    // out.color = vec4<f32>(vec4<u32>(out.color * f32(my_extended_material.quantize_steps))) / f32(my_extended_material.quantize_steps);
+
+    // apply in-shader post processing (fog, alpha-premultiply, and also tonemapping, debanding if the camera is non-hdr)
+    // note this does not include fullscreen postprocessing effects like bloom.
+    out.color = main_pass_post_lighting_processing(pbr_input, out.color);
+
+    // we can optionally modify the final result here
+//        out.color = out.color * 0.2;
+#endif
+
+    return out;
 }

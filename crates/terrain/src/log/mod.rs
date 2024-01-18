@@ -101,12 +101,15 @@ impl Plugin for CustomLogPlugin {
 
             let saved_path = project_saved_root_path();
 
+            let file_filter = EnvFilter::new("info");
+
             let file_appender = tracing_appender::rolling::hourly(saved_path.join("logs"), "log"); // This should be user configurable
             let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);
             let file_fmt_layer = tracing_subscriber::fmt::Layer::default()
+                .with_ansi(false) // disable terminal color escape sequences
                 .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
                 .with_writer(non_blocking)
-                .with_ansi(false); // disable terminal color escape sequences
+                .with_filter(file_filter);
 
             let terrain_filter = EnvFilter::new(TERRAIN_TRACE_TARGET.to_owned() + "=trace");
 
@@ -129,9 +132,9 @@ impl Plugin for CustomLogPlugin {
             }); // have to keep this from being dropped
 
             let subscriber = subscriber
+                .with(fmt_layer)
                 .with(file_fmt_layer)
-                .with(terrain_trace_fmt)
-                .with(fmt_layer);
+                .with(terrain_trace_fmt);
 
             #[cfg(feature = "tracing-chrome")]
             let subscriber = subscriber.with(chrome_layer);
