@@ -1,4 +1,3 @@
-
 use bevy::{
     math::Vec2,
     prelude::{Color, Mesh, Vec3},
@@ -102,23 +101,21 @@ impl PointsMesh {
         if let Some(VertexAttributeValues::Float32x3(position)) =
             mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
         {
-            let index = index * 4;
             (0..4).for_each(|_| {
-                position.remove(index);
+                position.pop();
             });
         }
 
         if let Some(VertexAttributeValues::Float32x2(uv)) = mesh.attribute_mut(Mesh::ATTRIBUTE_UV_0)
         {
             (0..4).for_each(|_| {
-                uv.remove(index * 4);
+                uv.pop();
             });
         }
 
         if let Some(Indices::U32(indices)) = mesh.indices_mut() {
-            let idx = index * 6;
             (0..6).for_each(|_| {
-                indices.remove(idx);
+                indices.pop();
             });
         }
     }

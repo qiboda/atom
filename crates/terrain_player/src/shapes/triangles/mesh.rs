@@ -57,7 +57,9 @@ impl TrianglesMesh {
 
     pub fn remove_last_triangle_indices(mesh: &mut Mesh) {
         if let Some(Indices::U32(indices)) = mesh.indices_mut() {
-            indices.truncate(3);
+            (0..3).for_each(|_| {
+                indices.pop();
+            });
         };
     }
 }

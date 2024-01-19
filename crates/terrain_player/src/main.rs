@@ -1,7 +1,6 @@
 use leafwing_input_manager::{prelude::*, InputManagerBundle};
 use terrain::log::CustomLogPlugin;
 
-
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -27,7 +26,7 @@ use shapes::{
     points::{material::PointsMaterial, mesh::PointsMesh},
     triangles::{material::TriangleMaterial, mesh::TrianglesMesh},
 };
-use terrain_player_client::order::{Order, OrderType};
+use terrain_player_client::order::Order;
 
 use crate::shapes::triangles::plugin::TrianglesPlugin;
 use crate::shapes::{lines::plugin::LinesPlugin, points::plugin::PointsPlugin};
@@ -116,8 +115,10 @@ fn spawn_input_action(mut commands: Commands) {
     commands.spawn(InputManagerBundle::<InputAction> {
         action_state: ActionState::<InputAction>::default(),
         input_map: InputMap::new([
-            (KeyCode::N, InputAction::NextOrder),
             (KeyCode::P, InputAction::PreOrder),
+            (KeyCode::N, InputAction::NextOrder),
+            (KeyCode::J, InputAction::PreHundredOrder),
+            (KeyCode::K, InputAction::NextHundredOrder),
         ]),
     });
 }
@@ -184,4 +185,6 @@ fn spawn_point_line_triangle(
 pub enum InputAction {
     NextOrder,
     PreOrder,
+    NextHundredOrder,
+    PreHundredOrder,
 }
