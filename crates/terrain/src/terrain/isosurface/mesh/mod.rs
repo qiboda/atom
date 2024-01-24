@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use bevy::{math::Vec3A, prelude::*};
+use bevy::{math::Vec3A, pbr::wireframe::Wireframe, prelude::*};
 use bevy_xpbd_3d::prelude::{Collider, RigidBody};
 
 use terrain_core::chunk::coords::TerrainChunkCoord;
@@ -40,13 +40,13 @@ pub fn create_mesh(
             Some(ecology_material) => {
                 material = materials.add(TerrainExtendedMaterial {
                     base: StandardMaterial {
-                        base_color: Color::RED,
+                        base_color: Color::WHITE,
                         base_color_texture: Some(ecology_material.get_albedo_texture()),
-                        // perceptual_roughness: 1.0,
-                        // metallic: 1.0,
-                        // metallic_roughness_texture: Some(ecology_material.get_roughness_texture()),
-                        // normal_map_texture: Some(ecology_material.get_normal_texture()),
-                        // occlusion_texture: Some(ecology_material.get_occlusion_texture()),
+                        perceptual_roughness: 1.0,
+                        metallic: 1.0,
+                        metallic_roughness_texture: Some(ecology_material.get_roughness_texture()),
+                        normal_map_texture: Some(ecology_material.get_normal_texture()),
+                        occlusion_texture: Some(ecology_material.get_occlusion_texture()),
                         ..default()
                     },
                     extension: TerrainMaterial {
@@ -79,8 +79,9 @@ pub fn create_mesh(
                     transform: Transform::from_translation(Vec3::splat(0.0)),
                     ..Default::default()
                 },
-                RigidBody::Static,
-                Collider::from(&*mesh_cache),
+                // RigidBody::Static,
+                // Collider::from(&*mesh_cache),
+                Wireframe,
             ))
             .id();
 

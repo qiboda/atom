@@ -69,7 +69,7 @@ pub struct Cube;
 
 impl DensityFunction for Cube {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        (x.abs() - 4.0).max((y.abs() - 4.0).max(z.abs() - 4.0))
+        ((x + 4.0).abs() - 4.0).max(((y + 4.0).abs() - 4.0).max((z + 4.0).abs() - 4.0))
     }
 }
 
@@ -85,12 +85,13 @@ impl DensityFunction for NoiseSurface {
     // todo: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
         // return y;
-        y - noisy_bevy::fbm_simplex_2d(
+        let x = y - noisy_bevy::fbm_simplex_2d(
             Vec2::new(x, z) * self.frequency,
             self.octaves,
             self.lacunarity,
             self.gain,
-        )
-        .abs()
+        );
+        // .max(0.0);
+        x
     }
 }

@@ -41,7 +41,7 @@ pub fn central_gradient(sdf: &ShapeSurface, p: Vec3A, delta: f32) -> Vec3A {
         sdf.get_value(p.x + h, p.y, p.z) - sdf.get_value(p.x - h, p.y, p.z),
         sdf.get_value(p.x, p.y + h, p.z) - sdf.get_value(p.x, p.y - h, p.z),
         sdf.get_value(p.x, p.y, p.z + h) - sdf.get_value(p.x, p.y, p.z - h),
-    ) / h
+    ) / delta
 }
 
 /// Calculates the average of all edge intersections (each estimated with

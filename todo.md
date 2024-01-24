@@ -32,4 +32,10 @@ min voxle nount 8
 
 128 + 64 + 32 + 32 = 256 max radius;
 
+## octree 
 
+1. 最小以及最大深度。
+2. 是否细分层级。
+3. 存储每个cell的位置等sdf信息。
+4. cell，edge以及face的信息支持扩容。
+5. 

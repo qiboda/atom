@@ -45,14 +45,13 @@ pub use cell_octree::*;
 use futures_lite::future;
 pub use mesh::*;
 pub use sdf::*;
-use terrain_player_client::terrain_trace_span;
 use terrain_player_client::trace::{
     terrain_chunk_trace_span, terrain_trace_triangle, terrain_trace_vertex,
 };
 
 use crate::terrain::chunk::TerrainChunk;
 use crate::terrain::ecology::layer::EcologyLayerSampler;
-use crate::terrain::materials::terrain::{TerrainExtendedMaterial, TerrainMaterial};
+use crate::terrain::materials::terrain::TerrainExtendedMaterial;
 use crate::terrain::settings::TerrainSettings;
 use crate::terrain::TerrainSystemSet;
 use terrain_core::chunk::coords::TerrainChunkCoord;
@@ -141,7 +140,7 @@ fn dual_contour_build_octree(
                     let task = thread_pool.spawn(async move {
                         let surface_shape = surface_shape.read().unwrap();
                         let mut dc = dc.write().unwrap();
-                        dc.build(root_cell_extent, 7, 0.00001, 0.1, &surface_shape);
+                        dc.build(root_cell_extent, 7, 0.001, 1.0, &surface_shape);
                     });
 
                     dual_contouring_task.task = Some(task);
@@ -195,9 +194,6 @@ fn dual_contour_meshing(
                             return;
                         }
 
-                        let mut min_leaf_depth = u8::MAX;
-                        let mut max_leaf_depth = 0;
-
                         let mut positions: Vec<Vec3A> = Vec::new();
                         let mut normals = Vec::new();
                         let tri_indices = RefCell::new(Vec::new());
@@ -208,9 +204,6 @@ fn dual_contour_meshing(
 
                         dc.dual_contour(
                             |_cell_id, cell| {
-                                min_leaf_depth = min_leaf_depth.min(cell.depth);
-                                max_leaf_depth = max_leaf_depth.max(cell.depth);
-
                                 cell.mesh_vertex_id = positions.len() as MeshVertexId;
                                 positions.push(cell.vertex_estimate.into());
 
@@ -223,7 +216,7 @@ fn dual_contour_meshing(
                                     central_gradient(
                                         &shape_surface,
                                         cell.vertex_estimate.into(),
-                                        0.001,
+                                        0.1,
                                     )
                                     .normalize(),
                                 );
@@ -259,7 +252,7 @@ fn dual_contour_meshing(
                             );
                         }
 
-                        repair_sharp_normals(0.95, &mut tri_indices, &mut positions, &mut normals);
+                        // repair_sharp_normals(0.75, &mut tri_indices, &mut positions, &mut normals);
 
                         drop(terrain_trace_span);
 

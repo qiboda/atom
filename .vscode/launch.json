@@ -1,23 +1,20 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'atom'",
+            "name": "Debug unit tests in library 'ability'",
             "cargo": {
                 "args": [
-                    "build",
-                    "--profile=release-with-debug",
-                    "--bin=atom",
-                    "--package=atom"
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ability"
                 ],
                 "filter": {
-                    "name": "atom",
-                    "kind": "bin"
+                    "name": "ability",
+                    "kind": "lib"
                 }
             },
             "args": [],
@@ -26,20 +23,358 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'atom'",
+            "name": "Debug example 'ability'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=ability",
+                    "--package=ability"
+                ],
+                "filter": {
+                    "name": "ability",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'ability'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=atom",
-                    "--package=atom"
+                    "--example=ability",
+                    "--package=ability"
                 ],
                 "filter": {
-                    "name": "atom",
+                    "name": "ability",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'layertag'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=layertag"
+                ],
+                "filter": {
+                    "name": "layertag",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'tag'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=tag",
+                    "--package=layertag"
+                ],
+                "filter": {
+                    "name": "tag",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'tag'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=tag",
+                    "--package=layertag"
+                ],
+                "filter": {
+                    "name": "tag",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ability_editor'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ability_editor"
+                ],
+                "filter": {
+                    "name": "ability_editor",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'anime'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=anime"
+                ],
+                "filter": {
+                    "name": "anime",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'ue'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=ue",
+                    "--package=anime"
+                ],
+                "filter": {
+                    "name": "ue",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'ue'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=ue",
+                    "--package=anime"
+                ],
+                "filter": {
+                    "name": "ue",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'pqef'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=pqef"
+                ],
+                "filter": {
+                    "name": "pqef",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'project'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=project"
+                ],
+                "filter": {
+                    "name": "project",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'terrain'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=terrain"
+                ],
+                "filter": {
+                    "name": "terrain",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'terrain_core'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=terrain_core"
+                ],
+                "filter": {
+                    "name": "terrain_core",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'terrain_player_client'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=terrain_player_client"
+                ],
+                "filter": {
+                    "name": "terrain_player_client",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'terrain_player'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=terrain_player",
+                    "--package=terrain_player",
+                    "--profile=dev",
+                ],
+                "filter": {
+                    "name": "terrain_player",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--filename=E:/atom/saved/trace/terrain_trace.2023-12-24"
+            ],
+            "env": {
+                "BEVY_ASSET_ROOT": "./",
+                "ATOM_SAVED_ROOT": "./saved",
+            },
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'terrain_player'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=terrain_player",
+                    "--package=terrain_player"
+                ],
+                "filter": {
+                    "name": "terrain_player",
                     "kind": "bin"
                 }
             },
             "args": [],
+            "env": {
+                "BEVY_ASSET_ROOT": "./",
+                "ATOM_SAVED_ROOT": "./saved",
+            },
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'client'",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=client",
+                    "--profile=dev",
+                    "--package=client"
+                ],
+                "filter": {
+                    "name": "client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "env": {
+                "BEVY_ASSET_ROOT": "./",
+                "ATOM_SAVED_ROOT": "./saved",
+            },
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'client'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=client",
+                    "--package=client"
+                ],
+                "filter": {
+                    "name": "client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "env": {
+                "BEVY_ASSET_ROOT": "./",
+                "ATOM_SAVED_ROOT": "./saved",
+            },
             "cwd": "${workspaceFolder}"
         }
     ]

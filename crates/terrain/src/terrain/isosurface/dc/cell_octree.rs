@@ -1,6 +1,6 @@
-use std::ops::Not;
 use bevy::prelude::Vec3;
 use pqef::Quadric;
+use std::ops::Not;
 
 use crate::terrain::isosurface::{
     dc::{cell_is_bipolar, estimate_interior_vertex_qef},
@@ -61,8 +61,13 @@ impl CellOctree {
             return;
         }
 
-        let (maybe_root_id, _) =
-            self.build_recursive_from_branch(max_depth, _error_tolerance, precision, sdf, root_cell);
+        let (maybe_root_id, _) = self.build_recursive_from_branch(
+            max_depth,
+            _error_tolerance,
+            precision,
+            sdf,
+            root_cell,
+        );
 
         if let Some(root_id) = maybe_root_id {
             self.root_id = root_id;
@@ -74,7 +79,7 @@ impl CellOctree {
     fn build_recursive_from_branch(
         &mut self,
         max_depth: u8,
-        _error_tolerance: f32,
+        error_tolerance: f32,
         precision: f32,
         sdf: &ShapeSurface,
         mut branch: Cell,
@@ -110,7 +115,7 @@ impl CellOctree {
             } else {
                 let (child_id, child_state) = self.build_recursive_from_branch(
                     max_depth,
-                    _error_tolerance,
+                    error_tolerance,
                     precision,
                     sdf,
                     child_cell,
@@ -144,7 +149,7 @@ impl CellOctree {
 
         // Post-order simplification can change branches into pseudo-leaves.
 
-        let vertex_state = VertexState::CannotSimplify;
+        let mut vertex_state = VertexState::CannotSimplify;
         if all_nonempty_children_can_merge && cell_is_bipolar(&branch.samples) {
             // Branch vertex should be estimated. Only keep if it meets
             // error criterion.
@@ -152,14 +157,14 @@ impl CellOctree {
                 &sum_descendant_regularized_qef,
                 &sum_descendant_exact_qef,
             );
-            // if branch.qef_error <= error_tolerance {
-            //     // Simplify by choosing a vertex in this branch node.
-            //     branch.is_leaf = true; // pseudo-leaf
-            //     vertex_state = VertexState::HasVertex {
-            //         regularized_qef: sum_descendant_regularized_qef,
-            //         exact_qef: sum_descendant_exact_qef,
-            //     };
-            // }
+            if branch.qef_error <= error_tolerance {
+                // Simplify by choosing a vertex in this branch node.
+                branch.is_leaf = true; // pseudo-leaf
+                vertex_state = VertexState::HasVertex {
+                    regularized_qef: sum_descendant_regularized_qef,
+                    exact_qef: sum_descendant_exact_qef,
+                };
+            }
         }
 
         if let VertexState::CannotSimplify = vertex_state {
@@ -217,12 +222,14 @@ impl Cell {
         // PERF: we could steal 2^3 samples/taps for the parent octant when splitting
         let samples = cell_positions.map(|pos| sdf.get_value(pos.x, pos.y, pos.z));
 
-        // Leaf cells must be bipolar. Branches are checked optimistically.
-        if (is_leaf && cell_is_bipolar(&samples).not())
-            || branch_empty_check(extent.size().length(), &samples)
-        {
+        if is_leaf && cell_is_bipolar(&samples).not() {
             return None;
         }
+
+        // if branch_empty_check(extent.size().length(), &samples)
+        // {
+        //     return None;
+        // }
 
         Some(Self {
             extent,

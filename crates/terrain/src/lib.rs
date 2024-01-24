@@ -7,6 +7,7 @@ pub mod visible;
 pub mod window;
 
 use crate::log::CustomLogPlugin;
+use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings};
 use bevy::render::settings::RenderCreation;
 use bevy::{
@@ -54,7 +55,7 @@ pub fn bevy_entry() -> App {
             ObjPlugin,
             TerrainTracePlugin,
             CustomLogPlugin::default(),
-            // WireframePlugin,
+            WireframePlugin,
             // PhysicsPlugins::default(),
         ))
         .add_plugins(CameraControllerPlugin)
@@ -74,9 +75,9 @@ fn startup(
     // mut meshes: ResMut<Assets<Mesh>>,
     // mut cool_materials: ResMut<Assets<CoolMaterial>>,
     _materials: ResMut<Assets<StandardMaterial>>,
-    // mut wireframe_config: ResMut<WireframeConfig>,
+    mut wireframe_config: ResMut<WireframeConfig>,
 ) {
-    // wireframe_config.global = true;
+    wireframe_config.global = true;
 
     commands.insert_resource(ClearColor(Color::rgb(0.3, 0.2, 0.1)));
     commands.insert_resource(Msaa::Sample4);
@@ -87,7 +88,7 @@ fn startup(
             blue: 0.3,
             alpha: 1.0,
         },
-        brightness: 0.05,
+        brightness: 10.0,
     });
 
     commands.spawn(DirectionalLightBundle {

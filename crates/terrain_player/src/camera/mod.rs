@@ -26,7 +26,7 @@ fn setup(mut commands: Commands) {
             FpsCameraController {
                 enabled: true,
                 mouse_rotate_sensitivity: vec2(0.3, 0.3),
-                translate_sensitivity: 100.0,
+                translate_sensitivity: 10.0,
                 smoothing_weight: 0.9,
             },
             Vec3::new(0.0, 10.0, 10.0),

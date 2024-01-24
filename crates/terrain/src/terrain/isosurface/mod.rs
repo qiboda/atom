@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 
+use crate::terrain::isosurface::surface::density_function::Cube;
 use bevy::prelude::*;
 use surface::shape_surface::ShapeSurface;
 
@@ -12,8 +13,8 @@ use self::{
 
 pub mod cms;
 pub mod dc;
-pub mod gpu;
 pub mod mesh;
+pub mod octree;
 pub mod surface;
 
 #[derive(Default, PartialEq, Eq, Debug, Hash, Clone)]
@@ -37,14 +38,14 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(IsosurfaceContext {
             shape_surface: Arc::new(RwLock::new(ShapeSurface {
-                // density_function: Box::new(Cube),
-                density_function: Box::new(NoiseSurface {
-                    // seed: rand::random(),
-                    frequency: 0.3,
-                    lacunarity: 0.02,
-                    gain: 5.0,
-                    octaves: 3,
-                }),
+                density_function: Box::new(Cube),
+                // density_function: Box::new(NoiseSurface {
+                //     // seed: rand::random(),
+                //     frequency: 0.3,
+                //     lacunarity: 0.02,
+                //     gain: 5.0,
+                //     octaves: 3,
+                // }),
                 iso_level: Vec3::ZERO,
             })),
         })
