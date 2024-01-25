@@ -191,7 +191,7 @@ mod test {
         let subscriber = tracing_subscriber::registry().with(layer.with_pretty(true));
 
         tracing::subscriber::with_default(subscriber, || {
-            let outer_span = info_span!("outer", level = 0);
+            let outer_span = info_span!("outer", level = 0).entered();
             let _outer_entered = outer_span.enter();
 
             let inner_span = debug_span!("inner", level = 1);

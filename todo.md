@@ -38,4 +38,8 @@ min voxle nount 8
 2. 是否细分层级。
 3. 存储每个cell的位置等sdf信息。
 4. cell，edge以及face的信息支持扩容。
-5. 
+
+## todo:
+
+1. 卸载正在加载的地形。
+2. 地形的mesh没有uv，必须修改材质去支持纹理。

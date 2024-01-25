@@ -44,7 +44,7 @@ pub fn make_octree_structure(
     let mut surface_sampler = surface_sampler.write().unwrap();
     let mut shape_surface = shape_surface.write().unwrap();
 
-    info_span!("make_octree_structure");
+    let _make_octree_structure = info_span!("make_octree_structure").entered();
     debug!("make_structure");
 
     // let task = thread_pool.spawn(async move {
@@ -397,7 +397,7 @@ pub fn mark_transitional_faces(octree: Arc<RwLock<Octree>>) {
         return;
     }
 
-    info_span!("mark_transitional_faces");
+    let _make_transitional_faces = info_span!("mark_transitional_faces").entered();
     info!(
         "mark_transitional_faces: cell num: {} leaf cells: {}, transitional_cells: {}",
         octree.cell_addresses.len(),

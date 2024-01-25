@@ -39,7 +39,7 @@ impl Octree {
         let mut vertex_info = vertex_info.write().unwrap();
         let mut shape_surface = shape_surface.write().unwrap();
 
-        info_span!("generate_segments");
+        let _generate_segments = info_span!("generate_segments").entered();
         info!(
             "generate_segments: octree leaf cell num: {}",
             self.leaf_cells.len()
@@ -514,7 +514,7 @@ impl Octree {
     /// 计算面的Twin的Strip的起点和重点，以及所经过的顶点。
     /// todo: 如果twin是由多个leaf Cell的面组成的，会重复吧，需要添加检测
     pub fn edit_transitional_face(&mut self) {
-        info_span!("edit_transitional_face");
+        let _edit_transitional_face = info_span!("edit_transitional_face").entered();
         info!(
             "edit_transitional_face: octree.transit_face_cells.len(): {}",
             self.transit_face_cells.len()
@@ -820,7 +820,7 @@ impl Octree {
     }
 
     pub fn trace_component(&mut self) {
-        info_span!("trace_component");
+        let _trace_component = info_span!("trace_component").entered();
         info!("trace_component");
         for cell_address in self.leaf_cells.iter() {
             let mut cell_strips = Vec::new();

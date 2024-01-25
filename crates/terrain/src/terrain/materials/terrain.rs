@@ -6,7 +6,7 @@ use bevy::{
     render::render_resource::AsBindGroup,
 };
 
-#[derive(AsBindGroup, TypePath, Clone, Default, Asset)]
+#[derive(AsBindGroup, Clone, Default, Asset, Reflect)]
 pub struct TerrainMaterial {
     #[uniform(100)]
     pub(crate) base_color: Color,

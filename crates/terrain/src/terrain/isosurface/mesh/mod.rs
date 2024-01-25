@@ -35,7 +35,7 @@ pub fn create_mesh(
             CellExtent::new(Vec3A::splat(0.0), Vec3A::splat(1.0)),
         );
 
-        info!("create_mesh ok, material: {:?}", ecology_material);
+        warn!("create_mesh ok, material: {:?}", ecology_material);
         match &ecology_material {
             Some(ecology_material) => {
                 material = materials.add(TerrainExtendedMaterial {
@@ -50,7 +50,7 @@ pub fn create_mesh(
                         ..default()
                     },
                     extension: TerrainMaterial {
-                        base_color: Color::BLUE,
+                        base_color: Color::WHITE,
                     },
                 })
             }
@@ -81,7 +81,7 @@ pub fn create_mesh(
                 },
                 // RigidBody::Static,
                 // Collider::from(&*mesh_cache),
-                Wireframe,
+                // Wireframe,
             ))
             .id();
 

@@ -138,7 +138,7 @@ fn init_surface_sampler(
     shape_surface: Arc<RwLock<ShapeSurface>>,
 ) {
     let mut surface_sampler = surface_sampler.write().unwrap();
-    info_span!("init_surface_sampler");
+    let _init_surface_sampler = info_span!("init_surface_sampler").entered();
     info!("init_surface_sampler");
     let offset = surface_sampler.world_offset;
     let size = surface_sampler.voxel_size * surface_sampler.get_sample_size().as_vec3();

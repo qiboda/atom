@@ -32,7 +32,7 @@ pub fn make_octree_structure(
     policy: &impl OctreeBranchPolicy,
     mut surface_sampler: &mut impl SurfaceSampler,
 ) {
-    info_span!("make_octree_structure");
+    let _make_octree_structure = info_span!("make_octree_structure").entered();
     debug!("make_structure");
 
     // let task = thread_pool.spawn(async move {

@@ -4,3 +4,4 @@ saved/logs/
 wgpu_trace
 .idea
 saved/trace
+saved/tracy

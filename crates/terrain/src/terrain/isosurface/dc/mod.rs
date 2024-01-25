@@ -136,11 +136,15 @@ fn dual_contour_build_octree(
                     let dc = dual_contouring.octree.clone();
                     let surface_shape = surface_context.shape_surface.clone();
 
+                    let chunk_coord_cloned = chunk_coord.clone();
+
                     let thread_pool = AsyncComputeTaskPool::get();
                     let task = thread_pool.spawn(async move {
+                        let _dc_build = info_span!("dc build", chunk_coord = ?chunk_coord_cloned).entered();
+
                         let surface_shape = surface_shape.read().unwrap();
                         let mut dc = dc.write().unwrap();
-                        dc.build(root_cell_extent, 7, 0.001, 1.0, &surface_shape);
+                        dc.build(root_cell_extent, 6, 0.001, 1.0, &surface_shape);
                     });
 
                     dual_contouring_task.task = Some(task);
@@ -193,6 +197,8 @@ fn dual_contour_meshing(
                         if !dc.is_valid_octree() {
                             return;
                         }
+
+                        let _dc_dual_contouring = info_span!("dc dual contouring", chunk_coord = ?terrain_chunk_coord).entered();
 
                         let mut positions: Vec<Vec3A> = Vec::new();
                         let mut normals = Vec::new();
@@ -307,6 +313,7 @@ pub fn dual_contouring_create_mesh(
     ) in cms_query.iter_mut()
     {
         if cms_task.state == DualContourState::CreateMesh {
+            let _dc_create_mesh = info_span!("dc create mesh", chunk_coord = ?terrain_chunk_coord).entered();
             info!("create mesh: {:?}", terrain_chunk_coord);
             let mesh_cache = cms_component.mesh_cache.clone();
 

@@ -9,7 +9,7 @@ use crate::terrain::isosurface::{
 
 impl Octree {
     pub fn tessellation_traversal(&mut self, mesh_cache: Arc<RwLock<MeshCache>>) {
-        info_span!("tessellation_traversal");
+        let _tessellation_traversal = info_span!("tessellation_traversal").entered();
         info!("tessellation_traversal");
         for address in self.leaf_cells.clone().iter() {
             self.tessellation_traversal_inner(&mesh_cache, *address);

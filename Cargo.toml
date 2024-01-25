@@ -23,9 +23,9 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
-[profile.release-with-debug]
-inherits = "release"
-debug = true
+# [profile.release-with-debug]
+# inherits = "release"
+# debug = true
 
 # can not patch cross version, otherwie plugin will not work.
 # [patch.crates-io]

@@ -26,6 +26,7 @@ use bevy::{
 use bevy_obj::ObjPlugin;
 
 use crate::window::toggle_vsync;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use camera::CameraControllerPlugin;
 use material::CoolMaterial;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
@@ -56,6 +57,7 @@ pub fn bevy_entry() -> App {
             TerrainTracePlugin,
             CustomLogPlugin::default(),
             WireframePlugin,
+            WorldInspectorPlugin::new(),
             // PhysicsPlugins::default(),
         ))
         .add_plugins(CameraControllerPlugin)
@@ -83,12 +85,12 @@ fn startup(
     commands.insert_resource(Msaa::Sample4);
     commands.insert_resource(AmbientLight {
         color: Color::Rgba {
-            red: 0.3,
-            green: 0.3,
-            blue: 0.3,
+            red: 1.0,
+            green: 1.0,
+            blue: 1.0,
             alpha: 1.0,
         },
-        brightness: 10.0,
+        brightness: 0.3,
     });
 
     commands.spawn(DirectionalLightBundle {

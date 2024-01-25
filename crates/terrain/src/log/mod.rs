@@ -58,7 +58,7 @@ impl Plugin for CustomLogPlugin {
 
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         {
-            #[cfg(feature = "tracing-chrome")]
+            #[cfg(feature = "trace_chrome")]
             let chrome_layer = {
                 let mut layer = tracing_chrome::ChromeLayerBuilder::new();
                 if let Ok(path) = std::env::var("TRACE_CHROME") {
@@ -82,7 +82,7 @@ impl Plugin for CustomLogPlugin {
                 chrome_layer
             };
 
-            #[cfg(feature = "tracing-tracy")]
+            #[cfg(feature = "trace_tracy")]
             let tracy_layer = tracing_tracy::TracyLayer::new();
 
             let std_filter = EnvFilter::new("warning");
@@ -93,7 +93,7 @@ impl Plugin for CustomLogPlugin {
 
             // bevy_render::renderer logs a `tracy.frame_mark` event every frame
             // at Level::INFO. Formatted logs should omit it.
-            #[cfg(feature = "tracing-tracy")]
+            #[cfg(feature = "trace_tracy")]
             let fmt_layer =
                 fmt_layer.with_filter(tracing_subscriber::filter::FilterFn::new(|meta| {
                     meta.fields().field("tracy.frame_mark").is_none()
@@ -103,7 +103,7 @@ impl Plugin for CustomLogPlugin {
 
             let file_filter = EnvFilter::new("info");
 
-            let file_appender = tracing_appender::rolling::hourly(saved_path.join("logs"), "log"); // This should be user configurable
+            let file_appender = tracing_appender::rolling::daily(saved_path.join("logs"), "log"); // This should be user configurable
             let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);
             let file_fmt_layer = tracing_subscriber::fmt::Layer::default()
                 .with_ansi(false) // disable terminal color escape sequences
@@ -136,9 +136,9 @@ impl Plugin for CustomLogPlugin {
                 .with(file_fmt_layer)
                 .with(terrain_trace_fmt);
 
-            #[cfg(feature = "tracing-chrome")]
+            #[cfg(feature = "trace_chrome")]
             let subscriber = subscriber.with(chrome_layer);
-            #[cfg(feature = "tracing-tracy")]
+            #[cfg(feature = "trace_tracy")]
             let subscriber = subscriber.with(tracy_layer);
 
             finished_subscriber = subscriber;
