@@ -144,7 +144,7 @@ fn dual_contour_build_octree(
 
                         let surface_shape = surface_shape.read().unwrap();
                         let mut dc = dc.write().unwrap();
-                        dc.build(root_cell_extent, 6, 0.001, 1.0, &surface_shape);
+                        dc.build(root_cell_extent, 7, 0.001, 1.0, &surface_shape);
                     });
 
                     dual_contouring_task.task = Some(task);

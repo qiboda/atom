@@ -7,6 +7,7 @@ pub mod visible;
 pub mod window;
 
 use crate::log::CustomLogPlugin;
+use bevy::core::TaskPoolThreadAssignmentPolicy;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings};
 use bevy::render::settings::RenderCreation;
@@ -51,6 +52,16 @@ pub fn bevy_entry() -> App {
                     processed_file_path: "".to_string(),
                     watch_for_changes_override: Some(false),
                     mode: AssetMode::Unprocessed,
+                })
+                .set(TaskPoolPlugin {
+                    task_pool_options: TaskPoolOptions {
+                        async_compute: TaskPoolThreadAssignmentPolicy {
+                            min_threads: 1,
+                            max_threads: usize::MAX,
+                            percent: 0.25,
+                        },
+                        ..default()
+                    },
                 })
                 .disable::<LogPlugin>(),
             ObjPlugin,
