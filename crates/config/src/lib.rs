@@ -1,16 +1,30 @@
+pub mod toml_diff;
+
+/// 1. save base settings to base_config_dir if it doesn't exist
+/// 2. load user_settings from user_config_dir to override base settings
+/// 3. user modified settings will be saved to user_config_dir and only non base settings values will be saved
+///
+///
+/// base and user settings are assets.
+/// but final settings is a resource.
 use std::{marker::PhantomData, ops::Deref, path::PathBuf};
 
 use bevy::prelude::*;
+use bevy_common_assets::toml::TomlAssetPlugin;
 use project::{project_asset_root_path, project_saved_root_path};
 use serde::{Deserialize, Serialize};
 
+const BASE_EXTENSION: &'static str = ".toml";
+
+/// settings limits:
+///   1. all fields must be Optional
 pub trait Settings:
-    Resource + Copy + Serialize + TypePath + Default + for<'a> Deserialize<'a>
+    Resource + Copy + Serialize + TypePath + Default + for<'a> Deserialize<'a> + Asset
 {
 }
 
 impl<T> Settings for T where
-    T: Resource + Copy + Serialize + TypePath + Default + for<'a> Deserialize<'a>
+    T: Resource + Copy + Serialize + TypePath + Default + for<'a> Deserialize<'a> + Asset
 {
 }
 
@@ -48,8 +62,22 @@ impl<S> SettingsPath<S>
 where
     S: Settings,
 {
-    pub fn filename() -> &'static str {
+    pub fn category_name() -> &'static str {
         S::short_type_path()
+    }
+
+    pub fn extension() -> String {
+        ".".to_string() + SettingsPath::<S>::category_name() + BASE_EXTENSION
+    }
+
+    pub fn get_user_config_path(&self) -> PathBuf {
+        let filename = "user".to_string() + &SettingsPath::<S>::extension();
+        self.user_config_dir.join(filename)
+    }
+
+    pub fn get_base_config_path(&self) -> PathBuf {
+        let filename = "base".to_string() + &SettingsPath::<S>::extension();
+        self.base_config_dir.join(filename)
     }
 
     pub fn new() -> SettingsPath<S> {
@@ -59,6 +87,15 @@ where
             settings: PhantomData::<S>,
         }
     }
+}
+
+#[derive(Resource, Default)]
+pub struct SettingsHandle<S>
+where
+    S: Settings,
+{
+    pub base_handle: Handle<S>,
+    pub user_handle: Handle<S>,
 }
 
 /// Global settings config for the settings plugin
@@ -84,7 +121,7 @@ where
     }
 
     fn load_in_path(&self, path: &PathBuf) -> Option<S> {
-        let filepath = path.join(&SettingsPath::<S>::filename());
+        let filepath = path.join(&SettingsPath::<S>::category_name());
         if !filepath.exists() {
             info!(
                 "Couldn't find the settings file at {:?}",
@@ -139,7 +176,11 @@ where
             path.as_os_str()
         ));
 
-        std::fs::write(path.join(&SettingsPath::<S>::filename()), &settings_str).expect(&format!(
+        std::fs::write(
+            path.join(&SettingsPath::<S>::category_name()),
+            &settings_str,
+        )
+        .expect(&format!(
             "couldn't persist the settings {:?} while trying to write the string tg disk",
             path.as_os_str()
         ));
@@ -181,14 +222,84 @@ where
 
 impl<S> Plugin for SettingsPlugin<S>
 where
-    S: Resource + Copy + Serialize + TypePath + Default + for<'a> Deserialize<'a>,
+    S: Settings,
 {
     fn build(&self, app: &mut App) {
-        app.insert_resource(self.resource())
+        let extension = SettingsPath::<S>::extension();
+
+        app.add_plugins(TomlAssetPlugin::<S>::new(&[extension.leak()]))
             .insert_resource(self.paths.clone())
+            .init_resource::<SettingsHandle<S>>()
+            .init_resource::<S>()
             .add_event::<PersistSettings<S>>()
             .add_event::<PersistAllSettings>()
+            .add_systems(Startup, startup_load_settings::<S>)
+            .add_systems(PreUpdate, update_final_settings::<S>)
             .add_systems(Last, SettingsPlugin::<S>::persist_all)
             .add_systems(Last, SettingsPlugin::<S>::persist);
+    }
+}
+
+fn startup_load_settings<S>(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    paths: Res<SettingsPath<S>>,
+) where
+    S: Settings,
+{
+    let mut handle = SettingsHandle::<S>::default();
+    handle.base_handle = asset_server.load(paths.get_base_config_path());
+    handle.user_handle = asset_server.load(paths.get_user_config_path());
+    handle.base_handle = asset_server.load(paths.get_base_config_path());
+    commands.insert_resource(handle);
+}
+
+fn update_final_settings<S>(
+    mut asset_event_reader: EventReader<AssetEvent<S>>,
+    mut handle: ResMut<SettingsHandle<S>>,
+    mut assets: ResMut<Assets<S>>,
+    mut s: Res<S>,
+) where
+    S: Settings,
+{
+    asset_event_reader.read().for_each(|event| match event {
+        AssetEvent::Added { id } => {
+            // todo: add to user settings and final settings
+            // assets.get_mut(id).unwrap().a = Some(1);
+        }
+        AssetEvent::Modified { id } => {
+            // todo: add to user settings and final settings
+        }
+        AssetEvent::Removed { id } => {}
+        _ => {}
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy::{asset::Asset, reflect::TypePath};
+    use serde::{Deserialize, Serialize};
+    use serde_merge::tmerge;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug, Asset, TypePath)]
+    struct TestSettings {
+        a: Option<u32>,
+        b: Option<String>,
+    }
+
+    #[test]
+    fn merge() {
+        let a = TestSettings {
+            a: Some(1),
+            b: Some("a".to_string()),
+        };
+
+        let b = TestSettings {
+            a: Some(1),
+            b: Some("b".to_string()),
+        };
+
+        let merge = tmerge(&a, &b).unwrap();
+        assert_eq!(b, merge);
     }
 }

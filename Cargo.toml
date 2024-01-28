@@ -4,7 +4,7 @@
 # edition = "2021"
 
 [workspace]
-members = ["crates/*", "entries/*"]
+members = ["crates/*", "entries/*", "deps/*"]
 resolver = "2"
 
 
@@ -13,7 +13,7 @@ resolver = "2"
 bevy = { version = "0.12.1", features = ["file_watcher"] }
 #bevy = { version = "0.12.1", features = [] }
 once_cell = "1.19.0"
-bevy_common_assets = {version = "0.9.0", features = ["toml"] }
+bevy_common_assets = { path = "deps/bevy_common_assets", features = ["toml"] }
 serde = { version = "1.0.195", features = ["derive"] }
 
 # Enable a small amount of optimization in debug mode
