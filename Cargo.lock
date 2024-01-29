@@ -4286,7 +4286,6 @@ dependencies = [
  "serde-diff-derive 0.4.0",
  "serde_derive",
  "serde_json",
- "toml",
 ]
 
 [[package]]
