@@ -37,7 +37,7 @@ impl Face {
 
 #[derive(Debug, Component)]
 pub struct Faces {
-    pub faces: [Face; FaceIndex::COUNT as usize],
+    pub faces: [Face; FaceIndex::COUNT],
 }
 
 impl Faces {

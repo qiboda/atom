@@ -11,6 +11,7 @@ impl Orders {
         self.orders.push(order);
     }
 
+    #[allow(dead_code)]
     pub fn get_order(&self, index: usize) -> Option<&Order> {
         self.orders.get(index)
     }

@@ -25,6 +25,8 @@ use bevy::{
     },
 };
 use bevy_obj::ObjPlugin;
+use bevy_xpbd_3d::plugins::PhysicsPlugins;
+use config::plugin::SettingsPlugin;
 
 use crate::window::toggle_vsync;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -69,7 +71,8 @@ pub fn bevy_entry() -> App {
             CustomLogPlugin::default(),
             WireframePlugin,
             WorldInspectorPlugin::new(),
-            // PhysicsPlugins::default(),
+            SettingsPlugin::<TerrainSettings>::default(),
+            PhysicsPlugins::default(),
         ))
         .add_plugins(CameraControllerPlugin)
         .add_plugins(TerrainPlugin)

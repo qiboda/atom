@@ -54,7 +54,7 @@ impl Order {
             .iter()
             .find(|span| span.name == "terrain_chunk_trace")
             .unwrap();
-        span.fields.terrain_chunk_coord.clone()
+        span.fields.terrain_chunk_coord
     }
 }
 

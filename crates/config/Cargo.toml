@@ -12,5 +12,4 @@ serde = { workspace = true }
 
 project ={ path = "../project" }
 toml = "0.8.8"
-serde-diff = "0.4.1"
 serde_merge = "0.1.3"

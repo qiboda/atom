@@ -13,11 +13,11 @@ use bevy::prelude::*;
 use bevy::render::view::NoFrustumCulling;
 use bevy_debug_grid::DebugGridPlugin;
 
-use crate::player::player::{Player, PlayerFilter};
 use crate::player::{
     geometry_data::process_player_order,
-    player::{next_order, pre_order},
+    {next_order, pre_order},
 };
+use crate::player::{Player, PlayerFilter};
 use camera::SmoothCameraPlugin;
 use player::geometry_data::AllGeometryData;
 use player::order::Orders;
@@ -166,10 +166,7 @@ fn spawn_point_line_triangle(
 
         commands.spawn((
             MaterialMeshBundle {
-                mesh: meshes.add(Mesh::from(TrianglesMesh::build_mesh(
-                    Some(vec![]),
-                    Some(vec![]),
-                ))),
+                mesh: meshes.add(TrianglesMesh::build_mesh(Some(vec![]), Some(vec![]))),
                 material: triangle_materials.add(TriangleMaterial::default()),
                 transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
                 ..Default::default()

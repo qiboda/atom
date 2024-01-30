@@ -18,6 +18,7 @@ impl TrianglesMesh {
         mesh
     }
 
+    #[allow(dead_code)]
     pub fn get_indices_len(mesh: &Mesh) -> Option<usize> {
         if let Some(Indices::U32(indices)) = mesh.indices() {
             Some(indices.len())
@@ -26,14 +27,13 @@ impl TrianglesMesh {
         }
     }
 
+    #[allow(clippy::ptr_arg)]
     pub fn add_all_vertices(mesh: &mut Mesh, vertices: &Vec<[f32; 3]>) {
         if mesh.attribute(Mesh::ATTRIBUTE_POSITION).is_none() {
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices.clone());
-        } else {
-            if let Some(positions) = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION) {
-                if positions.len() == 0 {
-                    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices.clone());
-                }
+        } else if let Some(positions) = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION) {
+            if positions.is_empty() {
+                mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices.clone());
             }
         }
     }

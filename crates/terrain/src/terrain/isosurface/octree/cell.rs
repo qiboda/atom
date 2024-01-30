@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{
     address::CellAddress,
-    face::{FaceType, Faces, FaceIndex},
+    face::{FaceIndex, FaceType, Faces},
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

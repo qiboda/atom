@@ -1,4 +1,3 @@
-
 use bevy::{
     asset::{load_internal_asset, Handle},
     prelude::{MaterialPlugin, Plugin, Shader},

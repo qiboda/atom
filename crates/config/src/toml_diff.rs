@@ -23,44 +23,41 @@ where
 }
 
 fn toml_array_diff(base_array: &Array, override_array: &Array, diff_array: &mut Array) {
-    base_array
-        .iter()
-        .for_each(|v| match override_array.iter().position(|o| o == v) {
-            Some(override_index) => {
-                let Some(ov) = override_array.get(override_index) else {
-                    return;
-                };
+    base_array.iter().for_each(|v| {
+        if let Some(override_index) = override_array.iter().position(|o| o == v) {
+            let Some(ov) = override_array.get(override_index) else {
+                return;
+            };
 
-                if v == ov {
-                    diff_array.retain(|d| d != v);
-                } else {
-                    match v {
-                        Value::Table(table) => {
-                            let override_table = ov.as_table().unwrap();
-                            let diff_index = diff_array.iter().position(|d| d == v).unwrap();
-                            let diff_table = diff_array
-                                .get_mut(diff_index)
-                                .unwrap()
-                                .as_table_mut()
-                                .unwrap();
-                            toml_map_diff(table, override_table, diff_table);
-                        }
-                        Value::Array(array) => {
-                            let override_array = ov.as_array().unwrap();
-                            let diff_index = diff_array.iter().position(|d| d == v).unwrap();
-                            let diff_array = diff_array
-                                .get_mut(diff_index)
-                                .unwrap()
-                                .as_array_mut()
-                                .unwrap();
-                            toml_array_diff(array, override_array, diff_array);
-                        }
-                        _ => {}
+            if v == ov {
+                diff_array.retain(|d| d != v);
+            } else {
+                match v {
+                    Value::Table(table) => {
+                        let override_table = ov.as_table().unwrap();
+                        let diff_index = diff_array.iter().position(|d| d == v).unwrap();
+                        let diff_table = diff_array
+                            .get_mut(diff_index)
+                            .unwrap()
+                            .as_table_mut()
+                            .unwrap();
+                        toml_map_diff(table, override_table, diff_table);
                     }
+                    Value::Array(array) => {
+                        let override_array = ov.as_array().unwrap();
+                        let diff_index = diff_array.iter().position(|d| d == v).unwrap();
+                        let diff_array = diff_array
+                            .get_mut(diff_index)
+                            .unwrap()
+                            .as_array_mut()
+                            .unwrap();
+                        toml_array_diff(array, override_array, diff_array);
+                    }
+                    _ => {}
                 }
             }
-            None => {}
-        });
+        }
+    });
 }
 
 fn toml_map_diff(
@@ -68,30 +65,27 @@ fn toml_map_diff(
     override_map: &Map<String, Value>,
     diff_map: &mut Map<String, Value>,
 ) {
-    base_map
-        .iter()
-        .for_each(|(k, v)| match override_map.get(k) {
-            Some(ov) => {
-                if v == ov {
-                    diff_map.remove(k);
-                } else {
-                    match v {
-                        Value::Table(table) => {
-                            let override_table = ov.as_table().unwrap();
-                            let diff_table = diff_map.get_mut(k).unwrap().as_table_mut().unwrap();
-                            toml_map_diff(table, override_table, diff_table);
-                        }
-                        Value::Array(array) => {
-                            let override_array = ov.as_array().unwrap();
-                            let diff_array = diff_map.get_mut(k).unwrap().as_array_mut().unwrap();
-                            toml_array_diff(array, override_array, diff_array);
-                        }
-                        _ => {}
+    base_map.iter().for_each(|(k, v)| {
+        if let Some(ov) = override_map.get(k) {
+            if v == ov {
+                diff_map.remove(k);
+            } else {
+                match v {
+                    Value::Table(table) => {
+                        let override_table = ov.as_table().unwrap();
+                        let diff_table = diff_map.get_mut(k).unwrap().as_table_mut().unwrap();
+                        toml_map_diff(table, override_table, diff_table);
                     }
+                    Value::Array(array) => {
+                        let override_array = ov.as_array().unwrap();
+                        let diff_array = diff_map.get_mut(k).unwrap().as_array_mut().unwrap();
+                        toml_array_diff(array, override_array, diff_array);
+                    }
+                    _ => {}
                 }
             }
-            None => {}
-        });
+        }
+    });
 }
 
 #[cfg(test)]

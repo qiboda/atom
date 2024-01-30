@@ -22,7 +22,6 @@ use crate::terrain::{
         mesh::mesh_cache::MeshCache,
         IsosurfaceExtractionState,
     },
-    materials::terrain::TerrainMaterial,
     settings::TerrainSettings,
     TerrainSystemSet,
 };

@@ -5,7 +5,7 @@ use bevy::{prelude::*, utils::HashMap};
 use terrain_core::chunk::coords::TerrainChunkCoord;
 use terrain_player_client::order::OrderType;
 
-use super::player::{Player, PlayerFilter};
+use super::{Player, PlayerFilter};
 
 // todo: 分为每chunk顶点和索引。
 #[derive(Debug, Default, Resource)]
@@ -27,8 +27,7 @@ impl AllGeometryData {
                 }
             }
         }
-        assert!(false, "order id: {} not found", order_id);
-        None
+        unreachable!("order id: {} not found", order_id);
     }
 
     pub fn get_geometry_data(

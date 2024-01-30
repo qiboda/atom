@@ -7,7 +7,7 @@ use crate::terrain::isosurface::{
     surface::shape_surface::ShapeSurface,
 };
 
-use super::{branch_empty_check, cell_extent::CellExtent, MeshVertexId, NULL_MESH_VERTEX_ID};
+use super::{cell_extent::CellExtent, MeshVertexId, NULL_MESH_VERTEX_ID};
 
 #[derive(Debug, Default)]
 pub struct CellOctree {

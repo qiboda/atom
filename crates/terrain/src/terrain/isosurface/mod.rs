@@ -1,6 +1,5 @@
 use std::sync::{Arc, RwLock};
 
-use crate::terrain::isosurface::surface::density_function::Cube;
 use bevy::prelude::*;
 use surface::shape_surface::ShapeSurface;
 

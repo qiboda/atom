@@ -23,19 +23,11 @@ impl Default for TriangleShaderSettings {
     }
 }
 
-#[derive(AsBindGroup, TypeUuid, Debug, Clone, Copy, TypePath, Asset)]
+#[derive(AsBindGroup, TypeUuid, Debug, Clone, Copy, TypePath, Asset, Default)]
 #[uuid = "4d84d319-f6ab-470e-8005-7e76f5138842"]
 pub struct TriangleMaterial {
     #[uniform(0)]
     pub settings: TriangleShaderSettings,
-}
-
-impl Default for TriangleMaterial {
-    fn default() -> Self {
-        Self {
-            settings: TriangleShaderSettings::default(),
-        }
-    }
 }
 
 impl Material for TriangleMaterial {

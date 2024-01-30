@@ -65,17 +65,21 @@ where
         );
     }
 
-    let settings_str = toml::to_string(&settings.deref()).expect(&format!(
-        "Couldn't serialize the settings to toml {:?}",
-        path.as_os_str()
-    ));
+    let settings_str = toml::to_string(&settings.deref()).unwrap_or_else(|_| {
+        panic!(
+            "Couldn't serialize the settings to toml {:?}",
+            path.as_os_str()
+        )
+    });
 
     std::fs::write(
-        path.join(&SettingsPath::<S>::category_name()),
-        &settings_str,
+        path.join(SettingsPath::<S>::category_name()),
+        settings_str,
     )
-    .expect(&format!(
-        "couldn't persist the settings {:?} while trying to write the string tg disk",
-        path.as_os_str()
-    ));
+    .unwrap_or_else(|_| {
+        panic!(
+            "couldn't persist the settings {:?} while trying to write the string tg disk",
+            path.as_os_str()
+        )
+    });
 }

@@ -79,9 +79,9 @@ pub fn create_mesh(
                     transform: Transform::from_translation(Vec3::splat(0.0)),
                     ..Default::default()
                 },
-                // RigidBody::Static,
-                // Collider::from(&*mesh_cache),
-                // Wireframe,
+                RigidBody::Static,
+                Collider::from(&*mesh_cache),
+                Wireframe,
             ))
             .id();
 

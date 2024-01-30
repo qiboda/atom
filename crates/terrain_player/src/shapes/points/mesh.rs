@@ -78,7 +78,7 @@ impl PointsMesh {
 
             // info!("position len: {}", idx);
 
-            (0..4).for_each(|_| position.push(point.clone()));
+            (0..4).for_each(|_| position.push(*point));
 
             if let Some(VertexAttributeValues::Float32x2(uv)) =
                 mesh.attribute_mut(Mesh::ATTRIBUTE_UV_0)
@@ -97,7 +97,7 @@ impl PointsMesh {
         }
     }
 
-    pub fn remove_point_at_index(mesh: &mut Mesh, index: usize) {
+    pub fn remove_point_at_index(mesh: &mut Mesh, _index: usize) {
         if let Some(VertexAttributeValues::Float32x3(position)) =
             mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
         {

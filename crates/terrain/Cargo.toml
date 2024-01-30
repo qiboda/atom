@@ -17,6 +17,7 @@ pqef = { path = "../pqef" }
 project = { path = "../project" }
 terrain_player_client = { path = "../terrain_player_client" }
 terrain_core = { path = "../terrain_core" }
+config = { path = "../config" }
 
 rand = "0.8.5"
 smallvec = "1.13.0"

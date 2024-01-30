@@ -1,4 +1,3 @@
-
-pub mod points;
 pub mod lines;
+pub mod points;
 pub mod triangles;

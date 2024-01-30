@@ -85,13 +85,13 @@ impl DensityFunction for NoiseSurface {
     // todo: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
         // return y;
-        let x = y - noisy_bevy::fbm_simplex_2d(
+
+        // .max(0.0);
+        y - noisy_bevy::fbm_simplex_2d(
             Vec2::new(x, z) * self.frequency,
             self.octaves,
             self.lacunarity,
             self.gain,
-        );
-        // .max(0.0);
-        x
+        )
     }
 }

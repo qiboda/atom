@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-use terrain_core::chunk::coords::TerrainChunkCoord;
 use crate::terrain::settings::TerrainSettings;
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::visible_range::VisibleTerrainRange;
 

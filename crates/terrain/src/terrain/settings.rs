@@ -1,6 +1,7 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Debug, Clone)]
+#[derive(Resource, Debug, Clone, Serialize, Deserialize, TypePath, Asset, Default)]
 pub struct TerrainSettings {
     chunk_voxel_size: f32,
     chunk_voxel_num: u32,

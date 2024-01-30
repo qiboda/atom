@@ -5,6 +5,7 @@ use bevy::utils::tracing::{self, span};
 use serde_json::json;
 use tracing_subscriber::{fmt::MakeWriter, Layer};
 
+#[derive(Default)]
 pub struct TerrainLayer<W = fn() -> io::Stdout> {
     pretty: bool,
     make_writer: W,
@@ -66,7 +67,7 @@ where
         event.record(&mut terrain_visitor);
 
         let thread_id = format!("{:?}", std::thread::current().id());
-        let thread_id = thread_id.replace("ThreadId(", "").replace(")", "");
+        let thread_id = thread_id.replace("ThreadId(", "").replace(')', "");
 
         let event_json;
         unsafe {
@@ -144,7 +145,7 @@ impl<'a> tracing::field::Visit for TerrainVisitor<'a> {
         value: &(dyn std::error::Error + 'static),
     ) {
         let string_value = format!("{}", value);
-        if let Ok(v) = serde_json::from_str(&string_value.as_str()) {
+        if let Ok(v) = serde_json::from_str(string_value.as_str()) {
             self.0.insert(field.name().to_string(), v);
         } else {
             self.0.insert(field.name().to_string(), json!(string_value));

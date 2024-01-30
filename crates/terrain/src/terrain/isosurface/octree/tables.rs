@@ -163,7 +163,6 @@ use strum_macros::{EnumIter, FromRepr};
 
 use super::face::FaceIndex;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount, Hash)]
 pub enum EdgeIndex {
     XAxisTopBack = 0,

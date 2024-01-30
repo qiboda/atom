@@ -1,6 +1,4 @@
 use bevy::prelude::*;
-use project::project_asset_root_path;
-use project::project_saved_root_path;
 
 use std::marker::PhantomData;
 
@@ -8,7 +6,7 @@ use std::path::PathBuf;
 
 use super::Settings;
 
-const BASE_EXTENSION: &'static str = ".toml";
+const BASE_EXTENSION: &str = ".toml";
 
 /// A resource that contains the paths for the settings
 ///     user_config_dir: The directory where the settings are saved to
@@ -16,14 +14,14 @@ const BASE_EXTENSION: &'static str = ".toml";
 ///     And, load order is user_config_dir -> base_config_dir,
 ///
 ///     filename is TypePath::short_type_path() + ".toml"
-#[derive(Reflect, Resource, Clone)]
+#[derive(Reflect, Resource, Clone, Default, Debug)]
 pub struct SettingsPath<S>
 where
     S: Settings,
 {
     pub base_config_dir: PathBuf,
     pub user_config_dir: PathBuf,
-    pub(crate) settings: PhantomData<S>,
+    _settings: PhantomData<S>,
 }
 
 impl<S> SettingsPath<S>
@@ -46,13 +44,5 @@ where
     pub fn get_base_config_path(&self) -> PathBuf {
         let filename = "base".to_string() + &SettingsPath::<S>::extension();
         self.base_config_dir.join(filename)
-    }
-
-    pub fn new() -> SettingsPath<S> {
-        SettingsPath {
-            base_config_dir: project_asset_root_path().join("config"),
-            user_config_dir: project_saved_root_path().join("config"),
-            settings: PhantomData::<S>,
-        }
     }
 }
