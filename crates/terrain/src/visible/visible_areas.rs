@@ -106,12 +106,6 @@ impl TerrainVisibleAreas {
         }
     }
 
-    pub fn remove_current_visible_area(&mut self, entity: Entity) {
-        if let Some(proxy) = self.visible_area_proxy_map.get_mut(&entity) {
-            proxy.remove_current();
-        }
-    }
-
     pub fn get_last_visible_area(&self, entity: Entity) -> Option<&TerrainSingleVisibleArea> {
         match self.visible_area_proxy_map.get(&entity) {
             Some(proxy) => Some(proxy.get_last()),
@@ -192,6 +186,7 @@ pub fn remove_terrain_visible_areas(
     mut removed_events: RemovedComponents<VisibleTerrainRange>,
 ) {
     removed_events.read().for_each(|removed_entity| {
-        terrain_centers.remove_current_visible_area(removed_entity);
+        let area = TerrainSingleVisibleArea::default();
+        terrain_centers.set_current_visible_area(removed_entity, &area);
     });
 }
