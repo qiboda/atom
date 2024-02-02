@@ -59,7 +59,7 @@ impl Plugin for CMSPlugin {
 #[allow(clippy::type_complexity)]
 fn cms_init(
     mut commands: Commands,
-    terrain_settings: Res<TerrainSettings>,
+    _terrain_settings: Res<TerrainSettings>,
     chunk_coord_query: Query<
         (Entity, &TerrainChunkCoord),
         (Without<CMSComponent>, With<TerrainChunk>),
@@ -67,8 +67,8 @@ fn cms_init(
 ) {
     info!("startup_sample_surface: {:?}", chunk_coord_query);
     for (entity, chunk_coord) in chunk_coord_query.iter() {
-        let voxel_num = UVec3::splat(terrain_settings.get_chunk_voxel_num());
-        let voxel_size = Vec3::splat(terrain_settings.get_chunk_voxel_size());
+        let voxel_num = UVec3::splat(16);
+        let voxel_size = Vec3::splat(1.0);
 
         let world_offset = Vec3::new(
             chunk_coord.x as f32,

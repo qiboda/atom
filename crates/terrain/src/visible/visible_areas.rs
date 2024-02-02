@@ -1,5 +1,6 @@
+use std::ops::Not;
+
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 
 use crate::terrain::settings::TerrainSettings;
 use terrain_core::chunk::coords::TerrainChunkCoord;
@@ -31,7 +32,7 @@ impl TerrainSingleVisibleArea {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Component)]
 pub struct TerrainSingleVisibleAreaProxy {
     /// default is old
     pub terrain_single_visible_area_a: TerrainSingleVisibleArea,
@@ -84,76 +85,57 @@ impl TerrainSingleVisibleAreaProxy {
     }
 }
 
-#[derive(Debug, Resource, Default)]
-pub struct TerrainVisibleAreas {
-    visible_area_proxy_map: HashMap<Entity, TerrainSingleVisibleAreaProxy>,
-}
-
-impl TerrainVisibleAreas {
-    pub fn set_current_visible_area(
-        &mut self,
-        entity: Entity,
-        new_single_visible_area: &TerrainSingleVisibleArea,
-    ) {
-        match self.visible_area_proxy_map.get_mut(&entity) {
-            Some(proxy) => proxy.set_current(new_single_visible_area),
-            None => {
-                self.visible_area_proxy_map.insert(
-                    entity,
-                    TerrainSingleVisibleAreaProxy::new(new_single_visible_area),
-                );
-            }
-        }
-    }
-
-    pub fn get_last_visible_area(&self, entity: Entity) -> Option<&TerrainSingleVisibleArea> {
-        match self.visible_area_proxy_map.get(&entity) {
-            Some(proxy) => Some(proxy.get_last()),
-            None => None,
-        }
-    }
-
-    pub fn get_current_visible_area(&self, entity: Entity) -> Option<&TerrainSingleVisibleArea> {
-        match self.visible_area_proxy_map.get(&entity) {
-            Some(proxy) => Some(proxy.get_current()),
-            None => None,
-        }
-    }
-
-    pub fn get_all_current_visible_area(&self) -> Vec<&TerrainSingleVisibleArea> {
-        self.visible_area_proxy_map
-            .values()
-            .map(|proxy| proxy.get_current())
-            .collect()
-    }
-
-    pub fn get_all_last_visible_area(&self) -> Vec<&TerrainSingleVisibleArea> {
-        self.visible_area_proxy_map
-            .values()
-            .map(|proxy| proxy.get_last())
-            .collect()
+pub fn add_terrain_visible_areas(
+    mut commands: Commands,
+    visible_range: Query<
+        Entity,
+        (
+            Added<VisibleTerrainRange>,
+            Without<TerrainSingleVisibleAreaProxy>,
+        ),
+    >,
+) {
+    for entity in visible_range.iter() {
+        commands
+            .entity(entity)
+            .insert(TerrainSingleVisibleAreaProxy::default());
     }
 }
 
 // #[bevycheck::system]
 #[allow(clippy::type_complexity)]
 pub fn update_terrain_visible_areas(
-    mut terrain_centers: ResMut<TerrainVisibleAreas>,
     terrain_settings: Res<TerrainSettings>,
-    visible_range_query: Query<
-        (Entity, &GlobalTransform, &VisibleTerrainRange),
+    mut visible_range_query: Query<
         (
-            Or<(Changed<GlobalTransform>, Changed<VisibleTerrainRange>)>,
-            With<VisibleTerrainRange>,
+            &mut TerrainSingleVisibleAreaProxy,
+            &Camera,
+            &GlobalTransform,
+            &VisibleTerrainRange,
+        ),
+        (
+            Or<(
+                Changed<GlobalTransform>,
+                Changed<VisibleTerrainRange>,
+                Changed<Camera>,
+            )>,
         ),
     >,
 ) {
-    for (entity, global_transform, visible_range) in visible_range_query.iter() {
+    for (mut visible_area, camera, global_transform, visible_range) in
+        visible_range_query.iter_mut()
+    {
+        if camera.is_active.not() {
+            let area = TerrainSingleVisibleArea::default();
+            visible_area.set_current(&area);
+            continue;
+        }
+
         let camera_position = global_transform.translation();
 
         // let camera_position = Vec3::new(0.0, 0.0, 0.0);
 
-        let chunk_size = terrain_settings.get_chunk_size();
+        let chunk_size = terrain_settings.chunk_settings.chunk_size;
 
         let min_coord = (camera_position + visible_range.min) / chunk_size;
         let max_coord = (camera_position + visible_range.max) / chunk_size;
@@ -162,31 +144,41 @@ pub fn update_terrain_visible_areas(
             min_coord, max_coord, visible_range
         );
 
-        terrain_centers.set_current_visible_area(
-            entity,
-            &TerrainSingleVisibleArea {
-                global_transform: *global_transform,
-                cached_min_chunk_coord: TerrainChunkCoord::new(
-                    min_coord.x.floor() as i64,
-                    min_coord.y.floor() as i64,
-                    min_coord.z.floor() as i64,
-                ),
-                cached_max_chunk_coord: TerrainChunkCoord::new(
-                    max_coord.x.floor() as i64,
-                    max_coord.y.floor() as i64,
-                    max_coord.z.floor() as i64,
-                ),
-            },
-        );
+        visible_area.set_current(&TerrainSingleVisibleArea {
+            global_transform: *global_transform,
+            cached_min_chunk_coord: TerrainChunkCoord::new(
+                min_coord.x.floor() as i64,
+                min_coord.y.floor() as i64,
+                min_coord.z.floor() as i64,
+            ),
+            cached_max_chunk_coord: TerrainChunkCoord::new(
+                max_coord.x.floor() as i64,
+                max_coord.y.floor() as i64,
+                max_coord.z.floor() as i64,
+            ),
+        });
     }
 }
 
+/// Entity can not query when receive RemovedComponents if despawn entity.
 pub fn remove_terrain_visible_areas(
-    mut terrain_centers: ResMut<TerrainVisibleAreas>,
-    mut removed_events: RemovedComponents<VisibleTerrainRange>,
+    mut removed_range: RemovedComponents<VisibleTerrainRange>,
+    mut removed_camera: RemovedComponents<Camera>,
+    mut query: Query<(&mut TerrainSingleVisibleAreaProxy, Option<&Camera>)>,
 ) {
-    removed_events.read().for_each(|removed_entity| {
-        let area = TerrainSingleVisibleArea::default();
-        terrain_centers.set_current_visible_area(removed_entity, &area);
+    removed_range.read().for_each(|removed_entity| {
+        if let Ok((mut visible_area, Some(camera))) = query.get_mut(removed_entity) {
+            if camera.is_active {
+                let area = TerrainSingleVisibleArea::default();
+                visible_area.set_current(&area);
+            }
+        }
+    });
+
+    removed_camera.read().for_each(|removed_entity| {
+        if let Ok((mut visible_area, _camera)) = query.get_mut(removed_entity) {
+            let area = TerrainSingleVisibleArea::default();
+            visible_area.set_current(&area);
+        }
     });
 }

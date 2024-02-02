@@ -122,7 +122,7 @@ fn dual_contour_build_octree(
             info!("dual_contour build tree: {:?}", chunk_coord);
             match dual_contouring_task.task {
                 None => {
-                    let chunk_size = terrain_setting.get_chunk_size();
+                    let chunk_size = terrain_setting.chunk_settings.chunk_size;
 
                     let world_offset = Vec3A::new(
                         chunk_coord.x as f32,
@@ -145,7 +145,7 @@ fn dual_contour_build_octree(
 
                         let surface_shape = surface_shape.read().unwrap();
                         let mut dc = dc.write().unwrap();
-                        dc.build(root_cell_extent, 7, 0.001, 1.0, &surface_shape);
+                        dc.build(root_cell_extent, 6, 0.001, 1.0, &surface_shape);
                     });
 
                     dual_contouring_task.task = Some(task);

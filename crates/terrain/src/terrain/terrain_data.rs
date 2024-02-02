@@ -1,8 +1,7 @@
 use bevy::{prelude::*, utils::HashMap};
 
 use crate::visible::{
-    visible_areas::{TerrainSingleVisibleArea, TerrainVisibleAreas},
-    visible_range::VisibleTerrainRange,
+    visible_areas::TerrainSingleVisibleAreaProxy, visible_range::VisibleTerrainRange,
 };
 
 use super::{
@@ -61,27 +60,18 @@ fn setup_terrain(mut commands: Commands) {
 #[allow(clippy::type_complexity)]
 fn create_visible_chunks(
     mut commands: Commands,
-    terrain_areas: Res<TerrainVisibleAreas>,
     visible_changed_query: Query<
-        Entity,
+        &TerrainSingleVisibleAreaProxy,
         (
-            Or<(Changed<VisibleTerrainRange>, Changed<GlobalTransform>)>,
+            Changed<TerrainSingleVisibleAreaProxy>,
             With<VisibleTerrainRange>,
         ),
     >,
     mut terrain_query: Query<(Entity, &mut TerrainData), With<Terrain>>,
 ) {
-    for entity in visible_changed_query.iter() {
-        let last_terrain_single_visible_area = match terrain_areas.get_last_visible_area(entity) {
-            Some(visible_area) => visible_area.clone(),
-            None => TerrainSingleVisibleArea::default(),
-        };
-
-        let current_terrain_single_visible_area =
-            match terrain_areas.get_current_visible_area(entity) {
-                Some(visible_area) => visible_area.clone(),
-                None => TerrainSingleVisibleArea::default(),
-            };
+    for visible_area in visible_changed_query.iter() {
+        let last_terrain_single_visible_area = visible_area.get_last();
+        let current_terrain_single_visible_area = visible_area.get_current();
 
         let mut add_count = 0;
         let (terrain_entity, mut terrain_data) = terrain_query.single_mut();
@@ -134,27 +124,18 @@ fn spawn_terrain_chunks(
 #[allow(clippy::type_complexity)]
 fn despawn_entity(
     mut commands: Commands,
-    terrain_areas: Res<TerrainVisibleAreas>,
     visible_changed_query: Query<
-        Entity,
+        &TerrainSingleVisibleAreaProxy,
         (
-            Or<(Changed<VisibleTerrainRange>, Changed<GlobalTransform>)>,
+            Changed<TerrainSingleVisibleAreaProxy>,
             With<VisibleTerrainRange>,
         ),
     >,
     mut terrain_query: Query<&mut TerrainData, With<Terrain>>,
 ) {
-    for entity in visible_changed_query.iter() {
-        let last_terrain_single_visible_area = match terrain_areas.get_last_visible_area(entity) {
-            Some(visible_area) => visible_area.clone(),
-            None => TerrainSingleVisibleArea::default(),
-        };
-
-        let current_terrain_single_visible_area =
-            match terrain_areas.get_current_visible_area(entity) {
-                Some(visible_area) => visible_area.clone(),
-                None => TerrainSingleVisibleArea::default(),
-            };
+    for visible_area in visible_changed_query.iter() {
+        let last_terrain_single_visible_area = visible_area.get_last();
+        let current_terrain_single_visible_area = visible_area.get_current();
 
         let mut removed_count = 0;
         let mut terrain_data = terrain_query.single_mut();

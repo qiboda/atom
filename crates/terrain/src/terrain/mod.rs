@@ -14,7 +14,7 @@ pub mod terrain_data;
 
 use bevy::{pbr::ExtendedMaterial, prelude::*};
 
-use crate::visible::{visible_areas::TerrainVisibleAreas, TerrainVisibleAreaPlugin};
+use crate::visible::TerrainVisibleAreaPlugin;
 
 use self::{
     isosurface::IsosurfaceExtractionPlugin, materials::terrain::TerrainMaterial,
@@ -32,20 +32,19 @@ pub struct TerrainPlugin;
 
 impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(TerrainVisibleAreas::default())
-            .configure_sets(
-                Update,
-                (
-                    TerrainSystemSet::VisibleAreas,
-                    TerrainSystemSet::GenerateTerrain,
-                )
-                    .chain(),
+        app.configure_sets(
+            Update,
+            (
+                TerrainSystemSet::VisibleAreas,
+                TerrainSystemSet::GenerateTerrain,
             )
-            .add_plugins(MaterialPlugin::<
-                ExtendedMaterial<StandardMaterial, TerrainMaterial>,
-            >::default())
-            .add_plugins(TerrainVisibleAreaPlugin)
-            .add_plugins(TerrainDataPlugin)
-            .add_plugins(IsosurfaceExtractionPlugin);
+                .chain(),
+        )
+        .add_plugins(MaterialPlugin::<
+            ExtendedMaterial<StandardMaterial, TerrainMaterial>,
+        >::default())
+        .add_plugins(TerrainVisibleAreaPlugin)
+        .add_plugins(TerrainDataPlugin)
+        .add_plugins(IsosurfaceExtractionPlugin);
     }
 }

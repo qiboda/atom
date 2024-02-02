@@ -1,6 +1,5 @@
 pub mod camera;
 pub mod log;
-pub mod material;
 pub mod terrain;
 pub mod ui;
 pub mod visible;
@@ -27,11 +26,11 @@ use bevy::{
 use bevy_obj::ObjPlugin;
 use bevy_xpbd_3d::plugins::PhysicsPlugins;
 use config::plugin::SettingsPlugin;
+use terrain::settings::{TerrainChunkSettings, TerrainClipMapSettings};
 
 use crate::window::toggle_vsync;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use camera::CameraControllerPlugin;
-use material::CoolMaterial;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
 use terrain_player_client::trace::TerrainTracePlugin;
 use ui::FrameUIPlugin;
@@ -40,46 +39,48 @@ use visible::visible_range::VisibleTerrainRange;
 pub fn bevy_entry() -> App {
     let mut app = App::new();
 
-    app.insert_resource(TerrainSettings::new(1.0, 16))
-        .add_plugins((
-            DefaultPlugins
-                .set(RenderPlugin {
-                    render_creation: RenderCreation::Automatic(WgpuSettings {
-                        features: WgpuFeatures::POLYGON_MODE_LINE,
-                        ..default()
-                    }),
-                })
-                .set(AssetPlugin {
-                    file_path: "assets".to_string(),
-                    processed_file_path: "".to_string(),
-                    watch_for_changes_override: Some(false),
-                    mode: AssetMode::Unprocessed,
-                })
-                .set(TaskPoolPlugin {
-                    task_pool_options: TaskPoolOptions {
-                        async_compute: TaskPoolThreadAssignmentPolicy {
-                            min_threads: 1,
-                            max_threads: usize::MAX,
-                            percent: 0.25,
-                        },
-                        ..default()
+    app.insert_resource(TerrainSettings {
+        chunk_settings: TerrainChunkSettings { chunk_size: 16.0 },
+        clipmap_settings: TerrainClipMapSettings::default(),
+    })
+    .add_plugins((
+        DefaultPlugins
+            .set(RenderPlugin {
+                render_creation: RenderCreation::Automatic(WgpuSettings {
+                    features: WgpuFeatures::POLYGON_MODE_LINE,
+                    ..default()
+                }),
+            })
+            .set(AssetPlugin {
+                file_path: "assets".to_string(),
+                processed_file_path: "".to_string(),
+                watch_for_changes_override: Some(false),
+                mode: AssetMode::Unprocessed,
+            })
+            .set(TaskPoolPlugin {
+                task_pool_options: TaskPoolOptions {
+                    async_compute: TaskPoolThreadAssignmentPolicy {
+                        min_threads: 1,
+                        max_threads: usize::MAX,
+                        percent: 0.25,
                     },
-                })
-                .disable::<LogPlugin>(),
-            ObjPlugin,
-            TerrainTracePlugin,
-            CustomLogPlugin::default(),
-            WireframePlugin,
-            WorldInspectorPlugin::new(),
-            SettingsPlugin::<TerrainSettings>::default(),
-            PhysicsPlugins::default(),
-        ))
-        .add_plugins(CameraControllerPlugin)
-        .add_plugins(TerrainPlugin)
-        .add_plugins(FrameUIPlugin)
-        .add_plugins(MaterialPlugin::<CoolMaterial>::default())
-        .add_systems(Startup, startup)
-        .add_systems(Last, (exit_game, toggle_vsync));
+                    ..default()
+                },
+            })
+            .disable::<LogPlugin>(),
+        ObjPlugin,
+        TerrainTracePlugin,
+        CustomLogPlugin::default(),
+        WireframePlugin,
+        WorldInspectorPlugin::new(),
+        SettingsPlugin::<TerrainSettings>::default(),
+        PhysicsPlugins::default(),
+    ))
+    .add_plugins(CameraControllerPlugin)
+    .add_plugins(TerrainPlugin)
+    .add_plugins(FrameUIPlugin)
+    .add_systems(Startup, startup)
+    .add_systems(Last, (exit_game, toggle_vsync));
 
     app
 }
@@ -119,7 +120,7 @@ fn startup(
         ..Default::default()
     });
 
-    let size = 1.0 * 16.0;
+    let size = 4.0 * 16.0;
 
     commands.spawn((
         Camera3dBundle {

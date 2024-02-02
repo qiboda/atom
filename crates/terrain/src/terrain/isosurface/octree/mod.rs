@@ -35,7 +35,7 @@ pub struct Octree {
 
 pub fn make_octree_structure(
     octree: &mut Octree,
-    terrain_settings: &TerrainSettings,
+    _terrain_settings: &TerrainSettings,
     policy: &impl OctreeBranchPolicy,
 ) {
     let _make_octree_structure = info_span!("make_octree_structure").entered();
@@ -44,7 +44,7 @@ pub fn make_octree_structure(
     // let task = thread_pool.spawn(async move {
     let c000 = UVec3::new(0, 0, 0);
 
-    let voxel_num = terrain_settings.get_chunk_voxel_num();
+    let voxel_num = 16;
     let voxel_num = UVec3::splat(voxel_num);
 
     // todo: check is branch or leaf cell.....
