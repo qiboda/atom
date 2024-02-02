@@ -6,7 +6,8 @@ use crate::visible::{
 
 use super::{
     bundle::TerrainBundle,
-    chunk::{TerrainChunk, TerrainChunkBundle},
+    chunk::{chunk_data::TerrainChunkData, TerrainChunk, TerrainChunkBundle},
+    settings::TerrainSettings,
     TerrainSystemSet,
 };
 
@@ -39,15 +40,16 @@ pub struct TerrainDataPlugin;
 
 impl Plugin for TerrainDataPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_terrain)
-            .add_systems(
-                Update,
-                create_visible_chunks.in_set(TerrainSystemSet::GenerateTerrain),
+        app.add_systems(Startup, setup_terrain).add_systems(
+            Update,
+            (
+                update_visible_chunks,
+                apply_deferred,
+                update_visible_chunks_lod,
             )
-            .add_systems(
-                Last,
-                despawn_entity.in_set(TerrainSystemSet::GenerateTerrain),
-            );
+                .chain()
+                .in_set(TerrainSystemSet::TerrainData),
+        );
     }
 }
 
@@ -58,7 +60,7 @@ fn setup_terrain(mut commands: Commands) {
 
 // #[bevycheck::system]
 #[allow(clippy::type_complexity)]
-fn create_visible_chunks(
+fn update_visible_chunks(
     mut commands: Commands,
     visible_changed_query: Query<
         &TerrainSingleVisibleAreaProxy,
@@ -97,6 +99,27 @@ fn create_visible_chunks(
         if add_count > 0 {
             info!("added count: {}", add_count);
         }
+
+        let mut removed_count = 0;
+        last_terrain_single_visible_area.iter_chunk(&mut |x, y, z| {
+            if current_terrain_single_visible_area.is_in_chunk(x, y, z) {
+                return;
+            }
+
+            if let Some(&terrain_chunk_entity) =
+                terrain_data.get_chunk_entity_by_coord(TerrainChunkCoord::from(&[x, y, z]))
+            {
+                commands.entity(terrain_chunk_entity).despawn_recursive();
+                terrain_data
+                    .data
+                    .remove(&TerrainChunkCoord::from(&[x, y, z]));
+                removed_count += 1;
+            }
+        });
+
+        if removed_count > 0 {
+            info!("removed count: {}", removed_count);
+        }
     }
 }
 
@@ -121,9 +144,9 @@ fn spawn_terrain_chunks(
     terrain_data.data.insert(terrain_chunk_coord, child);
 }
 
-#[allow(clippy::type_complexity)]
-fn despawn_entity(
-    mut commands: Commands,
+// 遍历每个可见区域，更新可见区域的LOD
+fn update_visible_chunks_lod(
+    terrain_settings: Res<TerrainSettings>,
     visible_changed_query: Query<
         &TerrainSingleVisibleAreaProxy,
         (
@@ -131,32 +154,49 @@ fn despawn_entity(
             With<VisibleTerrainRange>,
         ),
     >,
-    mut terrain_query: Query<&mut TerrainData, With<Terrain>>,
+    terrain_query: Query<&TerrainData, With<Terrain>>,
+    mut terrain_chunk_query: Query<(&TerrainChunkCoord, &mut TerrainChunkData), With<TerrainChunk>>,
 ) {
     for visible_area in visible_changed_query.iter() {
-        let last_terrain_single_visible_area = visible_area.get_last();
         let current_terrain_single_visible_area = visible_area.get_current();
 
-        let mut removed_count = 0;
-        let mut terrain_data = terrain_query.single_mut();
-        last_terrain_single_visible_area.iter_chunk(&mut |x, y, z| {
-            if current_terrain_single_visible_area.is_in_chunk(x, y, z) {
-                return;
-            }
-
-            if let Some(&terrain_chunk_entity) =
-                terrain_data.get_chunk_entity_by_coord(TerrainChunkCoord::from(&[x, y, z]))
-            {
-                commands.entity(terrain_chunk_entity).despawn_recursive();
-                terrain_data
-                    .data
-                    .remove(&TerrainChunkCoord::from(&[x, y, z]));
-                removed_count += 1;
+        let terrain_data = terrain_query.single();
+        current_terrain_single_visible_area.iter_chunk(&mut |x, y, z| {
+            let chunk_coord = TerrainChunkCoord::from(&[x, y, z]);
+            if let Some(chunk_entity) = terrain_data.get_chunk_entity_by_coord(chunk_coord) {
+                if let Ok((terrain_chunk_coord, mut chunk_data)) =
+                    terrain_chunk_query.get_mut(*chunk_entity)
+                {
+                    assert_eq!(terrain_chunk_coord, &chunk_coord);
+                    chunk_data.lod = 0;
+                }
             }
         });
+    }
 
-        if removed_count > 0 {
-            info!("removed count: {}", removed_count);
-        }
+    for visible_area in visible_changed_query.iter() {
+        let current_terrain_single_visible_area = visible_area.get_current();
+
+        let terrain_data = terrain_query.single();
+        current_terrain_single_visible_area.iter_chunk(&mut |x, y, z| {
+            let chunk_coord = TerrainChunkCoord::from(&[x, y, z]);
+            if let Some(chunk_entity) = terrain_data.get_chunk_entity_by_coord(chunk_coord) {
+                if let Ok((terrain_chunk_coord, mut chunk_data)) =
+                    terrain_chunk_query.get_mut(*chunk_entity)
+                {
+                    assert_eq!(terrain_chunk_coord, &chunk_coord);
+                    let chunk_coord_diff =
+                        &current_terrain_single_visible_area.center_chunk_coord - &chunk_coord;
+                    if let Some(clipmap_lod) =
+                        terrain_settings.clipmap_settings.get_lod(chunk_coord_diff)
+                    {
+                        chunk_data.lod = chunk_data.lod.max(clipmap_lod.lod);
+                        info!("lod: {} final {}", clipmap_lod.lod, chunk_data.lod);
+                    } else {
+                        error!("{:?} is not a valid lod distance", chunk_coord_diff);
+                    }
+                }
+            }
+        });
     }
 }

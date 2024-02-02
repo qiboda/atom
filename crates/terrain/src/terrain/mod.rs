@@ -24,6 +24,7 @@ use self::{
 #[derive(SystemSet, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum TerrainSystemSet {
     VisibleAreas,
+    TerrainData,
     GenerateTerrain,
 }
 
@@ -36,6 +37,7 @@ impl Plugin for TerrainPlugin {
             Update,
             (
                 TerrainSystemSet::VisibleAreas,
+                TerrainSystemSet::TerrainData,
                 TerrainSystemSet::GenerateTerrain,
             )
                 .chain(),

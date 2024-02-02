@@ -49,6 +49,7 @@ use terrain_player_client::trace::{
     terrain_chunk_trace_span, terrain_trace_triangle, terrain_trace_vertex,
 };
 
+use crate::terrain::chunk::chunk_data::TerrainChunkData;
 use crate::terrain::chunk::TerrainChunk;
 use crate::terrain::ecology::layer::EcologyLayerSampler;
 use crate::terrain::materials::terrain::TerrainExtendedMaterial;
@@ -81,7 +82,8 @@ impl Plugin for DualContourPlugin {
                 dual_contour_meshing,
                 dual_contouring_create_mesh,
             )
-                .before(TerrainSystemSet::GenerateTerrain),
+                .chain()
+                .in_set(TerrainSystemSet::GenerateTerrain),
         );
     }
 }
@@ -108,6 +110,7 @@ fn dual_contour_init(
 fn dual_contour_build_octree(
     mut terrain_query: Query<
         (
+            &TerrainChunkData,
             &TerrainChunkCoord,
             &mut DualContouring,
             &mut DualContouringTask,
@@ -117,7 +120,9 @@ fn dual_contour_build_octree(
     terrain_setting: Res<TerrainSettings>,
     surface_context: Res<IsosurfaceContext>,
 ) {
-    for (chunk_coord, dual_contouring, mut dual_contouring_task) in terrain_query.iter_mut() {
+    for (terrain_chunk_data, chunk_coord, dual_contouring, mut dual_contouring_task) in
+        terrain_query.iter_mut()
+    {
         if dual_contouring_task.state == DualContourState::BuildingOctree {
             info!("dual_contour build tree: {:?}", chunk_coord);
             match dual_contouring_task.task {
@@ -129,7 +134,6 @@ fn dual_contour_build_octree(
                         chunk_coord.y as f32,
                         chunk_coord.z as f32,
                     ) * chunk_size;
-                    // let outer_add = Vec3A::new(1.0, 1.0, 1.0);
 
                     let root_cell_extent = CellExtent::new(world_offset, world_offset + chunk_size);
 
@@ -138,6 +142,12 @@ fn dual_contour_build_octree(
 
                     let chunk_coord_cloned = *chunk_coord;
 
+                    let lod = terrain_chunk_data.lod;
+                    info!(
+                        "dual contouring build octree: {:?}, lod: {:?}, root_cell_extent: {:?}",
+                        chunk_coord_cloned, lod, root_cell_extent
+                    );
+
                     let thread_pool = AsyncComputeTaskPool::get();
                     let task = thread_pool.spawn(async move {
                         let _dc_build =
@@ -145,7 +155,7 @@ fn dual_contour_build_octree(
 
                         let surface_shape = surface_shape.read().unwrap();
                         let mut dc = dc.write().unwrap();
-                        dc.build(root_cell_extent, 6, 0.001, 1.0, &surface_shape);
+                        dc.build(root_cell_extent, lod, 0.001, 1.0, &surface_shape);
                     });
 
                     dual_contouring_task.task = Some(task);

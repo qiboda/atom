@@ -149,10 +149,7 @@ fn startup(
             composite_mode: BloomCompositeMode::Additive,
             ..Default::default()
         },
-        VisibleTerrainRange {
-            min: Vec3::new(-size, -size, -size),
-            max: Vec3::new(size, size, size),
-        },
+        VisibleTerrainRange::new(Vec3::splat(size)),
     ));
 }
 

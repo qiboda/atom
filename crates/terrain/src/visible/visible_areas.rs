@@ -9,7 +9,7 @@ use super::visible_range::VisibleTerrainRange;
 
 #[derive(Debug, Default, Clone)]
 pub struct TerrainSingleVisibleArea {
-    pub global_transform: GlobalTransform,
+    pub center_chunk_coord: TerrainChunkCoord,
     pub cached_min_chunk_coord: TerrainChunkCoord,
     pub cached_max_chunk_coord: TerrainChunkCoord,
 }
@@ -132,20 +132,22 @@ pub fn update_terrain_visible_areas(
         }
 
         let camera_position = global_transform.translation();
-
-        // let camera_position = Vec3::new(0.0, 0.0, 0.0);
-
         let chunk_size = terrain_settings.chunk_settings.chunk_size;
 
-        let min_coord = (camera_position + visible_range.min) / chunk_size;
-        let max_coord = (camera_position + visible_range.max) / chunk_size;
+        let center_coord = camera_position / chunk_size;
+        let min_coord = (camera_position + visible_range.min()) / chunk_size;
+        let max_coord = (camera_position + visible_range.max()) / chunk_size;
         info!(
             "min_coord: {:?} max_coord: {:?}, visible_range: {:?}",
             min_coord, max_coord, visible_range
         );
 
         visible_area.set_current(&TerrainSingleVisibleArea {
-            global_transform: *global_transform,
+            center_chunk_coord: TerrainChunkCoord::new(
+                center_coord.x.floor() as i64,
+                center_coord.y.floor() as i64,
+                center_coord.z.floor() as i64,
+            ),
             cached_min_chunk_coord: TerrainChunkCoord::new(
                 min_coord.x.floor() as i64,
                 min_coord.y.floor() as i64,
