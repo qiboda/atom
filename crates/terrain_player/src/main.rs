@@ -85,7 +85,7 @@ fn startup(args: Res<Args>, mut player_order: ResMut<Orders>) {
     if let Ok(file) = File::open(args.filename.clone()) {
         let reader = BufReader::new(file);
         let mut line_num = 0;
-        for line in reader.lines().flatten() {
+        for line in reader.lines().map_while(Result::ok) {
             match serde_json::from_str::<Order>(line.as_str()) {
                 Ok(order) => {
                     player_order.push_order(order);
@@ -115,10 +115,10 @@ fn spawn_input_action(mut commands: Commands) {
     commands.spawn(InputManagerBundle::<InputAction> {
         action_state: ActionState::<InputAction>::default(),
         input_map: InputMap::new([
-            (KeyCode::P, InputAction::PreOrder),
-            (KeyCode::N, InputAction::NextOrder),
-            (KeyCode::J, InputAction::PreHundredOrder),
-            (KeyCode::K, InputAction::NextHundredOrder),
+            (InputAction::PreOrder, KeyCode::KeyJ),
+            (InputAction::NextOrder, KeyCode::KeyK),
+            (InputAction::PreHundredOrder, KeyCode::KeyP),
+            (InputAction::NextHundredOrder, KeyCode::KeyN),
         ]),
     });
 }
@@ -133,7 +133,7 @@ fn spawn_point_line_triangle(
 ) {
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(shape::Cube::new(1.0).into()),
+            mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
             ..Default::default()
         },

@@ -2,7 +2,6 @@ use bevy::{
     asset::Asset,
     prelude::{Color, Material, Mesh},
     reflect::TypePath,
-    reflect::TypeUuid,
     render::render_resource::{AsBindGroup, PolygonMode, ShaderType},
 };
 
@@ -23,8 +22,7 @@ impl Default for LineShaderSettings {
     }
 }
 
-#[derive(AsBindGroup, TypeUuid, Debug, Clone, Copy, TypePath, Asset, Default)]
-#[uuid = "eba346dd-ab2b-474d-8fd5-502ab7e73a0a"]
+#[derive(AsBindGroup, Debug, Clone, Copy, TypePath, Asset, Default)]
 #[bind_group_data(LineMaterialKey)]
 pub struct LineMaterial {
     #[uniform(0)]

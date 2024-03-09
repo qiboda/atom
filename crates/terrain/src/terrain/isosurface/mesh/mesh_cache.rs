@@ -1,6 +1,6 @@
 use bevy::{
     prelude::{debug, Component, Mesh, Vec3},
-    render::render_resource::PrimitiveTopology,
+    render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
 };
 use bevy_xpbd_3d::{
     parry::{
@@ -9,6 +9,9 @@ use bevy_xpbd_3d::{
     },
     prelude::Collider,
 };
+
+#[derive(Debug, Clone, Copy, Component, Default)]
+pub struct TerrainChunkMesh;
 
 #[derive(Debug, Clone, Component, Default)]
 pub struct MeshCache {
@@ -62,7 +65,7 @@ impl MeshCache {
 impl From<&MeshCache> for Mesh {
     fn from(mesh_cache: &MeshCache) -> Self {
         mesh_cache.check();
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::MAIN_WORLD);
         mesh.insert_attribute(
             Mesh::ATTRIBUTE_POSITION,
             mesh_cache.get_vertice_positions().clone(),
@@ -72,9 +75,9 @@ impl From<&MeshCache> for Mesh {
             mesh_cache.get_vertice_normals().clone(),
         );
         debug!("mesh cache from: {:?}", mesh_cache.get_indices());
-        mesh.set_indices(Some(bevy::render::mesh::Indices::U32(
+        mesh.insert_indices(bevy::render::mesh::Indices::U32(
             mesh_cache.get_indices().clone(),
-        )));
+        ));
         mesh
     }
 }

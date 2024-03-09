@@ -7,7 +7,7 @@ use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::terrain::{
     ecology::layer::{EcologyLayerSampler, Sampler},
-    isosurface::dc::CellExtent,
+    isosurface::{dc::CellExtent, mesh::mesh_cache::TerrainChunkMesh},
     materials::terrain::{TerrainExtendedMaterial, TerrainMaterial},
 };
 
@@ -15,9 +15,11 @@ use self::mesh_cache::MeshCache;
 
 pub mod mesh_cache;
 
+#[allow(clippy::too_many_arguments)]
 pub fn create_mesh(
     commands: &mut Commands,
     terrain_chunk_entity: Entity,
+    mesh_handle: Option<&Handle<Mesh>>,
     mesh_cache: Arc<RwLock<MeshCache>>,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<TerrainExtendedMaterial>>,
@@ -71,6 +73,14 @@ pub fn create_mesh(
             mesh_cache.get_vertice_positions().len(),
             mesh_cache.get_indices().len(),
         );
+
+        if let Some(mesh_handle) = mesh_handle {
+            info!("assign mesh");
+            let mesh = meshes.get_mut(mesh_handle).unwrap();
+            *mesh = Mesh::from(&*mesh_cache);
+            return;
+        }
+
         let id = commands
             .spawn((
                 MaterialMeshBundle::<TerrainExtendedMaterial> {
@@ -82,10 +92,12 @@ pub fn create_mesh(
                 RigidBody::Static,
                 Collider::from(&*mesh_cache),
                 Wireframe,
+                TerrainChunkMesh,
             ))
             .id();
 
         let mut terrain = commands.get_entity(terrain_chunk_entity).unwrap();
         terrain.add_child(id);
+        info!("create mesh");
     }
 }

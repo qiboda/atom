@@ -842,7 +842,7 @@ impl Octree {
                     break;
                 }
 
-                Self::link_strips(&mut components, &mut cell_strips, &mut transit_segments);
+                Self::link_strips(&mut components, &mut cell_strips, &transit_segments);
 
                 let Some(cell) = self.cell_addresses.get_mut(cell_address) else {
                     continue;
@@ -945,7 +945,7 @@ impl Octree {
     fn link_strips(
         components: &mut Vec<u32>,
         cell_strips: &mut Vec<Strip>,
-        transit_segments: &mut Vec<Vec<u32>>,
+        transit_segments: &[Vec<u32>],
     ) {
         debug_assert!(components.is_empty());
         debug_assert!(cell_strips[0].get_vertex_index(0).is_some());

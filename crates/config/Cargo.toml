@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bevy = { workspace = true }
-bevy_common_assets = { workspace = true }
+bevy_common_assets = { workspace = true, features = ["toml"] }
 serde = { workspace = true }
 
 project ={ path = "../project" }

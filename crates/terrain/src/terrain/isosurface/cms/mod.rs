@@ -32,10 +32,7 @@ use self::{
     bundle::CMSComponent,
 };
 
-use super::{
-    mesh::create_mesh,
-    surface::shape_surface::{IsosurfaceContext, ShapeSurface},
-};
+use super::surface::shape_surface::{IsosurfaceContext, ShapeSurface};
 
 #[derive(Default)]
 pub struct CMSPlugin {}
@@ -269,7 +266,7 @@ fn cms_update_meshing(mut cms_query: Query<(&mut CMSComponent, &mut CMSTask)>) {
 }
 
 fn cms_update_create_mesh(
-    mut commands: Commands,
+    mut _commands: Commands,
     mut cms_query: Query<(
         Entity,
         &CMSComponent,
@@ -277,29 +274,29 @@ fn cms_update_create_mesh(
         &TerrainChunkCoord,
         &EcologyLayerSampler,
     )>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<TerrainExtendedMaterial>>,
+    mut _meshes: ResMut<Assets<Mesh>>,
+    mut _materials: ResMut<Assets<TerrainExtendedMaterial>>,
 ) {
     for (
-        terrain_chunk_entity,
+        _terrain_chunk_entity,
         cms_component,
         mut cms_task,
-        terrain_chunk_coord,
-        ecology_layer_sampler,
+        _terrain_chunk_coord,
+        _ecology_layer_sampler,
     ) in cms_query.iter_mut()
     {
         if cms_task.state == IsosurfaceExtractionState::CreateMesh {
-            let mesh_cache = cms_component.mesh_cache.clone();
+            let _mesh_cache = cms_component.mesh_cache.clone();
 
-            create_mesh(
-                &mut commands,
-                terrain_chunk_entity,
-                mesh_cache,
-                &mut meshes,
-                &mut materials,
-                *terrain_chunk_coord,
-                ecology_layer_sampler,
-            );
+            // create_mesh(
+            //     &mut commands,
+            //     terrain_chunk_entity,
+            //     mesh_cache,
+            //     &mut meshes,
+            //     &mut materials,
+            //     *terrain_chunk_coord,
+            //     ecology_layer_sampler,
+            // );
             cms_task.state = IsosurfaceExtractionState::Done;
         }
     }

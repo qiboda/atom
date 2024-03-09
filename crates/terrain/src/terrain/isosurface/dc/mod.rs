@@ -58,7 +58,7 @@ use crate::terrain::TerrainSystemSet;
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::mesh::create_mesh;
-use super::mesh::mesh_cache::MeshCache;
+use super::mesh::mesh_cache::{MeshCache, TerrainChunkMesh};
 use super::surface::shape_surface::IsosurfaceContext;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -67,7 +67,8 @@ pub enum DualContourState {
     BuildingOctree,
     DualContouring,
     CreateMesh,
-    Done,
+    CreateDone,
+    OctreeUpdateLod,
 }
 
 #[derive(Default)]
@@ -81,6 +82,7 @@ impl Plugin for DualContourPlugin {
                 dual_contour_build_octree,
                 dual_contour_meshing,
                 dual_contouring_create_mesh,
+                dual_contouring_update_lod,
             )
                 .chain()
                 .in_set(TerrainSystemSet::GenerateTerrain),
@@ -92,7 +94,6 @@ fn dual_contour_init(
     mut commands: Commands,
     chunk_coord_query: Query<Entity, (Without<DualContouring>, With<TerrainChunk>)>,
 ) {
-    info!("startup_dual_contour_init: {:?}", chunk_coord_query);
     for entity in chunk_coord_query.iter() {
         commands.entity(entity).insert(DualContouringBundle {
             dual_contouring: DualContouring {
@@ -161,6 +162,10 @@ fn dual_contour_build_octree(
                     dual_contouring_task.task = Some(task);
                 }
                 Some(_) => {
+                    info!(
+                        "dual_contour build tree waiting task finish, {:?}",
+                        chunk_coord
+                    );
                     if future::block_on(future::poll_once(
                         dual_contouring_task.task.as_mut().unwrap(),
                     ))
@@ -192,6 +197,7 @@ fn dual_contour_meshing(
 
             match dual_contouring_task.task {
                 None => {
+                    info!("dc dual_contouring_task.task == None");
                     let thread_pool = AsyncComputeTaskPool::get();
 
                     let dc = dual_contouring.octree.clone();
@@ -201,26 +207,26 @@ fn dual_contour_meshing(
                     let terrain_chunk_coord = *terrain_chunk_coord;
 
                     let task = thread_pool.spawn(async move {
-                        let mut dc = dc.write().unwrap();
-                        let shape_surface = shape_surface.read().unwrap();
-                        let mut mesh_cache = mesh_cache.write().unwrap();
-
-                        if !dc.is_valid_octree() {
-                            return;
-                        }
-
+                        info!("dc dual_contouring_task task spawn");
                         let _dc_dual_contouring =
                             info_span!("dc dual contouring", chunk_coord = ?terrain_chunk_coord)
                                 .entered();
+
+                        let mut dc = dc.write().unwrap();
+                        let shape_surface = shape_surface.read().unwrap();
+                        if !dc.is_valid_octree() {
+                            info!("dc is_valid_octree == false");
+                            return;
+                        }
 
                         let mut positions: Vec<Vec3A> = Vec::new();
                         let mut normals = Vec::new();
                         let tri_indices = RefCell::new(Vec::new());
 
-                        let terrain_trace_span = terrain_chunk_trace_span(&terrain_chunk_coord);
+                        let terrain_trace_span =
+                            terrain_chunk_trace_span(&terrain_chunk_coord).entered();
 
-                        let terrain_trace_span = terrain_trace_span.enter();
-
+                        info!("dc dual contouring start");
                         dc.dual_contour(
                             |_cell_id, cell| {
                                 cell.mesh_vertex_id = positions.len() as MeshVertexId;
@@ -253,6 +259,8 @@ fn dual_contour_meshing(
                             },
                         );
 
+                        info!("dc dual contouring end");
+
                         // Now we need to create the mesh by copying the proper vertices out of the
                         // octree. Since not all vertices will be used, we need to recreate the
                         // vertex IDs based on the new mesh.
@@ -282,6 +290,7 @@ fn dual_contour_meshing(
                             normals.len()
                         );
 
+                        let mut mesh_cache = mesh_cache.write().unwrap();
                         mesh_cache.positions = positions.iter().map(|p| (*p).into()).collect();
                         mesh_cache.normals = normals.iter().map(|n| (*n).into()).collect();
                         mesh_cache.indices = tri_indices;
@@ -290,7 +299,10 @@ fn dual_contour_meshing(
                     dual_contouring_task.task = Some(task);
                 }
                 Some(_) => {
-                    info!("dual_contour dual contoring waiting task finish");
+                    info!(
+                        "dual_contour dual contoring waiting task finish: {:?}",
+                        terrain_chunk_coord
+                    );
                     if future::block_on(future::poll_once(
                         dual_contouring_task.task.as_mut().unwrap(),
                     ))
@@ -305,42 +317,115 @@ fn dual_contour_meshing(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn dual_contouring_create_mesh(
     mut commands: Commands,
-    mut cms_query: Query<(
+    mut dc_query: Query<(
         Entity,
+        Option<&Children>,
         &DualContouring,
         &mut DualContouringTask,
         &TerrainChunkCoord,
         &EcologyLayerSampler,
     )>,
+    chunk_mesh: Query<&Handle<Mesh>, With<TerrainChunkMesh>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TerrainExtendedMaterial>>,
 ) {
     for (
         terrain_chunk_entity,
-        cms_component,
-        mut cms_task,
+        children,
+        dc_component,
+        mut dc_task,
         terrain_chunk_coord,
         ecology_layer_sampler,
-    ) in cms_query.iter_mut()
+    ) in dc_query.iter_mut()
     {
-        if cms_task.state == DualContourState::CreateMesh {
+        if dc_task.state == DualContourState::CreateMesh {
+            info!(
+                "dual_contour create mesh waiting task finish: {:?}",
+                terrain_chunk_coord
+            );
             let _dc_create_mesh =
                 info_span!("dc create mesh", chunk_coord = ?terrain_chunk_coord).entered();
             info!("create mesh: {:?}", terrain_chunk_coord);
-            let mesh_cache = cms_component.mesh_cache.clone();
+            let mesh_cache = dc_component.mesh_cache.clone();
+
+            let mut mesh_handle = None;
+            if let Some(children) = children {
+                for child in children {
+                    mesh_handle = chunk_mesh.get(*child).ok();
+                }
+            }
 
             create_mesh(
                 &mut commands,
                 terrain_chunk_entity,
+                mesh_handle,
                 mesh_cache,
                 &mut meshes,
                 &mut materials,
                 *terrain_chunk_coord,
                 ecology_layer_sampler,
             );
-            cms_task.state = DualContourState::Done;
+            dc_task.state = DualContourState::CreateDone;
+        }
+    }
+}
+
+fn dual_contouring_update_lod(
+    mut terrain_query: Query<
+        (
+            &TerrainChunkData,
+            &TerrainChunkCoord,
+            &mut DualContouring,
+            &mut DualContouringTask,
+        ),
+        With<TerrainChunk>,
+    >,
+    surface_context: Res<IsosurfaceContext>,
+) {
+    for (terrain_chunk_data, terrain_chunk_coord, dual_contouring, mut dual_contouring_task) in
+        terrain_query.iter_mut()
+    {
+        if dual_contouring_task.state == DualContourState::CreateDone {
+            info!("dual_contour update lod: {:?}", terrain_chunk_coord);
+            match dual_contouring_task.task {
+                None => {
+                    let dc_octree = dual_contouring.octree.clone();
+                    let lod = terrain_chunk_data.lod;
+                    if lod != dc_octree.read().unwrap().lod {
+                        let surface_shape = surface_context.shape_surface.clone();
+
+                        let chunk_coord = *terrain_chunk_coord;
+
+                        let thread_pool = AsyncComputeTaskPool::get();
+                        let task = thread_pool.spawn(async move {
+                            let _dc_update_lod =
+                                info_span!("dc update lod", ?chunk_coord).entered();
+                            let surface_shape = surface_shape.read().unwrap();
+                            let mut dc_octree = dc_octree.write().unwrap();
+                            dc_octree.update_lod(lod, 0.001, 1.0, &surface_shape);
+                        });
+
+                        dual_contouring_task.task = Some(task);
+                    }
+                }
+                Some(_) => {
+                    info!(
+                        "dual_contour lod waiting task finish: {:?}",
+                        terrain_chunk_coord
+                    );
+                    if future::block_on(future::poll_once(
+                        dual_contouring_task.task.as_mut().unwrap(),
+                    ))
+                    .is_some()
+                    {
+                        dual_contouring_task.state = DualContourState::DualContouring;
+                        dual_contouring_task.task = None;
+                    }
+                }
+            }
         }
     }
 }

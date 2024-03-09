@@ -50,6 +50,7 @@ pub fn bevy_entry() -> App {
                     features: WgpuFeatures::POLYGON_MODE_LINE,
                     ..default()
                 }),
+                synchronous_pipeline_compilation: false,
             })
             .set(AssetPlugin {
                 file_path: "assets".to_string(),
@@ -153,7 +154,7 @@ fn startup(
     ));
 }
 
-fn exit_game(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
+fn exit_game(keyboard_input: Res<ButtonInput<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
     if keyboard_input.just_released(KeyCode::Escape) {
         app_exit_events.send(AppExit);
     }

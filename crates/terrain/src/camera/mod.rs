@@ -10,26 +10,26 @@ impl Plugin for CameraControllerPlugin {
 }
 
 fn camera_movement(
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     mut query: Query<(&GlobalTransform, &mut Transform), With<Camera3d>>,
 ) {
     const MOVE_SPEED: f32 = 10.0;
     const ROTATION_SPEED: f32 = 0.5;
     for (global_transform, mut trans) in query.iter_mut() {
-        if keyboard_input.pressed(KeyCode::W) {
+        if keyboard_input.pressed(KeyCode::KeyW) {
             trans.translation += MOVE_SPEED * global_transform.forward() * time.delta_seconds();
         }
 
-        if keyboard_input.pressed(KeyCode::S) {
+        if keyboard_input.pressed(KeyCode::KeyS) {
             trans.translation += MOVE_SPEED * global_transform.back() * time.delta_seconds();
         }
 
-        if keyboard_input.pressed(KeyCode::A) {
+        if keyboard_input.pressed(KeyCode::KeyA) {
             trans.translation += MOVE_SPEED * global_transform.left() * time.delta_seconds();
         }
 
-        if keyboard_input.pressed(KeyCode::D) {
+        if keyboard_input.pressed(KeyCode::KeyD) {
             trans.translation += MOVE_SPEED * global_transform.right() * time.delta_seconds();
         }
 
@@ -41,11 +41,11 @@ fn camera_movement(
             trans.translation += MOVE_SPEED * Vec3::new(0.0, 1.0, 0.0) * time.delta_seconds();
         }
 
-        if keyboard_input.pressed(KeyCode::Q) {
+        if keyboard_input.pressed(KeyCode::KeyQ) {
             trans.rotate_y(-10.0 * time.delta_seconds() * ROTATION_SPEED);
         }
 
-        if keyboard_input.pressed(KeyCode::E) {
+        if keyboard_input.pressed(KeyCode::KeyE) {
             trans.rotate_y(10.0 * time.delta_seconds() * ROTATION_SPEED);
         }
 

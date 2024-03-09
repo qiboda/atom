@@ -83,7 +83,7 @@ impl Plugin for CustomLogPlugin {
             };
 
             #[cfg(feature = "trace_tracy")]
-            let tracy_layer = tracing_tracy::TracyLayer::new();
+            let tracy_layer = tracing_tracy::TracyLayer::default();
 
             let std_filter = EnvFilter::new("warning");
             let fmt_layer = tracing_subscriber::fmt::Layer::default()

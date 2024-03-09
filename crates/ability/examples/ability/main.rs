@@ -22,12 +22,10 @@ use attribute::BaseAttributeSet;
 use base_attack::EffectNodeGraphBaseAttack;
 
 use bevy::{
-    log::info,
-    prelude::{
-        App, BuildChildren, Commands, Component, DespawnRecursiveExt, Entity, EventWriter, Input,
+    input::ButtonInput, log::info, prelude::{
+        App, BuildChildren, Commands, Component, DespawnRecursiveExt, Entity, EventWriter ,
         KeyCode, Query, Res, ResMut, Startup, Update, With,
-    },
-    DefaultPlugins,
+    }, DefaultPlugins
 };
 
 #[derive(Component)]
@@ -77,11 +75,11 @@ fn startup(mut commands: Commands, mut ability_graph: ResMut<EffectGraphMap>) {
 
 /// only can cast once, because node has not reset state.
 fn cast_base_skill(
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
     mut ability_query: Query<(Entity, &mut EffectState)>,
     mut event_writer: EventWriter<EffectStartEvent>,
 ) {
-    if input.just_pressed(KeyCode::Q) {
+    if input.just_pressed(KeyCode::KeyQ) {
         info!("just_pressed: cast_base_skill");
         for (entity, state) in ability_query.iter_mut() {
             if *state == EffectState::Inactive {
@@ -96,7 +94,7 @@ fn cast_base_skill(
 
 fn remove_base_skill(
     mut commands: Commands,
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
     ability_query: Query<Entity, With<Ability>>,
 ) {
     if input.just_pressed(KeyCode::Escape) {

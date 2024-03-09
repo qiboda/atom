@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::render_resource::PrimitiveTopology};
+use bevy::{prelude::*, render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}};
 
 #[derive(Debug, Clone, Default)]
 pub struct LineMesh {
@@ -11,7 +11,7 @@ impl From<LineMesh> for Mesh {
         debug_assert!(line_mesh.vertices.len() % 2 == 0);
         debug_assert!(line_mesh.colors.len() == line_mesh.vertices.len());
 
-        let mesh = Mesh::new(PrimitiveTopology::LineList)
+        let mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::MAIN_WORLD)
             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, line_mesh.vertices)
             .with_inserted_attribute(
                 Mesh::ATTRIBUTE_COLOR,

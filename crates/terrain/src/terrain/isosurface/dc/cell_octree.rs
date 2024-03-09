@@ -11,9 +11,11 @@ use super::{cell_extent::CellExtent, MeshVertexId, NULL_MESH_VERTEX_ID};
 
 #[derive(Debug, Default)]
 pub struct CellOctree {
+    pub(crate) lod: u8,
     pub(crate) root_id: CellId,
 
     pub(crate) all_cells: Vec<Cell>,
+
     pub(crate) cell_stack: Vec<CellId>,
     pub(crate) face_stack: Vec<Face>,
     pub(crate) edge_stack: Vec<Edge>,
@@ -181,6 +183,58 @@ impl CellOctree {
         self.all_cells.push(branch);
 
         (Some(branch_id), vertex_state)
+    }
+
+    pub fn update_lod(
+        &mut self,
+        new_lod: u8,
+        _error_tolerance: f32,
+        precision: f32,
+        sdf: &ShapeSurface,
+    ) {
+        if new_lod == self.lod {
+            return;
+        }
+
+        if new_lod > self.lod {
+            let mut child_cells: Vec<&mut Cell> = self
+                .all_cells
+                .iter_mut()
+                .filter(|cell| cell.is_leaf)
+                .collect::<Vec<&mut Cell>>();
+            for cell in child_cells.iter_mut() {
+                cell.is_leaf = false;
+            }
+
+            let child_cells_clone = child_cells
+                .iter()
+                .map(|cell| (**cell).clone())
+                .collect::<Vec<Cell>>();
+            for cell in child_cells_clone {
+                self.build_recursive_from_branch(new_lod, _error_tolerance, precision, sdf, cell);
+            }
+        }
+
+        if new_lod < self.lod {
+            let mut child_cells: Vec<&mut Cell> = self
+                .all_cells
+                .iter_mut()
+                .filter(|cell| cell.is_leaf)
+                .collect::<Vec<&mut Cell>>();
+            for cell in child_cells.iter_mut() {
+                cell.is_leaf = false;
+            }
+
+            let new_child_cells = self
+                .all_cells
+                .iter_mut()
+                .filter(|cell| cell.depth == new_lod)
+                // .map(|cell| (*cell).clone())
+                .collect::<Vec<&mut Cell>>();
+            for cell in new_child_cells {
+                cell.is_leaf = true;
+            }
+        }
     }
 }
 

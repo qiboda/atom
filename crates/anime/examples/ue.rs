@@ -63,15 +63,15 @@ fn start_up(
 }
 
 fn play_animation(
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
     animation_clip_set: Res<AnimationClipSet>,
     mut query: Query<&mut AnimationPlayer>,
 ) {
-    if input.just_pressed(KeyCode::S) {
+    if input.just_pressed(KeyCode::KeyS) {
         info!("player num: {}", query.iter_mut().len());
         for mut player in query.iter_mut() {
             player
-                .play(animation_clip_set.0.get(0).unwrap().clone())
+                .play(animation_clip_set.0.first().unwrap().clone())
                 .repeat();
         }
     }

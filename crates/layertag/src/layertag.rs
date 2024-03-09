@@ -117,10 +117,6 @@ impl TypePath for Box<dyn LayerTag> {
 }
 
 impl Reflect for Box<dyn LayerTag> {
-    fn type_name(&self) -> &str {
-        core::any::type_name::<Self>()
-    }
-
     fn get_represented_type_info(&self) -> Option<&'static bevy::reflect::TypeInfo> {
         self.deref().get_represented_type_info()
     }

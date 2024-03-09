@@ -2,12 +2,12 @@ use bevy::prelude::*;
 use bevy::window::PresentMode;
 
 pub fn toggle_vsync(
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
     mut windows: Query<&mut Window>,
     mut commands: Commands,
     camera: Query<(Entity, &Camera)>,
 ) {
-    if input.just_pressed(KeyCode::V) {
+    if input.just_pressed(KeyCode::KeyV) {
         let mut window = windows.single_mut();
 
         window.present_mode = if matches!(window.present_mode, PresentMode::AutoVsync) {

@@ -1,6 +1,6 @@
 use bevy::{
     prelude::Mesh,
-    render::{mesh::Indices, render_resource::PrimitiveTopology},
+    render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
 };
 
 #[derive(Default)]
@@ -8,12 +8,12 @@ pub struct TrianglesMesh;
 
 impl TrianglesMesh {
     pub fn build_mesh(vertices: Option<Vec<[f32; 3]>>, indices: Option<Vec<u32>>) -> Mesh {
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::MAIN_WORLD);
         if let Some(vertices) = vertices {
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
         }
         if let Some(indices) = indices {
-            mesh.set_indices(Some(Indices::U32(indices)));
+            mesh.insert_indices(Indices::U32(indices));
         }
         mesh
     }

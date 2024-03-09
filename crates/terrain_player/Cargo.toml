@@ -11,9 +11,9 @@ terrain_player_client = { path = "../terrain_player_client" }
 terrain_core = { path = "../terrain_core" }
 terrain = { path = "../terrain" }
 
-bevy_debug_grid = "0.4.0"
-leafwing-input-manager = "0.11.2"
-smooth-bevy-cameras = "0.10.0"
+bevy_debug_grid = "0.5.0"
+leafwing-input-manager = "0.13.2"
+smooth-bevy-cameras = "0.11.0"
 
 clap = { version = "4.4.18", features = ["derive"] }
 serde = { workspace = true }

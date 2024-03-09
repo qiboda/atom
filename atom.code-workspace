@@ -7,7 +7,6 @@
     "settings": {
         "rust-analyzer.linkedProjects": [
             ".\\crates\\ability\\Cargo.toml",
-            ".\\crates\\ability_editor\\Cargo.toml"
         ],
         "rust-analyzer.checkOnSave": true,
         "rust-analyzer.check.command": "clippy",

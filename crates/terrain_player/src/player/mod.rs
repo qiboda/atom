@@ -67,12 +67,12 @@ pub fn next_order(
     let action_state = input_query.single();
 
     let mut count = 0;
-    if action_state.pressed(InputAction::NextOrder) {
+    if action_state.pressed(&InputAction::NextOrder) {
         count = 1;
         info!("next order");
     }
 
-    if action_state.pressed(InputAction::NextHundredOrder) {
+    if action_state.pressed(&InputAction::NextHundredOrder) {
         count = 100;
         info!("next hundred order");
     }
@@ -147,11 +147,11 @@ pub fn pre_order(
     let mut count = 0;
 
     let action_state = input_query.single();
-    if action_state.pressed(InputAction::PreOrder) {
+    if action_state.pressed(&InputAction::PreOrder) {
         count = 1;
         info!("Pre order");
     }
-    if action_state.pressed(InputAction::PreHundredOrder) {
+    if action_state.pressed(&InputAction::PreHundredOrder) {
         count = 100;
         info!("Pre Hundred order");
     }
