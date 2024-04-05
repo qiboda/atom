@@ -1,532 +1,671 @@
 /*
-  USING LEFT HANDED SYSTEM (... i know...)
+  USING Right HANDED SYSTEM like bevy engine
 
-    Data tables for marching squares
-
-
-    Vertices have the following IDs
-   0        2
-    --------
-    |      |
-    |      |       ^-Z
-    |      |       |
-    --------       --> X
-   1        3
-
-    (divided by two from d[i] indices, since we're
-     looking at a flat ASDF and we don't care about z)
-
-
-    Edges are numbered as follows:
-       0
-    --------
-    |      |
-  2 |      | 3     ^-Z
-    |      |       |
-    --------       --> X
-       1
-
+  如果没有做说明，默认排序为x,y,z，从小到大。
 */
-
-#[derive(EnumIter, EnumCount, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Face2DVertex {
-    LeftUp = 0,
-    LeftDown = 1,
-    RightUp = 2,
-    RightDown = 3,
-}
-
-#[derive(EnumIter, EnumCount, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Face2DEdge {
-    Up = 0,
-    Down = 1,
-    Left = 2,
-    Right = 3,
-}
-
-// 0        2
-//  --------
-//  |      |
-//  |      |       ^-Z
-//  |      |       |
-//  --------       --> X
-// 1        3
-//
-
-// For a given set of filled corners, this array defines
-// the cell edges from which we draw interior edges
-#[rustfmt::skip]
-pub const EDGE_MAP: [[[Option<Face2DEdge>; 2]; 2]; 16] = [
-
-    // Up = 0,
-    // Down = 1,
-    // Left = 2,
-    // Right = 3,
-    [[None, None], [None, None]],                                                                          // ----
-    [[Some(Face2DEdge::Up), Some(Face2DEdge::Left)], [None, None]],                                        // ---0
-    [[Some(Face2DEdge::Left), Some(Face2DEdge::Down)], [None, None]],                                      // --1-
-    [[Some(Face2DEdge::Up), Some(Face2DEdge::Down)], [None, None]],                                        // --10
-    [[Some(Face2DEdge::Right), Some(Face2DEdge::Up)], [None, None]],                                       // -2--
-    [[Some(Face2DEdge::Right), Some(Face2DEdge::Left)], [None, None]],                                     // -2-0
-    [[Some(Face2DEdge::Right), Some(Face2DEdge::Up)], [Some(Face2DEdge::Left), Some(Face2DEdge::Down)]],   // -21- //ambig
-    [[Some(Face2DEdge::Right), Some(Face2DEdge::Down)], [None, None]],                                     // -210
-    
-    [[Some(Face2DEdge::Down), Some(Face2DEdge::Right)], [None, None]],                                     // 3---
-    [[Some(Face2DEdge::Down), Some(Face2DEdge::Right)], [Some(Face2DEdge::Up), Some(Face2DEdge::Left)]],   // 3--0 //ambig // 可以通过法线来判断
-    [[Some(Face2DEdge::Left), Some(Face2DEdge::Right)], [None, None]],                                     // 3-1-
-    [[Some(Face2DEdge::Up), Some(Face2DEdge::Right)], [None, None]],                                       // 3-10
-    [[Some(Face2DEdge::Down), Some(Face2DEdge::Up)], [None, None]],                                        // 32--
-    [[Some(Face2DEdge::Down), Some(Face2DEdge::Left)], [None, None]],                                      // 32-0
-    [[Some(Face2DEdge::Left), Some(Face2DEdge::Up)], [None, None]],                                        // 321-
-    [[None, None], [None, None]],                                                                          // 3210
-];
-
-// pub enum Face2DVertex {
-//     LeftUp = 0,
-//     LeftDown = 1,
-//     RightUp = 2,
-//     RightDown = 3,
-// }
-
-// Indexed by edge number, returns vertex index
-//
-pub const VERTEX_MAP: [[Face2DVertex; 2]; Face2DEdge::COUNT] = [
-    [Face2DVertex::LeftUp, Face2DVertex::RightUp],
-    [Face2DVertex::RightDown, Face2DVertex::LeftDown],
-    [Face2DVertex::LeftDown, Face2DVertex::LeftUp],
-    [Face2DVertex::RightUp, Face2DVertex::RightDown],
-];
 
 /*
 
  Vertex and Edge Index Map
 
-       2-------0------6
+       2-------1------3
       /.             /|
      10.           11 |
-    /  2           /  3
+    /  4           /  5
    /   .          /   |     ^ Y
-  3-------5------7    |     |
-  |    0 . . 1 . |. . 4     --> X
+  6-------3------7    |     |
+  |    0 . . 0 . |. . 1     --> X
   |   .          |   /     /
   6  8           7  9     / z
   | .            | /     |/
   |.             |/
-  1-------4------5
-
-
-     Face Index Map
-
-         -----
-         | 0 |
-     -----------------     ^ -z
-     | 5 | 2 | 4 | 3 |     |
-     -----------------     ---> x
-         | 1 |
-         -----
-
-     Face Index Layout
-       o--------------o
-      /.             /|
-     / .            / |
-    /  .    3      /  |
-   /   .      (0) /   |     ^ Y
-  o--------------o  5 |     |
-  |(4) . . . . . |. . o     --> X
-  |   .   1      |   /
-  |  .           |  /
-  | .      (2)   | /
-  |.             |/
-  o--------------o
-
-
-
- Cell Point and Subcell Layout
-
-     (2)o--------------o(6)
-       /.             /|
-      / .            / |
-     /  .           /  |
-    /   .          /   |     ^ Y
-(3)o--------------o(7) |     |
-   | (0). . . . . |. . o(4)  --> X
-   |   .          |   /
-   |  .           |  /
-   | .            | /
-   |.             |/
-(1)o--------------o(5)
+  4-------2------5
 
 */
 
-use strum::EnumCount;
-use strum_macros::{EnumIter, FromRepr};
+use bevy::reflect::Reflect;
+use strum::{EnumCount, FromRepr};
+use strum_macros::EnumIter;
 
-use super::face::FaceIndex;
+bitflags::bitflags! {
+    /**
+     *  If Vertex or edge or face is axis left/buttom/back, then the value is 0, other than 1.
+     */
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct AxisValue: u8 {
+        const Zero = 0b000;
+        const One = 0b001;
+    }
+}
 
+type XAxisValue = AxisValue;
+type YAxisValue = AxisValue;
+type ZAxisValue = AxisValue;
+
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct AxisType :u8 {
+        const XAxis = 0b001;
+        const YAxis = 0b010;
+        const ZAxis = 0b100;
+    }
+}
+
+impl AxisType {
+    pub const COUNT: usize = 3;
+}
+
+const fn get_axis_value(
+    x_axis_value: XAxisValue,
+    y_axis_value: YAxisValue,
+    z_axis_value: ZAxisValue,
+) -> isize {
+    (AxisType::XAxis.bits() * x_axis_value.bits()
+        + AxisType::YAxis.bits() * y_axis_value.bits()
+        + AxisType::ZAxis.bits() * z_axis_value.bits()) as isize
+}
+
+/**
+ * Edge Index Map
+ *
+ * Axis is edge direction
+ */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount, Hash)]
 pub enum EdgeIndex {
-    XAxisTopBack = 0,
-    XAxisBottomBack = 1,
-    LeftYAxisBack = 2,
-    RightYAxisBack = 3,
-    XAxisBottomFront = 4,
-    XAxisTopFront = 5,
-    LeftYAxisFront = 6,
-    RightYAxisFront = 7,
-    LeftBottomZAxis = 8,
-    RightBottomZAxis = 9,
-    LeftTopZAxis = 10,
-    RightTopZAxis = 11,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    XAxisY0Z0 = 4 * 0 + 1 * 0 + 2 * 0,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    XAxisY1Z0 = 4 * 0 + 1 * 1 + 2 * 0,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    XAxisY0Z1 = 4 * 0 + 1 * 0 + 2 * 1,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    XAxisY1Z1 = 4 * 0 + 1 * 1 + 2 * 1,
+
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    YAxisX0Z0 = 4 * 1 + 1 * 0 + 2 * 0,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    YAxisX1Z0 = 4 * 1 + 1 * 1 + 2 * 0,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    YAxisX0Z1 = 4 * 1 + 1 * 0 + 2 * 1,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    YAxisX1Z1 = 4 * 1 + 1 * 1 + 2 * 1,
+
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    ZAxisX0Y0 = 4 * 2 + 1 * 0 + 2 * 0,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    ZAxisX1Y0 = 4 * 2 + 1 * 1 + 2 * 0,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    ZAxisX0Y1 = 4 * 2 + 1 * 0 + 2 * 1,
+    #[allow(clippy::identity_op, clippy::erasing_op)]
+    ZAxisX1Y1 = 4 * 2 + 1 * 1 + 2 * 1,
 }
 
 // x, y, z => xyz
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount, Hash)]
 pub enum VertexIndex {
-    LeftBottomBack = 0,
-    LeftBottomFront = 1,
-    LeftTopBack = 2,
-    LeftTopFront = 3,
-    RightBottomBack = 4,
-    RightBottomFront = 5,
-    RightTopBack = 6,
-    RightTopFront = 7,
+    X0Y0Z0 = get_axis_value(XAxisValue::Zero, YAxisValue::Zero, ZAxisValue::Zero),
+    X1Y0Z0 = get_axis_value(XAxisValue::One, YAxisValue::Zero, ZAxisValue::Zero),
+    X0Y1Z0 = get_axis_value(XAxisValue::Zero, YAxisValue::One, ZAxisValue::Zero),
+    X1Y1Z0 = get_axis_value(XAxisValue::One, YAxisValue::One, ZAxisValue::Zero),
+    X0Y0Z1 = get_axis_value(XAxisValue::Zero, YAxisValue::Zero, ZAxisValue::One),
+    X1Y0Z1 = get_axis_value(XAxisValue::One, YAxisValue::Zero, ZAxisValue::One),
+    X0Y1Z1 = get_axis_value(XAxisValue::Zero, YAxisValue::One, ZAxisValue::One),
+    X1Y1Z1 = get_axis_value(XAxisValue::One, YAxisValue::One, ZAxisValue::One),
 }
 
-// x, y, z => xyz
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, FromRepr, EnumIter, EnumCount)]
-pub enum SubCellIndex {
-    LeftBottomBack = 0,
-    LeftBottomFront = 1,
-    LeftTopBack = 2,
-    LeftTopFront = 3,
-    RightBottomBack = 4,
-    RightBottomFront = 5,
-    RightTopBack = 6,
-    RightTopFront = 7,
+impl VertexIndex {
+    pub fn from_repr(repr: usize) -> Option<Self> {
+        match repr {
+            0 => Some(VertexIndex::X0Y0Z0),
+            1 => Some(VertexIndex::X1Y0Z0),
+            2 => Some(VertexIndex::X0Y1Z0),
+            3 => Some(VertexIndex::X1Y1Z0),
+            4 => Some(VertexIndex::X0Y0Z1),
+            5 => Some(VertexIndex::X1Y0Z1),
+            6 => Some(VertexIndex::X0Y1Z1),
+            7 => Some(VertexIndex::X1Y1Z1),
+            _ => None,
+        }
+    }
 }
 
-// x, y, z => xyz
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount)]
-pub enum EdgeDirection {
-    XAxis = 0,
-    YAxis = 1,
-    ZAxis = 2,
-}
+pub const EDGE_VERTEX_PAIRS: [[VertexIndex; 2]; EdgeIndex::COUNT] = [
+    // x axis
+    [VertexIndex::X0Y0Z0, VertexIndex::X1Y0Z0],
+    [VertexIndex::X0Y1Z0, VertexIndex::X1Y1Z0],
+    [VertexIndex::X0Y0Z1, VertexIndex::X1Y0Z1],
+    [VertexIndex::X0Y1Z1, VertexIndex::X1Y1Z1],
+    // y axis
+    [VertexIndex::X0Y0Z0, VertexIndex::X0Y1Z0],
+    [VertexIndex::X1Y0Z0, VertexIndex::X1Y1Z0],
+    [VertexIndex::X0Y0Z1, VertexIndex::X0Y1Z1],
+    [VertexIndex::X1Y0Z1, VertexIndex::X1Y1Z1],
+    // z axis
+    [VertexIndex::X0Y0Z0, VertexIndex::X0Y0Z1],
+    [VertexIndex::X1Y0Z0, VertexIndex::X1Y0Z1],
+    [VertexIndex::X0Y1Z0, VertexIndex::X0Y1Z1],
+    [VertexIndex::X1Y1Z0, VertexIndex::X1Y1Z1],
+];
 
-//----------------------------------------------
+pub type SubCellIndex = VertexIndex;
 
-// FACE_VERTEX[i] gives the four vertices (as 3-bit corner indices)
-// that define face i on an octree cell
+//  Cell Point and Subcell Layout
 //
-pub const FACE_VERTEX: [[VertexIndex; Face2DVertex::COUNT]; FaceIndex::COUNT] = [
-    [
-        VertexIndex::LeftTopBack,
-        VertexIndex::LeftBottomBack,
-        VertexIndex::RightTopBack,
-        VertexIndex::RightBottomBack,
-    ], // face 0
-    [
-        VertexIndex::LeftBottomFront,
-        VertexIndex::LeftTopFront,
-        VertexIndex::RightBottomFront,
-        VertexIndex::RightTopFront,
-    ], // face 1
-    [
-        VertexIndex::LeftBottomBack,
-        VertexIndex::LeftBottomFront,
-        VertexIndex::RightBottomBack,
-        VertexIndex::RightBottomFront,
-    ], // face 2
-    [
-        VertexIndex::RightTopBack,
-        VertexIndex::RightTopFront,
-        VertexIndex::LeftTopBack,
-        VertexIndex::LeftTopFront,
-    ], // face 3
-    [
-        VertexIndex::LeftTopBack,
-        VertexIndex::LeftTopFront,
-        VertexIndex::LeftBottomBack,
-        VertexIndex::LeftBottomFront,
-    ], // face 4
-    [
-        VertexIndex::RightBottomBack,
-        VertexIndex::RightBottomFront,
-        VertexIndex::RightTopBack,
-        VertexIndex::RightTopFront,
-    ], // face 5
-];
-
-// Given an edge it gives back the two
-// cell vertices that connect it
-// @ at pos 0 and 1 - the order will always
-// be in the positive direction...
+//      (010)o--------------o(011)
+//        /.             /|
+//       / .            / |
+//      /  .           /  |
+//     /   .          /   |     ^ Y
+// (110)o--------------o(111) |     |
+//    |(000)o. . . . |. . o(001)  --> X
+//    |   .          |   /     /
+//    |  .           |  /     /
+//    | .            | /     z
+//    |.             |/
+// (100)o--------------o(101)
 //
-pub const EDGE_VERTICES: [[VertexIndex; 2]; EdgeIndex::COUNT] = [
-    [VertexIndex::LeftTopBack, VertexIndex::RightTopBack], // edge 0
-    [VertexIndex::LeftBottomBack, VertexIndex::RightBottomBack], // edge 1
-    [VertexIndex::LeftBottomBack, VertexIndex::LeftTopBack], // edge 2
-    [VertexIndex::RightBottomBack, VertexIndex::RightTopBack], // edge 3
-    [VertexIndex::LeftBottomFront, VertexIndex::RightBottomFront], // edge 4
-    [VertexIndex::LeftTopFront, VertexIndex::RightTopFront], // edge 5
-    [VertexIndex::LeftBottomFront, VertexIndex::LeftTopFront], // edge 6
-    [VertexIndex::RightBottomFront, VertexIndex::RightTopFront], // edge 7
-    [VertexIndex::LeftBottomBack, VertexIndex::LeftBottomFront], // edge 8
-    [VertexIndex::RightBottomBack, VertexIndex::RightBottomFront], // edge 9
-    [VertexIndex::LeftTopBack, VertexIndex::LeftTopFront], // edge 10
-    [VertexIndex::RightTopBack, VertexIndex::RightTopFront], // edge 11
-];
-
-pub const EDGE_DIRECTION: [EdgeDirection; EdgeIndex::COUNT] = [
-    EdgeDirection::XAxis,
-    EdgeDirection::XAxis,
-    EdgeDirection::YAxis,
-    EdgeDirection::YAxis,
-    EdgeDirection::XAxis,
-    EdgeDirection::XAxis,
-    EdgeDirection::YAxis,
-    EdgeDirection::YAxis,
-    EdgeDirection::ZAxis,
-    EdgeDirection::ZAxis,
-    EdgeDirection::ZAxis,
-    EdgeDirection::ZAxis,
-];
-
-pub const FACE_DIRECTION: [EdgeDirection; FaceIndex::COUNT] = [
-    EdgeDirection::ZAxis,
-    EdgeDirection::ZAxis,
-    EdgeDirection::YAxis,
-    EdgeDirection::YAxis,
-    EdgeDirection::XAxis,
-    EdgeDirection::XAxis,
-];
-
-/// The table for face twins.
-/// Twins是两个相邻的Cell的重叠的面，
-pub const FACE_TWIN_TABLE: [[FaceIndex; 2]; FaceIndex::COUNT] = [
-    [FaceIndex::Back, FaceIndex::Front],
-    [FaceIndex::Front, FaceIndex::Back],
-    [FaceIndex::Bottom, FaceIndex::Top],
-    [FaceIndex::Top, FaceIndex::Bottom],
-    [FaceIndex::Left, FaceIndex::Right],
-    [FaceIndex::Right, FaceIndex::Left],
-];
-
-pub const FACE_NEIGHBOUR: [FaceIndex; FaceIndex::COUNT] = [
-    FaceIndex::Front,
-    FaceIndex::Back,
-    FaceIndex::Top,
-    FaceIndex::Bottom,
-    FaceIndex::Right,
-    FaceIndex::Left,
-];
-
-pub const FACE_2_SUBCELL: [[SubCellIndex; 4]; FaceIndex::COUNT] = [
+pub const AXIS_VALUE_SUBCELL_INDICES: [[[SubCellIndex; 4]; 2]; AxisType::COUNT] = [
+    // x axis
     [
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightTopBack,
+        // == 0
+        [
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X0Y1Z0,
+            SubCellIndex::X0Y0Z1,
+            SubCellIndex::X0Y1Z1,
+        ],
+        // == 1
+        [
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X1Y1Z1,
+        ],
     ],
+    // y axis
     [
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::LeftTopFront,
-        SubCellIndex::RightBottomFront,
-        SubCellIndex::RightTopFront,
+        [
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X0Y0Z1,
+            SubCellIndex::X1Y0Z1,
+        ],
+        [
+            SubCellIndex::X0Y1Z0,
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X0Y1Z1,
+            SubCellIndex::X1Y1Z1,
+        ],
     ],
+    // z axis
     [
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftBottomFront,
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightBottomFront,
-    ],
-    [
-        SubCellIndex::RightTopBack,
-        SubCellIndex::RightTopFront,
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::LeftTopFront,
-    ],
-    [
-        SubCellIndex::LeftTopBack,
-        SubCellIndex::LeftTopFront,
-        SubCellIndex::LeftBottomBack,
-        SubCellIndex::LeftBottomFront,
-    ],
-    [
-        SubCellIndex::RightBottomBack,
-        SubCellIndex::RightBottomFront,
-        SubCellIndex::RightTopBack,
-        SubCellIndex::RightTopFront,
+        [
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X0Y1Z0,
+            SubCellIndex::X1Y1Z0,
+        ],
+        [
+            SubCellIndex::X0Y0Z1,
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X0Y1Z1,
+            SubCellIndex::X1Y1Z1,
+        ],
     ],
 ];
 
 //  Cell Point and Subcell Layout
 //
-//      (2)o--------------o(6)
+//      (010)o--------------o(011)
 //        /.             /|
 //       / .            / |
 //      /  .           /  |
 //     /   .          /   |     ^ Y
-// (3)o--------------o(7) |     |
-//    | (0). . . . . |. . o(4)  --> X
-//    |   .          |   /
-//    |  .           |  /
-//    | .            | /
+// (110)o--------------o(111) |     |
+//    |(000)o. . . . |. . o(001)  --> X
+//    |   .          |   /     /
+//    |  .           |  /     /
+//    | .            | /     z
 //    |.             |/
-// (1)o--------------o(5)
+// (100)o--------------o(101)
+//
+pub const SUBCELL_FACES_NEIGHBOUR_PAIRS: [[(SubCellIndex, SubCellIndex); 4]; AxisType::COUNT] = [
+    [
+        (SubCellIndex::X0Y0Z0, SubCellIndex::X1Y0Z0),
+        (SubCellIndex::X0Y1Z0, SubCellIndex::X1Y1Z0),
+        (SubCellIndex::X0Y0Z1, SubCellIndex::X1Y0Z1),
+        (SubCellIndex::X0Y1Z1, SubCellIndex::X1Y1Z1),
+    ],
+    [
+        (SubCellIndex::X0Y0Z0, SubCellIndex::X0Y1Z0),
+        (SubCellIndex::X1Y0Z0, SubCellIndex::X1Y1Z0),
+        (SubCellIndex::X0Y0Z1, SubCellIndex::X0Y1Z1),
+        (SubCellIndex::X1Y0Z1, SubCellIndex::X1Y1Z1),
+    ],
+    [
+        (SubCellIndex::X0Y0Z0, SubCellIndex::X0Y0Z1),
+        (SubCellIndex::X1Y0Z0, SubCellIndex::X1Y0Z1),
+        (SubCellIndex::X0Y1Z0, SubCellIndex::X0Y1Z1),
+        (SubCellIndex::X1Y1Z0, SubCellIndex::X1Y1Z1),
+    ],
+];
+
+//  Cell Point and Subcell Layout
+//
+//      (010)o--------------o(011)
+//        /.             /|
+//       / .            / |
+//      /  .           /  |
+//     /   .          /   |     ^ Y
+// (110)o--------------o(111) |     |
+//    |(000)o. . . . |. . o(001)  --> X
+//    |   .          |   /     /
+//    |  .           |  /     /
+//    | .            | /     z
+//    |.             |/
+// (100)o--------------o(101)
+//
+// 出于dual contouring的需要，便于三角化，顶点按照从外部看,从左下角按逆时针的顺序排列
+pub const SUBCELL_EDGES_NEIGHBOUR_PAIRS: [[(
+    SubCellIndex,
+    SubCellIndex,
+    SubCellIndex,
+    SubCellIndex,
+); 2]; AxisType::COUNT] = [
+    // two group indices is x axis
+    [
+        (
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X0Y0Z1,
+            SubCellIndex::X0Y1Z1,
+            SubCellIndex::X0Y1Z0,
+        ),
+        (
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X1Y1Z1,
+        ),
+    ],
+    //  Cell Point and Subcell Layout
+    //
+    //      (010)o--------------o(011)
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // (110)o--------------o(111) |     |
+    //    |(000)o. . . . |. . o(001)  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // (100)o--------------o(101)
+    //
+    // two group indices is y axis
+    [
+        (
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X0Y0Z1,
+        ),
+        (
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X1Y1Z1,
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X0Y1Z0,
+        ),
+    ],
+    //  Cell Point and Subcell Layout
+    //
+    //      (010)o--------------o(011)
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // (110)o--------------o(111) |     |
+    //    |(000)o. . . . |. . o(001)  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // (100)o--------------o(101)
+    //
+    [
+        (
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X0Y1Z0,
+            SubCellIndex::X1Y1Z0,
+        ),
+        (
+            SubCellIndex::X0Y0Z1,
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X1Y1Z1,
+            SubCellIndex::X0Y1Z1,
+        ),
+    ],
+];
+
+//  Face Index Layout
+//
+//         o--------------o
+//        /.             /|
+//       / .            / |
+//      /  .           /  |
+//     /   .          /   |     ^ Y
+//    o--------------o    |     |
+//    |    o. . . . . |. . o      --> X
+//    |   .          |   /     /
+//    |  .           |  /     /
+//    | .            | /     z
+//    |.             |/
+//    o--------------o
+//
+// order is from x to y to z
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, FromRepr, Reflect)]
+pub enum FaceIndex {
+    Left = 0,
+    Right = 1,
+    Bottom = 2,
+    Top = 3,
+    Back = 4,
+    Front = 5,
+}
+
+pub const AXIS_FACE_INDEX_PAIR: [(FaceIndex, FaceIndex); AxisType::COUNT] = [
+    (FaceIndex::Right, FaceIndex::Left),
+    (FaceIndex::Top, FaceIndex::Bottom),
+    (FaceIndex::Front, FaceIndex::Back),
+];
+
+pub const FACE_INDEX_TWINS: [FaceIndex; FaceIndex::COUNT] = [
+    FaceIndex::Right,
+    FaceIndex::Left,
+    FaceIndex::Top,
+    FaceIndex::Bottom,
+    FaceIndex::Front,
+    FaceIndex::Back,
+];
+
+//  Cell Point and Subcell Layout
+//
+//      (2)o--------------o(3)
+//        /.             /|
+//       / .            / |
+//      /  .           /  |
+//     /   .          /   |     ^ Y
+// (6)o--------------o(7) |     |
+//    | (0)o. . . . . |. . o(1)  --> X
+//    |   .          |   /     /
+//    |  .           |  /     /
+//    | .            | /     z
+//    |.             |/
+// (4)o--------------o(5)
 //
 //
 /// @brief Cell neighbour table
-/// See: 'Cell Point and Subcell Layout' in tables header
-///
-/// 在对应的方向上，当前Cell的ID，对应的相邻Cell的ID, 以及是否是相同的父cell。
+///  找到一个subcell在FaceIndex的方向是否有邻居subcell,以及相邻的Subcell的位置
 ///
 pub const NEIGHBOUR_ADDRESS_TABLE: [[(SubCellIndex, bool); SubCellIndex::COUNT]; FaceIndex::COUNT] = [
+    // left
     [
-        (SubCellIndex::LeftBottomFront, false),
-        (SubCellIndex::LeftBottomBack, true),
-        (SubCellIndex::LeftTopFront, false),
-        (SubCellIndex::LeftTopBack, true),
-        (SubCellIndex::RightBottomFront, false),
-        (SubCellIndex::RightBottomBack, true),
-        (SubCellIndex::RightTopFront, false),
-        (SubCellIndex::RightTopBack, true),
-    ], // BACK NEIGHBOUR
+        (SubCellIndex::X1Y0Z0, false),
+        (SubCellIndex::X0Y0Z0, true),
+        (SubCellIndex::X1Y1Z0, false),
+        (SubCellIndex::X0Y1Z0, true),
+        (SubCellIndex::X1Y0Z1, false),
+        (SubCellIndex::X0Y0Z1, true),
+        (SubCellIndex::X1Y1Z1, false),
+        (SubCellIndex::X0Y1Z1, true),
+    ],
+    //      (2)o--------------o(3)
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // (6)o--------------o(7) |     |
+    //    | (0)o. . . . . |. . o(1)  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // (4)o--------------o(5)
+    //
+    // right
     [
-        (SubCellIndex::LeftBottomFront, true),
-        (SubCellIndex::LeftBottomBack, false),
-        (SubCellIndex::LeftTopFront, true),
-        (SubCellIndex::LeftTopBack, false),
-        (SubCellIndex::RightBottomFront, true),
-        (SubCellIndex::RightBottomBack, false),
-        (SubCellIndex::RightTopFront, true),
-        (SubCellIndex::RightTopBack, false),
-    ], // FRONT NEIGHBOUR
+        (SubCellIndex::X1Y0Z0, true),
+        (SubCellIndex::X0Y0Z0, false),
+        (SubCellIndex::X1Y1Z0, true),
+        (SubCellIndex::X0Y1Z0, false),
+        (SubCellIndex::X1Y0Z1, true),
+        (SubCellIndex::X0Y0Z1, false),
+        (SubCellIndex::X1Y1Z1, true),
+        (SubCellIndex::X0Y1Z1, false),
+    ],
+    //      (2)o--------------o(3)
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // (6)o--------------o(7) |     |
+    //    | (0)o. . . . . |. . o(1)  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // (4)o--------------o(5)
+    //
+    // Bottom
     [
-        (SubCellIndex::LeftTopBack, false),
-        (SubCellIndex::LeftTopFront, false),
-        (SubCellIndex::LeftBottomBack, true),
-        (SubCellIndex::LeftBottomFront, true),
-        (SubCellIndex::RightTopBack, false),
-        (SubCellIndex::RightTopFront, false),
-        (SubCellIndex::RightBottomBack, true),
-        (SubCellIndex::RightBottomFront, true),
-    ], // BOTTOM NEIGHBOUR
+        (SubCellIndex::X0Y1Z0, false),
+        (SubCellIndex::X1Y1Z0, false),
+        (SubCellIndex::X0Y0Z0, true),
+        (SubCellIndex::X1Y0Z0, true),
+        (SubCellIndex::X0Y1Z1, false),
+        (SubCellIndex::X1Y1Z1, false),
+        (SubCellIndex::X0Y0Z1, true),
+        (SubCellIndex::X1Y0Z1, true),
+    ],
+    //      (2)o--------------o(3)
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // (6)o--------------o(7) |     |
+    //    | (0)o. . . . . |. . o(1)  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // (4)o--------------o(5)
+    //
+    // Top
     [
-        (SubCellIndex::LeftTopBack, true),
-        (SubCellIndex::LeftTopFront, true),
-        (SubCellIndex::LeftBottomBack, false),
-        (SubCellIndex::LeftBottomFront, false),
-        (SubCellIndex::RightTopBack, true),
-        (SubCellIndex::RightTopFront, true),
-        (SubCellIndex::RightBottomBack, false),
-        (SubCellIndex::RightBottomFront, false),
-    ], // TOP NEIGHBOUR
+        (SubCellIndex::X0Y1Z0, true),
+        (SubCellIndex::X1Y1Z0, true),
+        (SubCellIndex::X0Y0Z0, false),
+        (SubCellIndex::X1Y0Z0, false),
+        (SubCellIndex::X0Y1Z1, true),
+        (SubCellIndex::X1Y1Z1, true),
+        (SubCellIndex::X0Y0Z1, false),
+        (SubCellIndex::X1Y0Z1, false),
+    ],
+    //      (2)o--------------o(3)
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // (6)o--------------o(7) |     |
+    //    | (0)o. . . . . |. . o(1)  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // (4)o--------------o(5)
+    //
+    // Back
     [
-        (SubCellIndex::RightBottomBack, false),
-        (SubCellIndex::RightBottomFront, false),
-        (SubCellIndex::RightTopBack, false),
-        (SubCellIndex::RightTopFront, false),
-        (SubCellIndex::LeftBottomBack, true),
-        (SubCellIndex::LeftBottomFront, true),
-        (SubCellIndex::LeftTopBack, true),
-        (SubCellIndex::LeftTopFront, true),
-    ], // LEFT NEIGHBOUR
+        (SubCellIndex::X0Y0Z1, false),
+        (SubCellIndex::X1Y0Z1, false),
+        (SubCellIndex::X0Y1Z1, false),
+        (SubCellIndex::X1Y1Z1, false),
+        (SubCellIndex::X0Y0Z0, true),
+        (SubCellIndex::X1Y0Z0, true),
+        (SubCellIndex::X0Y1Z0, true),
+        (SubCellIndex::X1Y1Z0, true),
+    ],
+    //      (2)o--------------o(3)
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // (6)o--------------o(7) |     |
+    //    | (0)o. . . . . |. . o(1)  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // (4)o--------------o(5)
+    //
+    // Front
     [
-        (SubCellIndex::RightBottomBack, true),
-        (SubCellIndex::RightBottomFront, true),
-        (SubCellIndex::RightTopBack, true),
-        (SubCellIndex::RightTopFront, true),
-        (SubCellIndex::LeftBottomBack, false),
-        (SubCellIndex::LeftBottomFront, false),
-        (SubCellIndex::LeftTopBack, false),
-        (SubCellIndex::LeftTopFront, false),
-    ], // RIGHT NEIGHBOUR
+        (SubCellIndex::X0Y0Z1, true),
+        (SubCellIndex::X1Y0Z1, true),
+        (SubCellIndex::X0Y1Z1, true),
+        (SubCellIndex::X1Y1Z1, true),
+        (SubCellIndex::X0Y0Z0, false),
+        (SubCellIndex::X1Y0Z0, false),
+        (SubCellIndex::X0Y1Z0, false),
+        (SubCellIndex::X1Y1Z0, false),
+    ],
 ];
 
-/// @brief neighbour face table between sub cell
-pub const FACE_RELATIONSHIP_TABLE: [[FaceIndex; 3]; SubCellIndex::COUNT] = [
-    [FaceIndex::Back, FaceIndex::Bottom, FaceIndex::Left],
-    [FaceIndex::Front, FaceIndex::Bottom, FaceIndex::Left],
-    [FaceIndex::Back, FaceIndex::Top, FaceIndex::Left],
-    [FaceIndex::Front, FaceIndex::Top, FaceIndex::Left],
-    [FaceIndex::Back, FaceIndex::Bottom, FaceIndex::Right],
-    [FaceIndex::Front, FaceIndex::Bottom, FaceIndex::Right],
-    [FaceIndex::Back, FaceIndex::Top, FaceIndex::Right],
-    [FaceIndex::Front, FaceIndex::Top, FaceIndex::Right],
-];
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount)]
-pub enum SubFaceIndex {
-    LeftUp = 0,
-    RightUp = 1,
-    LeftDown = 2,
-    RightDown = 3,
-}
-
+//      (2)o--------------o(3)
+//        /.             /|                    z ---------->
+//       / .            / |                  |--------------|  /\
+//      /  .           /  |                  |       |      |  |
+//     /   .          /   |     ^ Y          |       1      |  |
+// (6)o--------------o(7) |     |            |- -1 --x-- 1--|  |
+//    | (0)o. . . . . |. . o(1)  --> X       |      -1      |  |
+//    |   .          |   /     /             |       |      |  |
+//    |  .           |  /     /              |--------------|  x
+//    | .            | /     z
+//    |.             |/
+// (4)o--------------o(5)
 //
-//      2-------0------6
-//     /.             /|
-//    10.           11 |
-//   /  2           /  3
-//  /   .          /   |     ^ Y
-// 3-------5------7    |     |
-// |    0 . . 1 . |. . 4     --> X
-// |   .          |   /     /
-// 6  8           7  9     / z
-// | .            | /     |/
-// |.             |/
-// 1-------4------5
-//
-
-/// @brief subcell的Face在父Cell的Face的位置。
-/// 从Face的正面看去，SubFace(SubFaceIndex)的顺序
-///   _______________
-///  |       |      |
-///  |   0   |  1   |
-///  |_______|______|
-///  |       |      |
-///  |   2   |  3   |
-///  |_______|______|
-pub const SUB_FACE_TABLE: [[SubFaceIndex; 3]; SubCellIndex::COUNT] = [
+// four subcells shared edges on one face
+pub const FACES_EDGES_SUBCELLS: [[[SubCellIndex; 4]; 4]; AxisType::COUNT] = [
+    // x axis
     [
-        SubFaceIndex::RightDown,
-        SubFaceIndex::LeftDown,
-        SubFaceIndex::LeftDown,
+        // y axis  -1
+        [
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X0Y0Z1,
+            SubCellIndex::X0Y1Z1,
+            SubCellIndex::X0Y1Z0,
+        ],
+        // y axis  1
+        [
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X1Y1Z1,
+        ],
+        // z axis  -1
+        [
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X0Y1Z0,
+            SubCellIndex::X0Y1Z1,
+            SubCellIndex::X0Y0Z1,
+        ],
+        // z axis  1
+        [
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X1Y1Z1,
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X1Y0Z0,
+        ],
     ],
+    //      [2]o--------------o[3]
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // [6]o--------------o[7] |     |
+    //    | [0]o. . . . . |. . o[1]  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // [4]o--------------o[5]
+    //
+    // y axis
     [
-        SubFaceIndex::LeftDown,
-        SubFaceIndex::LeftUp,
-        SubFaceIndex::RightDown,
+        [
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X0Y0Z1,
+        ],
+        [
+            SubCellIndex::X0Y1Z1,
+            SubCellIndex::X1Y1Z1,
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X0Y1Z0,
+        ],
+        [
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X0Y0Z1,
+            SubCellIndex::X0Y1Z1,
+            SubCellIndex::X0Y1Z0,
+        ],
+        [
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X1Y1Z1,
+        ],
     ],
+    //      [2]o--------------o[3]
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // [6]o--------------o[7] |     |
+    //    | [0]o. . . . . |. . o[1]  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // [4]o--------------o[5]
+    //
+    // z axis
     [
-        SubFaceIndex::RightUp,
-        SubFaceIndex::LeftUp,
-        SubFaceIndex::LeftUp,
-    ],
-    [
-        SubFaceIndex::LeftUp,
-        SubFaceIndex::LeftDown,
-        SubFaceIndex::RightUp,
-    ],
-    [
-        SubFaceIndex::LeftDown,
-        SubFaceIndex::RightDown,
-        SubFaceIndex::RightDown,
-    ],
-    [
-        SubFaceIndex::RightDown,
-        SubFaceIndex::RightUp,
-        SubFaceIndex::LeftDown,
-    ],
-    [
-        SubFaceIndex::LeftUp,
-        SubFaceIndex::RightUp,
-        SubFaceIndex::RightUp,
-    ],
-    [
-        SubFaceIndex::RightUp,
-        SubFaceIndex::RightDown,
-        SubFaceIndex::LeftUp,
+        [
+            SubCellIndex::X1Y0Z0,
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X0Y1Z0,
+            SubCellIndex::X1Y1Z0,
+        ],
+        [
+            SubCellIndex::X0Y0Z1,
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X1Y1Z1,
+            SubCellIndex::X0Y1Z1,
+        ],
+        [
+            SubCellIndex::X0Y0Z0,
+            SubCellIndex::X0Y1Z0,
+            SubCellIndex::X0Y1Z1,
+            SubCellIndex::X0Y0Z1,
+        ],
+        [
+            SubCellIndex::X1Y0Z1,
+            SubCellIndex::X1Y1Z1,
+            SubCellIndex::X1Y1Z0,
+            SubCellIndex::X1Y0Z0,
+        ],
     ],
 ];

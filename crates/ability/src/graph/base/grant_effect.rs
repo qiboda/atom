@@ -39,7 +39,7 @@ impl Plugin for EffectNodeGrantEffectPlugin {
 
 ///////////////////////// Node Component /////////////////////////
 
-#[derive(Debug, Default, Component)]
+#[derive(Debug, Default, Component, Reflect)]
 pub struct EffectNodeGrantEffect {
     pub effects: Vec<Entity>,
 }

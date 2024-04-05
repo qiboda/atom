@@ -1,15 +1,17 @@
-use bevy::prelude::Vec3;
+use bevy::{prelude::Vec3, reflect::Reflect};
 use pqef::Quadric;
 use std::ops::Not;
+use strum::EnumCount;
 
 use crate::terrain::isosurface::{
     dc::{cell_is_bipolar, estimate_interior_vertex_qef},
+    octree::tables::FaceIndex,
     surface::shape_surface::ShapeSurface,
 };
 
 use super::{cell_extent::CellExtent, MeshVertexId, NULL_MESH_VERTEX_ID};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Reflect)]
 pub struct CellOctree {
     pub(crate) lod: u8,
     pub(crate) root_id: CellId,
@@ -19,6 +21,8 @@ pub struct CellOctree {
     pub(crate) cell_stack: Vec<CellId>,
     pub(crate) face_stack: Vec<Face>,
     pub(crate) edge_stack: Vec<Edge>,
+
+    pub(crate) seam_cells: [Vec<CellId>; FaceIndex::COUNT],
 }
 
 impl CellOctree {
@@ -250,7 +254,7 @@ enum VertexState {
 
 pub type CellId = u32;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Reflect)]
 pub struct Cell {
     // PERF: replace with a smaller octant identifier; extent should be implicit
     pub extent: CellExtent,
@@ -320,13 +324,13 @@ impl Cell {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Reflect)]
 pub(crate) struct Face {
     pub axis: usize,
     pub cells: [CellId; 2],
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Reflect)]
 pub(crate) struct Edge {
     pub axis: usize,
     pub cells: [CellId; 4],

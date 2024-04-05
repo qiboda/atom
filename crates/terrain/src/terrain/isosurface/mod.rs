@@ -10,7 +10,6 @@ use self::{
     surface::{density_function::NoiseSurface, shape_surface::IsosurfaceContext},
 };
 
-pub mod cms;
 pub mod dc;
 pub mod mesh;
 pub mod octree;
@@ -27,7 +26,7 @@ pub enum IsosurfaceExtractionState {
     Done,
 }
 
-#[derive(Default, Component, Debug)]
+#[derive(Default, Component, Debug, Reflect)]
 pub struct IsosurfaceExtract;
 
 #[derive(Default, Debug)]
@@ -48,7 +47,6 @@ impl Plugin for IsosurfaceExtractionPlugin {
                 iso_level: Vec3::ZERO,
             })),
         })
-        // .add_plugins(CMSPlugin::default())
         .add_plugins(DualContourPlugin)
         .add_plugins(EcologyPlugin);
     }

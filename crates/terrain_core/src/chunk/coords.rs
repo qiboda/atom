@@ -1,9 +1,11 @@
-use std::ops::{Add, Sub};
+use std::ops::{Add, Mul, Sub};
 
-use bevy::prelude::Component;
+use bevy::{math::Vec3, prelude::Component, reflect::Reflect};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Copy, Clone, Hash, Eq, PartialEq, Component, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, Copy, Clone, Hash, Eq, PartialEq, Component, Serialize, Deserialize, Reflect,
+)]
 pub struct TerrainChunkCoord {
     pub x: i64,
     pub y: i64,
@@ -74,6 +76,18 @@ impl Sub<&TerrainChunkCoord> for &TerrainChunkCoord {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
             z: self.z - rhs.z,
+        }
+    }
+}
+
+impl Mul<f32> for TerrainChunkCoord {
+    type Output = Vec3;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Self::Output {
+            x: self.x as f32 * rhs,
+            y: self.y as f32 * rhs,
+            z: self.z as f32 * rhs,
         }
     }
 }

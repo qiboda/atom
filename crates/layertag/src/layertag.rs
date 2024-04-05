@@ -122,27 +122,27 @@ impl Reflect for Box<dyn LayerTag> {
     }
 
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
-        self
+        self.deref().box_clone().into_any()
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
-        self
+        self.deref().as_any()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+        self.deref_mut().as_any_mut()
     }
 
     fn into_reflect(self: Box<Self>) -> Box<dyn Reflect> {
-        self
+        self.deref().box_clone().into_reflect()
     }
 
     fn as_reflect(&self) -> &dyn Reflect {
-        self
+        self.deref().as_reflect()
     }
 
     fn as_reflect_mut(&mut self) -> &mut dyn Reflect {
-        self
+        self.deref_mut().as_reflect_mut()
     }
 
     fn apply(&mut self, value: &dyn Reflect) {
@@ -150,8 +150,7 @@ impl Reflect for Box<dyn LayerTag> {
     }
 
     fn set(&mut self, value: Box<dyn Reflect>) -> Result<(), Box<dyn Reflect>> {
-        *self = <dyn Reflect>::take(value)?;
-        Ok(())
+        self.deref_mut().set(value)
     }
 
     fn reflect_ref(&self) -> bevy::reflect::ReflectRef {
@@ -163,7 +162,6 @@ impl Reflect for Box<dyn LayerTag> {
     }
 
     fn reflect_owned(self: Box<Self>) -> bevy::reflect::ReflectOwned {
-        // ReflectOwned::Value(self)
         self.deref().box_clone().reflect_owned()
     }
 

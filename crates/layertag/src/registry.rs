@@ -1,6 +1,6 @@
 use std::any::TypeId;
 
-use bevy::{prelude::Component, utils::HashMap};
+use bevy::{prelude::Component, reflect::Reflect, utils::HashMap};
 
 use crate::layertag::LayerTag;
 

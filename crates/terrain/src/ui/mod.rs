@@ -10,7 +10,7 @@ impl Plugin for FrameUIPlugin {
     }
 }
 
-#[derive(Default, Component)]
+#[derive(Default, Component, Reflect)]
 struct FpsText;
 
 fn add_frame_ui(mut commands: Commands) {

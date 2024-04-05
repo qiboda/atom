@@ -17,7 +17,7 @@ impl GraphRef {
     }
 }
 
-#[derive(Debug, Component, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, Component, PartialEq, Eq, Clone, Hash, Reflect)]
 pub struct EffectPinKey {
     pub node: Entity,
     pub node_uuid: EffectNodeUuid,

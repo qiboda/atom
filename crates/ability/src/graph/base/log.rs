@@ -40,7 +40,7 @@ impl EffectNodeLogPlugin {
 
 ///////////////////////// Node Component /////////////////////////
 
-#[derive(Debug, Default, Component)]
+#[derive(Debug, Default, Component, Reflect)]
 pub struct EffectNodeLog {}
 
 impl_effect_node_pin_group!(EffectNodeLog,

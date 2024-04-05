@@ -25,10 +25,10 @@ use bevy::{
     input::ButtonInput, log::info, prelude::{
         App, BuildChildren, Commands, Component, DespawnRecursiveExt, Entity, EventWriter ,
         KeyCode, Query, Res, ResMut, Startup, Update, With,
-    }, DefaultPlugins
+    }, reflect::Reflect, DefaultPlugins
 };
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 struct Player;
 
 fn main() {

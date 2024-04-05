@@ -13,7 +13,7 @@ use super::{
 
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
-#[derive(Debug, Component, Default)]
+#[derive(Debug, Component, Default, Reflect)]
 pub struct TerrainData {
     /// entity is TerrainChunk
     pub data: HashMap<TerrainChunkCoord, Entity>,
@@ -32,7 +32,7 @@ impl TerrainData {
     }
 }
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Reflect)]
 pub struct Terrain;
 
 #[derive(Default, Debug)]

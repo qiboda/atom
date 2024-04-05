@@ -1,1 +1,0 @@
-pub const COMPLEX_SURFACE_THRESHOLD: f32 = 0.85;

@@ -7,7 +7,7 @@ use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::visible_range::VisibleTerrainRange;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Reflect)]
 pub struct TerrainSingleVisibleArea {
     pub center_chunk_coord: TerrainChunkCoord,
     pub cached_min_chunk_coord: TerrainChunkCoord,
@@ -32,7 +32,7 @@ impl TerrainSingleVisibleArea {
     }
 }
 
-#[derive(Debug, Default, Clone, Component)]
+#[derive(Debug, Default, Clone, Component, Reflect)]
 pub struct TerrainSingleVisibleAreaProxy {
     /// default is old
     pub terrain_single_visible_area_a: TerrainSingleVisibleArea,

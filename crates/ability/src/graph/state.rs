@@ -1,9 +1,9 @@
 use bevy::log::info;
-use bevy::prelude::{Commands, Component, DespawnRecursiveExt, Entity, Query};
+use bevy::prelude::*;
 
 use super::{context::EffectGraphContext, node::EffectNodeExecuteState};
 
-#[derive(Debug, Component, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Component, Default, PartialEq, Eq, Hash, Reflect)]
 pub enum EffectGraphState {
     #[default]
     Normal,

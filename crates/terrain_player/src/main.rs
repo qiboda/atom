@@ -102,13 +102,13 @@ fn startup(args: Res<Args>, mut player_order: ResMut<Orders>) {
     }
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Reflect)]
 pub struct Point;
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Reflect)]
 pub struct Line;
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Reflect)]
 pub struct Triangle;
 
 fn spawn_input_action(mut commands: Commands) {

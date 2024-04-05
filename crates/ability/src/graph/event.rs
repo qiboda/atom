@@ -99,7 +99,7 @@ impl EffectNodeEvent for EffectNodeResumeEvent {
  * Pending effect node.
  * Every effect node Pending this component.
  */
-#[derive(Resource, Debug, Default)]
+#[derive(Resource, Debug, Default, Reflect)]
 pub struct EffectNodePendingEvents {
     pub pending_check_can_start: Vec<Entity>,
     pub pending_start: Vec<Entity>,

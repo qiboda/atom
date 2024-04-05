@@ -32,6 +32,7 @@ mod contour_octree;
 mod mesh;
 mod sdf;
 mod tables;
+mod seam;
 
 use std::cell::RefCell;
 use std::sync::{Arc, RwLock};
@@ -61,7 +62,7 @@ use super::mesh::create_mesh;
 use super::mesh::mesh_cache::{MeshCache, TerrainChunkMesh};
 use super::surface::shape_surface::IsosurfaceContext;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Reflect)]
 pub enum DualContourState {
     #[default]
     BuildingOctree,

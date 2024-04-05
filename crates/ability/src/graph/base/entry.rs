@@ -36,7 +36,7 @@ impl Plugin for EffectNodeEntryPlugin {
 
 ///////////////////////// Node Component /////////////////////////
 
-#[derive(Debug, Default, Component)]
+#[derive(Debug, Default, Component, Reflect)]
 pub struct EffectNodeEntry;
 
 impl_effect_node_pin_group!(EffectNodeEntry,

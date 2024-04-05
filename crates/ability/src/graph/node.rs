@@ -4,14 +4,14 @@ use bevy::{prelude::*, reflect::reflect_trait, utils::Uuid};
 
 pub trait EffectNode {}
 
-#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Reflect)]
 pub enum EffectNodeTickState {
     #[default]
     Ticked,
     Paused,
 }
 
-#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Reflect)]
 pub enum EffectNodeExecuteState {
     #[default]
     Idle,
@@ -19,7 +19,7 @@ pub enum EffectNodeExecuteState {
 }
 
 /// use for deserialize and serialize
-#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct EffectNodeUuid {
     pub uuid: Uuid,
 }
@@ -37,14 +37,16 @@ pub struct EffectNodeExecGroup {
     pub pins: Vec<EffectNodePin>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Reflect)]
 pub struct EffectNodeExec {
     pub name: &'static str,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct EffectNodePin {
     pub name: &'static str,
+    #[reflect(ignore)]
+    #[reflect(default = "std::any::TypeId::of::<()>")]
     pub pin_type: TypeId,
 }
 

@@ -1,8 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use bevy::{
-    prelude::{Bundle, Component},
-    tasks::Task,
+    prelude::{Bundle, Component}, reflect::Reflect, tasks::Task
 };
 
 use crate::terrain::isosurface::mesh::mesh_cache::MeshCache;
@@ -15,9 +14,10 @@ pub struct DualContouring {
     pub mesh_cache: Arc<RwLock<MeshCache>>,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Reflect)]
 pub struct DualContouringTask {
     pub state: DualContourState,
+    #[reflect(ignore)]
     pub task: Option<Task<()>>,
 }
 

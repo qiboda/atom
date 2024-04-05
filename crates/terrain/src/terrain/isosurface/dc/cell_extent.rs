@@ -1,6 +1,6 @@
-use bevy::math::Vec3A;
+use bevy::{math::Vec3A, reflect::Reflect};
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Reflect)]
 pub struct CellExtent {
     min: Vec3A,
     max: Vec3A,

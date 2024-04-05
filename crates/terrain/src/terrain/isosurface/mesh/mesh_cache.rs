@@ -1,6 +1,5 @@
 use bevy::{
-    prelude::{debug, Component, Mesh, Vec3},
-    render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
+    prelude::{debug, Component, Mesh, Vec3}, reflect::Reflect, render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}
 };
 use bevy_xpbd_3d::{
     parry::{
@@ -13,7 +12,7 @@ use bevy_xpbd_3d::{
 #[derive(Debug, Clone, Copy, Component, Default)]
 pub struct TerrainChunkMesh;
 
-#[derive(Debug, Clone, Component, Default)]
+#[derive(Debug, Clone, Component, Default, Reflect)]
 pub struct MeshCache {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,

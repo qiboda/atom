@@ -9,6 +9,7 @@ use super::category::EcologyMaterial;
 
 pub mod first;
 
+#[reflect_trait]
 pub trait Sampler {
     fn sample(
         &self,
@@ -17,6 +18,7 @@ pub trait Sampler {
     ) -> Option<Arc<dyn EcologyMaterial>>;
 }
 
+#[reflect_trait]
 pub trait EcologyLayer: Sampler + Send + Sync + Debug {}
 
 #[derive(Debug, Component)]

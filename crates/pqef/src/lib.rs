@@ -4,11 +4,14 @@ pub mod math;
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-use bevy::math::{Mat3A, Vec3A};
+use bevy::{
+    math::{Mat3A, Vec3A},
+    reflect::Reflect,
+};
 
 type Pos3A = Vec3A;
 
-#[derive(Debug, Copy, Clone, PartialEq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Default, Reflect)]
 pub struct Quadric {
     /// a is a symmetric 3x3 matrix
     a00: f32,

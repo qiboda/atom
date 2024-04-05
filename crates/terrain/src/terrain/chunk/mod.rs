@@ -13,5 +13,5 @@ pub struct TerrainChunkBundle {
     pub visibility_bundle: VisibilityBundle,
 }
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Reflect)]
 pub struct TerrainChunk;

@@ -51,7 +51,7 @@ impl TimerNodeBundle {
     }
 }
 
-#[derive(Clone, Debug, Default, Component)]
+#[derive(Clone, Debug, Default, Component, Reflect)]
 pub struct EffectNodeTimer {
     pub elapse: Vec<f32>,
 }

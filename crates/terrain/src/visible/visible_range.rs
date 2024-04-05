@@ -1,6 +1,6 @@
-use bevy::prelude::{Component, Vec3};
+use bevy::{prelude::{Component, Vec3}, reflect::Reflect};
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Reflect)]
 pub struct VisibleTerrainRange {
     min: Vec3,
     max: Vec3,
