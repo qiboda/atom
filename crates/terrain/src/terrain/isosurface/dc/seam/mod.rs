@@ -12,5 +12,6 @@ pub(crate) struct SeamConnect {
 
 #[derive(Debug, Default, Resource)]
 pub(crate) struct AllSeams {
+    #[allow(dead_code)]
     pub(crate) seams: HashMap<SeamConnect, seam_octree::SeamOctree>,
 }

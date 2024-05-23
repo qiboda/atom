@@ -160,9 +160,9 @@ macro_rules! impl_effect_node_pin_group {
     };
 }
 
+#[allow(dead_code)]
 #[cfg(test)]
 mod tests {
-
     struct EffectNodeInput;
 
     impl_effect_node_pin_group!(EffectNodeInput, input => (

@@ -1,4 +1,4 @@
-use ability::attribute::{attribute_set::AttributeSet, modifier::AttributeModifier, Attribute};
+use ability::attribute::{attribute_set::AttributeSet, Attribute};
 use bevy::{prelude::Component, reflect::Reflect};
 
 #[derive(Debug, Default, Reflect)]
@@ -54,22 +54,22 @@ impl AttributeSet for BaseAttributeSet {
     }
 }
 
-struct HpModifier {
-    value: f32,
-}
-
-impl AttributeModifier for HpModifier {
-    type AttributeSetType = BaseAttributeSet;
-
-    fn receive_attribute_set(&self, attribute_set: &mut Self::AttributeSetType) {
-        *attribute_set.hp.get_value_mut() += self.value;
-    }
-}
-
 #[cfg(test)]
 mod test {
-    use crate::attribute::{BaseAttributeSet, BaseAttributeSetType, HpModifier};
+    use crate::attribute::{BaseAttributeSet, BaseAttributeSetType};
     use ability::attribute::attribute_set::AttributeSet;
+
+    struct HpModifier {
+        value: f32,
+    }
+
+    impl AttributeModifier for HpModifier {
+        type AttributeSetType = BaseAttributeSet;
+
+        fn receive_attribute_set(&self, attribute_set: &mut Self::AttributeSetType) {
+            *attribute_set.hp.get_value_mut() += self.value;
+        }
+    }
 
     #[test]
     fn test_attr() {

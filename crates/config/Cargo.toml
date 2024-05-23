@@ -11,5 +11,5 @@ bevy_common_assets = { workspace = true, features = ["toml"] }
 serde = { workspace = true }
 
 project ={ path = "../project" }
-toml = "0.8.8"
+toml = "0.8.13"
 serde_merge = "0.1.3"

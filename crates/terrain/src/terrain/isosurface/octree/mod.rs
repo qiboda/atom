@@ -7,7 +7,6 @@ use core::panic;
 
 use bevy::{math::bounding::Aabb3d, prelude::*, utils::HashMap};
 
-use bitflags::Flags;
 use pqef::Quadric;
 use strum::{EnumCount, IntoEnumIterator};
 use terrain_core::chunk::coords::TerrainChunkCoord;
@@ -18,7 +17,7 @@ use crate::terrain::{
 };
 
 use self::tables::{
-    AxisType, FaceIndex, AXIS_FACE_INDEX_PAIR, AXIS_VALUE_SUBCELL_INDICES, FACE_INDEX_TWINS,
+    AxisType, AXIS_VALUE_SUBCELL_INDICES,
     SUBCELL_FACES_NEIGHBOUR_PAIRS,
 };
 
@@ -204,6 +203,7 @@ struct FaceCells<'a> {
     pub axis_type: AxisType,
 }
 
+#[allow(dead_code)]
 struct EdgeCells<'a> {
     subcells: [&'a Cell; 4],
 }
@@ -220,7 +220,7 @@ fn cell_proc(octree: &Octree, parent_cell: &Cell, visiter: &impl DualContouringV
     }
 
     // 12 faces within subcell in one cell
-    for axis in 0..AxisType::COUNT {
+    (0..AxisType::COUNT).for_each(|axis| {
         for (left_cell_index, right_cell_index) in SUBCELL_FACES_NEIGHBOUR_PAIRS[axis] {
             let face_cells = FaceCells {
                 cells: [
@@ -232,10 +232,10 @@ fn cell_proc(octree: &Octree, parent_cell: &Cell, visiter: &impl DualContouringV
 
             face_proc(octree, &face_cells, visiter);
         }
-    }
+    });
 
     // 6 edges in one cell
-    for axis in 0..AxisType::COUNT {
+    (0..AxisType::COUNT).for_each(|axis| {
         for (cell_index_0, cell_index_1, cell_index_2, cell_index_3) in
             SUBCELL_EDGES_NEIGHBOUR_PAIRS[axis]
         {
@@ -247,7 +247,7 @@ fn cell_proc(octree: &Octree, parent_cell: &Cell, visiter: &impl DualContouringV
             ];
             edge_proc(octree, cells, visiter);
         }
-    }
+    });
 }
 
 /// get child cell or self
@@ -259,7 +259,7 @@ fn get_child_cell<'a>(octree: &'a Octree, cell: &'a Cell, subcell_index: SubCell
     }
 }
 
-fn face_proc(octree: &Octree, face_cells: &FaceCells, visiter: &impl DualContouringVisiter) {
+fn face_proc(octree: &Octree, face_cells: &FaceCells, _visiter: &impl DualContouringVisiter) {
     // face proc
     // 4 faces in one face
     match (face_cells.cells[0].cell_type, face_cells.cells[1].cell_type) {
@@ -277,7 +277,7 @@ fn face_proc(octree: &Octree, face_cells: &FaceCells, visiter: &impl DualContour
                     cells: [subcell_0, subcell_1],
                     axis_type: face_cells.axis_type,
                 };
-                face_proc(octree, &child_face_cells, visiter);
+                face_proc(octree, &child_face_cells, _visiter);
             }
         }
         (CellType::RealLeaf | CellType::PseudoLeaf, CellType::RealLeaf | CellType::PseudoLeaf) => {}
@@ -287,4 +287,4 @@ fn face_proc(octree: &Octree, face_cells: &FaceCells, visiter: &impl DualContour
 }
 
 //
-fn edge_proc(octree: &Octree, cells: [&Cell; 4], visiter: &impl DualContouringVisiter) {}
+fn edge_proc(_octree: &Octree, _cells: [&Cell; 4], _visiter: &impl DualContouringVisiter) {}

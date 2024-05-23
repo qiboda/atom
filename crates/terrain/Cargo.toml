@@ -11,8 +11,8 @@ edition = "2021"
 bevy = { workspace = true }
 serde = { workspace = true }
 
-strum = { version = "0.26.1", features = ["derive", "strum_macros"] }
-strum_macros = "0.26.1"
+strum = { version = "0.26.2", features = ["derive", "strum_macros"] }
+strum_macros = "0.26.2"
 pqef = { path = "../pqef" }
 project = { path = "../project" }
 terrain_player_client = { path = "../terrain_player_client" }
@@ -20,8 +20,8 @@ terrain_core = { path = "../terrain_core" }
 config = { path = "../config" }
 
 rand = "0.8.5"
-smallvec = "1.13.0"
-futures-lite = "2.2.0"
+smallvec = "1.13.2"
+futures-lite = "2.3.0"
 
 noisy_bevy = "0.6.0"
 
@@ -41,16 +41,16 @@ tracing-subscriber = { version = "0.3.18", features = [
     "json",
     "local-time",
 ] }
-tracing-chrome = { version = "0.7.1", optional = true }
+tracing-chrome = { version = "0.7.2", optional = true }
 tracing-tracy = { version = "0.11.0", optional = true }
 tracing-log = "0.2.0"
 tracing-error = { version = "0.2.0", optional = true }
 tracy-client = { version = "0.17.0", optional = true }
 tracing-appender = { version = "0.2.3", features = [] }
-serde_json = "1.0.111"
+serde_json = "1.0.117"
 bevy-inspector-egui = "0.23.4"
-bitflags = "2.4.2"
-bitfield-struct = "0.6.0"
+bitflags = "2.5.0"
+bitfield-struct = "0.6.1"
 
 [features]
 default = ["trace_tracy"]
