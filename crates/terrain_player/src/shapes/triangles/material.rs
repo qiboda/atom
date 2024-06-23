@@ -1,4 +1,5 @@
-use bevy::render::mesh::PrimitiveTopology;
+use bevy::color::LinearRgba;
+use bevy::render::mesh::{MeshVertexBufferLayoutRef, PrimitiveTopology};
 use bevy::render::render_resource::PolygonMode;
 use bevy::{
     asset::Asset,
@@ -11,13 +12,13 @@ use super::plugin::TRIANGLES_SHADER_HANDLE;
 
 #[derive(Debug, Clone, Copy, ShaderType)]
 pub struct TriangleShaderSettings {
-    pub color: Color,
+    pub color: LinearRgba,
 }
 
 impl Default for TriangleShaderSettings {
     fn default() -> Self {
         Self {
-            color: Color::GREEN,
+            color: LinearRgba::GREEN,
         }
     }
 }
@@ -40,7 +41,7 @@ impl Material for TriangleMaterial {
     fn specialize(
         _pipeline: &bevy::pbr::MaterialPipeline<Self>,
         descriptor: &mut bevy::render::render_resource::RenderPipelineDescriptor,
-        layout: &bevy::render::mesh::MeshVertexBufferLayout,
+        layout: &MeshVertexBufferLayoutRef,
         _key: bevy::pbr::MaterialPipelineKey<Self>,
     ) -> Result<(), bevy::render::render_resource::SpecializedMeshPipelineError> {
         descriptor.primitive.cull_mode = None;
@@ -49,7 +50,7 @@ impl Material for TriangleMaterial {
 
         let vertex_attributes = vec![Mesh::ATTRIBUTE_POSITION.at_shader_location(0)];
 
-        let vertex_layout = layout.get_layout(&vertex_attributes)?;
+        let vertex_layout = layout.0.get_layout(&vertex_attributes)?;
         descriptor.vertex.buffers = vec![vertex_layout];
 
         Ok(())

@@ -1,14 +1,13 @@
-use bevy::render::render_resource::ShaderRef;
+use bevy::render::render_resource::{AsBindGroup, ShaderRef};
 use bevy::{
     pbr::{ExtendedMaterial, MaterialExtension},
     prelude::*,
-    render::render_resource::AsBindGroup,
 };
 
 #[derive(AsBindGroup, Clone, Default, Asset, Reflect)]
 pub struct TerrainMaterial {
     #[uniform(100)]
-    pub(crate) base_color: Color,
+    pub(crate) base_color: LinearRgba,
 }
 
 impl MaterialExtension for TerrainMaterial {

@@ -1,4 +1,7 @@
-use bevy::{prelude::*, render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}};
+use bevy::{
+    prelude::*,
+    render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct LineMesh {
@@ -18,7 +21,7 @@ impl From<LineMesh> for Mesh {
                 line_mesh
                     .colors
                     .iter()
-                    .map(|c| c.as_rgba_f32())
+                    .map(|c| c.to_linear().to_f32_array())
                     .collect::<Vec<[f32; 4]>>(),
             );
 

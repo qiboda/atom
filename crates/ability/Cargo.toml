@@ -10,9 +10,11 @@ bevy = { workspace = true }
 # bevy-trait-query = "0.4.0"
 # bevy-trait-query-impl = "0.4.0"
 once_cell = { workspace = true }
-smallvec = "1.13.2"
+smallvec = { workspace = true }
 layertag = { path = "../layertag" }
 paste = "1.0.15"
+uuid = "1.8.0"
+eval = "0.4.3"
 
 [[example]]
 name = "ability"

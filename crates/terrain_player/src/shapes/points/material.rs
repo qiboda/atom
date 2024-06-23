@@ -1,10 +1,11 @@
+use bevy::color::LinearRgba;
 use bevy::log::warn;
 use bevy::render::mesh::PrimitiveTopology;
 use bevy::render::render_resource::PolygonMode;
 use bevy::{
     asset::Asset,
     pbr::{MAX_CASCADES_PER_LIGHT, MAX_DIRECTIONAL_LIGHTS},
-    prelude::{AlphaMode, Color, Material, Mesh},
+    prelude::{AlphaMode, Material, Mesh},
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderDefVal, ShaderType},
 };
@@ -15,7 +16,7 @@ use super::plugin::POINT_SHADER_HANDLE;
 pub struct PointsShaderSettings {
     pub point_size: f32,
     pub opacity: f32,
-    pub color: Color,
+    pub color: LinearRgba,
 }
 
 impl Default for PointsShaderSettings {
@@ -23,7 +24,7 @@ impl Default for PointsShaderSettings {
         Self {
             point_size: 0.01,
             opacity: 1.0,
-            color: Color::default(),
+            color: LinearRgba::WHITE,
         }
     }
 }
@@ -90,7 +91,7 @@ impl Material for PointsMaterial {
     fn specialize(
         _pipeline: &bevy::pbr::MaterialPipeline<Self>,
         descriptor: &mut bevy::render::render_resource::RenderPipelineDescriptor,
-        layout: &bevy::render::mesh::MeshVertexBufferLayout,
+        layout: &bevy::render::mesh::MeshVertexBufferLayoutRef,
         key: bevy::pbr::MaterialPipelineKey<Self>,
     ) -> Result<(), bevy::render::render_resource::SpecializedMeshPipelineError> {
         descriptor.primitive.cull_mode = None;
@@ -113,7 +114,7 @@ impl Material for PointsMaterial {
             MAX_CASCADES_PER_LIGHT as u32,
         ));
 
-        if key.bind_group_data.use_vertex_color && layout.contains(Mesh::ATTRIBUTE_COLOR) {
+        if key.bind_group_data.use_vertex_color && layout.0.contains(Mesh::ATTRIBUTE_COLOR) {
             shader_defs.push(ShaderDefVal::from("VERTEX_COLORS"));
             vertex_attributes.push(Mesh::ATTRIBUTE_COLOR.at_shader_location(2));
         }
@@ -125,7 +126,7 @@ impl Material for PointsMaterial {
             shader_defs.push(ShaderDefVal::from("POINT_SHAPE_CIRCLE"));
         }
 
-        let vertex_layout = layout.get_layout(&vertex_attributes)?;
+        let vertex_layout = layout.0.get_layout(&vertex_attributes)?;
         descriptor.vertex.buffers = vec![vertex_layout];
         descriptor.vertex.shader_defs.clone_from(&shader_defs);
         if let Some(fragment) = &mut descriptor.fragment {

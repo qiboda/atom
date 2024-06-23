@@ -1,11 +1,10 @@
 pub mod camera;
-pub mod log;
 pub mod terrain;
 pub mod ui;
 pub mod visible;
 pub mod window;
 
-use crate::log::CustomLogPlugin;
+use bevy::asset::AssetMetaCheck;
 use bevy::core::TaskPoolThreadAssignmentPolicy;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings};
@@ -23,16 +22,17 @@ use bevy::{
         RenderPlugin,
     },
 };
-use bevy_obj::ObjPlugin;
-use bevy_xpbd_3d::plugins::PhysicsPlugins;
+// use bevy_obj::ObjPlugin;
+// use bevy_xpbd_3d::plugins::PhysicsPlugins;
 use config::plugin::SettingsPlugin;
+use log_layers::{file_layer, LogLayersPlugin};
 use terrain::settings::{TerrainChunkSettings, TerrainClipMapSettings};
+use terrain_player_client::trace::terrain_layer;
 
 use crate::window::toggle_vsync;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+// use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use camera::CameraControllerPlugin;
 use terrain::{settings::TerrainSettings, TerrainPlugin};
-use terrain_player_client::trace::TerrainTracePlugin;
 use ui::FrameUIPlugin;
 use visible::visible_range::VisibleTerrainRange;
 
@@ -43,6 +43,11 @@ pub fn bevy_entry() -> App {
         chunk_settings: TerrainChunkSettings { chunk_size: 16.0 },
         clipmap_settings: TerrainClipMapSettings::default(),
     })
+    .add_plugins(
+        LogLayersPlugin::default()
+            .add_layer(terrain_layer)
+            .add_layer(file_layer::file_layer),
+    )
     .add_plugins((
         DefaultPlugins
             .set(RenderPlugin {
@@ -57,6 +62,7 @@ pub fn bevy_entry() -> App {
                 processed_file_path: "".to_string(),
                 watch_for_changes_override: Some(false),
                 mode: AssetMode::Unprocessed,
+                meta_check: AssetMetaCheck::Never,
             })
             .set(TaskPoolPlugin {
                 task_pool_options: TaskPoolOptions {
@@ -68,14 +74,15 @@ pub fn bevy_entry() -> App {
                     ..default()
                 },
             })
-            .disable::<LogPlugin>(),
-        ObjPlugin,
-        TerrainTracePlugin,
-        CustomLogPlugin::default(),
+            .set(LogPlugin {
+                custom_layer: LogLayersPlugin::get_layer,
+                ..default()
+            }),
+        // ObjPlugin,
         WireframePlugin,
-        WorldInspectorPlugin::new(),
+        // WorldInspectorPlugin::new(),
         SettingsPlugin::<TerrainSettings>::default(),
-        PhysicsPlugins::default(),
+        // PhysicsPlugins::default(),
     ))
     .add_plugins(CameraControllerPlugin)
     .add_plugins(TerrainPlugin)
@@ -97,15 +104,16 @@ fn startup(
 ) {
     wireframe_config.global = true;
 
-    commands.insert_resource(ClearColor(Color::rgb(0.3, 0.2, 0.1)));
+    commands.insert_resource(ClearColor(LinearRgba::new(0.3, 0.2, 0.1, 1.0).into()));
     commands.insert_resource(Msaa::Sample4);
     commands.insert_resource(AmbientLight {
-        color: Color::Rgba {
+        color: LinearRgba {
             red: 1.0,
             green: 1.0,
             blue: 1.0,
             alpha: 1.0,
-        },
+        }
+        .into(),
         brightness: 0.3,
     });
 
@@ -156,6 +164,6 @@ fn startup(
 
 fn exit_game(keyboard_input: Res<ButtonInput<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
     if keyboard_input.just_released(KeyCode::Escape) {
-        app_exit_events.send(AppExit);
+        app_exit_events.send(AppExit::Success);
     }
 }

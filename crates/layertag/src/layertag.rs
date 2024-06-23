@@ -3,7 +3,11 @@ use std::{
     ops::{ControlFlow, Deref, DerefMut},
 };
 
-use bevy::reflect::{reflect_trait, FromReflect, Reflect, TypePath};
+use bevy::reflect::{
+    reflect_trait, utility::NonGenericTypeInfoCell, FromReflect, FromType, GetTypeRegistration,
+    Reflect, ReflectFromPtr, ReflectFromReflect, TypeInfo, TypePath, TypeRegistration, Typed,
+    ValueInfo,
+};
 
 use crate::tag::Tag;
 
@@ -145,6 +149,10 @@ impl Reflect for Box<dyn LayerTag> {
         self.deref_mut().as_reflect_mut()
     }
 
+    fn try_apply(&mut self, value: &dyn Reflect) -> Result<(), bevy::reflect::ApplyError> {
+        self.deref_mut().try_apply(value)
+    }
+
     fn apply(&mut self, value: &dyn Reflect) {
         self.deref_mut().apply(value)
     }
@@ -190,6 +198,24 @@ impl FromReflect for Box<dyn LayerTag> {
     fn from_reflect(reflect: &dyn Reflect) -> Option<Self> {
         let v = reflect.downcast_ref::<Box<dyn LayerTag>>()?;
         Some(v.box_clone())
+    }
+}
+
+impl Typed for Box<dyn LayerTag> {
+    fn type_info() -> &'static TypeInfo {
+        static CELL: NonGenericTypeInfoCell = NonGenericTypeInfoCell::new();
+        CELL.get_or_set(|| TypeInfo::Value(ValueInfo::new::<Self>()))
+    }
+}
+
+impl GetTypeRegistration for Box<dyn LayerTag> {
+    fn get_type_registration() -> TypeRegistration {
+        let mut registration = TypeRegistration::of::<Box<dyn LayerTag>>();
+        // registration.insert::<ReflectDeserialize>(FromType::<Self>::from_type());
+        registration.insert::<ReflectFromPtr>(FromType::<Self>::from_type());
+        // registration.insert::<ReflectSerialize>(FromType::<Self>::from_type());
+        registration.insert::<ReflectFromReflect>(FromType::<Self>::from_type());
+        registration
     }
 }
 

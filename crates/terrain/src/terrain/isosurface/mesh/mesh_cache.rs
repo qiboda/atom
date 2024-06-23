@@ -1,13 +1,13 @@
 use bevy::{
     prelude::{debug, Component, Mesh, Vec3}, reflect::Reflect, render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}
 };
-use bevy_xpbd_3d::{
-    parry::{
-        math::{Point, Real},
-        shape::SharedShape,
-    },
-    prelude::Collider,
-};
+// use bevy_xpbd_3d::{
+//     parry::{
+//         math::{Point, Real},
+//         shape::SharedShape,
+//     },
+//     prelude::Collider,
+// };
 
 #[derive(Debug, Clone, Copy, Component, Default)]
 pub struct TerrainChunkMesh;
@@ -81,25 +81,25 @@ impl From<&MeshCache> for Mesh {
     }
 }
 
-impl From<&MeshCache> for Collider {
-    fn from(mesh_cache: &MeshCache) -> Self {
-        mesh_cache.check();
+// impl From<&MeshCache> for Collider {
+//     fn from(mesh_cache: &MeshCache) -> Self {
+//         mesh_cache.check();
 
-        let mut vertices: Vec<Point<Real>> =
-            Vec::with_capacity(mesh_cache.get_vertice_positions().len());
-        let mut indices: Vec<[u32; 3]> = Vec::with_capacity(mesh_cache.get_indices().len() / 3);
+//         let mut vertices: Vec<Point<Real>> =
+//             Vec::with_capacity(mesh_cache.get_vertice_positions().len());
+//         let mut indices: Vec<[u32; 3]> = Vec::with_capacity(mesh_cache.get_indices().len() / 3);
 
-        mesh_cache
-            .get_vertice_positions()
-            .iter()
-            .for_each(|vertex| {
-                vertices.push(Point::from_slice(&[vertex.x, vertex.y, vertex.z]));
-            });
+//         mesh_cache
+//             .get_vertice_positions()
+//             .iter()
+//             .for_each(|vertex| {
+//                 vertices.push(Point::from_slice(&[vertex.x, vertex.y, vertex.z]));
+//             });
 
-        for index in mesh_cache.get_indices().chunks(3) {
-            indices.push(index.try_into().unwrap());
-        }
+//         for index in mesh_cache.get_indices().chunks(3) {
+//             indices.push(index.try_into().unwrap());
+//         }
 
-        Collider::from(SharedShape::trimesh(vertices, indices))
-    }
-}
+//         Collider::from(SharedShape::trimesh(vertices, indices))
+//     }
+// }

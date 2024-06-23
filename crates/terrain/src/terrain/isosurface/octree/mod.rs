@@ -286,5 +286,5 @@ fn face_proc(octree: &Octree, face_cells: &FaceCells, _visiter: &impl DualContou
     // 4 edges in one face
 }
 
-//
+
 fn edge_proc(_octree: &Octree, _cells: [&Cell; 4], _visiter: &impl DualContouringVisiter) {}

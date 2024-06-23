@@ -7,7 +7,7 @@ pub(crate) struct ValueAttribute {
 }
 
 impl Attribute for ValueAttribute {
-    fn get_value(&self) -> &f32 {
+    fn get_value(&self) -> f32 {
         &self.value
     }
 

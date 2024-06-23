@@ -22,7 +22,7 @@ fn add_frame_ui(mut commands: Commands) {
                         value: "fps: ".to_string(),
                         style: TextStyle {
                             font_size: 60.0,
-                            color: Color::BLUE,
+                            color: LinearRgba::BLUE.into(),
                             ..default()
                         },
                     },
@@ -30,7 +30,7 @@ fn add_frame_ui(mut commands: Commands) {
                         value: "".to_string(),
                         style: TextStyle {
                             font_size: 60.0,
-                            color: Color::RED,
+                            color: LinearRgba::RED.into(),
                             ..default()
                         },
                     },
@@ -38,7 +38,7 @@ fn add_frame_ui(mut commands: Commands) {
                         value: "frame count: ".to_string(),
                         style: TextStyle {
                             font_size: 60.0,
-                            color: Color::BLUE,
+                            color: LinearRgba::BLUE.into(),
                             ..default()
                         },
                     },
@@ -46,7 +46,7 @@ fn add_frame_ui(mut commands: Commands) {
                         value: "".to_string(),
                         style: TextStyle {
                             font_size: 60.0,
-                            color: Color::GREEN,
+                            color: LinearRgba::GREEN.into(),
                             ..default()
                         },
                     },
@@ -54,7 +54,7 @@ fn add_frame_ui(mut commands: Commands) {
                         value: "".to_string(),
                         style: TextStyle {
                             font_size: 60.0,
-                            color: Color::GREEN,
+                            color: LinearRgba::GREEN.into(),
                             ..default()
                         },
                     },

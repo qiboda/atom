@@ -22,10 +22,14 @@ use attribute::BaseAttributeSet;
 use base_attack::EffectNodeGraphBaseAttack;
 
 use bevy::{
-    input::ButtonInput, log::info, prelude::{
-        App, BuildChildren, Commands, Component, DespawnRecursiveExt, Entity, EventWriter ,
-        KeyCode, Query, Res, ResMut, Startup, Update, With,
-    }, reflect::Reflect, DefaultPlugins
+    input::ButtonInput,
+    log::info,
+    prelude::{
+        App, BuildChildren, Commands, Component, DespawnRecursiveExt, Entity, EventWriter, KeyCode,
+        Query, Res, ResMut, Startup, Update, With,
+    },
+    reflect::Reflect,
+    DefaultPlugins,
 };
 
 #[derive(Component, Reflect)]

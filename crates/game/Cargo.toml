@@ -1,0 +1,12 @@
+[package]
+name = "game"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { workspace = true }
+# serde = { workspace = true }
+smallvec = { workspace = true }
+
+project = { path = "../project" }
+ability = { path = "../ability" }

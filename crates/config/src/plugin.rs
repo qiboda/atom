@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_common_assets::toml::TomlAssetPlugin;
+// use bevy_common_assets::toml::TomlAssetPlugin;
 
 use crate::load::{
     is_load_setting, refresh_final_settings, startup_load_settings, SettingLoadStageWrap,
@@ -25,7 +25,8 @@ where
     fn build(&self, app: &mut App) {
         let extension = SettingsPath::<S>::extension();
 
-        app.add_plugins(TomlAssetPlugin::<S>::new(&[extension.leak()]))
+        app
+            // .add_plugins(TomlAssetPlugin::<S>::new(&[extension.leak()]))
             .insert_resource(self.paths.clone())
             .init_resource::<SettingsHandle<S>>()
             .init_resource::<SettingLoadStageWrap<S>>()

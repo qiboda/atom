@@ -1,31 +1,42 @@
 pub mod terrain_tracing;
 
 use crate::order::{LineData, OrderType, TriangleData, VertexData};
-use bevy::{prelude::*, utils::tracing};
+use bevy::{log::BoxedLayer, prelude::*, utils::tracing};
+use log_layers::LogLayerRes;
+use project::project_saved_root_path;
 use serde_json::json;
 use terrain_core::chunk::coords::TerrainChunkCoord;
+use terrain_tracing::TerrainLayer;
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
+use tracing_subscriber::{EnvFilter, Layer};
 
-pub struct TerrainTracePlugin;
+const TERRAIN_TRACE_TARGET: &str = "terrain_trace";
 
-// 改为写在log初始化之前。
-impl Plugin for TerrainTracePlugin {
-    fn build(&self, _app: &mut App) {
+pub fn terrain_layer(app: &mut App) -> Option<BoxedLayer> {
+    let saved_path = project_saved_root_path();
 
-        // let filter = EnvFilter::new(TERRAIN_TRACE_TARGET.to_owned() + "=trace");
-        //
-        // let trace_path = project_saved_root_path().join("trace");
-        // let appender = tracing_appender::rolling::never(trace_path, "trace");
-        // let (non_blocking, _guard) = tracing_appender::non_blocking(appender);
-        //
-        // let fmt = tracing_subscriber::fmt()
-        //     .with_writer(non_blocking)
-        //     .with_env_filter(filter);
-        //
-        // let _ = tracing_subscriber::registry().with_subscriber(fmt);
-    }
+    let terrain_filter = EnvFilter::new(TERRAIN_TRACE_TARGET.to_owned() + "=trace");
+
+    let trace_path = saved_path.join("trace");
+    let appender = RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .filename_prefix("terrain_trace")
+        .build(trace_path)
+        .unwrap();
+    let (non_blocking, terrain_worker_guard) = tracing_appender::non_blocking(appender);
+    let terrain_layer = TerrainLayer::new()
+        .with_pretty(false)
+        .with_writer(non_blocking)
+        .with_filter(terrain_filter);
+
+    let mut log_layer_res = app
+        .world_mut()
+        .get_resource_mut::<LogLayerRes>()
+        .expect("log layer res is None");
+    log_layer_res.worker_guard_vec.push(terrain_worker_guard);
+
+    Some(terrain_layer.boxed())
 }
-
-pub const TERRAIN_TRACE_TARGET: &str = "terrain_trace";
 
 #[macro_export]
 macro_rules! terrain_trace_span {

@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use bevy::{math::Vec3A, pbr::wireframe::Wireframe, prelude::*};
-use bevy_xpbd_3d::prelude::{Collider, RigidBody};
+// use bevy_xpbd_3d::prelude::{Collider, RigidBody};
 
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
@@ -52,18 +52,18 @@ pub fn create_mesh(
                         ..default()
                     },
                     extension: TerrainMaterial {
-                        base_color: Color::WHITE,
+                        base_color: Color::WHITE.into(),
                     },
                 })
             }
             None => {
                 material = materials.add(TerrainExtendedMaterial {
                     base: StandardMaterial {
-                        base_color: Color::BLUE,
+                        base_color: LinearRgba::BLUE.into(),
                         ..default()
                     },
                     extension: TerrainMaterial {
-                        base_color: Color::BLUE,
+                        base_color: LinearRgba::BLUE.into(),
                     },
                 })
             }
@@ -89,8 +89,8 @@ pub fn create_mesh(
                     transform: Transform::from_translation(Vec3::splat(0.0)),
                     ..Default::default()
                 },
-                RigidBody::Static,
-                Collider::from(&*mesh_cache),
+                // RigidBody::Static,
+                // Collider::from(&*mesh_cache),
                 Wireframe,
                 TerrainChunkMesh,
             ))

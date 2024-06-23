@@ -13,5 +13,5 @@ pub mod tag;
 pub struct LayerTagPlugin;
 
 impl Plugin for LayerTagPlugin {
-    fn build(&self, _app: &mut App) {}
+    fn build(&self, app: &mut App) {}
 }

@@ -20,6 +20,7 @@ use crate::{
 
 ///////////////////////// Plugin /////////////////////////
 
+/// 类似于添加buff等效果。
 #[derive(Debug, Default)]
 pub struct EffectNodeGrantEffectPlugin {}
 

@@ -1,6 +1,7 @@
 use std::any::TypeId;
 
-use bevy::{prelude::*, reflect::reflect_trait, utils::Uuid};
+use bevy::{prelude::*, reflect::reflect_trait};
+use uuid::Uuid;
 
 pub trait EffectNode {}
 

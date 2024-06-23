@@ -1,6 +1,6 @@
 use bevy::{
     prelude::{Bundle, VisibilityBundle},
-    transform::TransformBundle,
+    transform::bundles::TransformBundle,
 };
 
 use super::terrain_data::TerrainData;

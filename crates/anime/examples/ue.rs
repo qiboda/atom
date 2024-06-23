@@ -1,7 +1,7 @@
 use std::env;
 
 use bevy::prelude::*;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+// use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
     // set env variable for asset path when debugging
@@ -10,7 +10,7 @@ fn main() {
 
     let mut app = App::new();
     app.add_plugins(DefaultPlugins)
-        .add_plugins(WorldInspectorPlugin::new())
+        // .add_plugins(WorldInspectorPlugin::new())
         .init_resource::<AnimationClipSet>()
         .add_systems(Startup, start_up)
         .add_systems(Update, (play_animation, names))
@@ -70,9 +70,7 @@ fn play_animation(
     if input.just_pressed(KeyCode::KeyS) {
         info!("player num: {}", query.iter_mut().len());
         for mut player in query.iter_mut() {
-            player
-                .play(animation_clip_set.0.first().unwrap().clone())
-                .repeat();
+            // player.play(0).repeat();
         }
     }
 }

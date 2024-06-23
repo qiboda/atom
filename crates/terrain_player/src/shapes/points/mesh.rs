@@ -1,8 +1,11 @@
 use bevy::{
+    color::ColorToComponents,
     math::Vec2,
     prelude::{Color, Mesh, Vec3},
     render::{
-        mesh::{Indices, VertexAttributeValues}, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology
+        mesh::{Indices, VertexAttributeValues},
+        render_asset::RenderAssetUsages,
+        render_resource::PrimitiveTopology,
     },
 };
 
@@ -38,7 +41,10 @@ impl From<PointsMesh> for Mesh {
                 .collect(),
         );
 
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::MAIN_WORLD);
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::MAIN_WORLD,
+        );
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
         if let Some(color) = m.colors {
@@ -47,7 +53,7 @@ impl From<PointsMesh> for Mesh {
                 color
                     .iter()
                     .flat_map(|c| {
-                        let arr = c.as_rgba_f32();
+                        let arr = c.to_linear().to_f32_array();
                         [arr, arr, arr, arr]
                     })
                     .collect::<Vec<[f32; 4]>>(),

@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bevy = { workspace = true }
-bevy-inspector-egui = "0.23.4"
+# bevy-inspector-egui = "0.23.4"
 
 [[example]]
 name = "ue"
