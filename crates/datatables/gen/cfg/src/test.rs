@@ -9,7 +9,10 @@
 
 
 use super::*;
+use luban_lib::*;
 use serde::Deserialize;
+use bevy::prelude::*;
+use bevy::asset::AsyncReadExt;
 
 bitflags::bitflags!{    
     #[derive(Debug, Hash, Eq, PartialEq)]
@@ -19,7 +22,7 @@ bitflags::bitflags!{
         const TRUNCATE = 4;
         const NEW = 8;
         ///位标记使用示例
-        const READ_WRITE = WRITE|READ;
+        const READ_WRITE = 3;
     }
 }
 #[derive(Debug)]
@@ -35,14 +38,16 @@ pub struct TestExcelBean1 {
 }
 
 impl TestExcelBean1{
-    pub fn new(json: &serde_json::Value) -> Result<TestExcelBean1, LubanError> {
-        let x1 = (json["x1"].as_i64().unwrap() as i32);
-        let x2 = json["x2"].as_str().unwrap().to_string();
-        let x3 = (json["x3"].as_i64().unwrap() as i32);
-        let x4 = (json["x4"].as_f64().unwrap() as f32);
+    pub fn new(mut buf: &mut ByteBuf) -> Result<TestExcelBean1, LubanError> {
+        let x1 = buf.read_int();
+        let x2 = buf.read_string();
+        let x3 = buf.read_int();
+        let x4 = buf.read_float();
         
         Ok(TestExcelBean1 { x1, x2, x3, x4, })
     }
+
+    pub const __ID__: i32 = -1738345160;
 }
 
 #[derive(Debug)]
@@ -56,13 +61,15 @@ pub struct TestExcelBean2 {
 }
 
 impl TestExcelBean2{
-    pub fn new(json: &serde_json::Value) -> Result<TestExcelBean2, LubanError> {
-        let y1 = (json["y1"].as_i64().unwrap() as i32);
-        let y2 = json["y2"].as_str().unwrap().to_string();
-        let y3 = (json["y3"].as_f64().unwrap() as f32);
+    pub fn new(mut buf: &mut ByteBuf) -> Result<TestExcelBean2, LubanError> {
+        let y1 = buf.read_int();
+        let y2 = buf.read_string();
+        let y3 = buf.read_float();
         
         Ok(TestExcelBean2 { y1, y2, y3, })
     }
+
+    pub const __ID__: i32 = -1738345159;
 }
 
 #[derive(Debug)]
@@ -70,11 +77,11 @@ pub struct Shape {
 }
 
 impl Shape {
-    pub fn new(json: &serde_json::Value) -> Result<std::sync::Arc<AbstractBase>, LubanError> {
-        let type_id = json["$type"].as_str().unwrap();
+    pub fn new(mut buf: &mut ByteBuf) -> Result<std::sync::Arc<AbstractBase>, LubanError> {
+        let type_id = buf.read_int();
         match type_id {
-            "Circle" => Ok(std::sync::Arc::new(crate::test::Circle::new(json)?)),
-            "Rectangle" => Ok(std::sync::Arc::new(crate::test::Rectangle::new(json)?)),
+            crate::test::Circle::__ID__ => Ok(std::sync::Arc::new(crate::test::Circle::new(buf)?)),
+            crate::test::Rectangle::__ID__ => Ok(std::sync::Arc::new(crate::test::Rectangle::new(buf)?)),
             _ => Err(LubanError::Bean(format!("Invalid type for Shape:{}", type_id)))
         }
     }
@@ -100,7 +107,7 @@ impl<'a> GetBase<'a, &'a dyn crate::test::TShape> for AbstractBase {
             return Ok(r);
         }
 
-        Err(LubanError::Polymorphic(format!("Invalid type for Shape")))
+        Err(LubanError::Polymorphic("Invalid type for Shape".to_string()))
     }
 }
 
@@ -112,11 +119,13 @@ pub struct Circle {
 }
 
 impl Circle{
-    pub fn new(json: &serde_json::Value) -> Result<Circle, LubanError> {
-        let radius = (json["radius"].as_f64().unwrap() as f32);
+    pub fn new(mut buf: &mut ByteBuf) -> Result<Circle, LubanError> {
+        let radius = buf.read_float();
         
         Ok(Circle { radius, })
     }
+
+    pub const __ID__: i32 = 2131829196;
 }
 
 #[derive(Debug)]
@@ -129,12 +138,14 @@ pub struct Rectangle {
 }
 
 impl Rectangle{
-    pub fn new(json: &serde_json::Value) -> Result<Rectangle, LubanError> {
-        let width = (json["width"].as_f64().unwrap() as f32);
-        let height = (json["height"].as_f64().unwrap() as f32);
+    pub fn new(mut buf: &mut ByteBuf) -> Result<Rectangle, LubanError> {
+        let width = buf.read_float();
+        let height = buf.read_float();
         
         Ok(Rectangle { width, height, })
     }
+
+    pub const __ID__: i32 = -31893773;
 }
 
 

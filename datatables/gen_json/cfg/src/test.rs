@@ -10,6 +10,8 @@
 
 use super::*;
 use serde::Deserialize;
+use bevy::prelude::*;
+use bevy::asset::AsyncReadExt;
 
 bitflags::bitflags!{    
     #[derive(Debug, Hash, Eq, PartialEq)]
@@ -19,7 +21,7 @@ bitflags::bitflags!{
         const TRUNCATE = 4;
         const NEW = 8;
         ///位标记使用示例
-        const READ_WRITE = WRITE|READ;
+        const READ_WRITE = 3;
     }
 }
 #[derive(Debug)]
@@ -100,7 +102,7 @@ impl<'a> GetBase<'a, &'a dyn crate::test::TShape> for AbstractBase {
             return Ok(r);
         }
 
-        Err(LubanError::Polymorphic(format!("Invalid type for Shape")))
+        Err(LubanError::Polymorphic("Invalid type for Shape".to_string()))
     }
 }
 

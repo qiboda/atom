@@ -1,0 +1,84 @@
+﻿pub mod prelude{
+    pub use crate::*;
+{{~ for ns in __ns ~}}
+    pub use {{ns}}::*;
+{{~end~}}
+}
+
+{{~ for ns in __ns ~}}
+use {{ns}}::*;
+{{~end~}}
+use bevy::asset::AssetApp;
+
+{{~ if __polymorphic_beans.count != 0 ~}}
+
+type AbstractBase = dyn std::any::Any + Sync + Send;
+
+pub trait GetBase<'a, T> {
+    fn get_base(&'a self) -> Result<T, LubanError>;
+}
+{{~end~}}
+
+#[derive(Debug)]
+pub enum LubanError {
+    Loader(String),
+    Table(String),
+    Bean(String),
+    Polymorphic(String),
+    Unknown(String),
+}
+
+impl std::error::Error for LubanError {}
+
+impl std::fmt::Display for LubanError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            LubanError::Loader(msg) |
+            LubanError::Table(msg) |
+            LubanError::Bean(msg) |
+            LubanError::Polymorphic(msg) |
+            LubanError::Unknown(msg) => msg,
+        })
+    }
+}
+    
+#[derive(Debug, thiserror::Error)]
+pub enum TableLoaderError {
+    #[error("serde json error: {0}")]
+    SerdeJsonError(#[from] serde_json::error::Error),
+    #[error("io error: {0}")]
+    IOError(#[from] std::io::Error),
+    #[error("luban error: {0}")]
+    LubanError(#[from] LubanError),
+}
+
+#[derive(Debug, bevy::prelude::Resource, Default)]
+pub struct Tables{
+{{~ for table in __tables ~}}
+    pub {{table.name}}: bevy::asset::Handle<{{full_name table}}>,
+{{~end~}}
+}
+
+impl Tables {
+    pub fn new<G: Clone + Send + Sync + 'static>(asset_server: bevy::prelude::Res<bevy::asset::AssetServer>, tables_path: std::path::PathBuf, guard: G) -> Tables {
+        Tables {
+{{~ for table in __tables ~}}
+            {{table.name}}: asset_server.load_acquire(tables_path.join("{{table.output_data_file}}.json"), guard.clone()),
+{{~end~}}
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct TableAssetsPlugin;
+
+impl bevy::app::Plugin for TableAssetsPlugin {
+    fn build(&self, app: &mut bevy::app::App) {
+        app
+            {{~ for table in __tables ~}}
+            .init_asset_loader::<{{table.name}}Loader>()
+            .init_asset::<{{table.name}}>()
+            {{~end~}}
+            ;
+    }
+}

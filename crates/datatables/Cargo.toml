@@ -6,18 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["json"]
-json = ["serde_json", "cfg_json"]
-bin = ["luban_lib", "cfg_bin"]
+default = ["datatable_json"]
+datatable_json = ["serde_json"]
+datatable_bin = []
 
 [dependencies]
-lazy_static = "1.4.0"
+bevy = { workspace = true }
+thiserror = { workspace = true }
+event-listener = "5.3.1"
 
-cfg_json = { path = "gen_bin/cfg", optional = true }
+cfg = { path = "gen/cfg" }
 serde_json = { version = "1.0.116", optional = true }
-
-cfg_bin = { path = "gen_bin/cfg", optional = true }
-luban_lib = { path = "luban_lib", optional = true }
-
-[workspace]
-members = ["gen/cfg", "gen/macros"]

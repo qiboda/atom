@@ -7,6 +7,7 @@ dotnet %LUBAN_DLL% ^
     -c rust-bin ^
     -d bin ^
     --conf %CONF_ROOT%\luban.conf ^
+    --customTemplateDir %CONF_ROOT%\templates ^
     -x outputCodeDir=gen_bin ^
     -x outputDataDir=output\bin
 

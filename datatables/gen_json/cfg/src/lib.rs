@@ -13,6 +13,11 @@ pub mod prelude{
     pub use crate::test::*;
 }
 
+use crate::item::*;
+use crate::test::*;
+use bevy::asset::AssetApp;
+
+
 type AbstractBase = dyn std::any::Any + Sync + Send;
 
 pub trait GetBase<'a, T> {
@@ -28,6 +33,8 @@ pub enum LubanError {
     Unknown(String),
 }
 
+impl std::error::Error for LubanError {}
+
 impl std::fmt::Display for LubanError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
@@ -39,22 +46,48 @@ impl std::fmt::Display for LubanError {
         })
     }
 }
+    
+#[derive(Debug, thiserror::Error)]
+pub enum TableLoaderError {
+    #[error("serde json error: {0}")]
+    SerdeJsonError(#[from] serde_json::error::Error),
+    #[error("io error: {0}")]
+    IOError(#[from] std::io::Error),
+    #[error("luban error: {0}")]
+    LubanError(#[from] LubanError),
+}
 
+#[derive(Debug, bevy::prelude::Resource, Default)]
 pub struct Tables{
-    pub TbItem: std::sync::Arc<crate::item::TbItem>,
+    pub TbItem: bevy::asset::Handle<crate::item::TbItem>,
 }
 
 impl Tables {
-    pub fn new<T: Fn(&str) -> Result<serde_json::Value, LubanError>>(loader: T) -> Result<Tables, LubanError> {
-        Ok(Tables {
-            TbItem: crate::item::TbItem::new(&loader("item_tbitem")?)?,
-        })
+    pub fn new<G: Clone + Send + Sync + 'static>(asset_server: bevy::prelude::Res<bevy::asset::AssetServer>, tables_path: std::path::PathBuf, guard: G) -> Tables {
+        Tables {
+            TbItem: asset_server.load_acquire(tables_path.join("item_tbitem.json"), guard.clone()),
+        }
     }
 }
+
+#[derive(Default)]
+pub struct TableAssetsPlugin;
+
+impl bevy::app::Plugin for TableAssetsPlugin {
+    fn build(&self, app: &mut bevy::app::App) {
+        app
+            .init_asset_loader::<TbItemLoader>()
+            .init_asset::<TbItem>()
+            ;
+    }
+}
+
 pub mod item;
 pub mod test;
 
 use serde::Deserialize;
+use bevy::prelude::*;
+use bevy::asset::AsyncReadExt;
 
 #[derive(Debug)]
 pub struct vector2 {

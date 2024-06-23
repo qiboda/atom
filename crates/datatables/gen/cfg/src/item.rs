@@ -10,6 +10,9 @@
 
 use super::*;
 use luban_lib::*;
+use serde::Deserialize;
+use bevy::prelude::*;
+use bevy::asset::AsyncReadExt;
 
 #[derive(Debug, Hash, Eq, PartialEq, macros::EnumFromNum)]
 pub enum EQuality {
@@ -24,8 +27,7 @@ pub enum EQuality {
 }
 
 impl From<i32> for EQuality {
-    fn from(value: i32) -> Self {
-        match value { 
+    fn from(value: i32) -> Self {        match value { 
             1 => EQuality::WHITE,
             2 => EQuality::BLUE,
             3 => EQuality::PURPLE,
@@ -55,15 +57,15 @@ impl ItemExchange{
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, bevy::asset::Asset, Default, bevy::reflect::TypePath)]
 pub struct TbItem {
     pub data_list: Vec<std::sync::Arc<crate::Item>>,
-    pub data_map: std::collections::HashMap<i32, std::sync::Arc<crate::Item>>,
+    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Item>>,
 }
 
 impl TbItem {
-    pub fn new(mut buf: ByteBuf) -> Result<std::sync::Arc<TbItem>, LubanError> {
-        let mut data_map: std::collections::HashMap<i32, std::sync::Arc<crate::Item>> = Default::default();
+    pub fn new(mut buf: ByteBuf) -> Result<TbItem, LubanError> {
+        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Item>> = Default::default();
         let mut data_list: Vec<std::sync::Arc<crate::Item>> = vec![];
 
         for x in (0..buf.read_size()).rev() {
@@ -72,7 +74,7 @@ impl TbItem {
             data_map.insert(row.id.clone(), row.clone());
         }
 
-        Ok(std::sync::Arc::new(TbItem { data_map, data_list }))
+        Ok(TbItem { data_map, data_list })
     }
 
     pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::Item>> {
@@ -85,6 +87,36 @@ impl std::ops::Index<i32> for TbItem {
 
     fn index(&self, index: i32) -> &Self::Output {
         &self.data_map.get(&index).unwrap()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct TbItemLoader;
+
+impl bevy::asset::AssetLoader for TbItemLoader {
+    type Asset = TbItem;
+
+    type Settings = ();
+
+    type Error = TableLoaderError;
+
+    async fn load<'a>(
+        &'a self,
+        reader: &'a mut bevy::asset::io::Reader<'_>,
+        settings: &'a Self::Settings,
+        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        info!("TbItemLoader loading start");
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes).await?;
+        let buf = ByteBuf::new(bytes);
+        let tb_item = TbItem::new(buf).unwrap();
+        info!("TbItemLoader loading over");
+        Ok(tb_item)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["bytes"]
     }
 }
 

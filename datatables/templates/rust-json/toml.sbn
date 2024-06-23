@@ -1,5 +1,5 @@
-[package]
-name = "cfg"
+﻿[package]
+name = "{{__name}}"
 version = "0.1.0"
 edition = "2021"
 

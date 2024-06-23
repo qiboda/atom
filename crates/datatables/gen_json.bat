@@ -8,7 +8,8 @@ dotnet %LUBAN_DLL% ^
     -c rust-json ^
     -d json  ^
     --conf %CONF_ROOT%\luban.conf ^
-    -x outputCodeDir=gen_json ^
-    -x outputDataDir=%WORKSPACE%\assets\datatables\json
+    --customTemplateDir %CONF_ROOT%\templates ^
+    -x outputCodeDir=gen ^
+    -x outputDataDir=%WORKSPACE%\assets\datatables\
 
 pause

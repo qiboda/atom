@@ -8,7 +8,8 @@ dotnet %LUBAN_DLL% ^
     -c rust-bin ^
     -d bin^
     --conf %CONF_ROOT%\luban.conf ^
-    -x outputCodeDir=gen_bin ^
-    -x outputDataDir=%WORKSPACE%\assets\datatables\bin
+    --customTemplateDir %CONF_ROOT%\templates ^
+    -x outputCodeDir=gen ^
+    -x outputDataDir=%WORKSPACE%\assets\datatables\
 
 pause

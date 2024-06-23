@@ -1363,6 +1363,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cfg"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bitflags 2.5.0",
+ "luban_lib",
+ "macros",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1694,6 +1707,17 @@ name = "data-encoding"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
+
+[[package]]
+name = "datatables"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "cfg",
+ "event-listener 5.3.1",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "deranged"
@@ -2611,12 +2635,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "luban_lib"
+version = "0.1.0"
+
+[[package]]
 name = "mach2"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b955cdeb2a02b9117f121ce63aa52d08ade45de53e48fe6a38b39c10f6f709"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.67",
 ]
 
 [[package]]
