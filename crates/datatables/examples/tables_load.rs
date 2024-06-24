@@ -15,7 +15,7 @@ fn print_table_data(
     tables: Res<Tables>,
     mut event_writer: EventWriter<AppExit>,
 ) {
-    if let Some(item_table) = item_table.get(tables.TbItem.id()) {
+    if let Some(item_table) = item_table.get(tables.tb_item.id()) {
         println!("{:?}", item_table.get(&10000));
         event_writer.send(AppExit::Success);
     } else {

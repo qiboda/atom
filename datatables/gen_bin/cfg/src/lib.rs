@@ -9,9 +9,6 @@
 
 #![allow(clippy::all)]
 
-
-
-
 pub mod prelude{
     pub use crate::*;
     pub use crate::item::*;
@@ -64,8 +61,10 @@ pub enum TableLoaderError {
 
 #[derive(Debug, bevy::prelude::Resource, Default)]
 pub struct Tables{
-    pub tb_item: bevy::asset::Handle<crate::item::TbItem>,
+    pub TbItem: bevy::asset::Handle<crate::item::TbItem>,
 }
+
+
 
 impl Tables {
     pub fn new<G: Clone + Send + Sync + 'static>(asset_server: bevy::prelude::Res<bevy::asset::AssetServer>, tables_path: std::path::PathBuf, guard: G) -> Tables {

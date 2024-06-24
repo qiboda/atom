@@ -1,4 +1,14 @@
-﻿pub mod prelude{
+﻿#![allow(clippy::all)]
+
+{{func to_snake_case(name)
+    name = regex.replace name "[A-Z]" "_$0"
+    name = string.downcase name
+    name = regex.replace name "^_" ""
+    ret name
+end}}
+
+
+pub mod prelude{
     pub use crate::*;
 {{~ for ns in __ns ~}}
     pub use {{ns}}::*;
@@ -55,7 +65,7 @@ pub enum TableLoaderError {
 #[derive(Debug, bevy::prelude::Resource, Default)]
 pub struct Tables{
 {{~ for table in __tables ~}}
-    pub {{table.name}}: bevy::asset::Handle<{{full_name table}}>,
+    pub {{table.name | to_snake_case}}: bevy::asset::Handle<{{full_name table}}>,
 {{~end~}}
 }
 
@@ -63,7 +73,7 @@ impl Tables {
     pub fn new<G: Clone + Send + Sync + 'static>(asset_server: bevy::prelude::Res<bevy::asset::AssetServer>, tables_path: std::path::PathBuf, guard: G) -> Tables {
         Tables {
 {{~ for table in __tables ~}}
-            {{table.name}}: asset_server.load_acquire(tables_path.join("{{table.output_data_file}}.bytes"), guard.clone()),
+            {{table.name | to_snake_case}}: asset_server.load_acquire(tables_path.join("{{table.output_data_file}}.bytes"), guard.clone()),
 {{~end~}}
         }
     }
