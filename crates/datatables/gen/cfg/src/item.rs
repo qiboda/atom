@@ -9,7 +9,7 @@
 
 
 use super::*;
-use luban_lib::*;
+use luban_lib::prelude::*;
 use serde::Deserialize;
 use bevy::prelude::*;
 use bevy::asset::AsyncReadExt;
@@ -57,7 +57,13 @@ impl ItemExchange{
 }
 
 
-#[derive(Debug, bevy::asset::Asset, Default, bevy::reflect::TypePath)]
+
+
+
+
+
+
+#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
 pub struct TbItem {
     pub data_list: Vec<std::sync::Arc<crate::Item>>,
     pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Item>>,
@@ -89,6 +95,17 @@ impl std::ops::Index<i32> for TbItem {
         &self.data_map.get(&index).unwrap()
     }
 }
+impl Table for TbItem {
+    type Value = std::sync::Arc<crate::Item>;
+}
+impl MapTable for TbItem {
+    type Key = i32;
+
+    fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
+        self.data_map.get(key).map(|x| x.clone())
+    }
+}
+
 
 #[derive(Debug, Default)]
 pub struct TbItemLoader;
@@ -110,9 +127,9 @@ impl bevy::asset::AssetLoader for TbItemLoader {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
         let buf = ByteBuf::new(bytes);
-        let tb_item = TbItem::new(buf).unwrap();
+        let tb = TbItem::new(buf).unwrap();
         info!("TbItemLoader loading over");
-        Ok(tb_item)
+        Ok(tb)
     }
 
     fn extensions(&self) -> &[&str] {

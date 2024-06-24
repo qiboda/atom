@@ -1,5 +1,11 @@
+pub mod table;
+
+pub mod prelude {
+    pub use crate::table::*;
+    pub use crate::*;
+}
+
 use std::cell::UnsafeCell;
-use std::sync::Mutex;
 
 pub struct ByteBuf {
     pub reader_index: usize,
@@ -75,7 +81,8 @@ impl ByteBuf {
 
         if h < 0xff {
             self.ensure_read(3);
-            let x = ((self.bytes[self.reader_index + 1] as i16) << 8) | (self.bytes[self.reader_index + 2] as i16);
+            let x = ((self.bytes[self.reader_index + 1] as i16) << 8)
+                | (self.bytes[self.reader_index + 2] as i16);
             self.reader_index += 3;
             return x;
         }
@@ -98,18 +105,26 @@ impl ByteBuf {
         }
         if h < 0xe0 {
             self.ensure_read(3);
-            let x = ((h & 0x1f) << 16) | ((self.bytes[self.reader_index + 1] as u32) << 8) | (self.bytes[self.reader_index + 2] as u32);
+            let x = ((h & 0x1f) << 16)
+                | ((self.bytes[self.reader_index + 1] as u32) << 8)
+                | (self.bytes[self.reader_index + 2] as u32);
             self.reader_index += 3;
             return x;
         }
         if h < 0xf0 {
             self.ensure_read(4);
-            let x = ((h & 0x0f)<< 24) | ((self.bytes[self.reader_index + 1] as u32) << 16) | ((self.bytes[self.reader_index + 2] as u32) << 8) | (self.bytes[self.reader_index + 3] as u32);
+            let x = ((h & 0x0f) << 24)
+                | ((self.bytes[self.reader_index + 1] as u32) << 16)
+                | ((self.bytes[self.reader_index + 2] as u32) << 8)
+                | (self.bytes[self.reader_index + 3] as u32);
             self.reader_index += 4;
             return x;
         } else {
             self.ensure_read(5);
-            let x = ((self.bytes[self.reader_index + 1] as u32) << 24) | ((self.bytes[self.reader_index + 2] as u32) << 16) | ((self.bytes[self.reader_index + 3] as u32) << 8) | (self.bytes[self.reader_index + 4] as u32);
+            let x = ((self.bytes[self.reader_index + 1] as u32) << 24)
+                | ((self.bytes[self.reader_index + 2] as u32) << 16)
+                | ((self.bytes[self.reader_index + 3] as u32) << 8)
+                | (self.bytes[self.reader_index + 4] as u32);
             self.reader_index += 5;
             return x;
         }
@@ -134,47 +149,74 @@ impl ByteBuf {
         }
         if h < 0xe0 {
             self.ensure_read(3);
-            let x = (((h & 0x1f) as u64) << 16) | ((self.bytes[self.reader_index + 1] as u64) << 8) | (self.bytes[self.reader_index + 2] as u64);
+            let x = (((h & 0x1f) as u64) << 16)
+                | ((self.bytes[self.reader_index + 1] as u64) << 8)
+                | (self.bytes[self.reader_index + 2] as u64);
             self.reader_index += 3;
             return x;
         }
         if h < 0xf0 {
             self.ensure_read(4);
-            let x = (((h & 0x0f) as u64) << 24) | ((self.bytes[self.reader_index + 1] as u64) << 16) | ((self.bytes[self.reader_index + 2] as u64) << 8) | (self.bytes[self.reader_index + 3] as u64);
+            let x = (((h & 0x0f) as u64) << 24)
+                | ((self.bytes[self.reader_index + 1] as u64) << 16)
+                | ((self.bytes[self.reader_index + 2] as u64) << 8)
+                | (self.bytes[self.reader_index + 3] as u64);
             self.reader_index += 4;
             return x;
         }
         if h < 0xf8 {
             self.ensure_read(5);
-            let xl = ((self.bytes[self.reader_index + 1] as u64) << 24) | ((self.bytes[self.reader_index + 2] as u64) << 16) | ((self.bytes[self.reader_index + 3] as u64) << 8) | (self.bytes[self.reader_index + 4] as u64);
+            let xl = ((self.bytes[self.reader_index + 1] as u64) << 24)
+                | ((self.bytes[self.reader_index + 2] as u64) << 16)
+                | ((self.bytes[self.reader_index + 3] as u64) << 8)
+                | (self.bytes[self.reader_index + 4] as u64);
             let xh = (h & 0x07) as u64;
             self.reader_index += 5;
             return (xh << 32) | xl;
         }
         if h < 0xfc {
             self.ensure_read(6);
-            let xl = ((self.bytes[self.reader_index + 2] as u64) << 24) | ((self.bytes[self.reader_index + 3] as u64) << 16) | ((self.bytes[self.reader_index + 4] as u64) << 8) | (self.bytes[self.reader_index + 5] as u64);
+            let xl = ((self.bytes[self.reader_index + 2] as u64) << 24)
+                | ((self.bytes[self.reader_index + 3] as u64) << 16)
+                | ((self.bytes[self.reader_index + 4] as u64) << 8)
+                | (self.bytes[self.reader_index + 5] as u64);
             let xh = (((h & 0x03) as u64) << 8) | (self.bytes[self.reader_index + 1] as u64);
             self.reader_index += 6;
             return (xh << 32) | xl;
         }
         if h < 0xfe {
             self.ensure_read(7);
-            let xl = ((self.bytes[self.reader_index + 3] as u64) << 24) | ((self.bytes[self.reader_index + 4] as u64) << 16) | ((self.bytes[self.reader_index + 5] as u64) << 8) | (self.bytes[self.reader_index + 6] as u64);
-            let xh = (((h & 0x01) as u64) << 16) | ((self.bytes[self.reader_index + 1] as u64) << 8) | (self.bytes[self.reader_index + 1] as u64);
+            let xl = ((self.bytes[self.reader_index + 3] as u64) << 24)
+                | ((self.bytes[self.reader_index + 4] as u64) << 16)
+                | ((self.bytes[self.reader_index + 5] as u64) << 8)
+                | (self.bytes[self.reader_index + 6] as u64);
+            let xh = (((h & 0x01) as u64) << 16)
+                | ((self.bytes[self.reader_index + 1] as u64) << 8)
+                | (self.bytes[self.reader_index + 1] as u64);
             self.reader_index += 7;
             return (xh << 32) | xl;
         }
         if h < 0xff {
             self.ensure_read(8);
-            let xl = ((self.bytes[self.reader_index + 4] as u64) << 24) | ((self.bytes[self.reader_index + 5] as u64) << 16) | ((self.bytes[self.reader_index + 6] as u64) << 8) | (self.bytes[self.reader_index + 7] as u64);
-            let xh = ((self.bytes[self.reader_index + 1] as u64) << 16) | ((self.bytes[self.reader_index + 2] as u64) << 8) | (self.bytes[self.reader_index + 3] as u64);
+            let xl = ((self.bytes[self.reader_index + 4] as u64) << 24)
+                | ((self.bytes[self.reader_index + 5] as u64) << 16)
+                | ((self.bytes[self.reader_index + 6] as u64) << 8)
+                | (self.bytes[self.reader_index + 7] as u64);
+            let xh = ((self.bytes[self.reader_index + 1] as u64) << 16)
+                | ((self.bytes[self.reader_index + 2] as u64) << 8)
+                | (self.bytes[self.reader_index + 3] as u64);
             self.reader_index += 8;
             return (xh << 32) | xl;
         } else {
             self.ensure_read(9);
-            let xl = ((self.bytes[self.reader_index + 5] as u64) << 24) | ((self.bytes[self.reader_index + 6] as u64) << 16) | ((self.bytes[self.reader_index + 7] as u64) << 8) | (self.bytes[self.reader_index + 8] as u64);
-            let xh = ((self.bytes[self.reader_index + 1] as u64) << 24) | ((self.bytes[self.reader_index + 2] as u64) << 16) | ((self.bytes[self.reader_index + 3] as u64) << 8) | (self.bytes[self.reader_index + 4] as u64);
+            let xl = ((self.bytes[self.reader_index + 5] as u64) << 24)
+                | ((self.bytes[self.reader_index + 6] as u64) << 16)
+                | ((self.bytes[self.reader_index + 7] as u64) << 8)
+                | (self.bytes[self.reader_index + 8] as u64);
+            let xh = ((self.bytes[self.reader_index + 1] as u64) << 24)
+                | ((self.bytes[self.reader_index + 2] as u64) << 16)
+                | ((self.bytes[self.reader_index + 3] as u64) << 8)
+                | (self.bytes[self.reader_index + 4] as u64);
             self.reader_index += 9;
             return (xh << 32) | xl;
         }
@@ -193,7 +235,10 @@ impl ByteBuf {
                 x = *(b as *const f32)
             } else {
                 let c = UnsafeCell::new(x);
-                *(c.get() as *mut u32) = (*b.offset(0) as u32) | ((*b.offset(1) as u32) << 8) | ((*b.offset(2) as u32) << 16) | ((*b.offset(3) as u32) << 24);
+                *(c.get() as *mut u32) = (*b.offset(0) as u32)
+                    | ((*b.offset(1) as u32) << 8)
+                    | ((*b.offset(2) as u32) << 16)
+                    | ((*b.offset(3) as u32) << 24);
             }
         }
 
@@ -209,8 +254,14 @@ impl ByteBuf {
             if (b as u64) % 8 == 0 {
                 x = *(b as *const f64)
             } else {
-                let low = (*b.offset(0) as u64) | ((*b.offset(1) as u64) << 8) | ((*b.offset(2) as u64) << 16) | ((*b.offset(3) as u64) << 24);
-                let high = (*b.offset(4) as u64) | ((*b.offset(5) as u64) << 8) | ((*b.offset(6) as u64) << 16) | ((*b.offset(7) as u64) << 24);
+                let low = (*b.offset(0) as u64)
+                    | ((*b.offset(1) as u64) << 8)
+                    | ((*b.offset(2) as u64) << 16)
+                    | ((*b.offset(3) as u64) << 24);
+                let high = (*b.offset(4) as u64)
+                    | ((*b.offset(5) as u64) << 8)
+                    | ((*b.offset(6) as u64) << 16)
+                    | ((*b.offset(7) as u64) << 24);
                 let c = UnsafeCell::new(x);
                 *(c.get() as *mut u64) = ((high) << 32) | (low)
             }

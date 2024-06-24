@@ -1,4 +1,5 @@
 pub mod asset_barrier;
+pub mod tables_ext;
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -32,6 +33,7 @@ impl Plugin for DataTablePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(TableAssetsPlugin)
             .insert_resource(AllAssetBarrier::default())
+            .init_resource::<Tables>()
             .insert_state(TableLoadingStates::default())
             .add_systems(Startup, start_load_tables)
             .add_systems(

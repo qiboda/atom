@@ -17,3 +17,4 @@ event-listener = "5.3.1"
 
 cfg = { path = "gen/cfg" }
 serde_json = { version = "1.0.116", optional = true }
+luban_lib = { path = "luban_lib" }

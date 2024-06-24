@@ -5,6 +5,7 @@ pub mod {{mod.name}};
 {{~ if __mod.name != '' ~}}
 use super::*;
 {{~end~}}
+use luban_lib::prelude::*;
 use serde::Deserialize;
 use bevy::prelude::*;
 use bevy::asset::AsyncReadExt;
@@ -162,7 +163,7 @@ impl {{bean.name}}{
 {{~ if table.comment != '' ~}}
 ///{{table.comment | html.escape}}
 {{~end~}}
-#[derive(Debug, bevy::asset::Asset, Default, bevy::reflect::TypePath)]
+#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
 pub struct {{table.name}} {
     {{~if table.is_map_table ~}}
     pub data_list: Vec<{{value_type}}>,
@@ -177,7 +178,7 @@ pub struct {{table.name}} {
     {{~end~}}
     {{~end~}}    
     {{~else~}}
-    pub data: {{declaring_type_name table.value_ttype}},
+    pub data: {{value_type}},
     {{~end~}}
 }
 {{~if table.is_map_table ~}}
@@ -217,6 +218,17 @@ impl std::ops::Index<{{key_type}}> for {{name}} {
         &self.data_map.get(&index).unwrap()
     }
 }
+impl Table for {{name}} {
+    type Value = {{value_type}};
+}
+impl MapTable for {{name}} {
+    type Key = {{key_type}};
+
+    fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
+        self.data_map.get(key).map(|x| x.clone())
+    }
+}
+
 {{~else if table.is_list_table ~}}
 
 impl {{name}} {
@@ -273,6 +285,48 @@ impl {{name}} {
     {{~end~}}
     {{~end~}}
 }
+
+impl Table for {{name}} {
+    type Value = {{value_type}};
+}
+impl ListTable for {{name}} {}
+
+{{~if table.is_union_index~}}
+impl MultiUnionIndexListTable for {{name}} {
+    type Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
+
+    fn get_row_by_key(&self, key: &Self::Key) -> Option<Self::Value> {
+        self.data_map_union.get(key).map(|x| x.clone())
+    }
+}
+{{~else if !table.index_list.empty? ~}}
+#[derive(Debug)]
+pub enum {{name}}Key {
+{{~for idx in table.index_list ~}}
+    {{idx.index_field.name}}({{declaring_type_name idx.type}}),
+{{~end~}}
+}
+impl MultiIndexListTable for {{name}} {
+    type Key = {{name}}Key;
+
+    fn get_row_by(&self, key: &Self::Key) -> Option<Self::Value> {
+        match key {
+{{~for idx in table.index_list ~}}
+            {{name}}Key::{{idx.index_field.name}}(key) => self.data_map_{{idx.index_field.name}}.get(key).map(|x| x.clone()),
+{{~end~}}
+        }
+    }
+}
+{{~else~}}
+
+impl NotIndexListTable for {{name}} {
+    fn iter(&self) -> impl Iterator<Item=&Self::Value> {
+        self.data_list.iter()
+    }
+}
+
+{{~end~}}
+
 {{~else~}}
 
 impl {{name}} {
@@ -280,10 +334,21 @@ impl {{name}} {
         let json = json.as_array().unwrap();
         let n = json.len();
         if n != 1 { return Err(LubanError::Table(format!("table mode=one, but size != 1"))); }
-        let data = {{full_name table.value_ttype.def_bean}}::new(&json[0])?;
+        let data = std::sync::Arc::new({{full_name table.value_ttype.def_bean}}::new(&json[0])?);
         Ok({{name}} { data })
     }
 }
+
+impl Table for {{name}} {
+    type Value = {{value_type}};
+}
+
+impl OneTable for {{name}} {
+    fn get_data(&self) -> Self::Value {
+        self.data.clone()
+    }
+}
+
 {{~end~}}
 
 #[derive(Debug, Default)]
@@ -306,9 +371,9 @@ impl bevy::asset::AssetLoader for {{name}}Loader {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
         let t = serde_json::from_slice::<serde_json::Value>(&bytes)?;
-        let tb_item = TbItem::new(&t).unwrap();
+        let tb = {{name}}::new(&t).unwrap();
         info!("{{name}}Loader loading over");
-        Ok(tb_item)
+        Ok(tb)
     }
 
     fn extensions(&self) -> &[&str] {
