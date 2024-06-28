@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+use settings::Setting;
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
@@ -60,3 +61,5 @@ pub struct TerrainSettings {
     pub chunk_settings: TerrainChunkSettings,
     pub clipmap_settings: TerrainClipMapSettings,
 }
+
+impl Setting for TerrainSettings {}

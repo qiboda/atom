@@ -24,8 +24,8 @@ use bevy::{
 };
 // use bevy_obj::ObjPlugin;
 // use bevy_xpbd_3d::plugins::PhysicsPlugins;
-use config::plugin::SettingsPlugin;
 use log_layers::{file_layer, LogLayersPlugin};
+use settings::SettingPlugin;
 use terrain::settings::{TerrainChunkSettings, TerrainClipMapSettings};
 use terrain_player_client::trace::terrain_layer;
 
@@ -81,7 +81,9 @@ pub fn bevy_entry() -> App {
         // ObjPlugin,
         WireframePlugin,
         // WorldInspectorPlugin::new(),
-        SettingsPlugin::<TerrainSettings>::default(),
+        SettingPlugin::<TerrainSettings> {
+            paths: Default::default(),
+        },
         // PhysicsPlugins::default(),
     ))
     .add_plugins(CameraControllerPlugin)

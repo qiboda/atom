@@ -1,5 +1,5 @@
 [package]
-name = "config"
+name = "settings"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,7 +9,9 @@ edition = "2021"
 bevy = { workspace = true }
 # bevy_common_assets = { workspace = true, features = ["toml"] }
 serde = { workspace = true }
+atom_utils = { path = "../atom_utils" }
+settings_derive = { path = "settings_derive" }
 
-project ={ path = "../project" }
+project = { path = "../project" }
 toml = "0.8.13"
 serde_merge = "0.1.3"

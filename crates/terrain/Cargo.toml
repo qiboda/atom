@@ -23,7 +23,7 @@ log_layers = { path = "../log_layers" }
 
 terrain_player_client = { path = "../terrain_player_client" }
 terrain_core = { path = "../terrain_core" }
-config = { path = "../config" }
+settings = { path = "../settings" }
 
 rand = "0.8.5"
 futures-lite = "2.3.0"
