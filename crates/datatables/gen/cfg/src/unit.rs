@@ -56,8 +56,9 @@ impl std::ops::Index<i32> for TbUnit {
 impl Table for TbUnit {
     type Value = std::sync::Arc<crate::Unit>;
 }
+type TbUnitKey = i32;
 impl MapTable for TbUnit {
-    type Key = i32;
+    type Key = TbUnitKey;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map.get(key).map(|x| x.clone())

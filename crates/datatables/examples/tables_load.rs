@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use cfg::{global::TbGlobal, item::TbItem, unit::TbUnit, Tables};
-use datatables::{tables_ext::TableReader, DataTablePlugin, TableLoadingStates};
+use datatables::{tables_system_param::TableReader, DataTablePlugin, TableLoadingStates};
 
 fn main() {
     App::new()

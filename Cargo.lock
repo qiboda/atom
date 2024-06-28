@@ -351,6 +351,7 @@ name = "atom_utils"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "event-listener 5.3.1",
 ]
 
 [[package]]
@@ -1715,9 +1716,9 @@ checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 name = "datatables"
 version = "0.1.0"
 dependencies = [
+ "atom_utils",
  "bevy",
  "cfg",
- "event-listener 5.3.1",
  "luban_lib",
  "serde_json",
  "thiserror",

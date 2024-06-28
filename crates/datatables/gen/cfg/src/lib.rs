@@ -197,23 +197,6 @@ impl vector4{
 }
 
 #[derive(Debug)]
-pub struct NullIndexList {
-    pub x: i32,
-    pub y: i32,
-}
-
-impl NullIndexList{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<NullIndexList, LubanError> {
-        let x = buf.read_int();
-        let y = buf.read_int();
-        
-        Ok(NullIndexList { x, y, })
-    }
-
-    pub const __ID__: i32 = 1457546921;
-}
-
-#[derive(Debug)]
 pub struct MultiIndexList {
     pub id1: i32,
     pub id2: i32,
@@ -234,54 +217,6 @@ impl MultiIndexList{
     }
 
     pub const __ID__: i32 = 563510135;
-}
-
-#[derive(Debug)]
-pub struct MultiUnionIndexList {
-    pub id1: i32,
-    pub id2: i32,
-    pub id3: String,
-    pub num: i32,
-    pub desc: String,
-}
-
-impl MultiUnionIndexList{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<MultiUnionIndexList, LubanError> {
-        let id1 = buf.read_int();
-        let id2 = buf.read_int();
-        let id3 = buf.read_string();
-        let num = buf.read_int();
-        let desc = buf.read_string();
-        
-        Ok(MultiUnionIndexList { id1, id2, id3, num, desc, })
-    }
-
-    pub const __ID__: i32 = 1014949882;
-}
-
-#[derive(Debug)]
-pub struct Unit {
-    /// 这是id
-    pub id: i32,
-    /// 名字
-    pub name: String,
-    /// 描述
-    pub desc: String,
-    /// 价格
-    pub price: i32,
-}
-
-impl Unit{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<Unit, LubanError> {
-        let id = buf.read_int();
-        let name = buf.read_string();
-        let desc = buf.read_string();
-        let price = buf.read_int();
-        
-        Ok(Unit { id, name, desc, price, })
-    }
-
-    pub const __ID__: i32 = 2641316;
 }
 
 #[derive(Debug)]
@@ -311,6 +246,71 @@ impl Global{
     }
 
     pub const __ID__: i32 = 2135814083;
+}
+
+#[derive(Debug)]
+pub struct MultiUnionIndexList {
+    pub id1: i32,
+    pub id2: i32,
+    pub id3: String,
+    pub num: i32,
+    pub desc: String,
+}
+
+impl MultiUnionIndexList{
+    pub fn new(mut buf: &mut ByteBuf) -> Result<MultiUnionIndexList, LubanError> {
+        let id1 = buf.read_int();
+        let id2 = buf.read_int();
+        let id3 = buf.read_string();
+        let num = buf.read_int();
+        let desc = buf.read_string();
+        
+        Ok(MultiUnionIndexList { id1, id2, id3, num, desc, })
+    }
+
+    pub const __ID__: i32 = 1014949882;
+}
+
+#[derive(Debug)]
+pub struct NullIndexList {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl NullIndexList{
+    pub fn new(mut buf: &mut ByteBuf) -> Result<NullIndexList, LubanError> {
+        let x = buf.read_int();
+        let y = buf.read_int();
+        
+        Ok(NullIndexList { x, y, })
+    }
+
+    pub const __ID__: i32 = 1457546921;
+}
+
+#[derive(Debug)]
+pub struct Unit {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 价格
+    pub price: i32,
+}
+
+impl Unit{
+    pub fn new(mut buf: &mut ByteBuf) -> Result<Unit, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let price = buf.read_int();
+        
+        Ok(Unit { id, name, desc, price, })
+    }
+
+    pub const __ID__: i32 = 2641316;
 }
 
 #[derive(Debug)]

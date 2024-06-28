@@ -1,5 +1,4 @@
-pub mod asset_barrier;
-pub mod tables_ext;
+pub mod tables_system_param;
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -10,10 +9,7 @@ use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
 
 use cfg::prelude::*;
 
-#[cfg(feature = "datatable_bin")]
-use luban_lib::ByteBuf;
-
-use asset_barrier::{AllAssetBarrier, AssetBarrierStatus};
+use atom_utils::asset_barrier::{AllAssetBarrier, AssetBarrierStatus};
 
 #[derive(Debug, Default, Hash, PartialEq, Eq, Clone, States)]
 pub enum TableLoadingStates {

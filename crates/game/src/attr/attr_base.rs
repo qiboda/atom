@@ -88,36 +88,7 @@ impl Attribute for ValueAttribute {
     }
 }
 
-// #[derive(Debug, Default, Reflect)]
-// pub(crate) struct PercentAttribute {
-//     base_percent: f32,
-//     item_percent: f32,
-//     buff_percent: f32,
-// }
-
-// impl Attribute for PercentAttribute {
-//     fn get_value(&self, layer: AttributeLayer) -> Option<f32> {
-//         match layer {
-//             BASE_PERCENT_LAYER => Some(self.base_percent),
-//             ITEM_PERCENT_LAYER => Some(self.item_percent),
-//             BUFF_PERCENT_LAYER => Some(self.buff_percent),
-//             _ => None,
-//         }
-//     }
-
-//     fn get_value_mut(&mut self, layer: AttributeLayer) -> Option<&mut f32> {
-//         match layer {
-//             BASE_PERCENT_LAYER => Some(&mut self.base_percent),
-//             ITEM_PERCENT_LAYER => Some(&mut self.item_percent),
-//             BUFF_PERCENT_LAYER => Some(&mut self.buff_percent),
-//             _ => None,
-//         }
-//     }
-
-//     fn get_final_value(&self) -> f32 {
-//         self.base_percent + self.item_percent + self.buff_percent
-//     }
-// }
+pub type PercentAttribute = ValueAttribute;
 
 #[derive(Debug, Default, Reflect)]
 pub(crate) struct ValuePercentAttribute {

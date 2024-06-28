@@ -221,8 +221,9 @@ impl std::ops::Index<{{key_type}}> for {{name}} {
 impl Table for {{name}} {
     type Value = {{value_type}};
 }
+type {{name}}Key = {{key_type}};
 impl MapTable for {{name}} {
-    type Key = {{key_type}};
+    type Key = {{name}}Key;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map.get(key).map(|x| x.clone())
@@ -292,20 +293,24 @@ impl Table for {{name}} {
 impl ListTable for {{name}} {}
 
 {{~if table.is_union_index~}}
+
+type {{name}}Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
 impl MultiUnionIndexListTable for {{name}} {
-    type Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
+    type Key = {{name}}Key;
 
     fn get_row_by_key(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map_union.get(key).map(|x| x.clone())
     }
 }
 {{~else if !table.index_list.empty? ~}}
+
 #[derive(Debug)]
 pub enum {{name}}Key {
 {{~for idx in table.index_list ~}}
     {{idx.index_field.name}}({{declaring_type_name idx.type}}),
 {{~end~}}
 }
+
 impl MultiIndexListTable for {{name}} {
     type Key = {{name}}Key;
 

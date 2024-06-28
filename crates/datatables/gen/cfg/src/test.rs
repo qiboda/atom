@@ -204,12 +204,14 @@ impl Table for TbMultiIndexList {
 }
 impl ListTable for TbMultiIndexList {}
 
+
 #[derive(Debug)]
 pub enum TbMultiIndexListKey {
     id1(i32),
     id2(i32),
     id3(String),
 }
+
 impl MultiIndexListTable for TbMultiIndexList {
     type Key = TbMultiIndexListKey;
 
@@ -289,8 +291,10 @@ impl Table for TbMultiUnionIndexList {
 }
 impl ListTable for TbMultiUnionIndexList {}
 
+
+type TbMultiUnionIndexListKey = (i32, i32, String);
 impl MultiUnionIndexListTable for TbMultiUnionIndexList {
-    type Key = (i32, i32, String);
+    type Key = TbMultiUnionIndexListKey;
 
     fn get_row_by_key(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map_union.get(key).map(|x| x.clone())
