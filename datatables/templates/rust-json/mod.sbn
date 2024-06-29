@@ -221,7 +221,7 @@ impl std::ops::Index<{{key_type}}> for {{name}} {
 impl Table for {{name}} {
     type Value = {{value_type}};
 }
-type {{name}}Key = {{key_type}};
+pub type {{name}}Key = {{key_type}};
 impl MapTable for {{name}} {
     type Key = {{name}}Key;
 
@@ -294,7 +294,7 @@ impl ListTable for {{name}} {}
 
 {{~if table.is_union_index~}}
 
-type {{name}}Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
+pub type {{name}}Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
 impl MultiUnionIndexListTable for {{name}} {
     type Key = {{name}}Key;
 

@@ -292,7 +292,7 @@ impl Table for TbMultiUnionIndexList {
 impl ListTable for TbMultiUnionIndexList {}
 
 
-type TbMultiUnionIndexListKey = (i32, i32, String);
+pub type TbMultiUnionIndexListKey = (i32, i32, String);
 impl MultiUnionIndexListTable for TbMultiUnionIndexList {
     type Key = TbMultiUnionIndexListKey;
 

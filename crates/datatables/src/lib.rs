@@ -7,9 +7,8 @@ use std::sync::{
 
 use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
 
-use cfg::prelude::*;
-
 use atom_utils::asset_barrier::{AllAssetBarrier, AssetBarrierStatus};
+use cfg::{TableAssetsPlugin, Tables, TablesLoadedEvent};
 
 #[derive(Debug, Default, Hash, PartialEq, Eq, Clone, States)]
 pub enum TableLoadingStates {
@@ -76,6 +75,8 @@ fn start_load_tables(
 fn update_table_loading_state(
     table_asset_barrier_state: Res<TablesBarrierStatus>,
     mut table_loading_states: ResMut<NextState<TableLoadingStates>>,
+    mut event_writer: EventWriter<TablesLoadedEvent>,
+    tables: Res<Tables>,
 ) {
     if table_asset_barrier_state
         .0
@@ -84,6 +85,11 @@ fn update_table_loading_state(
     {
         info!("update_table_loading_state");
         table_loading_states.set(TableLoadingStates::Loaded);
+
+        let e = TablesLoadedEvent {
+            asset_handles: tables.table_handle_map.values().cloned().collect(),
+        };
+        event_writer.send(e);
     }
 }
 

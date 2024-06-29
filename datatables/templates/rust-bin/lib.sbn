@@ -1,4 +1,5 @@
 ﻿#![allow(clippy::all)]
+#![allow(warnings)]
 
 {{func to_snake_case(name)
     name = regex.replace name "[A-Z]" "_$0"
@@ -100,10 +101,40 @@ pub struct TableAssetsPlugin;
 impl bevy::app::Plugin for TableAssetsPlugin {
     fn build(&self, app: &mut bevy::app::App) {
         app
+            .add_event::<TablesLoadedEvent>()
             {{~ for table in __tables ~}}
             .init_asset_loader::<{{table.name}}Loader>()
             .init_asset::<{{table.name}}>()
+            .add_systems(PreUpdate, table_asset_loadeds::<{{table.name}}>)
             {{~end~}}
             ;
+    }
+}
+
+#[derive(Debug, Event)]
+pub struct TablesLoadedEvent {
+    pub asset_handles: smallvec::SmallVec<[bevy::asset::UntypedHandle;1]>,
+}
+
+
+fn table_asset_loadeds<A: Asset>(
+    mut event_reader: EventReader<AssetEvent<A>>,
+    mut event_writer: EventWriter<TablesLoadedEvent>,
+    tables: bevy::prelude::Res<Tables>,
+    asset_server: bevy::prelude::Res<AssetServer>,
+) {
+    let mut asset_handles = smallvec::SmallVec::<[bevy::asset::UntypedHandle;1]>::new();
+    for event in event_reader.read() {
+        if let AssetEvent::<A>::Modified { id } = event {
+           if tables.table_handle_map.iter().all(|(k, v)| {
+                asset_server.get_load_state(v) == Some(bevy::asset::LoadState::Loaded)
+            }) {
+                let handle = asset_server.get_id_handle(*id).unwrap();
+                asset_handles.push(handle.untyped());
+            }
+        }
+    }
+    if asset_handles.len() > 0 {
+        event_writer.send(TablesLoadedEvent { asset_handles });
     }
 }

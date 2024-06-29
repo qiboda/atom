@@ -98,7 +98,7 @@ impl std::ops::Index<i32> for TbItem {
 impl Table for TbItem {
     type Value = std::sync::Arc<crate::Item>;
 }
-type TbItemKey = i32;
+pub type TbItemKey = i32;
 impl MapTable for TbItem {
     type Key = TbItemKey;
 

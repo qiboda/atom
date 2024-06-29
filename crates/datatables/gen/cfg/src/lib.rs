@@ -8,6 +8,7 @@
 */
 
 #![allow(clippy::all)]
+#![allow(warnings)]
 
 
 
@@ -113,22 +114,56 @@ pub struct TableAssetsPlugin;
 impl bevy::app::Plugin for TableAssetsPlugin {
     fn build(&self, app: &mut bevy::app::App) {
         app
+            .add_event::<TablesLoadedEvent>()
             .init_asset_loader::<TbItemLoader>()
             .init_asset::<TbItem>()
+            .add_systems(PreUpdate, table_asset_loadeds::<TbItem>)
             .init_asset_loader::<TbUnitLoader>()
             .init_asset::<TbUnit>()
+            .add_systems(PreUpdate, table_asset_loadeds::<TbUnit>)
             .init_asset_loader::<TbGlobalLoader>()
             .init_asset::<TbGlobal>()
+            .add_systems(PreUpdate, table_asset_loadeds::<TbGlobal>)
             .init_asset_loader::<TbMultiIndexListLoader>()
             .init_asset::<TbMultiIndexList>()
+            .add_systems(PreUpdate, table_asset_loadeds::<TbMultiIndexList>)
             .init_asset_loader::<TbMultiUnionIndexListLoader>()
             .init_asset::<TbMultiUnionIndexList>()
+            .add_systems(PreUpdate, table_asset_loadeds::<TbMultiUnionIndexList>)
             .init_asset_loader::<TbNullIndexListLoader>()
             .init_asset::<TbNullIndexList>()
+            .add_systems(PreUpdate, table_asset_loadeds::<TbNullIndexList>)
             ;
     }
 }
 
+#[derive(Debug, Event)]
+pub struct TablesLoadedEvent {
+    pub asset_handles: smallvec::SmallVec<[bevy::asset::UntypedHandle;1]>,
+}
+
+
+fn table_asset_loadeds<A: Asset>(
+    mut event_reader: EventReader<AssetEvent<A>>,
+    mut event_writer: EventWriter<TablesLoadedEvent>,
+    tables: bevy::prelude::Res<Tables>,
+    asset_server: bevy::prelude::Res<AssetServer>,
+) {
+    let mut asset_handles = smallvec::SmallVec::<[bevy::asset::UntypedHandle;1]>::new();
+    for event in event_reader.read() {
+        if let AssetEvent::<A>::Modified { id } = event {
+           if tables.table_handle_map.iter().all(|(k, v)| {
+                asset_server.get_load_state(v) == Some(bevy::asset::LoadState::Loaded)
+            }) {
+                let handle = asset_server.get_id_handle(*id).unwrap();
+                asset_handles.push(handle.untyped());
+            }
+        }
+    }
+    if asset_handles.len() > 0 {
+        event_writer.send(TablesLoadedEvent { asset_handles });
+    }
+}
 pub mod item;
 pub mod unit;
 pub mod global;
@@ -197,6 +232,23 @@ impl vector4{
 }
 
 #[derive(Debug)]
+pub struct NullIndexList {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl NullIndexList{
+    pub fn new(mut buf: &mut ByteBuf) -> Result<NullIndexList, LubanError> {
+        let x = buf.read_int();
+        let y = buf.read_int();
+        
+        Ok(NullIndexList { x, y, })
+    }
+
+    pub const __ID__: i32 = 1457546921;
+}
+
+#[derive(Debug)]
 pub struct MultiIndexList {
     pub id1: i32,
     pub id2: i32,
@@ -217,6 +269,54 @@ impl MultiIndexList{
     }
 
     pub const __ID__: i32 = 563510135;
+}
+
+#[derive(Debug)]
+pub struct MultiUnionIndexList {
+    pub id1: i32,
+    pub id2: i32,
+    pub id3: String,
+    pub num: i32,
+    pub desc: String,
+}
+
+impl MultiUnionIndexList{
+    pub fn new(mut buf: &mut ByteBuf) -> Result<MultiUnionIndexList, LubanError> {
+        let id1 = buf.read_int();
+        let id2 = buf.read_int();
+        let id3 = buf.read_string();
+        let num = buf.read_int();
+        let desc = buf.read_string();
+        
+        Ok(MultiUnionIndexList { id1, id2, id3, num, desc, })
+    }
+
+    pub const __ID__: i32 = 1014949882;
+}
+
+#[derive(Debug)]
+pub struct Unit {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 价格
+    pub price: i32,
+}
+
+impl Unit{
+    pub fn new(mut buf: &mut ByteBuf) -> Result<Unit, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let price = buf.read_int();
+        
+        Ok(Unit { id, name, desc, price, })
+    }
+
+    pub const __ID__: i32 = 2641316;
 }
 
 #[derive(Debug)]
@@ -246,71 +346,6 @@ impl Global{
     }
 
     pub const __ID__: i32 = 2135814083;
-}
-
-#[derive(Debug)]
-pub struct MultiUnionIndexList {
-    pub id1: i32,
-    pub id2: i32,
-    pub id3: String,
-    pub num: i32,
-    pub desc: String,
-}
-
-impl MultiUnionIndexList{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<MultiUnionIndexList, LubanError> {
-        let id1 = buf.read_int();
-        let id2 = buf.read_int();
-        let id3 = buf.read_string();
-        let num = buf.read_int();
-        let desc = buf.read_string();
-        
-        Ok(MultiUnionIndexList { id1, id2, id3, num, desc, })
-    }
-
-    pub const __ID__: i32 = 1014949882;
-}
-
-#[derive(Debug)]
-pub struct NullIndexList {
-    pub x: i32,
-    pub y: i32,
-}
-
-impl NullIndexList{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<NullIndexList, LubanError> {
-        let x = buf.read_int();
-        let y = buf.read_int();
-        
-        Ok(NullIndexList { x, y, })
-    }
-
-    pub const __ID__: i32 = 1457546921;
-}
-
-#[derive(Debug)]
-pub struct Unit {
-    /// 这是id
-    pub id: i32,
-    /// 名字
-    pub name: String,
-    /// 描述
-    pub desc: String,
-    /// 价格
-    pub price: i32,
-}
-
-impl Unit{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<Unit, LubanError> {
-        let id = buf.read_int();
-        let name = buf.read_string();
-        let desc = buf.read_string();
-        let price = buf.read_int();
-        
-        Ok(Unit { id, name, desc, price, })
-    }
-
-    pub const __ID__: i32 = 2641316;
 }
 
 #[derive(Debug)]

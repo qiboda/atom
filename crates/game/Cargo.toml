@@ -10,3 +10,6 @@ smallvec = { workspace = true }
 
 project = { path = "../project" }
 ability = { path = "../ability" }
+
+datatables = { path = "../datatables" }
+cfg = { path = "../datatables/gen/cfg" }

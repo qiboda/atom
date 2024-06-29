@@ -15,3 +15,4 @@ luban_lib = { path = "../../luban_lib" }
 
 bevy = { workspace = true }
 thiserror = { workspace = true }
+smallvec = { workspace = true }

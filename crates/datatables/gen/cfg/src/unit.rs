@@ -56,7 +56,7 @@ impl std::ops::Index<i32> for TbUnit {
 impl Table for TbUnit {
     type Value = std::sync::Arc<crate::Unit>;
 }
-type TbUnitKey = i32;
+pub type TbUnitKey = i32;
 impl MapTable for TbUnit {
     type Key = TbUnitKey;
 
