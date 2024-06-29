@@ -9,10 +9,6 @@
 
 
 use super::*;
-use luban_lib::prelude::*;
-use serde::Deserialize;
-use bevy::prelude::*;
-use bevy::asset::AsyncReadExt;
 
 
 
@@ -28,7 +24,7 @@ pub struct TbUnit {
 }
 
 impl TbUnit {
-    pub fn new(mut buf: ByteBuf) -> Result<TbUnit, LubanError> {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbUnit, LubanError> {
         let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Unit>> = Default::default();
         let mut data_list: Vec<std::sync::Arc<crate::Unit>> = vec![];
 
@@ -53,11 +49,11 @@ impl std::ops::Index<i32> for TbUnit {
         &self.data_map.get(&index).unwrap()
     }
 }
-impl Table for TbUnit {
+impl luban_lib::table::Table for TbUnit {
     type Value = std::sync::Arc<crate::Unit>;
 }
 pub type TbUnitKey = i32;
-impl MapTable for TbUnit {
+impl luban_lib::table::MapTable for TbUnit {
     type Key = TbUnitKey;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -82,12 +78,13 @@ impl bevy::asset::AssetLoader for TbUnitLoader {
         settings: &'a Self::Settings,
         load_context: &'a mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        info!("TbUnitLoader loading start");
+        bevy::log::info!("TbUnitLoader loading start");
         let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
         reader.read_to_end(&mut bytes).await?;
-        let buf = ByteBuf::new(bytes);
+        let buf = luban_lib::ByteBuf::new(bytes);
         let tb = TbUnit::new(buf).unwrap();
-        info!("TbUnitLoader loading over");
+        bevy::log::info!("TbUnitLoader loading over");
         Ok(tb)
     }
 

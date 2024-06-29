@@ -25,7 +25,6 @@ use crate::item::*;
 use crate::unit::*;
 use crate::global::*;
 use crate::test::*;
-use bevy::asset::AssetApp;
 
 
 type AbstractBase = dyn std::any::Any + Sync + Send;
@@ -100,7 +99,7 @@ impl Tables {
         tables
     }
 
-    pub fn get_table_handle<T: 'static + Asset>(&self) -> Result<bevy::asset::Handle<T>, LubanError> {
+    pub fn get_table_handle<T: 'static + bevy::asset::Asset>(&self) -> Result<bevy::asset::Handle<T>, LubanError> {
         self.table_handle_map
             .get(&std::any::TypeId::of::<T>())
             .map(|handle| handle.clone_weak().typed())
@@ -113,45 +112,46 @@ pub struct TableAssetsPlugin;
 
 impl bevy::app::Plugin for TableAssetsPlugin {
     fn build(&self, app: &mut bevy::app::App) {
+        use bevy::asset::AssetApp;
         app
             .add_event::<TablesLoadedEvent>()
             .init_asset_loader::<TbItemLoader>()
             .init_asset::<TbItem>()
-            .add_systems(PreUpdate, table_asset_loadeds::<TbItem>)
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbItem>)
             .init_asset_loader::<TbUnitLoader>()
             .init_asset::<TbUnit>()
-            .add_systems(PreUpdate, table_asset_loadeds::<TbUnit>)
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbUnit>)
             .init_asset_loader::<TbGlobalLoader>()
             .init_asset::<TbGlobal>()
-            .add_systems(PreUpdate, table_asset_loadeds::<TbGlobal>)
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbGlobal>)
             .init_asset_loader::<TbMultiIndexListLoader>()
             .init_asset::<TbMultiIndexList>()
-            .add_systems(PreUpdate, table_asset_loadeds::<TbMultiIndexList>)
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbMultiIndexList>)
             .init_asset_loader::<TbMultiUnionIndexListLoader>()
             .init_asset::<TbMultiUnionIndexList>()
-            .add_systems(PreUpdate, table_asset_loadeds::<TbMultiUnionIndexList>)
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbMultiUnionIndexList>)
             .init_asset_loader::<TbNullIndexListLoader>()
             .init_asset::<TbNullIndexList>()
-            .add_systems(PreUpdate, table_asset_loadeds::<TbNullIndexList>)
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbNullIndexList>)
             ;
     }
 }
 
-#[derive(Debug, Event)]
+#[derive(Debug, bevy::ecs::event::Event)]
 pub struct TablesLoadedEvent {
     pub asset_handles: smallvec::SmallVec<[bevy::asset::UntypedHandle;1]>,
 }
 
 
-fn table_asset_loadeds<A: Asset>(
-    mut event_reader: EventReader<AssetEvent<A>>,
-    mut event_writer: EventWriter<TablesLoadedEvent>,
+fn table_asset_loadeds<A: bevy::asset::Asset>(
+    mut event_reader: bevy::prelude::EventReader<bevy::asset::AssetEvent<A>>,
+    mut event_writer: bevy::prelude::EventWriter<TablesLoadedEvent>,
     tables: bevy::prelude::Res<Tables>,
-    asset_server: bevy::prelude::Res<AssetServer>,
+    asset_server: bevy::prelude::Res<bevy::asset::AssetServer>,
 ) {
     let mut asset_handles = smallvec::SmallVec::<[bevy::asset::UntypedHandle;1]>::new();
     for event in event_reader.read() {
-        if let AssetEvent::<A>::Modified { id } = event {
+        if let bevy::asset::AssetEvent::<A>::Modified { id } = event {
            if tables.table_handle_map.iter().all(|(k, v)| {
                 asset_server.get_load_state(v) == Some(bevy::asset::LoadState::Loaded)
             }) {
@@ -169,10 +169,6 @@ pub mod unit;
 pub mod global;
 pub mod test;
 
-use luban_lib::prelude::*;
-use serde::Deserialize;
-use bevy::prelude::*;
-use bevy::asset::AsyncReadExt;
 
 #[derive(Debug)]
 pub struct vector2 {
@@ -181,7 +177,7 @@ pub struct vector2 {
 }
 
 impl vector2{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<vector2, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<vector2, LubanError> {
         let x = buf.read_float();
         let y = buf.read_float();
         
@@ -199,7 +195,7 @@ pub struct vector3 {
 }
 
 impl vector3{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<vector3, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<vector3, LubanError> {
         let x = buf.read_float();
         let y = buf.read_float();
         let z = buf.read_float();
@@ -219,7 +215,7 @@ pub struct vector4 {
 }
 
 impl vector4{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<vector4, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<vector4, LubanError> {
         let x = buf.read_float();
         let y = buf.read_float();
         let z = buf.read_float();
@@ -232,23 +228,6 @@ impl vector4{
 }
 
 #[derive(Debug)]
-pub struct NullIndexList {
-    pub x: i32,
-    pub y: i32,
-}
-
-impl NullIndexList{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<NullIndexList, LubanError> {
-        let x = buf.read_int();
-        let y = buf.read_int();
-        
-        Ok(NullIndexList { x, y, })
-    }
-
-    pub const __ID__: i32 = 1457546921;
-}
-
-#[derive(Debug)]
 pub struct MultiIndexList {
     pub id1: i32,
     pub id2: i32,
@@ -258,7 +237,7 @@ pub struct MultiIndexList {
 }
 
 impl MultiIndexList{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<MultiIndexList, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiIndexList, LubanError> {
         let id1 = buf.read_int();
         let id2 = buf.read_int();
         let id3 = buf.read_string();
@@ -281,7 +260,7 @@ pub struct MultiUnionIndexList {
 }
 
 impl MultiUnionIndexList{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<MultiUnionIndexList, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiUnionIndexList, LubanError> {
         let id1 = buf.read_int();
         let id2 = buf.read_int();
         let id3 = buf.read_string();
@@ -292,31 +271,6 @@ impl MultiUnionIndexList{
     }
 
     pub const __ID__: i32 = 1014949882;
-}
-
-#[derive(Debug)]
-pub struct Unit {
-    /// 这是id
-    pub id: i32,
-    /// 名字
-    pub name: String,
-    /// 描述
-    pub desc: String,
-    /// 价格
-    pub price: i32,
-}
-
-impl Unit{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<Unit, LubanError> {
-        let id = buf.read_int();
-        let name = buf.read_string();
-        let desc = buf.read_string();
-        let price = buf.read_int();
-        
-        Ok(Unit { id, name, desc, price, })
-    }
-
-    pub const __ID__: i32 = 2641316;
 }
 
 #[derive(Debug)]
@@ -333,7 +287,7 @@ pub struct Global {
 }
 
 impl Global{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<Global, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Global, LubanError> {
         let x1 = buf.read_int();
         let x2 = buf.read_int();
         let x3 = buf.read_int();
@@ -346,6 +300,48 @@ impl Global{
     }
 
     pub const __ID__: i32 = 2135814083;
+}
+
+#[derive(Debug)]
+pub struct NullIndexList {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl NullIndexList{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<NullIndexList, LubanError> {
+        let x = buf.read_int();
+        let y = buf.read_int();
+        
+        Ok(NullIndexList { x, y, })
+    }
+
+    pub const __ID__: i32 = 1457546921;
+}
+
+#[derive(Debug)]
+pub struct Unit {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 价格
+    pub price: i32,
+}
+
+impl Unit{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Unit, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let price = buf.read_int();
+        
+        Ok(Unit { id, name, desc, price, })
+    }
+
+    pub const __ID__: i32 = 2641316;
 }
 
 #[derive(Debug)]
@@ -374,7 +370,7 @@ pub struct Item {
 }
 
 impl Item{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<Item, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Item, LubanError> {
         let id = buf.read_int();
         let name = buf.read_string();
         let desc = buf.read_string();

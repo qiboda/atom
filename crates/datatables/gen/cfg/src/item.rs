@@ -9,10 +9,6 @@
 
 
 use super::*;
-use luban_lib::prelude::*;
-use serde::Deserialize;
-use bevy::prelude::*;
-use bevy::asset::AsyncReadExt;
 
 #[derive(Debug, Hash, Eq, PartialEq, macros::EnumFromNum)]
 pub enum EQuality {
@@ -46,7 +42,7 @@ pub struct ItemExchange {
 }
 
 impl ItemExchange{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<ItemExchange, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<ItemExchange, LubanError> {
         let id = buf.read_int();
         let num = buf.read_int();
         
@@ -70,7 +66,7 @@ pub struct TbItem {
 }
 
 impl TbItem {
-    pub fn new(mut buf: ByteBuf) -> Result<TbItem, LubanError> {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbItem, LubanError> {
         let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Item>> = Default::default();
         let mut data_list: Vec<std::sync::Arc<crate::Item>> = vec![];
 
@@ -95,11 +91,11 @@ impl std::ops::Index<i32> for TbItem {
         &self.data_map.get(&index).unwrap()
     }
 }
-impl Table for TbItem {
+impl luban_lib::table::Table for TbItem {
     type Value = std::sync::Arc<crate::Item>;
 }
 pub type TbItemKey = i32;
-impl MapTable for TbItem {
+impl luban_lib::table::MapTable for TbItem {
     type Key = TbItemKey;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -124,12 +120,13 @@ impl bevy::asset::AssetLoader for TbItemLoader {
         settings: &'a Self::Settings,
         load_context: &'a mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        info!("TbItemLoader loading start");
+        bevy::log::info!("TbItemLoader loading start");
         let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
         reader.read_to_end(&mut bytes).await?;
-        let buf = ByteBuf::new(bytes);
+        let buf = luban_lib::ByteBuf::new(bytes);
         let tb = TbItem::new(buf).unwrap();
-        info!("TbItemLoader loading over");
+        bevy::log::info!("TbItemLoader loading over");
         Ok(tb)
     }
 

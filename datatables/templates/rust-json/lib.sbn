@@ -19,7 +19,6 @@ pub mod prelude{
 {{~ for ns in __ns ~}}
 use {{ns}}::*;
 {{~end~}}
-use bevy::asset::AssetApp;
 
 {{~ if __polymorphic_beans.count != 0 ~}}
 
@@ -87,7 +86,7 @@ impl Tables {
         tables
     }
 
-    pub fn get_table_handle<T: 'static + Asset>(&self) -> Result<bevy::asset::Handle<T>, LubanError> {
+    pub fn get_table_handle<T: 'static + bevy::asset::Asset>(&self) -> Result<bevy::asset::Handle<T>, LubanError> {
         self.table_handle_map
             .get(&std::any::TypeId::of::<T>())
             .map(|handle| handle.clone_weak().typed())
@@ -100,32 +99,33 @@ pub struct TableAssetsPlugin;
 
 impl bevy::app::Plugin for TableAssetsPlugin {
     fn build(&self, app: &mut bevy::app::App) {
+        use bevy::asset::AssetApp;
         app
             .add_event::<TablesLoadedEvent>()
             {{~ for table in __tables ~}}
             .init_asset_loader::<{{table.name}}Loader>()
             .init_asset::<{{table.name}}>()
-            .add_systems(PreUpdate, table_asset_loadeds::<{{table.name}}>)
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<{{table.name}}>)
             {{~end~}}
             ;
     }
 }
 
-#[derive(Debug, Event)]
+#[derive(Debug, bevy::ecs::event::Event)]
 pub struct TablesLoadedEvent {
     pub asset_handles: smallvec::SmallVec<[bevy::asset::UntypedHandle;1]>,
 }
 
 
-fn table_asset_loadeds<A: Asset>(
-    mut event_reader: EventReader<AssetEvent<A>>,
-    mut event_writer: EventWriter<TablesLoadedEvent>,
+fn table_asset_loadeds<A: bevy::asset::Asset>(
+    mut event_reader: bevy::prelude::EventReader<bevy::asset::AssetEvent<A>>,
+    mut event_writer: bevy::prelude::EventWriter<TablesLoadedEvent>,
     tables: bevy::prelude::Res<Tables>,
-    asset_server: bevy::prelude::Res<AssetServer>,
+    asset_server: bevy::prelude::Res<bevy::asset::AssetServer>,
 ) {
     let mut asset_handles = smallvec::SmallVec::<[bevy::asset::UntypedHandle;1]>::new();
     for event in event_reader.read() {
-        if let AssetEvent::<A>::Modified { id } = event {
+        if let bevy::asset::AssetEvent::<A>::Modified { id } = event {
            if tables.table_handle_map.iter().all(|(k, v)| {
                 asset_server.get_load_state(v) == Some(bevy::asset::LoadState::Loaded)
             }) {

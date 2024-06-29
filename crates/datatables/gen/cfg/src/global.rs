@@ -9,10 +9,6 @@
 
 
 use super::*;
-use luban_lib::prelude::*;
-use serde::Deserialize;
-use bevy::prelude::*;
-use bevy::asset::AsyncReadExt;
 
 
 
@@ -27,7 +23,7 @@ pub struct TbGlobal {
 }
 
 impl TbGlobal {
-    pub fn new(mut buf: ByteBuf) -> Result<TbGlobal, LubanError> {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbGlobal, LubanError> {
         let n = buf.read_size();
         if n != 1 { return Err(LubanError::Table(format!("table mode=one, but size != 1"))); }
         let data = std::sync::Arc::new(crate::Global::new(&mut buf)?);
@@ -35,11 +31,11 @@ impl TbGlobal {
     }
 }
 
-impl Table for TbGlobal {
+impl luban_lib::table::Table for TbGlobal {
     type Value = std::sync::Arc<crate::Global>;
 }
 
-impl OneTable for TbGlobal {
+impl luban_lib::table::OneTable for TbGlobal {
     fn get_data(&self) -> Self::Value {
         self.data.clone()
     }
@@ -62,12 +58,13 @@ impl bevy::asset::AssetLoader for TbGlobalLoader {
         settings: &'a Self::Settings,
         load_context: &'a mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        info!("TbGlobalLoader loading start");
+        bevy::log::info!("TbGlobalLoader loading start");
         let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
         reader.read_to_end(&mut bytes).await?;
-        let buf = ByteBuf::new(bytes);
+        let buf = luban_lib::ByteBuf::new(bytes);
         let tb = TbGlobal::new(buf).unwrap();
-        info!("TbGlobalLoader loading over");
+        bevy::log::info!("TbGlobalLoader loading over");
         Ok(tb)
     }
 

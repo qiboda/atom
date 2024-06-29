@@ -5,10 +5,6 @@ pub mod {{mod.name}};
 {{~ if __mod.name != '' ~}}
 use super::*;
 {{~end~}}
-use luban_lib::prelude::*;
-use serde::Deserialize;
-use bevy::prelude::*;
-use bevy::asset::AsyncReadExt;
 
 {{~ for enum in __mod.enums ~}}
 {{~ if enum.comment != '' ~}}
@@ -70,7 +66,7 @@ pub struct {{bean.name}} {
 {{~if bean.is_abstract_type~}}
 
 impl {{bean.name}} {
-    pub fn new(mut buf: &mut ByteBuf) -> Result<std::sync::Arc<AbstractBase>, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<std::sync::Arc<AbstractBase>, LubanError> {
         let type_id = buf.read_int();
         match type_id {
             {{~for child in bean.hierarchy_not_abstract_children~}}
@@ -112,7 +108,7 @@ impl<'a> GetBase<'a, &'a dyn {{base_trait_name bean}}> for AbstractBase {
 {{~else~}}
 
 impl {{bean.name}}{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<{{bean.name}}, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<{{bean.name}}, LubanError> {
         {{~ for field in hierarchy_fields ~}}
         {{deserialize field.name 'buf' field.ctype}}
         {{~end~}}
@@ -191,7 +187,7 @@ pub struct {{table.name}} {
 {{~if table.is_map_table ~}}
 
 impl {{name}} {
-    pub fn new(mut buf: ByteBuf) -> Result<{{name}}, LubanError> {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<{{name}}, LubanError> {
         let mut data_map: {{map_type}} = Default::default();
         let mut data_list: Vec<{{value_type}}> = vec![];
 
@@ -221,11 +217,11 @@ impl std::ops::Index<{{key_type}}> for {{name}} {
         &self.data_map.get(&index).unwrap()
     }
 }
-impl Table for {{name}} {
+impl luban_lib::table::Table for {{name}} {
     type Value = {{value_type}};
 }
 pub type {{name}}Key = {{key_type}};
-impl MapTable for {{name}} {
+impl luban_lib::table::MapTable for {{name}} {
     type Key = {{name}}Key;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -236,7 +232,7 @@ impl MapTable for {{name}} {
 {{~else if table.is_list_table ~}}
 
 impl {{name}} {
-    pub fn new(mut buf: ByteBuf) -> Result<{{name}}, LubanError> {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<{{name}}, LubanError> {
         let mut data_list: Vec<{{value_type}}> = vec![];
 
         for x in (0..buf.read_size()).rev() {
@@ -286,15 +282,15 @@ impl {{name}} {
     {{~end~}}
 }
 
-impl Table for {{name}} {
+impl luban_lib::table::Table for {{name}} {
     type Value = {{value_type}};
 }
-impl ListTable for {{name}} {}
+impl luban_lib::table::ListTable for {{name}} {}
 
 {{~if table.is_union_index~}}
 
 pub type {{name}}Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
-impl MultiUnionIndexListTable for {{name}} {
+impl luban_lib::table::MultiUnionIndexListTable for {{name}} {
     type Key = {{name}}Key;
 
     fn get_row_by_key(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -310,7 +306,7 @@ pub enum {{name}}Key {
 {{~end~}}
 }
 
-impl MultiIndexListTable for {{name}} {
+impl luban_lib::table::MultiIndexListTable for {{name}} {
     type Key = {{name}}Key;
 
     fn get_row_by(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -323,7 +319,7 @@ impl MultiIndexListTable for {{name}} {
 }
 {{~else~}}
 
-impl NotIndexListTable for {{name}} {
+impl luban_lib::table::NotIndexListTable for {{name}} {
     fn iter(&self) -> impl Iterator<Item=&Self::Value> {
         self.data_list.iter()
     }
@@ -334,7 +330,7 @@ impl NotIndexListTable for {{name}} {
 {{~else~}}
 
 impl {{name}} {
-    pub fn new(mut buf: ByteBuf) -> Result<{{name}}, LubanError> {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<{{name}}, LubanError> {
         let n = buf.read_size();
         if n != 1 { return Err(LubanError::Table(format!("table mode=one, but size != 1"))); }
         {{deserialize_row 'data' 'buf' table.value_ttype}}
@@ -342,11 +338,11 @@ impl {{name}} {
     }
 }
 
-impl Table for {{name}} {
+impl luban_lib::table::Table for {{name}} {
     type Value = {{value_type}};
 }
 
-impl OneTable for {{name}} {
+impl luban_lib::table::OneTable for {{name}} {
     fn get_data(&self) -> Self::Value {
         self.data.clone()
     }
@@ -370,12 +366,13 @@ impl bevy::asset::AssetLoader for {{name}}Loader {
         settings: &'a Self::Settings,
         load_context: &'a mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        info!("{{name}}Loader loading start");
+        bevy::log::info!("{{name}}Loader loading start");
         let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
         reader.read_to_end(&mut bytes).await?;
-        let buf = ByteBuf::new(bytes);
+        let buf = luban_lib::ByteBuf::new(bytes);
         let tb = {{name}}::new(buf).unwrap();
-        info!("{{name}}Loader loading over");
+        bevy::log::info!("{{name}}Loader loading over");
         Ok(tb)
     }
 

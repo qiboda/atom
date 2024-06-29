@@ -5,10 +5,6 @@ pub mod {{mod.name}};
 {{~ if __mod.name != '' ~}}
 use super::*;
 {{~end~}}
-use luban_lib::prelude::*;
-use serde::Deserialize;
-use bevy::prelude::*;
-use bevy::asset::AsyncReadExt;
 
 {{~ for enum in __mod.enums ~}}
 {{~ if enum.comment != '' ~}}
@@ -27,7 +23,7 @@ bitflags::bitflags!{
     }
 }
 {{~else~}}
-#[derive(Deserialize, Debug, Hash, Eq, PartialEq, macros::EnumFromNum)]
+#[derive(serde::Deserialize, Debug, Hash, Eq, PartialEq, macros::EnumFromNum)]
 pub enum {{enum.name}} {
     {{~ for item in enum.items ~}}
 {{~if item.comment_or_alias != '' ~}}
@@ -218,11 +214,11 @@ impl std::ops::Index<{{key_type}}> for {{name}} {
         &self.data_map.get(&index).unwrap()
     }
 }
-impl Table for {{name}} {
+impl luban_lib::table::Table for {{name}} {
     type Value = {{value_type}};
 }
 pub type {{name}}Key = {{key_type}};
-impl MapTable for {{name}} {
+impl luban_lib::table::MapTable for {{name}} {
     type Key = {{name}}Key;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -287,15 +283,15 @@ impl {{name}} {
     {{~end~}}
 }
 
-impl Table for {{name}} {
+impl luban_lib::table::Table for {{name}} {
     type Value = {{value_type}};
 }
-impl ListTable for {{name}} {}
+impl luban_lib::table::ListTable for {{name}} {}
 
 {{~if table.is_union_index~}}
 
 pub type {{name}}Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
-impl MultiUnionIndexListTable for {{name}} {
+impl luban_lib::table::MultiUnionIndexListTable for {{name}} {
     type Key = {{name}}Key;
 
     fn get_row_by_key(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -311,7 +307,7 @@ pub enum {{name}}Key {
 {{~end~}}
 }
 
-impl MultiIndexListTable for {{name}} {
+impl luban_lib::table::MultiIndexListTable for {{name}} {
     type Key = {{name}}Key;
 
     fn get_row_by(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -324,7 +320,7 @@ impl MultiIndexListTable for {{name}} {
 }
 {{~else~}}
 
-impl NotIndexListTable for {{name}} {
+impl luban_lib::table::NotIndexListTable for {{name}} {
     fn iter(&self) -> impl Iterator<Item=&Self::Value> {
         self.data_list.iter()
     }
@@ -344,11 +340,11 @@ impl {{name}} {
     }
 }
 
-impl Table for {{name}} {
+impl luban_lib::table::Table for {{name}} {
     type Value = {{value_type}};
 }
 
-impl OneTable for {{name}} {
+impl luban_lib::table::OneTable for {{name}} {
     fn get_data(&self) -> Self::Value {
         self.data.clone()
     }
@@ -372,12 +368,13 @@ impl bevy::asset::AssetLoader for {{name}}Loader {
         settings: &'a Self::Settings,
         load_context: &'a mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        info!("{{name}}Loader loading start");
+        bevy::log::info!("{{name}}Loader loading start");
         let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
         reader.read_to_end(&mut bytes).await?;
         let t = serde_json::from_slice::<serde_json::Value>(&bytes)?;
         let tb = {{name}}::new(&t).unwrap();
-        info!("{{name}}Loader loading over");
+        bevy::log::info!("{{name}}Loader loading over");
         Ok(tb)
     }
 
