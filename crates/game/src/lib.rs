@@ -1,3 +1,6 @@
 pub mod damage;
-pub mod player;
+pub mod unit;
 pub mod attr;
+pub mod items;
+pub mod projectile;
+pub mod input;

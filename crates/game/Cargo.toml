@@ -5,11 +5,12 @@ edition = "2021"
 
 [dependencies]
 bevy = { workspace = true }
-# serde = { workspace = true }
 smallvec = { workspace = true }
+serde = { workspace = true }
 
 project = { path = "../project" }
 ability = { path = "../ability" }
 
 datatables = { path = "../datatables" }
 cfg = { path = "../datatables/gen/cfg" }
+settings = { path = "../settings" }

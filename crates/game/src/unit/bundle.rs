@@ -13,7 +13,3 @@ pub struct UnitBundle {
     // collision
     mat_mesh: MaterialMeshBundle<StandardMaterial>
 }
-
-
-
-pub struct Player;

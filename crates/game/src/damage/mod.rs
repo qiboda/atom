@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use crate::{
     attr::{attr_base::BASE_VALUE_LAYER, attr_modifier::AddAttrModifier},
-    player::attr_set::{CharacterAttributeSet, CharacterAttributeType},
+    unit::attr_set::{CharacterAttributeSet, CharacterAttributeType},
 };
 
 #[derive(Event)]
