@@ -7,10 +7,10 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0.x", features = ["derive"] }
-serde_json ={ version = "1.0.x" }
-bitflags = { version = "2.5.x" , features = ["serde"]}
+serde_json = { version = "1.0.x" }
+bitflags = { workspace = true }
 
-macros = {path = "../macros"}
+macros = { path = "../macros" }
 luban_lib = { path = "../../luban_lib" }
 
 bevy = { workspace = true }

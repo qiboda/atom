@@ -12,7 +12,7 @@ resolver = "2"
 # bevy = { version = "0.12.0", features = ["trace", "trace_tracy", "embedded_watcher"] }
 # lightyear = { version = "0.15.1", features = [] }
 
-bevy = { version = "0.14.0-rc.4", features = ["file_watcher"] }
+bevy = { version = "0.14.0-rc.3", features = ["file_watcher"] }
 bevy_asset_loader = { path = "../bevy_asset_loader/bevy_asset_loader" }
 bevy_asset_loader_derive = { path = "../bevy_asset_loader/bevy_asset_loader_derive" }
 
@@ -20,7 +20,8 @@ once_cell = "1.13.0"
 serde = { version = "1.0.202", features = ["derive"] }
 smallvec = { version = "1.13.2" }
 thiserror = { version = "1.0.25" }
-
+big-brain = { git = "https://github.com/stargazing-dino/big-brain.git", branch = "update-14.0" }
+bitflags = { version = "2.6.0", features = ["serde"] }
 # bevy-persistent
 # bevy-tnua
 # big-brain

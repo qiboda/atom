@@ -1,14 +1,9 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parse::{Parse, ParseStream, Parser},
-    parse_macro_input,
-    punctuated::Punctuated,
-    Attribute, Data, DeriveInput, Ident, Result, Token,
-};
+use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(Setting)]
-pub fn derive_layertag(input: TokenStream) -> TokenStream {
+pub fn derive_setting(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
 
     let ident = derive_input.ident.clone();

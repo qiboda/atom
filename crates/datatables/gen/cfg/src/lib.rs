@@ -15,12 +15,14 @@
 
 pub mod prelude{
     pub use crate::*;
+    pub use crate::relationship::*;
     pub use crate::item::*;
     pub use crate::unit::*;
     pub use crate::global::*;
     pub use crate::test::*;
 }
 
+use crate::relationship::*;
 use crate::item::*;
 use crate::unit::*;
 use crate::global::*;
@@ -68,6 +70,7 @@ pub enum TableLoaderError {
 
 #[derive(Debug, bevy::prelude::Resource, Default)]
 pub struct Tables{
+    pub tb_relation_ship: bevy::asset::Handle<crate::relationship::TbRelationShip>,
     pub tb_item: bevy::asset::Handle<crate::item::TbItem>,
     pub tb_unit: bevy::asset::Handle<crate::unit::TbUnit>,
     pub tb_global: bevy::asset::Handle<crate::global::TbGlobal>,
@@ -80,6 +83,7 @@ pub struct Tables{
 impl Tables {
     pub fn new<G: Clone + Send + Sync + 'static>(asset_server: bevy::prelude::Res<bevy::asset::AssetServer>, tables_path: std::path::PathBuf, guard: G) -> Tables {
         let mut tables = Tables {
+            tb_relation_ship: asset_server.load_acquire(tables_path.join("relationship_tbrelationship.bytes"), guard.clone()),
             tb_item: asset_server.load_acquire(tables_path.join("item_tbitem.bytes"), guard.clone()),
             tb_unit: asset_server.load_acquire(tables_path.join("unit_tbunit.bytes"), guard.clone()),
             tb_global: asset_server.load_acquire(tables_path.join("global_tbglobal.bytes"), guard.clone()),
@@ -89,6 +93,7 @@ impl Tables {
             table_handle_map: bevy::utils::HashMap::default(),
         };
 
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::relationship::TbRelationShip>(), tables.tb_relation_ship.clone_weak().untyped());
         tables.table_handle_map.insert(std::any::TypeId::of::<crate::item::TbItem>(), tables.tb_item.clone_weak().untyped());
         tables.table_handle_map.insert(std::any::TypeId::of::<crate::unit::TbUnit>(), tables.tb_unit.clone_weak().untyped());
         tables.table_handle_map.insert(std::any::TypeId::of::<crate::global::TbGlobal>(), tables.tb_global.clone_weak().untyped());
@@ -115,6 +120,9 @@ impl bevy::app::Plugin for TableAssetsPlugin {
         use bevy::asset::AssetApp;
         app
             .add_event::<TablesLoadedEvent>()
+            .init_asset_loader::<TbRelationShipLoader>()
+            .init_asset::<TbRelationShip>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbRelationShip>)
             .init_asset_loader::<TbItemLoader>()
             .init_asset::<TbItem>()
             .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbItem>)
@@ -164,6 +172,7 @@ fn table_asset_loadeds<A: bevy::asset::Asset>(
         event_writer.send(TablesLoadedEvent { asset_handles });
     }
 }
+pub mod relationship;
 pub mod item;
 pub mod unit;
 pub mod global;
@@ -228,29 +237,6 @@ impl vector4{
 }
 
 #[derive(Debug)]
-pub struct MultiIndexList {
-    pub id1: i32,
-    pub id2: i32,
-    pub id3: String,
-    pub num: i32,
-    pub desc: String,
-}
-
-impl MultiIndexList{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiIndexList, LubanError> {
-        let id1 = buf.read_int();
-        let id2 = buf.read_int();
-        let id3 = buf.read_string();
-        let num = buf.read_int();
-        let desc = buf.read_string();
-        
-        Ok(MultiIndexList { id1, id2, id3, num, desc, })
-    }
-
-    pub const __ID__: i32 = 563510135;
-}
-
-#[derive(Debug)]
 pub struct MultiUnionIndexList {
     pub id1: i32,
     pub id2: i32,
@@ -271,6 +257,28 @@ impl MultiUnionIndexList{
     }
 
     pub const __ID__: i32 = 1014949882;
+}
+
+#[derive(Debug)]
+pub struct RelationShip {
+    /// 主动方阵营
+    pub active_camp: i32,
+    /// 被动方阵营
+    pub passive_camp: i32,
+    /// 关系
+    pub relationship_type: crate::relationship::RelationShipType,
+}
+
+impl RelationShip{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<RelationShip, LubanError> {
+        let active_camp = buf.read_int();
+        let passive_camp = buf.read_int();
+        let relationship_type = buf.read_int().into();
+        
+        Ok(RelationShip { active_camp, passive_camp, relationship_type, })
+    }
+
+    pub const __ID__: i32 = -98484616;
 }
 
 #[derive(Debug)]
@@ -300,6 +308,29 @@ impl Global{
     }
 
     pub const __ID__: i32 = 2135814083;
+}
+
+#[derive(Debug)]
+pub struct MultiIndexList {
+    pub id1: i32,
+    pub id2: i32,
+    pub id3: String,
+    pub num: i32,
+    pub desc: String,
+}
+
+impl MultiIndexList{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiIndexList, LubanError> {
+        let id1 = buf.read_int();
+        let id2 = buf.read_int();
+        let id3 = buf.read_string();
+        let num = buf.read_int();
+        let desc = buf.read_string();
+        
+        Ok(MultiIndexList { id1, id2, id3, num, desc, })
+    }
+
+    pub const __ID__: i32 = 563510135;
 }
 
 #[derive(Debug)]
