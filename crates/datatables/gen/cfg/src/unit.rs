@@ -18,43 +18,49 @@ use super::*;
 
 
 #[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
-pub struct TbUnit {
-    pub data_list: Vec<std::sync::Arc<crate::Unit>>,
-    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Unit>>,
+pub struct TbMonster {
+    pub data_list: Vec<std::sync::Arc<crate::Monster>>,
+    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Monster>>,
 }
 
-impl TbUnit {
-    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbUnit, LubanError> {
-        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Unit>> = Default::default();
-        let mut data_list: Vec<std::sync::Arc<crate::Unit>> = vec![];
+impl TbMonster {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbMonster, LubanError> {
+        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Monster>> = Default::default();
+        let mut data_list: Vec<std::sync::Arc<crate::Monster>> = vec![];
 
         for x in (0..buf.read_size()).rev() {
-            let row = std::sync::Arc::new(crate::Unit::new(&mut buf)?);
+            let row = std::sync::Arc::new(crate::Monster::new(&mut buf)?);
             data_list.push(row.clone());
             data_map.insert(row.id.clone(), row.clone());
         }
 
-        Ok(TbUnit { data_map, data_list })
+        Ok(TbMonster { data_map, data_list })
     }
 
-    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::Unit>> {
+    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::Monster>> {
         self.data_map.get(key).map(|x| x.clone())
     }
 }
 
-impl std::ops::Index<i32> for TbUnit {
-    type Output = std::sync::Arc<crate::Unit>;
+impl std::ops::Index<i32> for TbMonster {
+    type Output = std::sync::Arc<crate::Monster>;
 
     fn index(&self, index: i32) -> &Self::Output {
         &self.data_map.get(&index).unwrap()
     }
 }
-impl luban_lib::table::Table for TbUnit {
-    type Value = std::sync::Arc<crate::Unit>;
+impl luban_lib::table::Table for TbMonster {
+    type Value = std::sync::Arc<crate::Monster>;
 }
-pub type TbUnitKey = i32;
-impl luban_lib::table::MapTable for TbUnit {
-    type Key = TbUnitKey;
+pub type TbMonsterKey = i32;
+#[derive(Debug, Default, bevy::prelude::Component)]
+pub struct TbMonsterRow {
+    pub key: TbMonsterKey,
+    pub data: Option<std::sync::Arc<crate::Monster>>,
+}
+
+impl luban_lib::table::MapTable for TbMonster {
+    type Key = TbMonsterKey;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map.get(key).map(|x| x.clone())
@@ -63,10 +69,10 @@ impl luban_lib::table::MapTable for TbUnit {
 
 
 #[derive(Debug, Default)]
-pub struct TbUnitLoader;
+pub struct TbMonsterLoader;
 
-impl bevy::asset::AssetLoader for TbUnitLoader {
-    type Asset = TbUnit;
+impl bevy::asset::AssetLoader for TbMonsterLoader {
+    type Asset = TbMonster;
 
     type Settings = ();
 
@@ -78,13 +84,179 @@ impl bevy::asset::AssetLoader for TbUnitLoader {
         settings: &'a Self::Settings,
         load_context: &'a mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        bevy::log::info!("TbUnitLoader loading start");
+        bevy::log::info!("TbMonsterLoader loading start");
         let mut bytes = Vec::new();
         use bevy::asset::AsyncReadExt;
         reader.read_to_end(&mut bytes).await?;
         let buf = luban_lib::ByteBuf::new(bytes);
-        let tb = TbUnit::new(buf).unwrap();
-        bevy::log::info!("TbUnitLoader loading over");
+        let tb = TbMonster::new(buf).unwrap();
+        bevy::log::info!("TbMonsterLoader loading over");
+        Ok(tb)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["bytes"]
+    }
+}
+
+
+#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+pub struct TbNpc {
+    pub data_list: Vec<std::sync::Arc<crate::Npc>>,
+    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Npc>>,
+}
+
+impl TbNpc {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbNpc, LubanError> {
+        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Npc>> = Default::default();
+        let mut data_list: Vec<std::sync::Arc<crate::Npc>> = vec![];
+
+        for x in (0..buf.read_size()).rev() {
+            let row = std::sync::Arc::new(crate::Npc::new(&mut buf)?);
+            data_list.push(row.clone());
+            data_map.insert(row.id.clone(), row.clone());
+        }
+
+        Ok(TbNpc { data_map, data_list })
+    }
+
+    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::Npc>> {
+        self.data_map.get(key).map(|x| x.clone())
+    }
+}
+
+impl std::ops::Index<i32> for TbNpc {
+    type Output = std::sync::Arc<crate::Npc>;
+
+    fn index(&self, index: i32) -> &Self::Output {
+        &self.data_map.get(&index).unwrap()
+    }
+}
+impl luban_lib::table::Table for TbNpc {
+    type Value = std::sync::Arc<crate::Npc>;
+}
+pub type TbNpcKey = i32;
+#[derive(Debug, Default, bevy::prelude::Component)]
+pub struct TbNpcRow {
+    pub key: TbNpcKey,
+    pub data: Option<std::sync::Arc<crate::Npc>>,
+}
+
+impl luban_lib::table::MapTable for TbNpc {
+    type Key = TbNpcKey;
+
+    fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
+        self.data_map.get(key).map(|x| x.clone())
+    }
+}
+
+
+#[derive(Debug, Default)]
+pub struct TbNpcLoader;
+
+impl bevy::asset::AssetLoader for TbNpcLoader {
+    type Asset = TbNpc;
+
+    type Settings = ();
+
+    type Error = TableLoaderError;
+
+    async fn load<'a>(
+        &'a self,
+        reader: &'a mut bevy::asset::io::Reader<'_>,
+        settings: &'a Self::Settings,
+        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        bevy::log::info!("TbNpcLoader loading start");
+        let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
+        reader.read_to_end(&mut bytes).await?;
+        let buf = luban_lib::ByteBuf::new(bytes);
+        let tb = TbNpc::new(buf).unwrap();
+        bevy::log::info!("TbNpcLoader loading over");
+        Ok(tb)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["bytes"]
+    }
+}
+
+
+#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+pub struct TbPlayer {
+    pub data_list: Vec<std::sync::Arc<crate::Player>>,
+    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Player>>,
+}
+
+impl TbPlayer {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbPlayer, LubanError> {
+        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Player>> = Default::default();
+        let mut data_list: Vec<std::sync::Arc<crate::Player>> = vec![];
+
+        for x in (0..buf.read_size()).rev() {
+            let row = std::sync::Arc::new(crate::Player::new(&mut buf)?);
+            data_list.push(row.clone());
+            data_map.insert(row.id.clone(), row.clone());
+        }
+
+        Ok(TbPlayer { data_map, data_list })
+    }
+
+    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::Player>> {
+        self.data_map.get(key).map(|x| x.clone())
+    }
+}
+
+impl std::ops::Index<i32> for TbPlayer {
+    type Output = std::sync::Arc<crate::Player>;
+
+    fn index(&self, index: i32) -> &Self::Output {
+        &self.data_map.get(&index).unwrap()
+    }
+}
+impl luban_lib::table::Table for TbPlayer {
+    type Value = std::sync::Arc<crate::Player>;
+}
+pub type TbPlayerKey = i32;
+#[derive(Debug, Default, bevy::prelude::Component)]
+pub struct TbPlayerRow {
+    pub key: TbPlayerKey,
+    pub data: Option<std::sync::Arc<crate::Player>>,
+}
+
+impl luban_lib::table::MapTable for TbPlayer {
+    type Key = TbPlayerKey;
+
+    fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
+        self.data_map.get(key).map(|x| x.clone())
+    }
+}
+
+
+#[derive(Debug, Default)]
+pub struct TbPlayerLoader;
+
+impl bevy::asset::AssetLoader for TbPlayerLoader {
+    type Asset = TbPlayer;
+
+    type Settings = ();
+
+    type Error = TableLoaderError;
+
+    async fn load<'a>(
+        &'a self,
+        reader: &'a mut bevy::asset::io::Reader<'_>,
+        settings: &'a Self::Settings,
+        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        bevy::log::info!("TbPlayerLoader loading start");
+        let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
+        reader.read_to_end(&mut bytes).await?;
+        let buf = luban_lib::ByteBuf::new(bytes);
+        let tb = TbPlayer::new(buf).unwrap();
+        bevy::log::info!("TbPlayerLoader loading over");
         Ok(tb)
     }
 

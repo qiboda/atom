@@ -1,9 +1,3 @@
-pub mod bundle;
-pub mod category;
-pub mod comp;
-pub mod inventory;
-pub mod plugin;
-
 /// 背包，仓库，宝箱。物品栏等。
 ///
 ///
@@ -29,13 +23,8 @@ pub mod plugin;
 ///
 ///
 ///
-use std::{fmt::Debug, sync::Arc};
-
-use bevy::prelude::*;
-use cfg::{item::TbItemKey, Item};
-
-#[derive(Debug, Default, Component)]
-pub struct ItemRow {
-    pub key: TbItemKey,
-    pub data: Option<Arc<Item>>,
-}
+pub mod bundle;
+pub mod category;
+pub mod comp;
+pub mod inventory;
+pub mod plugin;

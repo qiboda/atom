@@ -1,10 +1,11 @@
-use ability::attribute::{attribute_set::AttributeSet, AttributeLayer};
+use ability::attribute::{
+    attribute_set::AttributeSet,
+    implement::{attr_base::BASE_VALUE_LAYER, attr_modifier::AddAttrModifier},
+    AttributeLayer,
+};
 use bevy::prelude::*;
 
-use crate::{
-    attr::{attr_base::BASE_VALUE_LAYER, attr_modifier::AddAttrModifier},
-    unit::attr_set::{CharacterAttributeSet, CharacterAttributeType},
-};
+use crate::unit::attr_set::{CharacterAttributeSet, CharacterAttributeType};
 
 #[derive(Event)]
 pub struct DamageEvent {

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use cfg::{global::TbGlobal, item::TbItem, unit::TbUnit, Tables};
+use cfg::{global::TbGlobal, item::TbItem, unit::TbNpc, Tables};
 use datatables::{tables_system_param::TableReader, DataTablePlugin, TableLoadingStates};
 
 fn main() {
@@ -26,7 +26,7 @@ fn print_table_data(
     }
 }
 
-fn multiple_reader(table_reader: TableReader<TbUnit>, s: TableReader<TbGlobal>) {
+fn multiple_reader(table_reader: TableReader<TbNpc>, s: TableReader<TbGlobal>) {
     if let Some(tb) = table_reader.get_row(&10001) {
         println!("{:?}", tb);
     }

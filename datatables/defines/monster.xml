@@ -1,0 +1,4 @@
+<module name="unit">
+    <table name="TbMonster" value="Monster" readSchemaFromFile="true" mode="map" index="id"
+        input="monster.xlsx" />
+</module>

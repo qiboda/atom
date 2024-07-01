@@ -15,16 +15,16 @@
 
 pub mod prelude{
     pub use crate::*;
+    pub use crate::unit::*;
     pub use crate::relationship::*;
     pub use crate::item::*;
-    pub use crate::unit::*;
     pub use crate::global::*;
     pub use crate::test::*;
 }
 
+use crate::unit::*;
 use crate::relationship::*;
 use crate::item::*;
-use crate::unit::*;
 use crate::global::*;
 use crate::test::*;
 
@@ -70,9 +70,11 @@ pub enum TableLoaderError {
 
 #[derive(Debug, bevy::prelude::Resource, Default)]
 pub struct Tables{
+    pub tb_monster: bevy::asset::Handle<crate::unit::TbMonster>,
+    pub tb_npc: bevy::asset::Handle<crate::unit::TbNpc>,
+    pub tb_player: bevy::asset::Handle<crate::unit::TbPlayer>,
     pub tb_relation_ship: bevy::asset::Handle<crate::relationship::TbRelationShip>,
     pub tb_item: bevy::asset::Handle<crate::item::TbItem>,
-    pub tb_unit: bevy::asset::Handle<crate::unit::TbUnit>,
     pub tb_global: bevy::asset::Handle<crate::global::TbGlobal>,
     pub tb_multi_index_list: bevy::asset::Handle<crate::test::TbMultiIndexList>,
     pub tb_multi_union_index_list: bevy::asset::Handle<crate::test::TbMultiUnionIndexList>,
@@ -83,9 +85,11 @@ pub struct Tables{
 impl Tables {
     pub fn new<G: Clone + Send + Sync + 'static>(asset_server: bevy::prelude::Res<bevy::asset::AssetServer>, tables_path: std::path::PathBuf, guard: G) -> Tables {
         let mut tables = Tables {
+            tb_monster: asset_server.load_acquire(tables_path.join("unit_tbmonster.bytes"), guard.clone()),
+            tb_npc: asset_server.load_acquire(tables_path.join("unit_tbnpc.bytes"), guard.clone()),
+            tb_player: asset_server.load_acquire(tables_path.join("unit_tbplayer.bytes"), guard.clone()),
             tb_relation_ship: asset_server.load_acquire(tables_path.join("relationship_tbrelationship.bytes"), guard.clone()),
             tb_item: asset_server.load_acquire(tables_path.join("item_tbitem.bytes"), guard.clone()),
-            tb_unit: asset_server.load_acquire(tables_path.join("unit_tbunit.bytes"), guard.clone()),
             tb_global: asset_server.load_acquire(tables_path.join("global_tbglobal.bytes"), guard.clone()),
             tb_multi_index_list: asset_server.load_acquire(tables_path.join("test_tbmultiindexlist.bytes"), guard.clone()),
             tb_multi_union_index_list: asset_server.load_acquire(tables_path.join("test_tbmultiunionindexlist.bytes"), guard.clone()),
@@ -93,9 +97,11 @@ impl Tables {
             table_handle_map: bevy::utils::HashMap::default(),
         };
 
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::unit::TbMonster>(), tables.tb_monster.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::unit::TbNpc>(), tables.tb_npc.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::unit::TbPlayer>(), tables.tb_player.clone_weak().untyped());
         tables.table_handle_map.insert(std::any::TypeId::of::<crate::relationship::TbRelationShip>(), tables.tb_relation_ship.clone_weak().untyped());
         tables.table_handle_map.insert(std::any::TypeId::of::<crate::item::TbItem>(), tables.tb_item.clone_weak().untyped());
-        tables.table_handle_map.insert(std::any::TypeId::of::<crate::unit::TbUnit>(), tables.tb_unit.clone_weak().untyped());
         tables.table_handle_map.insert(std::any::TypeId::of::<crate::global::TbGlobal>(), tables.tb_global.clone_weak().untyped());
         tables.table_handle_map.insert(std::any::TypeId::of::<crate::test::TbMultiIndexList>(), tables.tb_multi_index_list.clone_weak().untyped());
         tables.table_handle_map.insert(std::any::TypeId::of::<crate::test::TbMultiUnionIndexList>(), tables.tb_multi_union_index_list.clone_weak().untyped());
@@ -120,15 +126,21 @@ impl bevy::app::Plugin for TableAssetsPlugin {
         use bevy::asset::AssetApp;
         app
             .add_event::<TablesLoadedEvent>()
+            .init_asset_loader::<TbMonsterLoader>()
+            .init_asset::<TbMonster>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbMonster>)
+            .init_asset_loader::<TbNpcLoader>()
+            .init_asset::<TbNpc>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbNpc>)
+            .init_asset_loader::<TbPlayerLoader>()
+            .init_asset::<TbPlayer>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbPlayer>)
             .init_asset_loader::<TbRelationShipLoader>()
             .init_asset::<TbRelationShip>()
             .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbRelationShip>)
             .init_asset_loader::<TbItemLoader>()
             .init_asset::<TbItem>()
             .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbItem>)
-            .init_asset_loader::<TbUnitLoader>()
-            .init_asset::<TbUnit>()
-            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbUnit>)
             .init_asset_loader::<TbGlobalLoader>()
             .init_asset::<TbGlobal>()
             .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbGlobal>)
@@ -172,9 +184,9 @@ fn table_asset_loadeds<A: bevy::asset::Asset>(
         event_writer.send(TablesLoadedEvent { asset_handles });
     }
 }
+pub mod unit;
 pub mod relationship;
 pub mod item;
-pub mod unit;
 pub mod global;
 pub mod test;
 
@@ -237,7 +249,7 @@ impl vector4{
 }
 
 #[derive(Debug)]
-pub struct MultiUnionIndexList {
+pub struct MultiIndexList {
     pub id1: i32,
     pub id2: i32,
     pub id3: String,
@@ -245,18 +257,18 @@ pub struct MultiUnionIndexList {
     pub desc: String,
 }
 
-impl MultiUnionIndexList{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiUnionIndexList, LubanError> {
+impl MultiIndexList{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiIndexList, LubanError> {
         let id1 = buf.read_int();
         let id2 = buf.read_int();
         let id3 = buf.read_string();
         let num = buf.read_int();
         let desc = buf.read_string();
         
-        Ok(MultiUnionIndexList { id1, id2, id3, num, desc, })
+        Ok(MultiIndexList { id1, id2, id3, num, desc, })
     }
 
-    pub const __ID__: i32 = 1014949882;
+    pub const __ID__: i32 = 563510135;
 }
 
 #[derive(Debug)]
@@ -279,6 +291,31 @@ impl RelationShip{
     }
 
     pub const __ID__: i32 = -98484616;
+}
+
+#[derive(Debug)]
+pub struct Monster {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 阵营
+    pub camp: i32,
+}
+
+impl Monster{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Monster, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let camp = buf.read_int();
+        
+        Ok(Monster { id, name, desc, camp, })
+    }
+
+    pub const __ID__: i32 = -1393696838;
 }
 
 #[derive(Debug)]
@@ -311,7 +348,57 @@ impl Global{
 }
 
 #[derive(Debug)]
-pub struct MultiIndexList {
+pub struct Player {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 阵营
+    pub camp: i32,
+}
+
+impl Player{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Player, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let camp = buf.read_int();
+        
+        Ok(Player { id, name, desc, camp, })
+    }
+
+    pub const __ID__: i32 = -1901885695;
+}
+
+#[derive(Debug)]
+pub struct Npc {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 阵营
+    pub camp: i32,
+}
+
+impl Npc{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Npc, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let camp = buf.read_int();
+        
+        Ok(Npc { id, name, desc, camp, })
+    }
+
+    pub const __ID__: i32 = 78529;
+}
+
+#[derive(Debug)]
+pub struct MultiUnionIndexList {
     pub id1: i32,
     pub id2: i32,
     pub id3: String,
@@ -319,18 +406,18 @@ pub struct MultiIndexList {
     pub desc: String,
 }
 
-impl MultiIndexList{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiIndexList, LubanError> {
+impl MultiUnionIndexList{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiUnionIndexList, LubanError> {
         let id1 = buf.read_int();
         let id2 = buf.read_int();
         let id3 = buf.read_string();
         let num = buf.read_int();
         let desc = buf.read_string();
         
-        Ok(MultiIndexList { id1, id2, id3, num, desc, })
+        Ok(MultiUnionIndexList { id1, id2, id3, num, desc, })
     }
 
-    pub const __ID__: i32 = 563510135;
+    pub const __ID__: i32 = 1014949882;
 }
 
 #[derive(Debug)]
@@ -348,31 +435,6 @@ impl NullIndexList{
     }
 
     pub const __ID__: i32 = 1457546921;
-}
-
-#[derive(Debug)]
-pub struct Unit {
-    /// 这是id
-    pub id: i32,
-    /// 名字
-    pub name: String,
-    /// 描述
-    pub desc: String,
-    /// 价格
-    pub price: i32,
-}
-
-impl Unit{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Unit, LubanError> {
-        let id = buf.read_int();
-        let name = buf.read_string();
-        let desc = buf.read_string();
-        let price = buf.read_int();
-        
-        Ok(Unit { id, name, desc, price, })
-    }
-
-    pub const __ID__: i32 = 2641316;
 }
 
 #[derive(Debug)]

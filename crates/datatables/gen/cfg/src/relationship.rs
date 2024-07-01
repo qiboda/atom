@@ -72,6 +72,11 @@ impl luban_lib::table::ListTable for TbRelationShip {}
 
 
 pub type TbRelationShipKey = (i32, i32);
+#[derive(Debug, Default, bevy::prelude::Component)]
+pub struct TbRelationShipRow {
+    pub key: TbRelationShipKey,
+    pub data: Option<std::sync::Arc<crate::RelationShip>>,
+}
 impl luban_lib::table::MultiUnionIndexListTable for TbRelationShip {
     type Key = TbRelationShipKey;
 

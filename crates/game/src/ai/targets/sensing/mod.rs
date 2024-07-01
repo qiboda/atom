@@ -1,10 +1,10 @@
-pub mod hatred;
-
 use bevy::math::Vec3;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-use crate::unit::{Monster, Npc, Player};
+use crate::unit::UnitQueryFilter;
+
+use super::TargetsSystemSet;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum SensingSystemSet {
@@ -17,6 +17,10 @@ pub struct SensingPlugin;
 
 impl Plugin for SensingPlugin {
     fn build(&self, app: &mut App) {
+        app.configure_sets(
+            PreUpdate,
+            (SensingSystemSet::Vision, SensingSystemSet::Hearing).in_set(TargetsSystemSet::Sensing),
+        );
         app.add_systems(PreUpdate, vision_system.in_set(SensingSystemSet::Vision));
         app.add_systems(PreUpdate, hearing_system.in_set(SensingSystemSet::Hearing));
     }
@@ -81,7 +85,7 @@ impl Vision {
 
 fn vision_system(
     mut query: Query<(&GlobalTransform, &mut Vision)>,
-    target_query: Query<(Entity, &GlobalTransform), Or<(With<Player>, With<Monster>, With<Npc>)>>,
+    target_query: Query<(Entity, &GlobalTransform), UnitQueryFilter>,
 ) {
     for (transform, mut vision) in query.iter_mut() {
         vision.sensing_entities.clear();
@@ -126,7 +130,7 @@ impl Hearing {
 
 fn hearing_system(
     mut query: Query<(&GlobalTransform, &mut Hearing)>,
-    target_query: Query<(Entity, &GlobalTransform), Or<(With<Player>, With<Monster>, With<Npc>)>>,
+    target_query: Query<(Entity, &GlobalTransform), UnitQueryFilter>,
 ) {
     for (transform, mut hearing) in query.iter_mut() {
         hearing.sensing_entities.clear();

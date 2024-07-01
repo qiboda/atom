@@ -1,6 +1,7 @@
 use bevy::reflect::Reflect;
 
 pub mod attribute_set;
+pub mod implement;
 pub mod modifier;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

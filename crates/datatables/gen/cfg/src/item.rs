@@ -95,6 +95,12 @@ impl luban_lib::table::Table for TbItem {
     type Value = std::sync::Arc<crate::Item>;
 }
 pub type TbItemKey = i32;
+#[derive(Debug, Default, bevy::prelude::Component)]
+pub struct TbItemRow {
+    pub key: TbItemKey,
+    pub data: Option<std::sync::Arc<crate::Item>>,
+}
+
 impl luban_lib::table::MapTable for TbItem {
     type Key = TbItemKey;
 

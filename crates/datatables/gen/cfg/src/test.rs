@@ -290,6 +290,11 @@ impl luban_lib::table::ListTable for TbMultiUnionIndexList {}
 
 
 pub type TbMultiUnionIndexListKey = (i32, i32, String);
+#[derive(Debug, Default, bevy::prelude::Component)]
+pub struct TbMultiUnionIndexListRow {
+    pub key: TbMultiUnionIndexListKey,
+    pub data: Option<std::sync::Arc<crate::MultiUnionIndexList>>,
+}
 impl luban_lib::table::MultiUnionIndexListTable for TbMultiUnionIndexList {
     type Key = TbMultiUnionIndexListKey;
 

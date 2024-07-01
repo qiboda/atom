@@ -1,13 +1,11 @@
 pub mod targets;
-pub mod sensing;
 /// 发现敌人, 感知系统和敌对系统
-/// 调整站位
-/// 释放技能。
+/// 调整站位(技能释放需要的位置)(导航的信息)
+/// 释放技能
 /// 血量太低，逃跑。
 /// 逃跑时回血，且无视攻击。
-/// 有仇恨值系统。
+///
 /// 组队怪物，移动，攻击，逃跑等。
-
 use bevy::log::LogPlugin;
 use bevy::prelude::*;
 use bevy::utils::tracing::{debug, trace};

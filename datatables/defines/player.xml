@@ -1,0 +1,4 @@
+<module name="unit">
+    <table name="TbPlayer" value="Player" readSchemaFromFile="true" mode="map" index="id"
+        input="player.xlsx" />
+</module>

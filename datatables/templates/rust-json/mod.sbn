@@ -218,6 +218,11 @@ impl luban_lib::table::Table for {{name}} {
     type Value = {{value_type}};
 }
 pub type {{name}}Key = {{key_type}};
+#[derive(Debug, Default, bevy::prelude::Component)]
+pub struct {{name}}Row {
+    pub key: {{name}}Key,
+    pub data: Option<{{value_type}}>,
+}
 impl luban_lib::table::MapTable for {{name}} {
     type Key = {{name}}Key;
 
@@ -291,6 +296,11 @@ impl luban_lib::table::ListTable for {{name}} {}
 {{~if table.is_union_index~}}
 
 pub type {{name}}Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
+#[derive(Debug, Default, bevy::prelude::Component)]
+pub struct {{name}}Row {
+    pub key: {{name}}Key,
+    pub data: Option<{{value_type}}>,
+}
 impl luban_lib::table::MultiUnionIndexListTable for {{name}} {
     type Key = {{name}}Key;
 

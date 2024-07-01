@@ -1,6 +1,4 @@
-use ability::attribute::{
-    attribute_set::AttributeSet, modifier::AttributeModifier, AttributeLayer,
-};
+use crate::attribute::{attribute_set::AttributeSet, modifier::AttributeModifier, AttributeLayer};
 
 pub struct AddAttrModifier<T: AttributeSet> {
     attr_type: T::AttributeSetEnum,
@@ -64,6 +62,5 @@ impl<T: AttributeSet> AttributeModifier for AddAttrRangeModifier<T> {
     }
 }
 
-
-// todo: AddAttrModifier and post handle modifier. 
+// todo: AddAttrModifier and post handle modifier.
 // or AddMaxAttrModifier.

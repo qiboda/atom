@@ -1,7 +1,10 @@
-use ability::attribute::{attribute_set::AttributeSet, modifier::AttributeModifier, Attribute};
+use ability::attribute::{
+    attribute_set::AttributeSet,
+    implement::attr_base::{ValueAttribute, ValuePercentAttribute},
+    modifier::AttributeModifier,
+    Attribute,
+};
 use bevy::{prelude::Component, reflect::Reflect};
-
-use crate::attr::attr_base::{ValueAttribute, ValuePercentAttribute};
 
 #[derive(Debug, Reflect, Copy, Clone, Hash, Eq, PartialEq)]
 pub enum CharacterAttributeType {

@@ -1,4 +1,5 @@
-use ability::attribute::{Attribute, AttributeLayer};
+use crate::attribute::Attribute;
+use crate::attribute::AttributeLayer;
 use bevy::reflect::Reflect;
 
 pub const BASE_VALUE_LAYER: AttributeLayer = AttributeLayer("base_value");
@@ -91,7 +92,7 @@ impl Attribute for ValueAttribute {
 pub type PercentAttribute = ValueAttribute;
 
 #[derive(Debug, Default, Reflect)]
-pub(crate) struct ValuePercentAttribute {
+pub struct ValuePercentAttribute {
     base_value: f32,
     item_value: f32,
     buff_value: f32,
