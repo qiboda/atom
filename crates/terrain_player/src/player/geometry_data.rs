@@ -7,7 +7,7 @@ use terrain_player_client::order::OrderType;
 
 use super::{Player, PlayerFilter};
 
-// todo: 分为每chunk顶点和索引。
+// TODO: 分为每chunk顶点和索引。
 #[derive(Debug, Default, Resource)]
 pub struct AllGeometryData {
     pub geometry_data_map: HashMap<TerrainChunkCoord, GeometryData>,

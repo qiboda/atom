@@ -1,0 +1,4 @@
+<module name="layertag">
+    <table name="TbLayerTag" value="LayerTag" readSchemaFromFile="true" mode="map" index="raw_layertag"
+        input="layertag.xlsx" />
+</module>

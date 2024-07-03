@@ -3,80 +3,147 @@
 //         effect nodes children nodes.
 //
 
+use std::sync::Arc;
+
 use bevy::prelude::*;
 
-use ability::graph::{
-    base::{
-        entry::{EffectNodeEntry, EntryNodeBundle},
-        log::{EffectNodeLog, LogNodeBundle},
-        timer::{EffectNodeTimer, TimerNodeBundle},
+use ability::{
+    ability::node::ability_entry::EffectNodeAbilityEntry,
+    graph::{
+        blackboard::EffectValue,
+        builder::{EffectGraph, EffectGraphBuilder},
+        bundle::EffectGraphBundle,
+        context::{EffectGraphContext, GraphRef, InstantEffectNodeMap},
+        node::{
+            bundle::StateEffectNodeBundle,
+            implement::{log::EffectNodeLog, timer::EffectNodeTimer},
+            pin::EffectNodePinGroup,
+            InstantEffectNode,
+        },
+        pin::{EffectNodeExecPin, EffectNodeSlotPin},
+        state::{EffectGraphState, EffectGraphTickState},
     },
-    blackboard::EffectValue,
-    builder::{EffectGraph, EffectGraphBuilder},
-    context::{EffectGraphContext, EffectPinKey},
 };
 
-#[derive(Debug, Component, Default)]
-pub struct EffectNodeGraphBaseAttack {}
+#[derive(Debug, Component, Default, Clone, Copy, Reflect)]
+#[reflect(Component)]
+pub struct EffectNodeGraphBaseAttack;
 
 impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
+    fn get_effect_graph_name(&self) -> &'static str {
+        "EffectNodeGraphBaseAttack"
+    }
+
     fn build(
         &self,
         commands: &mut Commands,
-        effect_graph_context: &mut EffectGraphContext,
-        parent: Entity,
-    ) {
-        let entry_node = EntryNodeBundle::new();
-        let entry_node_uuid = entry_node.base.uuid;
-        let timer_node = TimerNodeBundle::new();
-        let timer_node_uuid = timer_node.base.uuid;
-        let msg_node = LogNodeBundle::new();
-        let msg_node_uuid = msg_node.effect_node_base.uuid;
+        instant_map: &mut ResMut<InstantEffectNodeMap>,
+    ) -> Entity {
+        // 不需要运行时数据的存储到技能下，作为技能内的单例，
+        //      不使用system
+        // 需要运行时数据的存储到Entity上，作为组件存在。
+        //      使用system
+        //      不使用system
+        // 执行器，获取下一个节点，非system节点，都不需要存储数据，因此都是单例。
+        //      因此可以存储在ability下，不作为entity存在。
+        //
+        // 构建所需要做的事情
+        // create node
+        // set node input value
+        // node exec to node exec
+        // node output to node input(type check)
 
-        let msg_node_entity = commands.spawn(msg_node).set_parent(parent).id();
-        effect_graph_context.insert_node(msg_node_entity);
-        let timer_node_entity = commands.spawn(timer_node).set_parent(parent).id();
-        effect_graph_context.insert_node(timer_node_entity);
-        let entry_node_entity = commands.spawn(entry_node).set_parent(parent).id();
-        effect_graph_context.insert_node(entry_node_entity);
+        let mut context = EffectGraphContext::new();
 
-        effect_graph_context.entry_node = Some(entry_node_entity);
+        // 创建节点
+        let mut entry_node = StateEffectNodeBundle::<EffectNodeAbilityEntry>::default();
+        let entry_node_entity_cmd = commands.spawn_empty();
+        let entry_node_entity = entry_node_entity_cmd.id();
+        entry_node.node_id = entry_node_entity.into();
+        context.insert_state_node(entry_node_entity_cmd.id());
+        context.set_entry_node(entry_node_entity_cmd.id());
 
-        effect_graph_context.insert_output_value(
-            EffectPinKey {
-                node: entry_node_entity,
-                node_uuid: entry_node_uuid,
-                key: EffectNodeEntry::OUTPUT_EXEC_START,
+        let mut timer_node = StateEffectNodeBundle::<EffectNodeTimer>::default();
+        let timer_node_entity_cmd = commands.spawn_empty();
+        let timer_node_entity = timer_node_entity_cmd.id();
+        timer_node.node_id = timer_node_entity.into();
+        context.insert_input_value(
+            EffectNodeSlotPin {
+                node_id: timer_node_entity_cmd.id().into(),
+                slot: *timer_node
+                    .state_node
+                    .get_input_slot_pin_by_name(EffectNodeTimer::INPUT_SLOT_DURATION)
+                    .unwrap(),
             },
-            EffectValue::Vec(vec![EffectValue::Entity(timer_node_entity)]),
+            EffectValue::F32(5.0).into(),
+        );
+        context.insert_state_node(timer_node_entity_cmd.id());
+
+        let log_node = EffectNodeLog::new();
+        context.insert_input_value(
+            EffectNodeSlotPin {
+                node_id: log_node.get_uuid().into(),
+                slot: *log_node
+                    .get_input_slot_pin_by_name(EffectNodeLog::INPUT_SLOT_MESSAGE)
+                    .unwrap(),
+            },
+            EffectValue::String("msg output".into()).into(),
+        );
+        context.insert_instant_node(log_node.get_uuid());
+
+        context.add_exec_connection(
+            EffectNodeExecPin {
+                node_id: entry_node.node_id,
+                exec: *entry_node
+                    .state_node
+                    .get_output_exec_pin_by_name(EffectNodeAbilityEntry::OUTPUT_EXEC_START)
+                    .unwrap(),
+            },
+            &[EffectNodeExecPin {
+                node_id: timer_node.node_id,
+                exec: *timer_node
+                    .state_node
+                    .get_input_exec_pin_by_name(EffectNodeTimer::INPUT_EXEC_START)
+                    .unwrap(),
+            }],
         );
 
-        effect_graph_context.outputs.insert(
-            EffectPinKey {
-                node: timer_node_entity,
-                node_uuid: timer_node_uuid,
-                key: EffectNodeTimer::OUTPUT_EXEC_FINISH,
+        context.add_exec_connection(
+            EffectNodeExecPin {
+                node_id: timer_node.node_id,
+                exec: *timer_node
+                    .state_node
+                    .get_output_exec_pin_by_name(EffectNodeTimer::OUTPUT_EXEC_FINISH)
+                    .unwrap(),
             },
-            EffectValue::Vec(vec![EffectValue::Entity(msg_node_entity)]),
+            &[EffectNodeExecPin {
+                node_id: log_node.get_uuid().into(),
+                exec: *log_node
+                    .get_input_exec_pin_by_name(EffectNodeLog::INPUT_EXEC_START)
+                    .unwrap(),
+            }],
         );
 
-        effect_graph_context.inputs.insert(
-            EffectPinKey {
-                node: timer_node_entity,
-                node_uuid: timer_node_uuid,
-                key: EffectNodeTimer::INPUT_PIN_DURATION,
-            },
-            EffectValue::F32(5.0),
-        );
-
-        effect_graph_context.inputs.insert(
-            EffectPinKey {
-                node: msg_node_entity,
-                node_uuid: msg_node_uuid,
-                key: EffectNodeLog::INPUT_PIN_MESSAGE,
-            },
-            EffectValue::String("message log".into()),
-        );
+        let mut parent_commands = commands.spawn_empty();
+        context.set_graph_ref(GraphRef::new(parent_commands.id()));
+        let parent = parent_commands
+            .insert(EffectGraphBundle {
+                context,
+                state: EffectGraphState::Inactive,
+                graph: *self,
+                tick_state: EffectGraphTickState::Ticked,
+            })
+            .id();
+        commands
+            .entity(entry_node_entity)
+            .insert(entry_node)
+            .set_parent(parent);
+        commands
+            .entity(timer_node_entity)
+            .insert(timer_node)
+            .set_parent(parent);
+        instant_map.insert(log_node.get_uuid(), Arc::new(log_node));
+        parent
     }
 }
 

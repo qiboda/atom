@@ -1,11 +1,12 @@
 /target
-saved/graphs/
-saved/logs/
 wgpu_trace
 .idea
+saved/graphs/
+saved/logs/
 saved/trace
 saved/tracy
 tools/luban
+
 .VSCodeCounter/2024-01-31_23-25-51/details.md
 .VSCodeCounter/2024-01-31_23-25-51/diff-details.md
 .VSCodeCounter/2024-01-31_23-25-51/diff.csv

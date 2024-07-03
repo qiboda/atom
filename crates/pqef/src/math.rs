@@ -26,7 +26,7 @@ pub(crate) fn trace_of_product(a: Mat3A, b: Mat3A) -> f32 {
     r
 }
 
-/// todo: to understand
+/// TODO: to understand
 /// p and q are 3x3 matrices
 /// and use p and q 2x2 matrices interference determinant to as interference value at non 2x2
 /// matrix row and column

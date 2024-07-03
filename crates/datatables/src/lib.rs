@@ -8,7 +8,7 @@ use std::sync::{
 use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
 
 use atom_utils::asset_barrier::{AllAssetBarrier, AssetBarrierStatus};
-use cfg::{TableAssetsPlugin, Tables, TablesLoadedEvent};
+pub use cfg::*;
 
 /// loaded 仅仅会触发一次，reload 不会触发。
 /// 加载和热加载都会触发TablesUpdateEvent.

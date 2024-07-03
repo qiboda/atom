@@ -8,8 +8,3 @@ edition = "2021"
 [dependencies]
 bevy = { workspace = true }
 once_cell = { workspace = true }
-layertag_derive = { path = "layertag_derive" }
-
-[[example]]
-name = "tag"
-path = "examples/tag.rs"

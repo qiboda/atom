@@ -10,7 +10,7 @@
 
 use super::*;
 
-#[derive(Debug, Hash, Eq, PartialEq, macros::EnumFromNum)]
+#[derive(Debug, Hash, Eq, PartialEq, bevy::reflect::Reflect, macros::EnumFromNum)]
 pub enum EQuality {
     ///最差品质
     WHITE = 1,
@@ -33,7 +33,7 @@ impl From<i32> for EQuality {
     }
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct ItemExchange {
     /// 道具id
     pub id: i32,
@@ -59,7 +59,7 @@ impl ItemExchange{
 
 
 
-#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbItem {
     pub data_list: Vec<std::sync::Arc<crate::Item>>,
     pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Item>>,
@@ -95,17 +95,54 @@ impl luban_lib::table::Table for TbItem {
     type Value = std::sync::Arc<crate::Item>;
 }
 pub type TbItemKey = i32;
-#[derive(Debug, Default, bevy::prelude::Component)]
+#[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component)]
 pub struct TbItemRow {
     pub key: TbItemKey,
     pub data: Option<std::sync::Arc<crate::Item>>,
 }
 
+impl TbItemRow {
+    pub fn new(key: TbItemKey, data: Option<std::sync::Arc<crate::Item>>) -> Self {
+        Self { key, data }
+    }
+
+    pub fn key(&self) -> &TbItemKey {
+        &self.key
+    }
+
+    pub fn set_key(&mut self, key: TbItemKey) {
+        self.key = key;
+    }
+
+    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::Item>>) {
+        self.data = data;
+    }
+
+    pub fn get_data(&self) -> Option<std::sync::Arc<crate::Item>> {
+        self.data.clone()
+    }
+
+    pub fn data(&self) -> std::sync::Arc<crate::Item> {
+        self.data.clone().unwrap()
+    }
+}
+
+
 impl luban_lib::table::MapTable for TbItem {
     type Key = TbItemKey;
+    type List = Vec<std::sync::Arc<crate::Item>>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map.get(key).map(|x| x.clone())
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map
     }
 }
 

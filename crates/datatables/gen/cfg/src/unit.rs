@@ -10,6 +10,23 @@
 
 use super::*;
 
+///camp relationship
+#[derive(Debug, Hash, Eq, PartialEq, bevy::reflect::Reflect, macros::EnumFromNum)]
+pub enum RelationShipType {
+    None = 0,
+    Hostility = 1,
+    Friendly = 2,
+}
+
+impl From<i32> for RelationShipType {
+    fn from(value: i32) -> Self {        match value { 
+            0 => RelationShipType::None,
+            1 => RelationShipType::Hostility,
+            2 => RelationShipType::Friendly,
+            _ => panic!("Invalid value for RelationShipType:{}", value),
+        }
+    }
+}
 
 
 
@@ -17,7 +34,8 @@ use super::*;
 
 
 
-#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbMonster {
     pub data_list: Vec<std::sync::Arc<crate::Monster>>,
     pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Monster>>,
@@ -53,17 +71,54 @@ impl luban_lib::table::Table for TbMonster {
     type Value = std::sync::Arc<crate::Monster>;
 }
 pub type TbMonsterKey = i32;
-#[derive(Debug, Default, bevy::prelude::Component)]
+#[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component)]
 pub struct TbMonsterRow {
     pub key: TbMonsterKey,
     pub data: Option<std::sync::Arc<crate::Monster>>,
 }
 
+impl TbMonsterRow {
+    pub fn new(key: TbMonsterKey, data: Option<std::sync::Arc<crate::Monster>>) -> Self {
+        Self { key, data }
+    }
+
+    pub fn key(&self) -> &TbMonsterKey {
+        &self.key
+    }
+
+    pub fn set_key(&mut self, key: TbMonsterKey) {
+        self.key = key;
+    }
+
+    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::Monster>>) {
+        self.data = data;
+    }
+
+    pub fn get_data(&self) -> Option<std::sync::Arc<crate::Monster>> {
+        self.data.clone()
+    }
+
+    pub fn data(&self) -> std::sync::Arc<crate::Monster> {
+        self.data.clone().unwrap()
+    }
+}
+
+
 impl luban_lib::table::MapTable for TbMonster {
     type Key = TbMonsterKey;
+    type List = Vec<std::sync::Arc<crate::Monster>>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map.get(key).map(|x| x.clone())
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map
     }
 }
 
@@ -100,7 +155,7 @@ impl bevy::asset::AssetLoader for TbMonsterLoader {
 }
 
 
-#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbNpc {
     pub data_list: Vec<std::sync::Arc<crate::Npc>>,
     pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Npc>>,
@@ -136,17 +191,54 @@ impl luban_lib::table::Table for TbNpc {
     type Value = std::sync::Arc<crate::Npc>;
 }
 pub type TbNpcKey = i32;
-#[derive(Debug, Default, bevy::prelude::Component)]
+#[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component)]
 pub struct TbNpcRow {
     pub key: TbNpcKey,
     pub data: Option<std::sync::Arc<crate::Npc>>,
 }
 
+impl TbNpcRow {
+    pub fn new(key: TbNpcKey, data: Option<std::sync::Arc<crate::Npc>>) -> Self {
+        Self { key, data }
+    }
+
+    pub fn key(&self) -> &TbNpcKey {
+        &self.key
+    }
+
+    pub fn set_key(&mut self, key: TbNpcKey) {
+        self.key = key;
+    }
+
+    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::Npc>>) {
+        self.data = data;
+    }
+
+    pub fn get_data(&self) -> Option<std::sync::Arc<crate::Npc>> {
+        self.data.clone()
+    }
+
+    pub fn data(&self) -> std::sync::Arc<crate::Npc> {
+        self.data.clone().unwrap()
+    }
+}
+
+
 impl luban_lib::table::MapTable for TbNpc {
     type Key = TbNpcKey;
+    type List = Vec<std::sync::Arc<crate::Npc>>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map.get(key).map(|x| x.clone())
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map
     }
 }
 
@@ -183,7 +275,7 @@ impl bevy::asset::AssetLoader for TbNpcLoader {
 }
 
 
-#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbPlayer {
     pub data_list: Vec<std::sync::Arc<crate::Player>>,
     pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Player>>,
@@ -219,17 +311,54 @@ impl luban_lib::table::Table for TbPlayer {
     type Value = std::sync::Arc<crate::Player>;
 }
 pub type TbPlayerKey = i32;
-#[derive(Debug, Default, bevy::prelude::Component)]
+#[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component)]
 pub struct TbPlayerRow {
     pub key: TbPlayerKey,
     pub data: Option<std::sync::Arc<crate::Player>>,
 }
 
+impl TbPlayerRow {
+    pub fn new(key: TbPlayerKey, data: Option<std::sync::Arc<crate::Player>>) -> Self {
+        Self { key, data }
+    }
+
+    pub fn key(&self) -> &TbPlayerKey {
+        &self.key
+    }
+
+    pub fn set_key(&mut self, key: TbPlayerKey) {
+        self.key = key;
+    }
+
+    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::Player>>) {
+        self.data = data;
+    }
+
+    pub fn get_data(&self) -> Option<std::sync::Arc<crate::Player>> {
+        self.data.clone()
+    }
+
+    pub fn data(&self) -> std::sync::Arc<crate::Player> {
+        self.data.clone().unwrap()
+    }
+}
+
+
 impl luban_lib::table::MapTable for TbPlayer {
     type Key = TbPlayerKey;
+    type List = Vec<std::sync::Arc<crate::Player>>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map.get(key).map(|x| x.clone())
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map
     }
 }
 
@@ -257,6 +386,99 @@ impl bevy::asset::AssetLoader for TbPlayerLoader {
         let buf = luban_lib::ByteBuf::new(bytes);
         let tb = TbPlayer::new(buf).unwrap();
         bevy::log::info!("TbPlayerLoader loading over");
+        Ok(tb)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["bytes"]
+    }
+}
+
+
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
+pub struct TbRelationShip {
+    pub data_list: Vec<std::sync::Arc<crate::RelationShip>>,
+    pub data_map_union: bevy::utils::HashMap<(i32, i32), std::sync::Arc<crate::RelationShip>>,
+}
+
+impl TbRelationShip {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbRelationShip, LubanError> {
+        let mut data_list: Vec<std::sync::Arc<crate::RelationShip>> = vec![];
+
+        for x in (0..buf.read_size()).rev() {
+            let row = std::sync::Arc::new(crate::RelationShip::new(&mut buf)?);
+            data_list.push(row.clone());
+        }
+        let mut data_map_union: bevy::utils::HashMap<(i32, i32), std::sync::Arc<crate::RelationShip>> = Default::default();
+        for x in &data_list {
+            data_map_union.insert((x.active_camp, x.passive_camp.clone()), x.clone());
+        }
+
+    Ok(TbRelationShip { 
+            data_list,
+            data_map_union,
+        })
+    }
+
+    pub fn get(&self, key: &(i32, i32)) -> Option<std::sync::Arc<crate::RelationShip>> {
+        self.data_map_union.get(key).map(|x| x.clone())
+    }
+}
+
+impl luban_lib::table::Table for TbRelationShip {
+    type Value = std::sync::Arc<crate::RelationShip>;
+}
+impl luban_lib::table::ListTable for TbRelationShip {}
+
+
+pub type TbRelationShipKey = (i32, i32);
+#[derive(Debug, Default, bevy::reflect::Reflect, bevy::prelude::Component)]
+pub struct TbRelationShipRow {
+    pub key: TbRelationShipKey,
+    pub data: Option<std::sync::Arc<crate::RelationShip>>,
+}
+impl luban_lib::table::MultiUnionIndexListTable for TbRelationShip {
+    type Key = TbRelationShipKey;
+    type List = Vec<std::sync::Arc<crate::RelationShip>>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
+
+    fn get_row_by_key(&self, key: &Self::Key) -> Option<Self::Value> {
+        self.data_map_union.get(key).map(|x| x.clone())
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map_union
+    }
+}
+
+
+#[derive(Debug, Default)]
+pub struct TbRelationShipLoader;
+
+impl bevy::asset::AssetLoader for TbRelationShipLoader {
+    type Asset = TbRelationShip;
+
+    type Settings = ();
+
+    type Error = TableLoaderError;
+
+    async fn load<'a>(
+        &'a self,
+        reader: &'a mut bevy::asset::io::Reader<'_>,
+        settings: &'a Self::Settings,
+        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        bevy::log::info!("TbRelationShipLoader loading start");
+        let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
+        reader.read_to_end(&mut bytes).await?;
+        let buf = luban_lib::ByteBuf::new(bytes);
+        let tb = TbRelationShip::new(buf).unwrap();
+        bevy::log::info!("TbRelationShipLoader loading over");
         Ok(tb)
     }
 

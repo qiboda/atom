@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use cfg::item::TbItemRow;
+use datatables::item::TbItemRow;
 
 use super::comp::{ItemCd, ItemCount, ItemStack};
 

@@ -75,7 +75,7 @@ fn update_fps(
     let mut text = query.single_mut();
     text.sections[1].value = format!("{:.2}", 1.0 / time.delta_seconds());
     text.sections[3].value = format!("{:.2}", frame_count.0);
-    // todo: support multiple cameras
+    // TODO: support multiple cameras
     for camera in camera.iter() {
         text.sections[4].value = format!("{:?}", camera.translation());
     }

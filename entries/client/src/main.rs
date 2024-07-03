@@ -51,7 +51,7 @@ use terrain::bevy_entry;
 //     let last_dot = schedule_graph_dot(app, Last, &schedule_settings);
 //     output_dot_file("Last", &last_dot);
 
-//     // todo: Fix runtime crash error.
+//     // TODO: Fix runtime crash error.
 //     // let extract_schedule_dot = schedule_graph_dot(
 //     //     app.sub_app_mut(RenderExtractApp),
 //     //     ExtractSchedule,

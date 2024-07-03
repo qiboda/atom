@@ -11,7 +11,7 @@ pub struct TrianglesPlugin;
 
 impl Plugin for TrianglesPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        // todo: use emmbeded_asset!();
+        // TODO: use emmbeded_asset!();
         // embedded_asset!(app, "shaders/triangle.wgsl");
 
         load_internal_asset!(

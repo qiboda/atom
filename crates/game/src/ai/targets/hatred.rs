@@ -6,12 +6,12 @@
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bitflags::bitflags;
-use cfg::relationship::RelationShipType;
-use cfg::relationship::TbRelationShip;
-use cfg::unit::TbMonsterRow;
-use cfg::unit::TbNpcRow;
-use cfg::unit::TbPlayerRow;
 use datatables::tables_system_param::TableReader;
+use datatables::unit::RelationShipType;
+use datatables::unit::TbMonsterRow;
+use datatables::unit::TbNpcRow;
+use datatables::unit::TbPlayerRow;
+use datatables::unit::TbRelationShip;
 
 use crate::damage::DamageEvent;
 

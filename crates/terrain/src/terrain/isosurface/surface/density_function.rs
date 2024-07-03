@@ -82,7 +82,7 @@ pub struct NoiseSurface {
 }
 
 impl DensityFunction for NoiseSurface {
-    // todo: fix without freq
+    // TODO: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
         return y;
 

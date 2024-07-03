@@ -17,7 +17,7 @@ use super::*;
 
 
 
-#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbGlobal {
     pub data: std::sync::Arc<crate::Global>,
 }

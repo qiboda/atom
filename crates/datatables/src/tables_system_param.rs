@@ -26,6 +26,38 @@ impl<Tb: MapTable> TableReader<'_, Tb> {
             }
         }
     }
+
+    pub fn get_data_list_in_map_table(&self) -> Option<&Tb::List> {
+        match self.tables.get_table_handle::<Tb>() {
+            Ok(handle) => {
+                if let Some(tb) = self.table.get(handle.id()) {
+                    Some(tb.get_data_list())
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                warn!("table handle not found: {}", e);
+                None
+            }
+        }
+    }
+
+    pub fn get_data_map_in_map_table(&self) -> Option<&Tb::Map> {
+        match self.tables.get_table_handle::<Tb>() {
+            Ok(handle) => {
+                if let Some(tb) = self.table.get(handle.id()) {
+                    Some(tb.get_data_map())
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                warn!("table handle not found: {}", e);
+                None
+            }
+        }
+    }
 }
 
 impl<Tb: OneTable> TableReader<'_, Tb> {
@@ -50,6 +82,22 @@ impl<'w, Tb: NotIndexListTable> TableReader<'w, Tb> {
             }
         }
     }
+
+    pub fn get_data_list_in_not_index_table(&self) -> Option<&Tb::List> {
+        match self.tables.get_table_handle::<Tb>() {
+            Ok(handle) => {
+                if let Some(tb) = self.table.get(handle.id()) {
+                    Some(tb.get_data_list())
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                warn!("table handle not found: {}", e);
+                None
+            }
+        }
+    }
 }
 
 impl<'w, Tb: MultiUnionIndexListTable> TableReader<'w, Tb> {
@@ -68,9 +116,41 @@ impl<'w, Tb: MultiUnionIndexListTable> TableReader<'w, Tb> {
             }
         }
     }
+
+    pub fn get_data_list_in_list_table(&self) -> Option<&Tb::List> {
+        match self.tables.get_table_handle::<Tb>() {
+            Ok(handle) => {
+                if let Some(tb) = self.table.get(handle.id()) {
+                    Some(tb.get_data_list())
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                warn!("table handle not found: {}", e);
+                None
+            }
+        }
+    }
+
+    pub fn get_data_map_in_list_table(&self) -> Option<&Tb::Map> {
+        match self.tables.get_table_handle::<Tb>() {
+            Ok(handle) => {
+                if let Some(tb) = self.table.get(handle.id()) {
+                    Some(tb.get_data_map())
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                warn!("table handle not found: {}", e);
+                None
+            }
+        }
+    }
 }
 
-impl<'w, Tb: MultiIndexListTable> TableReader<'w, Tb> {
+impl<'w, 'a, Tb: MultiIndexListTable<'a>> TableReader<'w, Tb> {
     pub fn get_row_by(&self, key: &Tb::Key) -> Option<Tb::Value> {
         match self.tables.get_table_handle::<Tb>() {
             Ok(handle) => {
@@ -80,6 +160,35 @@ impl<'w, Tb: MultiIndexListTable> TableReader<'w, Tb> {
                     None
                 }
             }
+            Err(e) => {
+                warn!("table handle not found: {}", e);
+                None
+            }
+        }
+    }
+
+    pub fn get_data_list(&self) -> Option<&Tb::List> {
+        match self.tables.get_table_handle::<Tb>() {
+            Ok(handle) => {
+                if let Some(tb) = self.table.get(handle.id()) {
+                    Some(tb.get_data_list())
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                warn!("table handle not found: {}", e);
+                None
+            }
+        }
+    }
+
+    pub fn get_data_map_by(&'a self, key: &Tb::Key) -> Option<Tb::Map> {
+        match self.tables.get_table_handle::<Tb>() {
+            Ok(handle) => self
+                .table
+                .get(handle.id())
+                .map(|tb| tb.get_data_map_by(key)),
             Err(e) => {
                 warn!("table handle not found: {}", e);
                 None

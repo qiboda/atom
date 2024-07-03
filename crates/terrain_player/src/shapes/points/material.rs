@@ -104,7 +104,7 @@ impl Material for PointsMaterial {
             Mesh::ATTRIBUTE_UV_0.at_shader_location(1),
         ];
 
-        // CAUTION: To fix compilation errors in WGSL, the definitions of lights need to be resolved.
+        // FIXME: To fix compilation errors in WGSL, the definitions of lights need to be resolved.
         shader_defs.push(ShaderDefVal::UInt(
             "MAX_DIRECTIONAL_LIGHTS".to_string(),
             MAX_DIRECTIONAL_LIGHTS as u32,

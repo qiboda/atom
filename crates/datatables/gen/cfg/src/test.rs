@@ -21,7 +21,7 @@ bitflags::bitflags!{
         const READ_WRITE = 3;
     }
 }
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct TestExcelBean1 {
     /// 最高品质
     pub x1: i32,
@@ -46,7 +46,7 @@ impl TestExcelBean1{
     pub const __ID__: i32 = -1738345160;
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct TestExcelBean2 {
     /// 最高品质
     pub y1: i32,
@@ -68,7 +68,7 @@ impl TestExcelBean2{
     pub const __ID__: i32 = -1738345159;
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct Shape {
 }
 
@@ -107,7 +107,7 @@ impl<'a> GetBase<'a, &'a dyn crate::test::TShape> for AbstractBase {
     }
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 #[derive(macros::TryIntoBase)]
 pub struct Circle {
     /// 半径
@@ -124,7 +124,7 @@ impl Circle{
     pub const __ID__: i32 = 2131829196;
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 #[derive(macros::TryIntoBase)]
 pub struct Rectangle {
     /// 宽度
@@ -151,7 +151,7 @@ impl Rectangle{
 
 
 
-#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbMultiIndexList {
     pub data_list: Vec<std::sync::Arc<crate::MultiIndexList>>,
     pub data_map_id1: bevy::utils::HashMap<i32, std::sync::Arc<crate::MultiIndexList>>,
@@ -201,21 +201,42 @@ impl luban_lib::table::Table for TbMultiIndexList {
 impl luban_lib::table::ListTable for TbMultiIndexList {}
 
 
-#[derive(Debug)]
+#[derive(Debug, bevy::reflect::Reflect)]
 pub enum TbMultiIndexListKey {
-    id1(i32),
-    id2(i32),
-    id3(String),
+    Id1(i32),
+    Id2(i32),
+    Id3(String),
 }
 
-impl luban_lib::table::MultiIndexListTable for TbMultiIndexList {
+#[derive(Debug, bevy::reflect::Reflect)]
+pub enum TbMultiIndexListMap<'a> {
+    Id1(&'a bevy::utils::HashMap<i32, std::sync::Arc<crate::MultiIndexList>>),
+    Id2(&'a bevy::utils::HashMap<i32, std::sync::Arc<crate::MultiIndexList>>),
+    Id3(&'a bevy::utils::HashMap<String, std::sync::Arc<crate::MultiIndexList>>),
+}
+
+impl<'a> luban_lib::table::MultiIndexListTable<'a> for TbMultiIndexList {
     type Key = TbMultiIndexListKey;
+    type List = Vec<std::sync::Arc<crate::MultiIndexList>>;
+    type Map = TbMultiIndexListMap<'a>;
 
     fn get_row_by(&self, key: &Self::Key) -> Option<Self::Value> {
         match key {
-            TbMultiIndexListKey::id1(key) => self.data_map_id1.get(key).map(|x| x.clone()),
-            TbMultiIndexListKey::id2(key) => self.data_map_id2.get(key).map(|x| x.clone()),
-            TbMultiIndexListKey::id3(key) => self.data_map_id3.get(key).map(|x| x.clone()),
+            TbMultiIndexListKey::Id1(key) => self.data_map_id1.get(key).map(|x| x.clone()),
+            TbMultiIndexListKey::Id2(key) => self.data_map_id2.get(key).map(|x| x.clone()),
+            TbMultiIndexListKey::Id3(key) => self.data_map_id3.get(key).map(|x| x.clone()),
+        }
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map_by(&'a self, key: &Self::Key) -> Self::Map {
+        match key {
+            TbMultiIndexListKey::Id1(key) => TbMultiIndexListMap::Id1(&self.data_map_id1),
+            TbMultiIndexListKey::Id2(key) => TbMultiIndexListMap::Id2(&self.data_map_id2),
+            TbMultiIndexListKey::Id3(key) => TbMultiIndexListMap::Id3(&self.data_map_id3),
         }
     }
 }
@@ -253,7 +274,7 @@ impl bevy::asset::AssetLoader for TbMultiIndexListLoader {
 }
 
 
-#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbMultiUnionIndexList {
     pub data_list: Vec<std::sync::Arc<crate::MultiUnionIndexList>>,
     pub data_map_union: bevy::utils::HashMap<(i32, i32, String), std::sync::Arc<crate::MultiUnionIndexList>>,
@@ -290,16 +311,26 @@ impl luban_lib::table::ListTable for TbMultiUnionIndexList {}
 
 
 pub type TbMultiUnionIndexListKey = (i32, i32, String);
-#[derive(Debug, Default, bevy::prelude::Component)]
+#[derive(Debug, Default, bevy::reflect::Reflect, bevy::prelude::Component)]
 pub struct TbMultiUnionIndexListRow {
     pub key: TbMultiUnionIndexListKey,
     pub data: Option<std::sync::Arc<crate::MultiUnionIndexList>>,
 }
 impl luban_lib::table::MultiUnionIndexListTable for TbMultiUnionIndexList {
     type Key = TbMultiUnionIndexListKey;
+    type List = Vec<std::sync::Arc<crate::MultiUnionIndexList>>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row_by_key(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map_union.get(key).map(|x| x.clone())
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map_union
     }
 }
 
@@ -336,7 +367,7 @@ impl bevy::asset::AssetLoader for TbMultiUnionIndexListLoader {
 }
 
 
-#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbNullIndexList {
     pub data_list: Vec<std::sync::Arc<crate::NullIndexList>>,
 }
@@ -364,8 +395,13 @@ impl luban_lib::table::ListTable for TbNullIndexList {}
 
 
 impl luban_lib::table::NotIndexListTable for TbNullIndexList {
+    type List = Vec<Self::Value>;
     fn iter(&self) -> impl Iterator<Item=&Self::Value> {
         self.data_list.iter()
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
     }
 }
 

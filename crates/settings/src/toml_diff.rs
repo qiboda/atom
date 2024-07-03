@@ -1,6 +1,6 @@
 use toml::{map::Map, value::Array, Value};
 
-// todo: toml to reflect value......
+// TODO: toml to reflect value......
 // user modify => modify user config
 // user config diff base config to get diff toml and to save
 //

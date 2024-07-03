@@ -11,9 +11,14 @@ bevy = { workspace = true }
 # bevy-trait-query-impl = "0.4.0"
 once_cell = { workspace = true }
 smallvec = { workspace = true }
+thiserror = { workspace = true }
+
 layertag = { path = "../layertag" }
+datatables = { path = "../datatables" }
+atom_utils = { path = "../atom_utils" }
+
 paste = "1.0.15"
-uuid = "1.8.0"
+uuid = "1.9.1"
 eval = "0.4.3"
 
 [[example]]

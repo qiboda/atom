@@ -23,7 +23,7 @@ bitflags::bitflags!{
     }
 }
 {{~else~}}
-#[derive(Debug, Hash, Eq, PartialEq, macros::EnumFromNum)]
+#[derive(Debug, Hash, Eq, PartialEq, bevy::reflect::Reflect, macros::EnumFromNum)]
 pub enum {{enum.name}} {
     {{~ for item in enum.items ~}}
 {{~if item.comment_or_alias != '' ~}}
@@ -51,7 +51,7 @@ impl From<i32> for {{enum.name}} {
 {{~ for bean in __mod.beans 
     hierarchy_fields = bean.hierarchy_export_fields
 ~}}
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 {{~if bean.parent != ''~}}
 #[derive(macros::TryIntoBase)]
 {{~end~}}
@@ -166,7 +166,7 @@ impl {{bean.name}}{
 {{~ if table.comment != '' ~}}
 ///{{table.comment | html.escape}}
 {{~end~}}
-#[derive(Debug, bevy::asset::Asset, bevy::reflect::TypePath)]
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct {{table.name}} {
     {{~if table.is_map_table ~}}
     pub data_list: Vec<{{value_type}}>,
@@ -221,17 +221,54 @@ impl luban_lib::table::Table for {{name}} {
     type Value = {{value_type}};
 }
 pub type {{name}}Key = {{key_type}};
-#[derive(Debug, Default, bevy::prelude::Component)]
+#[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component)]
 pub struct {{name}}Row {
     pub key: {{name}}Key,
     pub data: Option<{{value_type}}>,
 }
 
+impl {{name}}Row {
+    pub fn new(key: {{name}}Key, data: Option<{{value_type}}>) -> Self {
+        Self { key, data }
+    }
+
+    pub fn key(&self) -> &{{name}}Key {
+        &self.key
+    }
+
+    pub fn set_key(&mut self, key: {{name}}Key) {
+        self.key = key;
+    }
+
+    pub fn set_data(&mut self, data: Option<{{value_type}}>) {
+        self.data = data;
+    }
+
+    pub fn get_data(&self) -> Option<{{value_type}}> {
+        self.data.clone()
+    }
+
+    pub fn data(&self) -> {{value_type}} {
+        self.data.clone().unwrap()
+    }
+}
+
+
 impl luban_lib::table::MapTable for {{name}} {
     type Key = {{name}}Key;
+    type List = Vec<{{value_type}}>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map.get(key).map(|x| x.clone())
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map
     }
 }
 
@@ -296,34 +333,65 @@ impl luban_lib::table::ListTable for {{name}} {}
 {{~if table.is_union_index~}}
 
 pub type {{name}}Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
-#[derive(Debug, Default, bevy::prelude::Component)]
+#[derive(Debug, Default, bevy::reflect::Reflect, bevy::prelude::Component)]
 pub struct {{name}}Row {
     pub key: {{name}}Key,
     pub data: Option<{{value_type}}>,
 }
 impl luban_lib::table::MultiUnionIndexListTable for {{name}} {
     type Key = {{name}}Key;
+    type List = Vec<{{value_type}}>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row_by_key(&self, key: &Self::Key) -> Option<Self::Value> {
         self.data_map_union.get(key).map(|x| x.clone())
     }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map_union
+    }
 }
 {{~else if !table.index_list.empty? ~}}
 
-#[derive(Debug)]
+#[derive(Debug, bevy::reflect::Reflect)]
 pub enum {{name}}Key {
 {{~for idx in table.index_list ~}}
-    {{idx.index_field.name}}({{declaring_type_name idx.type}}),
+    {{idx.index_field.name | string.capitalizewords}}({{declaring_type_name idx.type}}),
 {{~end~}}
 }
 
-impl luban_lib::table::MultiIndexListTable for {{name}} {
+#[derive(Debug, bevy::reflect::Reflect)]
+pub enum {{name}}Map<'a> {
+{{~for idx in table.index_list ~}}
+    {{idx.index_field.name | string.capitalizewords}}(&'a bevy::utils::HashMap<{{declaring_type_name idx.type}}, {{value_type}}>),
+{{~end~}}
+}
+
+impl<'a> luban_lib::table::MultiIndexListTable<'a> for {{name}} {
     type Key = {{name}}Key;
+    type List = Vec<{{value_type}}>;
+    type Map = {{name}}Map<'a>;
 
     fn get_row_by(&self, key: &Self::Key) -> Option<Self::Value> {
         match key {
 {{~for idx in table.index_list ~}}
-            {{name}}Key::{{idx.index_field.name}}(key) => self.data_map_{{idx.index_field.name}}.get(key).map(|x| x.clone()),
+            {{name}}Key::{{idx.index_field.name| string.capitalizewords}}(key) => self.data_map_{{idx.index_field.name}}.get(key).map(|x| x.clone()),
+{{~end~}}
+        }
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map_by(&'a self, key: &Self::Key) -> Self::Map {
+        match key {
+{{~for idx in table.index_list ~}}
+            {{name}}Key::{{idx.index_field.name | string.capitalizewords}}(key) => {{name}}Map::{{idx.index_field.name | string.capitalizewords}}(&self.data_map_{{idx.index_field.name}}),
 {{~end~}}
         }
     }
@@ -331,8 +399,13 @@ impl luban_lib::table::MultiIndexListTable for {{name}} {
 {{~else~}}
 
 impl luban_lib::table::NotIndexListTable for {{name}} {
+    type List = Vec<Self::Value>;
     fn iter(&self) -> impl Iterator<Item=&Self::Value> {
         self.data_list.iter()
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
     }
 }
 

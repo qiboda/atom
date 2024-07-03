@@ -87,7 +87,7 @@ pub fn estimate_interior_vertex_qef(
 
             // Central differencing around the edge crossing.
             // Needs 6 samples.
-            // todo: use half voxel as delta
+            // TODO: use half voxel as delta
             let normal = central_gradient(sdf, edge_cross_p, 1.0 / 128.0).normalize();
 
             regularized_qef += Quadric::probabilistic_plane_quadric(
