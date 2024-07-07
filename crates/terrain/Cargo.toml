@@ -19,7 +19,6 @@ strum = { version = "0.26.3", features = ["derive", "strum_macros"] }
 strum_macros = "0.26.4"
 pqef = { path = "../pqef" }
 project = { path = "../project" }
-log_layers = { path = "../log_layers" }
 
 terrain_player_client = { path = "../terrain_player_client" }
 terrain_core = { path = "../terrain_core" }

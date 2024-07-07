@@ -6,9 +6,10 @@ use std::path::PathBuf;
 
 use super::Setting;
 
-const BASE_EXTENSION: &str = ".toml";
+const BASE_EXTENSION: &str = ".ron";
 
-/// 单独某一个配置的路径，覆盖全局的默认值。
+/// 单独某一个配置的相对路径路径
+///
 #[derive(Reflect, Resource, Clone, Default, Debug)]
 pub struct SettingsPath<S>
 where
@@ -16,7 +17,7 @@ where
 {
     pub game_config_dir: Option<PathBuf>,
     pub user_config_dir: Option<PathBuf>,
-    _settings: PhantomData<S>,
+    pub _settings: PhantomData<S>,
 }
 
 impl<S> SettingsPath<S>

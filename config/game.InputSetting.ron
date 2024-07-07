@@ -1,0 +1,43 @@
+(
+    player_input_map: (
+        map: {
+            Ability2: [
+                {
+                    "KeyCode": KeyW,
+                },
+            ],
+            Ability3: [
+                {
+                    "KeyCode": KeyE,
+                },
+            ],
+            Ability4: [
+                {
+                    "KeyCode": KeyR,
+                },
+            ],
+            Jump: [
+                {
+                    "KeyCode": Space,
+                },
+            ],
+            Move: [
+                {
+                    "KeyboardVirtualDPad": (
+                        up: ArrowUp,
+                        down: ArrowDown,
+                        left: ArrowLeft,
+                        right: ArrowRight,
+                        processors: [],
+                    ),
+                },
+            ],
+            Ability1: [
+                {
+                    "KeyCode": KeyQ,
+                },
+            ],
+        },
+        associated_gamepad: None,
+    ),
+)

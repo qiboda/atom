@@ -1,14 +1,18 @@
-use bevy::{asset::LoadState, prelude::*};
+use bevy::{
+    asset::{AssetPath, LoadState},
+    prelude::*,
+};
 use serde_merge::omerge;
 
 use crate::{
     persist::{PersistSettingEndEvent, PersistSettingEvent},
     setting_path::SettingsPath,
-    Setting,
+    Setting, SettingsSource,
 };
 
-use std::{marker::PhantomData, ops::Not, sync::Arc};
+use std::{fmt::Debug, marker::PhantomData, ops::Not, sync::Arc};
 
+/// first loaded or hot loading will send this event.
 #[derive(Debug, Event, Default)]
 pub struct SettingUpdateEvent<S>
 where
@@ -67,7 +71,7 @@ pub(crate) fn handle_persist_setting_end_event<S>(
 {
     if stage.setting_load_stage == SettingLoadStage::LoadWait {
         for event in events.read() {
-            if event.create_game_setting || event.create_user_setting {
+            if event.create_game_setting && event.create_user_setting {
                 stage.setting_load_stage = SettingLoadStage::LoadStart;
             }
         }
@@ -78,20 +82,44 @@ pub(crate) fn handle_persist_setting_end_event<S>(
 // 加载文件。
 pub(crate) fn create_game_setting<S>(
     paths: Res<SettingsPath<S>>,
+    settings_source: Res<SettingsSource>,
     mut persist_event: EventWriter<PersistSettingEvent<S>>,
     mut load_stage: ResMut<SettingLoadStageWrap<S>>,
     s: Res<S>,
 ) where
-    S: Setting,
+    S: Setting + Debug,
 {
-    if let SettingLoadStage::LoadStart = load_stage.setting_load_stage {
+    if let SettingLoadStage::LoadWait = load_stage.setting_load_stage {
         if let Some(game_config_path) = paths.get_game_config_path() {
-            if game_config_path.exists().not() {
+            if settings_source
+                .game_source_path
+                .join(game_config_path)
+                .exists()
+                .not()
+            {
                 let event = PersistSettingEvent {
                     persist_path: paths.clone(),
                     data: Arc::new(s.clone()),
                 };
                 persist_event.send(event);
+                info!("create setting file: {:?}", *paths);
+            } else {
+                load_stage.setting_load_stage = SettingLoadStage::LoadStart;
+            }
+        }
+        if let Some(user_config_path) = paths.get_user_config_path() {
+            if settings_source
+                .user_source_path
+                .join(user_config_path)
+                .exists()
+                .not()
+            {
+                let event = PersistSettingEvent {
+                    persist_path: paths.clone(),
+                    data: Arc::new(s.clone()),
+                };
+                persist_event.send(event);
+                info!("create setting file: {:?}", *paths);
             } else {
                 load_stage.setting_load_stage = SettingLoadStage::LoadStart;
             }
@@ -102,10 +130,11 @@ pub(crate) fn create_game_setting<S>(
 pub(crate) fn start_load_settings<S>(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    settings_source: Res<SettingsSource>,
     paths: Res<SettingsPath<S>>,
     mut load_stage: ResMut<SettingLoadStageWrap<S>>,
 ) where
-    S: Setting,
+    S: Setting + Debug,
 {
     if let SettingLoadStage::LoadStart = load_stage.setting_load_stage {
         load_stage.setting_load_stage = SettingLoadStage::Loading(SettingLoadState::default());
@@ -113,23 +142,21 @@ pub(crate) fn start_load_settings<S>(
         let mut handle = InnerSettingHandle::<S>::default();
 
         if let Some(game_path) = paths.get_game_config_path() {
-            if game_path.exists() {
-                handle.game_handle = Some(asset_server.load(paths.get_game_config_path().unwrap()));
-                if let SettingLoadStage::Loading(loaded) = &mut load_stage.setting_load_stage {
-                    loaded.game = LoadState::Loading;
-                }
-            } else if let SettingLoadStage::Loading(loaded) = &mut load_stage.setting_load_stage {
-                loaded.game = LoadState::Loaded;
+            info!("load game setting file: {:?}", game_path);
+            let asset_path = AssetPath::from(paths.get_game_config_path().unwrap())
+                .with_source(settings_source.game_source_id.clone());
+            handle.game_handle = Some(asset_server.load(asset_path));
+            if let SettingLoadStage::Loading(loaded) = &mut load_stage.setting_load_stage {
+                loaded.game = LoadState::Loading;
             }
         }
         if let Some(user_path) = paths.get_user_config_path() {
-            if user_path.exists() {
-                handle.user_handle = Some(asset_server.load(paths.get_user_config_path().unwrap()));
-                if let SettingLoadStage::Loading(loaded) = &mut load_stage.setting_load_stage {
-                    loaded.user = LoadState::Loading;
-                }
-            } else if let SettingLoadStage::Loading(loaded) = &mut load_stage.setting_load_stage {
-                loaded.user = LoadState::Loaded;
+            info!("load user setting file: {:?}", user_path);
+            let asset_path = AssetPath::from(paths.get_user_config_path().unwrap())
+                .with_source(settings_source.user_source_id.clone());
+            handle.user_handle = Some(asset_server.load(asset_path));
+            if let SettingLoadStage::Loading(loaded) = &mut load_stage.setting_load_stage {
+                loaded.user = LoadState::Loading;
             }
         }
 
@@ -137,6 +164,7 @@ pub(crate) fn start_load_settings<S>(
 
         if let SettingLoadStage::Loading(loaded) = &load_stage.setting_load_stage {
             if loaded.game == LoadState::Loaded && loaded.user == LoadState::Loaded {
+                info!("load setting file over: {:?}", paths);
                 load_stage.setting_load_stage = SettingLoadStage::LoadOver;
             }
         }

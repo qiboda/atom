@@ -30,13 +30,18 @@ pub mod persist;
 pub mod setting_path;
 pub mod toml_diff;
 
+use std::fmt::Debug;
+use std::path::PathBuf;
+
 use atom_utils::async_event::AsyncEventPlugin;
+use bevy::asset::io::{AssetSourceBuilder, AssetSourceId};
 use bevy::prelude::*;
 
+use bevy_common_assets::ron::RonAssetPlugin;
+use bevy_common_assets::toml::TomlAssetPlugin;
 use load::{create_game_setting, handle_persist_setting_end_event, SettingUpdateEvent};
 use persist::PersistSettingEndEvent;
 use serde::{Deserialize, Serialize};
-// use bevy_common_assets::toml::TomlAssetPlugin;
 
 use crate::load::{
     refresh_final_settings, start_load_settings, InnerSettingHandle, SettingLoadStageWrap,
@@ -44,30 +49,81 @@ use crate::load::{
 use crate::persist::{persist, PersistSettingEvent};
 use crate::setting_path::SettingsPath;
 
+#[derive(Debug)]
+pub struct SettingSourceConfig {
+    pub source_id: AssetSourceId<'static>,
+    pub base_path: PathBuf,
+}
+
+#[derive(Debug, Resource)]
+pub struct SettingsSource {
+    pub game_source_id: AssetSourceId<'static>,
+    pub game_source_path: PathBuf,
+    pub user_source_id: AssetSourceId<'static>,
+    pub user_source_path: PathBuf,
+}
+#[derive(Debug)]
+pub struct SettingsPlugin {
+    pub game_source_config: SettingSourceConfig,
+    pub user_source_config: SettingSourceConfig,
+}
+
+impl Plugin for SettingsPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(SettingsSource {
+            game_source_id: self.game_source_config.source_id.clone(),
+            game_source_path: self.game_source_config.base_path.clone(),
+            user_source_id: self.user_source_config.source_id.clone(),
+            user_source_path: self.user_source_config.base_path.clone(),
+        })
+        .register_asset_source(
+            self.game_source_config.source_id.clone(),
+            AssetSourceBuilder::platform_default(
+                self.game_source_config.base_path.to_str().unwrap(),
+                None,
+            ),
+        )
+        .register_asset_source(
+            self.user_source_config.source_id.clone(),
+            AssetSourceBuilder::platform_default(
+                self.user_source_config.base_path.to_str().unwrap(),
+                None,
+            ),
+        );
+    }
+}
+
 /// Global settings config for the settings plugin
 #[derive(Debug)]
 pub struct SettingPlugin<S>
 where
     S: Setting,
 {
+    // 全局默认配置，必须设置。相对于全局的SettingsPlugin的source path。
     pub paths: SettingsPath<S>,
 }
 
 impl<S> Plugin for SettingPlugin<S>
 where
-    S: Setting,
+    S: Setting + Debug,
 {
     fn build(&self, app: &mut App) {
-        // let extension = SettingsPath::<S>::extension();
+        assert!(
+            app.world().get_resource::<SettingsSource>().is_some(),
+            "must insert SettingsPlugin before SettingPlugin<S>"
+        );
 
+        let extension = SettingsPath::<S>::extension();
         app
             // .add_plugins(TomlAssetPlugin::<S>::new(&[extension.leak()]))
-            .add_plugins(AsyncEventPlugin::<PersistSettingEndEvent<S>>::default())
+            .add_plugins(RonAssetPlugin::<S>::new(&[extension.leak()]))
             .insert_resource(self.paths.clone())
             .init_resource::<InnerSettingHandle<S>>()
             .init_resource::<SettingLoadStageWrap<S>>()
             .init_resource::<S>()
+            .init_asset::<S>()
             .add_event::<PersistSettingEvent<S>>()
+            .add_plugins(AsyncEventPlugin::<PersistSettingEndEvent<S>>::default())
             .add_event::<SettingUpdateEvent<S>>()
             .add_systems(Startup, create_game_setting::<S>)
             .add_systems(

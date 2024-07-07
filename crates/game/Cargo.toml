@@ -9,9 +9,15 @@ smallvec = { workspace = true }
 serde = { workspace = true }
 # big-brain = { workspace = true }
 bitflags = { workspace = true }
+avian3d = { workspace = true }
+bevy-tnua = { workspace = true }
+bevy_console = { workspace = true }
+leafwing-input-manager = { workspace = true }
+clap = { version = "4.5" }
 
 project = { path = "../project" }
 ability = { path = "../ability" }
 datatables = { path = "../datatables" }
 settings = { path = "../settings" }
 settings_derive = { path = "../settings/settings_derive" }
+log_layers = { path = "../log_layers" }

@@ -4,30 +4,20 @@ pub mod ui;
 pub mod visible;
 pub mod window;
 
-use bevy::asset::AssetMetaCheck;
-use bevy::core::TaskPoolThreadAssignmentPolicy;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings};
-use bevy::render::settings::RenderCreation;
 use bevy::{
     app::AppExit,
     core_pipeline::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
     },
-    log::LogPlugin,
     prelude::*,
-    render::{
-        settings::{WgpuFeatures, WgpuSettings},
-        RenderPlugin,
-    },
 };
 // use bevy_obj::ObjPlugin;
 // use bevy_xpbd_3d::plugins::PhysicsPlugins;
-use log_layers::{file_layer, LogLayersPlugin};
 use settings::SettingPlugin;
 use terrain::settings::{TerrainChunkSettings, TerrainClipMapSettings};
-use terrain_player_client::trace::terrain_layer;
 
 use crate::window::toggle_vsync;
 // use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -36,63 +26,28 @@ use terrain::{settings::TerrainSettings, TerrainPlugin};
 use ui::FrameUIPlugin;
 use visible::visible_range::VisibleTerrainRange;
 
-pub fn bevy_entry() -> App {
-    let mut app = App::new();
+#[derive(Debug, Default)]
+pub struct TerrainSubsystemPlugin;
 
-    app.insert_resource(TerrainSettings {
-        chunk_settings: TerrainChunkSettings { chunk_size: 16.0 },
-        clipmap_settings: TerrainClipMapSettings::default(),
-    })
-    .add_plugins(
-        LogLayersPlugin::default()
-            .add_layer(terrain_layer)
-            .add_layer(file_layer::file_layer),
-    )
-    .add_plugins((
-        DefaultPlugins
-            .set(RenderPlugin {
-                render_creation: RenderCreation::Automatic(WgpuSettings {
-                    features: WgpuFeatures::POLYGON_MODE_LINE,
-                    ..default()
-                }),
-                synchronous_pipeline_compilation: false,
-            })
-            .set(AssetPlugin {
-                file_path: "assets".to_string(),
-                processed_file_path: "".to_string(),
-                watch_for_changes_override: Some(false),
-                mode: AssetMode::Unprocessed,
-                meta_check: AssetMetaCheck::Never,
-            })
-            .set(TaskPoolPlugin {
-                task_pool_options: TaskPoolOptions {
-                    async_compute: TaskPoolThreadAssignmentPolicy {
-                        min_threads: 1,
-                        max_threads: usize::MAX,
-                        percent: 0.25,
-                    },
-                    ..default()
-                },
-            })
-            .set(LogPlugin {
-                custom_layer: LogLayersPlugin::get_layer,
-                ..default()
-            }),
-        // ObjPlugin,
-        WireframePlugin,
-        // WorldInspectorPlugin::new(),
-        SettingPlugin::<TerrainSettings> {
-            paths: Default::default(),
-        },
-        // PhysicsPlugins::default(),
-    ))
-    .add_plugins(CameraControllerPlugin)
-    .add_plugins(TerrainPlugin)
-    .add_plugins(FrameUIPlugin)
-    .add_systems(Startup, startup)
-    .add_systems(Last, (exit_game, toggle_vsync));
-
-    app
+impl Plugin for TerrainSubsystemPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(TerrainSettings {
+            chunk_settings: TerrainChunkSettings { chunk_size: 16.0 },
+            clipmap_settings: TerrainClipMapSettings::default(),
+        })
+        .add_plugins((
+            SettingPlugin::<TerrainSettings> {
+                paths: Default::default(),
+            },
+            // ObjPlugin,
+            WireframePlugin,
+        ))
+        .add_plugins(CameraControllerPlugin)
+        .add_plugins(TerrainPlugin)
+        .add_plugins(FrameUIPlugin)
+        .add_systems(Startup, startup)
+        .add_systems(Last, (exit_game, toggle_vsync));
+    }
 }
 
 // #[bevycheck::system]
