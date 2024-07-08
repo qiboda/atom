@@ -13,7 +13,7 @@ pub use cfg::*;
 /// loaded 仅仅会触发一次，reload 不会触发。
 /// 加载和热加载都会触发TablesUpdateEvent.
 #[derive(Debug, Default, Hash, PartialEq, Eq, Clone, States)]
-pub enum TableLoadingStates {
+pub enum TableLoadingState {
     #[default]
     Wait,
     Loading,
@@ -31,14 +31,14 @@ impl Plugin for DataTablePlugin {
         app.add_plugins(TableAssetsPlugin)
             .insert_resource(AllAssetBarrier::default())
             .init_resource::<Tables>()
-            .insert_state(TableLoadingStates::default())
+            .insert_state(TableLoadingState::default())
             .add_systems(Startup, start_load_tables)
             .add_systems(
                 PreUpdate,
-                update_table_loading_state.run_if(in_state(TableLoadingStates::Loading)),
+                update_table_loading_state.run_if(in_state(TableLoadingState::Loading)),
             )
             .add_systems(
-                OnExit(TableLoadingStates::Loading),
+                OnExit(TableLoadingState::Loading),
                 clear_table_loading_status,
             );
     }
@@ -47,12 +47,12 @@ impl Plugin for DataTablePlugin {
 fn start_load_tables(
     mut commands: Commands,
     mut all_asset_barrier: ResMut<AllAssetBarrier>,
-    mut table_loading_states: ResMut<NextState<TableLoadingStates>>,
+    mut table_loading_states: ResMut<NextState<TableLoadingState>>,
     asset_server: Res<AssetServer>,
 ) {
     if let Some((barrier, guard)) = all_asset_barrier.create_asset_barrier("Table".to_owned()) {
         info!("start_load_tables");
-        table_loading_states.set(TableLoadingStates::Loading);
+        table_loading_states.set(TableLoadingState::Loading);
 
         commands.insert_resource(Tables::new(asset_server, "datatables/".into(), guard));
         let future = barrier.wait_async();
@@ -76,7 +76,7 @@ fn start_load_tables(
 
 fn update_table_loading_state(
     table_asset_barrier_state: Res<TablesBarrierStatus>,
-    mut table_loading_states: ResMut<NextState<TableLoadingStates>>,
+    mut table_loading_states: ResMut<NextState<TableLoadingState>>,
     mut event_writer: EventWriter<TablesLoadedEvent>,
     tables: Res<Tables>,
 ) {
@@ -86,7 +86,7 @@ fn update_table_loading_state(
         .load(Ordering::Acquire)
     {
         info!("update_table_loading_state");
-        table_loading_states.set(TableLoadingStates::Loaded);
+        table_loading_states.set(TableLoadingState::Loaded);
 
         let e = TablesLoadedEvent {
             asset_handles: tables.table_handle_map.values().cloned().collect(),

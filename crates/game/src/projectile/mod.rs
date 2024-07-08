@@ -51,23 +51,3 @@ pub enum ProjectileDestroyEntity {
     This,
     Parent(Entity),
 }
-
-#[derive(Debug, Component)]
-pub struct TranslationLockFreedom {
-    pub x: bool,
-    pub y: bool,
-    pub z: bool,
-}
-
-#[derive(Debug, Component)]
-pub struct RotationLockFreedom {
-    pub pitch: bool,
-    pub yaw: bool,
-    pub roll: bool,
-}
-
-#[derive(Debug, Component)]
-pub enum TransformLockFreedom {
-    None,
-    Lock(TranslationLockFreedom, RotationLockFreedom),
-}

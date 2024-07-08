@@ -16,7 +16,7 @@ bevy = { version = "0.14.0", features = ["file_watcher"] }
 # bevy_asset_loader = { path = "../bevy_asset_loader/bevy_asset_loader" }
 # bevy_asset_loader_derive = { path = "../bevy_asset_loader/bevy_asset_loader_derive" }
 # bevy_mod_scripting_rune = { version = "0.6.0" }
-# aery : 实体关系
+aery = { version = "0.7.3" }
 
 bevy_console = { git = "https://github.com/qiboda/bevy-console.git", branch = "atom_main" }
 

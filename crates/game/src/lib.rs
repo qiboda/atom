@@ -1,5 +1,8 @@
 use std::path::PathBuf;
 
+use atom_camera::CameraManagerPlugin;
+use atom_utils::follow::TransformFollowPlugin;
+use avian3d::{debug_render::PhysicsDebugPlugin, PhysicsPlugins};
 use bevy::{
     app::Plugin,
     core::{TaskPoolOptions, TaskPoolPlugin, TaskPoolThreadAssignmentPolicy},
@@ -8,18 +11,24 @@ use bevy::{
     DefaultPlugins,
 };
 use bevy_console::{AddConsoleCommand, ConsolePlugin};
+use datatables::DataTablePlugin;
 use input::setting::{
-    input_setting_persist_command, InputSetting, InputSettingPersistCommand, PlayerAction,
+    input_setting_persist_command, PlayerAction, PlayerInputSetting,
+    PlayerInputSettingPersistCommand,
 };
 use leafwing_input_manager::plugin::InputManagerPlugin;
 use log_layers::{file_layer, LogLayersPlugin};
+use scene::init_scene;
 use settings::{setting_path::SettingsPath, SettingPlugin, SettingSourceConfig, SettingsPlugin};
+use state::{next_to_init_game_state, GameState};
 
 pub mod ai;
 pub mod damage;
 pub mod input;
 pub mod items;
 pub mod projectile;
+pub mod scene;
+pub mod state;
 pub mod unit;
 
 #[derive(Debug, Default)]
@@ -59,15 +68,20 @@ impl Plugin for GamePlugin {
                     })
                     .set(task_pool_plugin),
             ))
-            .add_plugins(SettingPlugin::<InputSetting> {
-                paths: SettingsPath {
-                    game_config_dir: Some(PathBuf::from("")),
-                    user_config_dir: Some(PathBuf::from("")),
-                    ..Default::default()
-                },
+            .add_plugins(SettingPlugin::<PlayerInputSetting> {
+                paths: SettingsPath::default(),
             })
-            .add_plugins(InputManagerPlugin::<PlayerAction>::default())
+            // .add_plugins(InputManagerPlugin::<PlayerAction>::default())
             .add_plugins(ConsolePlugin)
-            .add_console_command::<InputSettingPersistCommand, _>(input_setting_persist_command);
+            .add_plugins(DataTablePlugin)
+            .add_plugins(TransformFollowPlugin)
+            .add_plugins(CameraManagerPlugin)
+            .add_plugins((PhysicsPlugins::default(), PhysicsDebugPlugin::default()))
+            .insert_state(GameState::default())
+            .add_console_command::<PlayerInputSettingPersistCommand, _>(
+                input_setting_persist_command,
+            )
+            .add_systems(OnEnter(GameState::InitGame), init_scene)
+            .add_systems(Last, next_to_init_game_state);
     }
 }

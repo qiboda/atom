@@ -6,11 +6,6 @@
                     "KeyCode": KeyW,
                 },
             ],
-            Ability3: [
-                {
-                    "KeyCode": KeyE,
-                },
-            ],
             Ability4: [
                 {
                     "KeyCode": KeyR,
@@ -19,6 +14,16 @@
             Jump: [
                 {
                     "KeyCode": Space,
+                },
+            ],
+            Ability1: [
+                {
+                    "KeyCode": KeyQ,
+                },
+            ],
+            Ability3: [
+                {
+                    "KeyCode": KeyE,
                 },
             ],
             Move: [
@@ -30,11 +35,6 @@
                         right: ArrowRight,
                         processors: [],
                     ),
-                },
-            ],
-            Ability1: [
-                {
-                    "KeyCode": KeyQ,
                 },
             ],
         },

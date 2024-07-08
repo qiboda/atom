@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use atom_utils::input::DefaultInputMap;
 use bevy::{
     asset::Asset,
     prelude::{EventWriter, KeyCode, Res, Resource},
@@ -12,11 +13,11 @@ use settings::{persist::PersistSettingEvent, setting_path::SettingsPath};
 use settings_derive::Setting;
 
 #[derive(Resource, Serialize, Reflect, Deserialize, Debug, Asset, Clone, Setting)]
-pub struct InputSetting {
+pub struct PlayerInputSetting {
     player_input_map: InputMap<PlayerAction>,
 }
 
-impl Default for InputSetting {
+impl Default for PlayerInputSetting {
     fn default() -> Self {
         Self {
             player_input_map: PlayerAction::default_input_map(),
@@ -32,10 +33,6 @@ pub enum PlayerAction {
     Ability2,
     Ability3,
     Ability4,
-}
-
-pub trait DefaultInputMap<T: Actionlike> {
-    fn default_input_map() -> InputMap<T>;
 }
 
 impl DefaultInputMap<PlayerAction> for PlayerAction {
@@ -63,21 +60,23 @@ impl DefaultInputMap<PlayerAction> for PlayerAction {
     }
 }
 
-/// Prints given arguments to the console
+/// TODO: 以后支持泛型，由于clap的Parser不支持泛型，所以暂时只能用这种方式。
 #[derive(Parser, ConsoleCommand)]
 #[command(name = "input.setting.persist")]
-pub struct InputSettingPersistCommand;
+pub struct PlayerInputSettingPersistCommand;
 
 pub fn input_setting_persist_command(
-    mut persist: ConsoleCommand<InputSettingPersistCommand>,
-    mut event_writer: EventWriter<PersistSettingEvent<InputSetting>>,
-    input_setting: Res<InputSetting>,
-    input_setting_path: Res<SettingsPath<InputSetting>>,
+    mut persist: ConsoleCommand<PlayerInputSettingPersistCommand>,
+    mut event_writer: EventWriter<PersistSettingEvent<PlayerInputSetting>>,
+    input_setting: Res<PlayerInputSetting>,
+    input_setting_path: Res<SettingsPath<PlayerInputSetting>>,
 ) {
-    if let Some(Ok(InputSettingPersistCommand)) = persist.take() {
+    if let Some(Ok(_cmd)) = persist.take() {
         event_writer.send(PersistSettingEvent {
             persist_path: input_setting_path.clone(),
             data: Arc::new(input_setting.clone()),
         });
+
+        persist.ok();
     }
 }

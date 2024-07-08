@@ -38,7 +38,6 @@ use bevy::asset::io::{AssetSourceBuilder, AssetSourceId};
 use bevy::prelude::*;
 
 use bevy_common_assets::ron::RonAssetPlugin;
-use bevy_common_assets::toml::TomlAssetPlugin;
 use load::{create_game_setting, handle_persist_setting_end_event, SettingUpdateEvent};
 use persist::PersistSettingEndEvent;
 use serde::{Deserialize, Serialize};
@@ -70,6 +69,24 @@ pub struct SettingsPlugin {
 
 impl Plugin for SettingsPlugin {
     fn build(&self, app: &mut App) {
+        if self.game_source_config.base_path.exists() {
+            assert!(
+                self.game_source_config.base_path.is_dir(),
+                "game source path must be a directory"
+            );
+        } else {
+            std::fs::create_dir_all(&self.game_source_config.base_path).unwrap();
+        }
+
+        if self.user_source_config.base_path.exists() {
+            assert!(
+                self.user_source_config.base_path.is_dir(),
+                "user source path must be a directory"
+            );
+        } else {
+            std::fs::create_dir_all(&self.user_source_config.base_path).unwrap();
+        }
+
         app.insert_resource(SettingsSource {
             game_source_id: self.game_source_config.source_id.clone(),
             game_source_path: self.game_source_config.base_path.clone(),
@@ -101,6 +118,21 @@ where
 {
     // 全局默认配置，必须设置。相对于全局的SettingsPlugin的source path。
     pub paths: SettingsPath<S>,
+}
+
+impl<S> Default for SettingPlugin<S>
+where
+    S: Setting,
+{
+    fn default() -> Self {
+        SettingPlugin {
+            paths: SettingsPath {
+                game_config_dir: Some(PathBuf::from("")),
+                user_config_dir: Some(PathBuf::from("")),
+                ..Default::default()
+            },
+        }
+    }
 }
 
 impl<S> Plugin for SettingPlugin<S>

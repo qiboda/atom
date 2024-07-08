@@ -5,5 +5,7 @@ edition = "2021"
 
 [dependencies]
 bevy = { workspace = true }
+aery = { workspace = true }
+leafwing-input-manager = { workspace = true }
 
 event-listener = "5.3.1"

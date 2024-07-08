@@ -2,14 +2,14 @@ use bevy::{
     app::{App, Plugin},
     state::state::OnEnter,
 };
-use datatables::TableLoadingStates;
+use datatables::TableLoadingState;
 
 #[derive(Debug, Default)]
 pub struct InventoryPlugin;
 
 impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(TableLoadingStates::Loaded), init_inventory);
+        app.add_systems(OnEnter(TableLoadingState::Loaded), init_inventory);
     }
 }
 

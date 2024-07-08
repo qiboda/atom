@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use cfg::{global::TbGlobal, item::TbItem, unit::TbNpc, Tables};
-use datatables::{tables_system_param::TableReader, DataTablePlugin, TableLoadingStates};
+use datatables::{tables_system_param::TableReader, DataTablePlugin, TableLoadingState};
 
 fn main() {
     App::new()
@@ -8,7 +8,7 @@ fn main() {
         .add_plugins(DataTablePlugin)
         .add_systems(
             Update,
-            (multiple_reader, print_table_data).run_if(in_state(TableLoadingStates::Loaded)),
+            (multiple_reader, print_table_data).run_if(in_state(TableLoadingState::Loaded)),
         )
         .run();
 }

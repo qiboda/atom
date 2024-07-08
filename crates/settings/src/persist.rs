@@ -56,8 +56,7 @@ pub(crate) fn persist<S>(
                             );
                         }
 
-                        let settings_str = ron::ser::to_string_pretty(data, PrettyConfig::default()
-                       ).unwrap_or_else(|_| {
+                        let settings_str = ron::ser::to_string_pretty(data, PrettyConfig::default()).unwrap_or_else(|_| {
                             panic!(
                                 "Couldn't serialize the settings to toml {:?}",
                                 dir.as_os_str()

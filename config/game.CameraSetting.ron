@@ -1,0 +1,26 @@
+(
+    camera_input_map: (
+        map: {
+            Zoom: [
+                {
+                    "MouseScrollAxis": (
+                        axis: Y,
+                        processors: [],
+                    ),
+                },
+            ],
+            LeftRotateY: [
+                {
+                    "KeyCode": KeyQ,
+                },
+            ],
+            RightRotateY: [
+                {
+                    "KeyCode": KeyE,
+                },
+            ],
+        },
+        associated_gamepad: None,
+    ),
+    camera_zoom_rate: 0.05,
+)
