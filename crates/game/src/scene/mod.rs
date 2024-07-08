@@ -8,10 +8,14 @@ use atom_utils::{
     },
 };
 use avian3d::{collision::Collider, prelude::RigidBody};
-use bevy::{math::VectorSpace, prelude::*};
+use bevy::prelude::*;
 use leafwing_input_manager::InputManagerBundle;
 
-use crate::unit::{bundle::UnitBundle, Player};
+use crate::{
+    input::setting::PlayerInputSetting,
+    state::GameState,
+    unit::{bundle::UnitBundle, Player},
+};
 
 pub fn init_scene(
     mut commands: Commands,
@@ -19,7 +23,9 @@ pub fn init_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     camera_setting: Res<CameraSetting>,
+    player_input_setting: Res<PlayerInputSetting>,
     mut camera_tracking: ResMut<CameraTracker>,
+    mut next_game_state: ResMut<NextState<GameState>>,
 ) {
     commands.spawn(DirectionalLightBundle {
         transform: Transform::from_translation(Vec3::new(0.0, -100.0, 100.0)),
@@ -51,12 +57,15 @@ pub fn init_scene(
                 mat_mesh: MaterialMeshBundle {
                     mesh: meshes.add(Mesh::from(Capsule3d::new(0.5, 2.0))),
                     material: materials.add(StandardMaterial::from_color(LinearRgba::RED)),
-                    transform: Transform::from_translation(Vec3::new(0.0, 1.1, 0.0)),
+                    transform: Transform::from_translation(Vec3::new(0.0, 2.0, 0.0)),
                     ..Default::default()
                 },
                 ..Default::default()
             },
             Player,
+        ))
+        .insert(InputManagerBundle::with_map(
+            player_input_setting.player_input_map.clone(),
         ))
         .id();
 
@@ -99,4 +108,6 @@ pub fn init_scene(
 
     camera_tracking.set_main_camera(camera_entity);
     info!("init scene done.");
+
+    next_game_state.set(GameState::RunGame);
 }

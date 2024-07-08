@@ -27,12 +27,14 @@ thiserror = { version = "1.0.61" }
 # big-brain = { git = "https://github.com/stargazing-dino/big-brain.git", branch = "update-14.0" }
 bitflags = { version = "2.6.0", features = ["serde"] }
 bevy-tnua = { version = "0.19.0", features = [] }
+bevy-tnua-avian3d = { version = "0.1.0" }
 # bevy-persistent
 # bevy-tnua
 # big-brain = { version = "0.20.0" }
 # Bevy Hanabi
 # oxidized_navigation
-leafwing-input-manager = { git = "https://github.com/qiboda/leafwing-input-manager.git", branch = "atom_main" }
+# leafwing-input-manager = { git = "https://github.com/qiboda/leafwing-input-manager.git", branch = "atom_main" }
+leafwing-input-manager = { path = "../../leafwing-input-manager" }
 # bevy-sysfail
 # bevy triat query
 # bevy trait resource

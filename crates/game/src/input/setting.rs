@@ -1,20 +1,22 @@
 use std::sync::Arc;
 
 use atom_utils::input::DefaultInputMap;
-use bevy::{
-    asset::Asset,
-    prelude::{EventWriter, KeyCode, Res, Resource},
-    reflect::Reflect,
-};
+use bevy::{asset::Asset, prelude::*, reflect::Reflect};
 use bevy_console::{clap::Parser, ConsoleCommand};
-use leafwing_input_manager::{input_map::InputMap, user_input::KeyboardVirtualDPad, Actionlike};
+use bevy_tnua::{
+    builtins::{TnuaBuiltinJump, TnuaBuiltinWalk},
+    controller::TnuaController,
+};
+use leafwing_input_manager::{
+    action_state::ActionState, input_map::InputMap, user_input::KeyboardVirtualDPad, Actionlike,
+};
 use serde::{Deserialize, Serialize};
 use settings::{persist::PersistSettingEvent, setting_path::SettingsPath};
 use settings_derive::Setting;
 
 #[derive(Resource, Serialize, Reflect, Deserialize, Debug, Asset, Clone, Setting)]
 pub struct PlayerInputSetting {
-    player_input_map: InputMap<PlayerAction>,
+    pub player_input_map: InputMap<PlayerAction>,
 }
 
 impl Default for PlayerInputSetting {
@@ -41,20 +43,15 @@ impl DefaultInputMap<PlayerAction> for PlayerAction {
             PlayerAction::Move,
             // Define a virtual D-pad using four arbitrary keys.
             // You can also use GamepadVirtualDPad to create similar ones using gamepad buttons.
-            KeyboardVirtualDPad::new(
-                KeyCode::ArrowUp,
-                KeyCode::ArrowDown,
-                KeyCode::ArrowLeft,
-                KeyCode::ArrowRight,
-            ),
+            KeyboardVirtualDPad::new(KeyCode::KeyW, KeyCode::KeyS, KeyCode::KeyA, KeyCode::KeyD),
         )]);
 
         input_map.insert(PlayerAction::Jump, KeyCode::Space);
 
-        input_map.insert(PlayerAction::Ability1, KeyCode::KeyQ);
-        input_map.insert(PlayerAction::Ability2, KeyCode::KeyW);
-        input_map.insert(PlayerAction::Ability3, KeyCode::KeyE);
-        input_map.insert(PlayerAction::Ability4, KeyCode::KeyR);
+        // input_map.insert(PlayerAction::Ability1, KeyCode::KeyQ);
+        // input_map.insert(PlayerAction::Ability2, KeyCode::KeyW);
+        // input_map.insert(PlayerAction::Ability3, KeyCode::KeyE);
+        // input_map.insert(PlayerAction::Ability4, KeyCode::KeyR);
 
         input_map
     }
@@ -78,5 +75,37 @@ pub fn input_setting_persist_command(
         });
 
         persist.ok();
+    }
+}
+
+pub fn update_player_input(
+    action: Query<&ActionState<PlayerAction>>,
+    mut query: Query<&mut TnuaController>,
+) {
+    let Ok(mut controller) = query.get_single_mut() else {
+        return;
+    };
+
+    let Ok(player_action) = action.get_single() else {
+        return;
+    };
+
+    let velocity = player_action
+        .clamped_axis_pair(&PlayerAction::Move)
+        .map(|direction| Vec3::new(direction.x(), 0.0, direction.y()));
+
+    controller.basis(TnuaBuiltinWalk {
+        desired_velocity: velocity.unwrap() * 3.7,
+        float_height: 1.5,
+        ..Default::default()
+    });
+
+    if player_action.pressed(&PlayerAction::Jump) {
+        controller.action(TnuaBuiltinJump {
+            // The height is the only mandatory field of the jump button.
+            height: 2.0,
+            // `TnuaBuiltinJump` also has customization fields with sensible defaults.
+            ..Default::default()
+        });
     }
 }
