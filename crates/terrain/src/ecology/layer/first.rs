@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use crate::terrain::{ecology::category::EcologyMaterial, isosurface::dc::CellExtent};
+use crate::ecology::category::EcologyMaterial;
+use bevy::math::bounding::Aabb3d;
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::{EcologyLayer, Sampler};
@@ -14,7 +15,7 @@ impl Sampler for FirstLayer {
     fn sample(
         &self,
         _chunk_coord: TerrainChunkCoord,
-        _cell_extent: CellExtent,
+        _aabb: Aabb3d,
     ) -> Option<Arc<dyn EcologyMaterial>> {
         Some(self.forest_material.clone())
     }

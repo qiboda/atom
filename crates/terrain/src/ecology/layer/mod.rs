@@ -1,8 +1,7 @@
 use std::{fmt::Debug, ops::ControlFlow, sync::Arc};
 
-use bevy::prelude::*;
+use bevy::{math::bounding::Aabb3d, prelude::*};
 
-use crate::terrain::isosurface::dc::CellExtent;
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::category::EcologyMaterial;
@@ -14,7 +13,7 @@ pub trait Sampler {
     fn sample(
         &self,
         chunk_coord: TerrainChunkCoord,
-        cell_extent: CellExtent,
+        aabb: Aabb3d,
     ) -> Option<Arc<dyn EcologyMaterial>>;
 }
 
@@ -30,10 +29,10 @@ impl Sampler for EcologyLayerSampler {
     fn sample(
         &self,
         chunk_coord: TerrainChunkCoord,
-        cell_extent: CellExtent,
+        aabb: Aabb3d,
     ) -> Option<Arc<dyn EcologyMaterial>> {
         if let ControlFlow::Break(mat) = self.all_layer.iter().rev().try_for_each(|layer| {
-            match layer.sample(chunk_coord, cell_extent) {
+            match layer.sample(chunk_coord, aabb) {
                 mat if mat.is_some() => ControlFlow::Break(mat),
                 _ => ControlFlow::Continue(()),
             }

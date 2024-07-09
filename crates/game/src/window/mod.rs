@@ -22,3 +22,9 @@ pub fn toggle_vsync(
         });
     }
 }
+
+fn exit_game(keyboard_input: Res<ButtonInput<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
+    if keyboard_input.just_released(KeyCode::Escape) {
+        app_exit_events.send(AppExit::Success);
+    }
+}

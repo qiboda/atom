@@ -1,25 +1,22 @@
 use bevy::{prelude::*, utils::HashMap};
 
-use crate::visible::{
-    visible_areas::TerrainSingleVisibleAreaProxy, visible_range::VisibleTerrainRange,
-};
-
-use super::{
-    bundle::TerrainBundle,
+use crate::{
+    bundle::Terrain,
     chunk::{chunk_data::TerrainChunkData, TerrainChunk, TerrainChunkBundle},
-    settings::TerrainSettings,
+    setting::TerrainSettings,
+    visible::{visible_areas::TerrainSingleVisibleAreaProxy, visible_range::VisibleTerrainRange},
     TerrainSystemSet,
 };
 
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
 #[derive(Debug, Component, Default, Reflect)]
-pub struct TerrainData {
+pub struct TerrainChunkMapper {
     /// entity is TerrainChunk
     pub data: HashMap<TerrainChunkCoord, Entity>,
 }
 
-impl TerrainData {
+impl TerrainChunkMapper {
     pub fn get_chunk_entity_by_coord(
         &self,
         terrain_chunk_coord: TerrainChunkCoord,
@@ -27,38 +24,25 @@ impl TerrainData {
         self.data.get(&terrain_chunk_coord)
     }
 
-    pub fn new() -> TerrainData {
+    pub fn new() -> TerrainChunkMapper {
         Self::default()
     }
 }
 
-#[derive(Debug, Component, Reflect)]
-pub struct Terrain;
-
 #[derive(Default, Debug)]
-pub struct TerrainDataPlugin;
+pub struct TerrainChunkPlugin;
 
-impl Plugin for TerrainDataPlugin {
+impl Plugin for TerrainChunkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_terrain).add_systems(
+        app.add_systems(
             Update,
-            (
-                update_visible_chunks,
-                apply_deferred,
-                update_visible_chunks_lod,
-            )
+            (update_visible_chunks, update_visible_chunks_lod)
                 .chain()
-                .in_set(TerrainSystemSet::TerrainData),
+                .in_set(TerrainSystemSet::UpdateChunk),
         );
     }
 }
 
-// #[bevycheck::system]
-fn setup_terrain(mut commands: Commands) {
-    commands.spawn(TerrainBundle::default()).insert(Terrain);
-}
-
-// #[bevycheck::system]
 #[allow(clippy::type_complexity)]
 fn update_visible_chunks(
     mut commands: Commands,
@@ -69,7 +53,7 @@ fn update_visible_chunks(
             With<VisibleTerrainRange>,
         ),
     >,
-    mut terrain_query: Query<(Entity, &mut TerrainData), With<Terrain>>,
+    mut terrain_query: Query<(Entity, &mut TerrainChunkMapper), With<Terrain>>,
 ) {
     for visible_area in visible_changed_query.iter() {
         let last_terrain_single_visible_area = visible_area.get_last();
@@ -127,14 +111,13 @@ fn spawn_terrain_chunks(
     commands: &mut Commands,
     terrain_entity: Entity,
     terrain_chunk_coord: TerrainChunkCoord,
-    terrain_data: &mut TerrainData,
+    terrain_data: &mut TerrainChunkMapper,
 ) {
     let child = commands
         .spawn((TerrainChunkBundle {
             terrain_chunk_coord,
             ..default()
         },))
-        .insert(TerrainChunk)
         .id();
 
     info!("spawn_terrain_chunks: {:?}", terrain_chunk_coord);
@@ -154,7 +137,7 @@ fn update_visible_chunks_lod(
             With<VisibleTerrainRange>,
         ),
     >,
-    terrain_query: Query<&TerrainData, With<Terrain>>,
+    terrain_query: Query<&TerrainChunkMapper, With<Terrain>>,
     mut terrain_chunk_query: Query<(&TerrainChunkCoord, &mut TerrainChunkData), With<TerrainChunk>>,
 ) {
     for visible_area in visible_changed_query.iter() {

@@ -1,37 +1,30 @@
+use std::ops::Not;
+
 use bevy::{
     prelude::{debug, Component, Mesh, Vec3},
     reflect::Reflect,
     render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
 };
-// use bevy_xpbd_3d::{
-//     parry::{
-//         math::{Point, Real},
-//         shape::SharedShape,
-//     },
-//     prelude::Collider,
-// };
 
 #[derive(Debug, Clone, Copy, Component, Default)]
 pub struct TerrainChunkMesh;
 
 #[derive(Debug, Clone, Component, Default, Reflect)]
-pub struct MeshCache {
+pub struct MeshInfo {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
     pub indices: Vec<u32>,
 }
 
-impl MeshCache {
+impl MeshInfo {
     pub fn is_empty(&self) -> bool {
         self.positions.is_empty() || self.indices.is_empty()
     }
 
     fn check(&self) {
-        debug_assert!(
-            !self.positions.is_empty()
-                && self.positions.len() == self.normals.len()
-                && self.indices.len() % 3 == 0
-        );
+        debug_assert!(self.positions.is_empty().not());
+        debug_assert!(self.positions.len() == self.normals.len());
+        debug_assert!(self.indices.len() % 3 == 0);
     }
 
     pub fn get_vertice_positions(&self) -> &Vec<Vec3> {
@@ -63,8 +56,8 @@ impl MeshCache {
     }
 }
 
-impl From<&MeshCache> for Mesh {
-    fn from(mesh_cache: &MeshCache) -> Self {
+impl From<&MeshInfo> for Mesh {
+    fn from(mesh_cache: &MeshInfo) -> Self {
         mesh_cache.check();
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,

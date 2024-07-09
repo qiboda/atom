@@ -41,3 +41,6 @@ bitflags = { workspace = true }
 bitfield-struct = "0.8.0"
 
 log_layers = { path = "../log_layers" }
+
+fast-surface-nets = { version = "0.2.0" }
+bevy_async_task = { version = "0.2.0" }

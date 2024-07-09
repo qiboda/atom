@@ -1,30 +1,21 @@
+/// 层级划分：
+/// 划分为一个个TerrainChunk
+/// mesh cache, data，octree，都存储在这个entity中。
+/// 生成的mesh作为子实体存在。
 use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
-use surface::{density_function::Cube, shape_surface::ShapeSurface};
+use surface::shape_surface::ShapeSurface;
+use surface_nets::SurfaceNetsPlugin;
 
 use super::ecology::EcologyPlugin;
 
-use self::{
-    dc::DualContourPlugin,
-    surface::{density_function::NoiseSurface, shape_surface::IsosurfaceContext},
-};
+use self::surface::{density_function::NoiseSurface, shape_surface::IsosurfaceContext};
 
-pub mod dc;
 pub mod mesh;
 pub mod octree;
 pub mod surface;
-
-#[derive(Default, PartialEq, Eq, Debug, Hash, Clone)]
-pub enum IsosurfaceExtractionState {
-    #[default]
-    Sample,
-    BuildOctree,
-    Extract,
-    Meshing,
-    CreateMesh,
-    Done,
-}
+pub mod surface_nets;
 
 #[derive(Default, Component, Debug, Reflect)]
 pub struct IsosurfaceExtract;
@@ -45,7 +36,7 @@ impl Plugin for IsosurfaceExtractionPlugin {
                 iso_level: Vec3::ZERO,
             })),
         })
-        .add_plugins(DualContourPlugin)
+        .add_plugins(SurfaceNetsPlugin)
         .add_plugins(EcologyPlugin);
     }
 }

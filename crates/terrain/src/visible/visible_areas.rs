@@ -2,7 +2,7 @@ use std::ops::Not;
 
 use bevy::prelude::*;
 
-use crate::terrain::settings::TerrainSettings;
+use crate::setting::TerrainSettings;
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::visible_range::VisibleTerrainRange;

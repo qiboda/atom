@@ -11,15 +11,12 @@ use pqef::Quadric;
 use strum::{EnumCount, IntoEnumIterator};
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
-use crate::terrain::{
+use crate::{
     isosurface::octree::{cell::CellType, tables::SUBCELL_EDGES_NEIGHBOUR_PAIRS},
-    settings::TerrainSettings,
+    setting::TerrainSettings,
 };
 
-use self::tables::{
-    AxisType, AXIS_VALUE_SUBCELL_INDICES,
-    SUBCELL_FACES_NEIGHBOUR_PAIRS,
-};
+use self::tables::{AxisType, AXIS_VALUE_SUBCELL_INDICES, SUBCELL_FACES_NEIGHBOUR_PAIRS};
 
 use {address::CellAddress, cell::Cell, tables::SubCellIndex};
 
@@ -285,6 +282,5 @@ fn face_proc(octree: &Octree, face_cells: &FaceCells, _visiter: &impl DualContou
 
     // 4 edges in one face
 }
-
 
 fn edge_proc(_octree: &Octree, _cells: [&Cell; 4], _visiter: &impl DualContouringVisiter) {}

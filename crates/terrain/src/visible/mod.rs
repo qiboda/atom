@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::terrain::TerrainSystemSet;
+use crate::TerrainSystemSet;
 
 use self::visible_areas::{
     add_terrain_visible_areas, remove_terrain_visible_areas, update_terrain_visible_areas,
