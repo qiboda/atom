@@ -30,6 +30,8 @@ pub mod persist;
 pub mod setting_path;
 pub mod toml_diff;
 
+pub use settings_derive::Setting;
+
 use std::fmt::Debug;
 use std::path::PathBuf;
 

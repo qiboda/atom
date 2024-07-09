@@ -24,5 +24,4 @@ project = { path = "../project" }
 ability = { path = "../ability" }
 datatables = { path = "../datatables" }
 settings = { path = "../settings" }
-settings_derive = { path = "../settings/settings_derive" }
 log_layers = { path = "../log_layers" }

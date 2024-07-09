@@ -10,5 +10,4 @@ leafwing-input-manager = { workspace = true }
 serde = { workspace = true }
 
 settings = { path = "../settings" }
-settings_derive = { path = "../settings/settings_derive" }
 atom_utils = { path = "../atom_utils" }

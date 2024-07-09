@@ -56,10 +56,8 @@ impl TerrainClipMapSettings {
     }
 }
 
-#[derive(Resource, Debug, Clone, Serialize, Deserialize, TypePath, Asset, Default)]
+#[derive(Setting, Resource, Debug, Clone, Serialize, Deserialize, TypePath, Asset, Default)]
 pub struct TerrainSettings {
     pub chunk_settings: TerrainChunkSettings,
     pub clipmap_settings: TerrainClipMapSettings,
 }
-
-impl Setting for TerrainSettings {}

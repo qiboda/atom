@@ -7,7 +7,7 @@ use leafwing_input_manager::{
     action_state::ActionState, input_map::InputMap, user_input::MouseScrollAxis, Actionlike,
 };
 use serde::{Deserialize, Serialize};
-use settings_derive::Setting;
+use settings::Setting;
 
 use crate::CameraTracker;
 

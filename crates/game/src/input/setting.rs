@@ -11,8 +11,7 @@ use leafwing_input_manager::{
     action_state::ActionState, input_map::InputMap, user_input::KeyboardVirtualDPad, Actionlike,
 };
 use serde::{Deserialize, Serialize};
-use settings::{persist::PersistSettingEvent, setting_path::SettingsPath};
-use settings_derive::Setting;
+use settings::{persist::PersistSettingEvent, setting_path::SettingsPath, Setting};
 
 #[derive(Resource, Serialize, Reflect, Deserialize, Debug, Asset, Clone, Setting)]
 pub struct PlayerInputSetting {

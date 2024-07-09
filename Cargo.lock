@@ -419,7 +419,6 @@ dependencies = [
  "leafwing-input-manager",
  "serde",
  "settings",
- "settings_derive",
 ]
 
 [[package]]
@@ -2443,7 +2442,6 @@ dependencies = [
  "project",
  "serde",
  "settings",
- "settings_derive",
  "smallvec",
 ]
 
