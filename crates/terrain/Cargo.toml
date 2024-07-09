@@ -27,7 +27,7 @@ settings = { path = "../settings" }
 rand = "0.8.5"
 futures-lite = "2.3.0"
 
-# noisy_bevy = "0.6.0"
+noisy_bevy = { path = "../../../noisy_bevy" }
 
 # bevy_obj = "0.13.0"
 
@@ -39,3 +39,5 @@ serde_json = "1.0.120"
 # bevy-inspector-egui = "0.23.4"
 bitflags = { workspace = true }
 bitfield-struct = "0.8.0"
+
+log_layers = { path = "../log_layers" }

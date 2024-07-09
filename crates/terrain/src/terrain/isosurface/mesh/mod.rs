@@ -42,14 +42,14 @@ pub fn create_mesh(
             Some(ecology_material) => {
                 material = materials.add(TerrainExtendedMaterial {
                     base: StandardMaterial {
-                        base_color: Color::WHITE,
-                        base_color_texture: Some(ecology_material.get_albedo_texture()),
-                        perceptual_roughness: 1.0,
-                        metallic: 1.0,
-                        metallic_roughness_texture: Some(ecology_material.get_roughness_texture()),
-                        normal_map_texture: Some(ecology_material.get_normal_texture()),
-                        occlusion_texture: Some(ecology_material.get_occlusion_texture()),
-                        ..default()
+                    base_color: Color::WHITE,
+                    base_color_texture: Some(ecology_material.get_albedo_texture()),
+                    perceptual_roughness: 1.0,
+                    metallic: 1.0,
+                    metallic_roughness_texture: Some(ecology_material.get_roughness_texture()),
+                    normal_map_texture: Some(ecology_material.get_normal_texture()),
+                    occlusion_texture: Some(ecology_material.get_occlusion_texture()),
+                    ..default()
                     },
                     extension: TerrainMaterial {
                         base_color: Color::WHITE.into(),
@@ -59,8 +59,8 @@ pub fn create_mesh(
             None => {
                 material = materials.add(TerrainExtendedMaterial {
                     base: StandardMaterial {
-                        base_color: LinearRgba::BLUE.into(),
-                        ..default()
+                    base_color: LinearRgba::BLUE.into(),
+                    ..default()
                     },
                     extension: TerrainMaterial {
                         base_color: LinearRgba::BLUE.into(),
@@ -73,6 +73,11 @@ pub fn create_mesh(
             mesh_cache.get_vertice_positions().len(),
             mesh_cache.get_indices().len(),
         );
+        // info!(
+        //     "create mesh: position: {:?}",
+        //     mesh_cache.get_vertice_positions()
+        // );
+        // info!("create mesh: indices: {:?}", mesh_cache.get_indices());
 
         if let Some(mesh_handle) = mesh_handle {
             info!("assign mesh");
@@ -98,6 +103,6 @@ pub fn create_mesh(
 
         let mut terrain = commands.get_entity(terrain_chunk_entity).unwrap();
         terrain.add_child(id);
-        info!("create mesh");
+        info!("create mesh end");
     }
 }

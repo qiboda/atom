@@ -32,7 +32,6 @@ mod contour_octree;
 mod mesh;
 mod sdf;
 mod tables;
-mod seam;
 
 use std::cell::RefCell;
 use std::sync::{Arc, RwLock};
@@ -83,7 +82,7 @@ impl Plugin for DualContourPlugin {
                 dual_contour_build_octree,
                 dual_contour_meshing,
                 dual_contouring_create_mesh,
-                dual_contouring_update_lod,
+                // dual_contouring_update_lod,
             )
                 .chain()
                 .in_set(TerrainSystemSet::GenerateTerrain),

@@ -1,5 +1,7 @@
 use bevy::{
-    prelude::{debug, Component, Mesh, Vec3}, reflect::Reflect, render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}
+    prelude::{debug, Component, Mesh, Vec3},
+    reflect::Reflect,
+    render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
 };
 // use bevy_xpbd_3d::{
 //     parry::{
@@ -64,7 +66,10 @@ impl MeshCache {
 impl From<&MeshCache> for Mesh {
     fn from(mesh_cache: &MeshCache) -> Self {
         mesh_cache.check();
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::MAIN_WORLD);
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
+        );
         mesh.insert_attribute(
             Mesh::ATTRIBUTE_POSITION,
             mesh_cache.get_vertice_positions().clone(),
