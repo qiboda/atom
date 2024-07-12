@@ -10,8 +10,8 @@ use bevy::{pbr::ExtendedMaterial, prelude::*};
 use bundle::TerrainBundle;
 use chunk::chunk_mapper::TerrainChunkPlugin;
 use isosurface::IsosurfaceExtractionPlugin;
-use materials::terrain::TerrainMaterial;
-use setting::{TerrainChunkSettings, TerrainClipMapSettings, TerrainSettings};
+use materials::{terrain::TerrainMaterial, terrain_debug::TerrainDebugMaterial};
+use setting::{TerrainChunkSettings, TerrainClipMapSettings, TerrainSetting};
 use settings::SettingPlugin;
 use visible::TerrainVisibleAreaPlugin;
 
@@ -27,11 +27,11 @@ pub struct TerrainSubsystemPlugin;
 
 impl Plugin for TerrainSubsystemPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(TerrainSettings {
-            chunk_settings: TerrainChunkSettings { chunk_size: 16.0 },
+        app.insert_resource(TerrainSetting {
+            chunk_settings: TerrainChunkSettings::default(),
             clipmap_settings: TerrainClipMapSettings::default(),
         })
-        .add_plugins((SettingPlugin::<TerrainSettings> {
+        .add_plugins((SettingPlugin::<TerrainSetting> {
             paths: Default::default(),
         },))
         .configure_sets(
@@ -46,6 +46,7 @@ impl Plugin for TerrainSubsystemPlugin {
         .add_plugins(MaterialPlugin::<
             ExtendedMaterial<StandardMaterial, TerrainMaterial>,
         >::default())
+        .add_plugins(MaterialPlugin::<TerrainDebugMaterial>::default())
         .add_plugins(TerrainVisibleAreaPlugin)
         .add_plugins(TerrainChunkPlugin)
         .add_plugins(IsosurfaceExtractionPlugin)

@@ -2,6 +2,8 @@ use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
 
+use crate::isosurface::dc::octree::OctreeSampler;
+
 use super::density_function::DensityFunction;
 
 #[derive(Resource, Debug)]
@@ -42,5 +44,15 @@ impl ShapeSurface {
     pub fn get_range_values(&self, offset: Vec3, size: Vec3, grain_size: Vec3) -> Vec<f32> {
         self.density_function
             .get_range_values(offset, size, grain_size)
+    }
+}
+
+impl<'a> OctreeSampler for std::sync::RwLockReadGuard<'a, ShapeSurface> {
+    fn sampler(&self, loc: Vec3) -> f32 {
+        self.get_value_from_vec(loc)
+    }
+
+    fn sampler_split(&self, x: f32, y: f32, z: f32) -> f32 {
+        self.get_value(x, y, z)
     }
 }

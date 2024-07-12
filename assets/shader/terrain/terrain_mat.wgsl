@@ -61,7 +61,7 @@ fn fragment(
 //        out.color = out.color * 0.2;
 #endif
 
-//    out.color = vec4<f32>(in.world_normal, 1.0);
+    out.color = vec4<f32>(in.world_normal, 1.0);
 
     return out;
 }

@@ -3,7 +3,7 @@ use bevy::{prelude::*, utils::HashMap};
 use crate::{
     bundle::Terrain,
     chunk::{chunk_data::TerrainChunkData, TerrainChunk, TerrainChunkBundle},
-    setting::TerrainSettings,
+    setting::TerrainSetting,
     visible::{visible_areas::TerrainSingleVisibleAreaProxy, visible_range::VisibleTerrainRange},
     TerrainSystemSet,
 };
@@ -129,7 +129,7 @@ fn spawn_terrain_chunks(
 
 // 遍历每个可见区域，更新可见区域的LOD
 fn update_visible_chunks_lod(
-    terrain_settings: Res<TerrainSettings>,
+    terrain_settings: Res<TerrainSetting>,
     visible_changed_query: Query<
         &TerrainSingleVisibleAreaProxy,
         (
@@ -174,7 +174,7 @@ fn update_visible_chunks_lod(
                         terrain_settings.clipmap_settings.get_lod(chunk_coord_diff)
                     {
                         chunk_data.lod = chunk_data.lod.max(clipmap_lod.lod);
-                        info!("lod: {} final {}", clipmap_lod.lod, chunk_data.lod);
+                        trace!("lod: {} final {}", clipmap_lod.lod, chunk_data.lod);
                     } else {
                         error!("{:?} is not a valid lod distance", chunk_coord_diff);
                     }

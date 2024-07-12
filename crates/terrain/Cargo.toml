@@ -26,6 +26,7 @@ settings = { path = "../settings" }
 
 rand = "0.8.5"
 futures-lite = "2.3.0"
+ndshape = { version = "0.3.0" }
 
 noisy_bevy = { path = "../../../noisy_bevy" }
 
@@ -44,3 +45,6 @@ log_layers = { path = "../log_layers" }
 
 fast-surface-nets = { version = "0.2.0" }
 bevy_async_task = { version = "0.2.0" }
+
+[dev-dependencies]
+bevy_flycam = { version = "0.14.0" }

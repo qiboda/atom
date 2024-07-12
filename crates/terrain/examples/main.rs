@@ -1,4 +1,5 @@
 use bevy::{
+    color::palettes::css,
     core_pipeline::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
@@ -10,6 +11,7 @@ use bevy::{
     },
     prelude::*,
 };
+use bevy_flycam::{FlyCam, NoCameraPlayerPlugin, PlayerPlugin};
 use log_layers::{file_layer, LogLayersPlugin};
 use settings::{SettingSourceConfig, SettingsPlugin};
 use terrain::{visible::visible_range::VisibleTerrainRange, TerrainSubsystemPlugin};
@@ -37,12 +39,17 @@ pub fn main() {
         WireframePlugin,
     ))
     .add_plugins(TerrainSubsystemPlugin)
-    .add_plugins(CameraControllerPlugin)
+    .add_plugins(NoCameraPlayerPlugin)
     .add_systems(Startup, startup)
     .run();
 }
 
-fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>) {
+fn startup(
+    mut commands: Commands,
+    mut wireframe_config: ResMut<WireframeConfig>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     wireframe_config.global = true;
 
     commands.insert_resource(ClearColor(LinearRgba::new(0.3, 0.2, 0.1, 1.0).into()));
@@ -57,6 +64,18 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
         .into(),
         brightness: 0.3,
     });
+
+    // commands.spawn(MaterialMeshBundle {
+    //     mesh: meshes.add(Mesh::from(Cuboid {
+    //         half_size: Vec3::splat(2.0),
+    //     })),
+    //     material: materials.add(StandardMaterial {
+    //         base_color: LinearRgba::WHITE.into(),
+    //         ..Default::default()
+    //     }),
+    //     transform: Transform::from_xyz(8.0, 8.0, 8.0),
+    //     ..Default::default()
+    // });
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
@@ -91,65 +110,7 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
             composite_mode: BloomCompositeMode::Additive,
             ..Default::default()
         },
+        FlyCam,
         VisibleTerrainRange::new(Vec3::splat(size)),
     ));
-}
-
-#[derive(Default)]
-pub struct CameraControllerPlugin;
-
-impl Plugin for CameraControllerPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, camera_movement);
-    }
-}
-
-fn camera_movement(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut query: Query<(&GlobalTransform, &mut Transform), With<Camera3d>>,
-) {
-    const MOVE_SPEED: f32 = 10.0;
-    const ROTATION_SPEED: f32 = 0.5;
-    for (global_transform, mut trans) in query.iter_mut() {
-        if keyboard_input.pressed(KeyCode::KeyW) {
-            trans.translation += MOVE_SPEED * global_transform.forward() * time.delta_seconds();
-        }
-
-        if keyboard_input.pressed(KeyCode::KeyS) {
-            trans.translation += MOVE_SPEED * global_transform.back() * time.delta_seconds();
-        }
-
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            trans.translation += MOVE_SPEED * global_transform.left() * time.delta_seconds();
-        }
-
-        if keyboard_input.pressed(KeyCode::KeyD) {
-            trans.translation += MOVE_SPEED * global_transform.right() * time.delta_seconds();
-        }
-
-        if keyboard_input.pressed(KeyCode::ShiftLeft) {
-            trans.translation += MOVE_SPEED * Vec3::new(0.0, -1.0, 0.0) * time.delta_seconds();
-        }
-
-        if keyboard_input.pressed(KeyCode::ShiftRight) {
-            trans.translation += MOVE_SPEED * Vec3::new(0.0, 1.0, 0.0) * time.delta_seconds();
-        }
-
-        if keyboard_input.pressed(KeyCode::KeyQ) {
-            trans.rotate_y(-10.0 * time.delta_seconds() * ROTATION_SPEED);
-        }
-
-        if keyboard_input.pressed(KeyCode::KeyE) {
-            trans.rotate_y(10.0 * time.delta_seconds() * ROTATION_SPEED);
-        }
-
-        if keyboard_input.pressed(KeyCode::ControlLeft) {
-            trans.rotate_z(-10.0 * time.delta_seconds() * ROTATION_SPEED);
-        }
-
-        if keyboard_input.pressed(KeyCode::ControlRight) {
-            trans.rotate_z(10.0 * time.delta_seconds() * ROTATION_SPEED);
-        }
-    }
 }

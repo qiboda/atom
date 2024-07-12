@@ -1007,6 +1007,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_flycam"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0529d6280266d68332e7c5eb1073589dfe23dd141a8746072f7f30b1154db0d4"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "bevy_gilrs"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5053,11 +5062,13 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_async_task",
+ "bevy_flycam",
  "bitfield-struct",
  "bitflags 2.6.0",
  "fast-surface-nets",
  "futures-lite 2.3.0",
  "log_layers",
+ "ndshape",
  "noisy_bevy",
  "pqef",
  "project",

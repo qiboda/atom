@@ -5,15 +5,21 @@
 use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
-use surface::shape_surface::ShapeSurface;
+use dc::{dual_contouring, DualContouringPlugin};
+use surface::{
+    density_function::{Cube, Panel, Sphere},
+    shape_surface::ShapeSurface,
+};
 use surface_nets::SurfaceNetsPlugin;
 
 use super::ecology::EcologyPlugin;
 
 use self::surface::{density_function::NoiseSurface, shape_surface::IsosurfaceContext};
 
+pub mod dc;
+pub mod lod;
 pub mod mesh;
-pub mod octree;
+pub mod state;
 pub mod surface;
 pub mod surface_nets;
 
@@ -27,16 +33,18 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(IsosurfaceContext {
             shape_surface: Arc::new(RwLock::new(ShapeSurface {
-                density_function: Box::new(NoiseSurface {
-                    frequency: 0.3,
-                    lacunarity: 0.02,
-                    gain: 5.0,
-                    octaves: 3,
-                }),
+                density_function: Box::new(Cube),
+                // density_function: Box::new(NoiseSurface {
+                //     frequency: 0.3,
+                //     lacunarity: 0.02,
+                //     gain: 5.0,
+                //     octaves: 3,
+                // }),
                 iso_level: Vec3::ZERO,
             })),
         })
-        .add_plugins(SurfaceNetsPlugin)
+        // .add_plugins(SurfaceNetsPlugin)
+        .add_plugins(DualContouringPlugin)
         .add_plugins(EcologyPlugin);
     }
 }

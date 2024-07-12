@@ -2,7 +2,7 @@ use std::ops::Not;
 
 use bevy::prelude::*;
 
-use crate::setting::TerrainSettings;
+use crate::setting::TerrainSetting;
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use super::visible_range::VisibleTerrainRange;
@@ -105,7 +105,7 @@ pub fn add_terrain_visible_areas(
 // #[bevycheck::system]
 #[allow(clippy::type_complexity)]
 pub fn update_terrain_visible_areas(
-    terrain_settings: Res<TerrainSettings>,
+    terrain_settings: Res<TerrainSetting>,
     mut visible_range_query: Query<
         (
             &mut TerrainSingleVisibleAreaProxy,

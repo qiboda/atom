@@ -1,6 +1,12 @@
 use std::fmt::Debug;
 
-use bevy::prelude::{Vec2, Vec3};
+use bevy::{
+    math::{
+        bounding::{Aabb3d, BoundingVolume},
+        Vec3A,
+    },
+    prelude::{Vec2, Vec3},
+};
 
 pub trait DensityFunction: Sync + Send + Debug {
     // from world position
@@ -31,7 +37,7 @@ pub struct Sphere;
 
 impl DensityFunction for Sphere {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        x * x + y * y + z * z - 32.0
+        (x - 8.0) * (x - 8.0) + (y - 8.0) * (y - 8.0) + (z - 8.0) * (z - 8.0) - 8.0
     }
 }
 
@@ -56,11 +62,7 @@ pub struct Panel;
 
 impl DensityFunction for Panel {
     fn get_value(&self, _x: f32, y: f32, _z: f32) -> f32 {
-        match y {
-            y if y < 0.0 => -0.5,
-            y if y > 0.0 => 0.5,
-            _ => y,
-        }
+        y
     }
 }
 
@@ -69,7 +71,18 @@ pub struct Cube;
 
 impl DensityFunction for Cube {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        ((x + 4.0).abs() - 4.0).max(((y + 4.0).abs() - 4.0).max((z + 4.0).abs() - 4.0))
+        let x = (x - 8.0).abs();
+        let y = (y - 8.0).abs();
+        let z = (z - 8.0).abs();
+
+        let x_2 = x - 5.0;
+        let y_2 = y - 5.0;
+        let z_2 = z - 5.0;
+        if x_2 >= 0.0 || y_2 >= 0.0 || z_2 >= 0.0 {
+            Vec3::new(x_2.max(0.0), y_2.max(0.0), z_2.max(0.0)).length()
+        } else {
+            -Vec3::new(x_2, y_2, z_2).length()
+        }
     }
 }
 
@@ -84,11 +97,12 @@ pub struct NoiseSurface {
 impl DensityFunction for NoiseSurface {
     // TODO: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        y - noisy_bevy::fbm_simplex_2d(
+        (y - noisy_bevy::fbm_simplex_2d(
             Vec2::new(x, z) * self.frequency,
             self.octaves,
             self.lacunarity,
             self.gain,
-        )
+        ))
+        .max(0.0)
     }
 }

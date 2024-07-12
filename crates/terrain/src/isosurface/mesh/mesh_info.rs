@@ -14,6 +14,7 @@ pub struct MeshInfo {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
     pub indices: Vec<u32>,
+    pub lod: u8,
 }
 
 impl MeshInfo {

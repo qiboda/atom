@@ -1,5 +1,5 @@
-#![allow(dead_code)]
-
+//! 论文是下面这个
+//! Computer Graphics Forum - 2020 - Trettner - Fast and Robust QEF Minimization using Probabilistic Quadrics
 pub mod math;
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -11,6 +11,9 @@ use bevy::{
 
 type Pos3A = Vec3A;
 
+// E[x] = x^T * A^T * A * x −2 * x^T * A^T * b + b^T * b
+// and A = n, b = p * n, x是未知数
+// Quadric中的a为A^T A, b为A^T b, c为b^T b
 #[derive(Debug, Copy, Clone, PartialEq, Default, Reflect)]
 pub struct Quadric {
     /// a is a symmetric 3x3 matrix
@@ -73,16 +76,20 @@ impl Quadric {
 }
 
 impl Quadric {
+    /// 生成一个点的quadric。
     pub fn point_quadric(p: Pos3A) -> Quadric {
         Quadric::from_coefficients_matrix(Mat3A::IDENTITY, p, 0.0)
     }
 
+    /// 生成一个平面的quadric，这个平面的法向量是n，平面上的一个点是p
+    /// 是一个经典版本的quadric，不考虑不确定性
     pub fn plane_quadric(p: Pos3A, n: Vec3A) -> Quadric {
         let d = p.dot(n);
         Quadric::from_coefficients_matrix(math::self_outer_product(n), n * d, d * d)
     }
 
-    /// stddev => standard deviation
+    /// 生成一个平面的quadric，这个平面的法向量是mean_n，平面上的一个点是mean_p
+    /// stddev_p和stddev_n分别表示mean_p和mean_n的标准差, stddev_p和stddev_n是各向同性的。
     pub fn probabilistic_plane_quadric(
         mean_p: Pos3A,
         mean_n: Vec3A,
@@ -109,6 +116,9 @@ impl Quadric {
         Quadric::from_coefficients_matrix(a, b, c)
     }
 
+    /// sigma => covariance matrix
+    /// 生成一个平面的quadric，这个平面的法向量是mean_n，平面上的一个点是mean_p
+    /// sigma_p和sigma_n分别表示mean_p和mean_n的协方差矩阵, sigma_p和sigma_n是各向异性的。
     pub fn probabilistic_plane_quadric_sigma(
         mean_p: Pos3A,
         mean_n: Vec3A,
@@ -129,6 +139,7 @@ impl Quadric {
         Quadric::from_coefficients_matrix(a, b, c)
     }
 
+    /// 和平面类似，见上面的注释
     pub fn triangle_quadric(p: Pos3A, q: Pos3A, r: Pos3A) -> Quadric {
         let pxq = p.cross(q);
         let qxr = q.cross(r);
@@ -140,6 +151,7 @@ impl Quadric {
         Quadric::from_coefficients_matrix(math::self_outer_product(xsum), xsum * det, det * det)
     }
 
+    /// 和平面类似，见上面的注释
     pub fn probabilistic_triangle_quadric(
         mean_p: Pos3A,
         mean_q: Pos3A,
@@ -180,14 +192,15 @@ impl Quadric {
 
         b += (mean_p + mean_q + mean_r) * ss2;
 
-        let c = det_pqr * det_pqr
-            + (pxq.dot(pxq) + qxr.dot(qxr) + rxp.dot(rxp)) * sigma
-            + (mean_p.dot(mean_p) + mean_q.dot(mean_q) + mean_r.dot(mean_r)) * ss2
-            + ss6 * sigma;
+        let mut c = det_pqr * det_pqr;
+        c += (pxq.dot(pxq) + qxr.dot(qxr) + rxp.dot(rxp)) * sigma; // 3x (a x b)^T M_c (a x b)
+        c += (mean_p.dot(mean_p) + mean_q.dot(mean_q) + mean_r.dot(mean_r)) * ss2; // 3x a^T Ci[S_b, S_c] a
+        c += ss6 * sigma; // Tr[S_r Ci[S_p, S_q]]
 
         Quadric::from_coefficients_matrix(a, b, c)
     }
 
+    /// 和平面类似，见上面的注释
     pub fn probabilistic_triangle_quadric_sigma(
         mean_p: Pos3A,
         mean_q: Pos3A,
@@ -271,8 +284,8 @@ impl Quadric {
         Vec3A::new(self.b0, self.b1, self.b2)
     }
 
-    /// A^-1 * b
-    /// A^-1 = A* / det(A)
+    // Returns a point minimizing this quadric(预估点)
+    // Solving Ax = r with some common subexpressions precomputed
     pub fn minimizer(&self) -> Vec3A {
         let a = self.a00;
         let b = self.a01;
@@ -308,6 +321,8 @@ impl Quadric {
         Vec3A::new(nom0 * denom, nom1 * denom, nom2 * denom)
     }
 
+    /// Residual L2 error as given by x^T A x - 2 r^T x + c
+    /// 给定一个点，判断这个点的误差
     pub fn residual_l2_error(&self, p: Pos3A) -> f32 {
         let ax = Vec3A::new(
             self.a00 * p.x + self.a01 * p.y + self.a02 * p.z,
@@ -495,12 +510,56 @@ impl Mul<Quadric> for f32 {
 
 #[cfg(test)]
 mod tests {
+    use bevy::math::Vec3A;
+
+    use crate::Quadric;
 
     #[test]
-    fn construct() {
-        // Quadric::<f32>::from_coefficients(
-        //     1.0, 2.0, 3.0, 4.0, 5.0, 6.0, //
-        //     7.0, 8.0, 9.0, 10.0,
-        // );
+    fn test_single_quadric() {
+        let quadric = Quadric::probabilistic_plane_quadric(
+            Vec3A::new(0.0, 0.0, 0.0),
+            Vec3A::new(0.0, 0.0, 1.0),
+            0.1,
+            0.1,
+        );
+
+        let pos = quadric.minimizer();
+        println!("pos: {}", pos);
+        let error = quadric.residual_l2_error(pos);
+        println!("error: {}", error);
+    }
+
+    #[test]
+    fn test_two_quadric() {
+        let quadric_1 = Quadric::probabilistic_plane_quadric(
+            Vec3A::new(1.0, 0.0, 0.0),
+            Vec3A::new(1.0, 0.0, 0.0),
+            0.1,
+            0.0,
+        );
+
+        let pos = quadric_1.minimizer();
+        println!("pos: {}", pos);
+        let error = quadric_1.residual_l2_error(pos);
+        println!("error: {}", error);
+
+        let quadric_2 = Quadric::probabilistic_plane_quadric(
+            Vec3A::new(0.0, 1.0, 0.0),
+            Vec3A::new(0.0, 1.0, 0.0),
+            0.0,
+            0.1,
+        );
+
+        let pos = quadric_2.minimizer();
+        println!("pos: {}", pos);
+        let error = quadric_2.residual_l2_error(pos);
+        println!("error: {}", error);
+
+        let quadric = quadric_1 + quadric_2;
+
+        let pos = quadric.minimizer();
+        println!("pos: {}", pos);
+        let error = quadric.residual_l2_error(pos);
+        println!("error: {}", error);
     }
 }
