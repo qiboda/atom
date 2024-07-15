@@ -12,7 +12,7 @@ use bevy::{
     utils::HashMap,
 };
 
-use cell::{CellType, VoxelMaterialType};
+use cell::CellType;
 use ndshape::Shape;
 use pqef::Quadric;
 use strum::{EnumCount, IntoEnumIterator};
@@ -41,7 +41,7 @@ pub trait OctreeContext: OctreeBranchPolicy + OctreeSampler {}
 /// octree
 /// 1. 细分octree，是否可以细分
 /// 2. 计算叶子的qef。
-/// 2. 反向进行收缩，节省内容空间。
+/// 3. 反向进行收缩，节省内容空间。
 ///
 /// 自顶向下，还是自底向上？
 ///
@@ -109,10 +109,6 @@ pub fn build_bottom_up<S>(
                     conner_sampler_data[i as usize] = sampler_data[index as usize];
                 }
 
-                if x == 8 && y == 8 && z == 8 {
-                    info!("conner_sampler_data: {:?}", conner_sampler_data);
-                }
-
                 if conner_sampler_data.iter().all(|v| *v < 0.0) {
                     continue;
                 }
@@ -124,7 +120,7 @@ pub fn build_bottom_up<S>(
                 let cell_index = cell_shape.linearize([x, y, z]);
                 let cell_address = leaf_address_mapper[cell_index as usize];
 
-                info!(
+                debug!(
                     "leaf coord:{}, {}, {}, conner_sampler_data: {:?}, address: {:?}, cell_index:{}",
                     x, y, z, conner_sampler_data, cell_address, cell_index
                 );
@@ -142,7 +138,7 @@ pub fn build_bottom_up<S>(
                     Vec3::splat(cell_half_size),
                 );
                 cell.vertices_samples = conner_sampler_data;
-                cell.estimate_vertex(sampler_source, 0.01);
+                cell.estimate_vertex(sampler_source, 1.0);
 
                 cell_addresses.insert(cell_address, cell);
             }
@@ -241,11 +237,11 @@ pub fn build_bottom_up<S>(
                                 avg_position.into(),
                                 avg_normal.normalize(),
                             );
-                            info!(
+                            debug!(
                                 "cell, vertex: {}, qef error {}, {}, coord:{:?}, leaf_children_count: {}",
                                 cell.vertex_estimate, cell.qef_error, cell.address, cell.coord, leaf_children_count
                             );
-                            if cell.qef_error < 0.001 {
+                            if cell.qef_error < 0.01 {
                                 cell.cell_type = CellType::Leaf;
 
                                 for child_address in cell_address.get_children_addresses() {
@@ -274,10 +270,6 @@ pub fn build_bottom_up<S>(
         info!("depth {}, cell_addresses len: {}", i, cell_addresses.len());
     }
 
-    info!(
-        "build bottom up ok, cell_addresses len: {}",
-        cell_addresses.len()
-    );
     // if cell_addresses.len() == 1 {
     //     cell_addresses.clear();
     // }

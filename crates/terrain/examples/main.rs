@@ -4,7 +4,7 @@ use bevy::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
     },
-    log::LogPlugin,
+    log::{Level, LogPlugin},
     pbr::{
         wireframe::{WireframeConfig, WireframePlugin},
         ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
@@ -33,6 +33,7 @@ pub fn main() {
         LogLayersPlugin::default().add_layer(file_layer::file_layer),
         DefaultPlugins.set(LogPlugin {
             custom_layer: LogLayersPlugin::get_layer,
+            filter: "wgpu=error,naga=warn,terrain=info".to_string(),
             ..default()
         }),
         // ObjPlugin,

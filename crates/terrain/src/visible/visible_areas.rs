@@ -137,7 +137,7 @@ pub fn update_terrain_visible_areas(
         let center_coord = camera_position / chunk_size;
         let min_coord = (camera_position + visible_range.min()) / chunk_size;
         let max_coord = (camera_position + visible_range.max()) / chunk_size;
-        info!(
+        debug!(
             "min_coord: {:?} max_coord: {:?}, visible_range: {:?}",
             min_coord, max_coord, visible_range
         );

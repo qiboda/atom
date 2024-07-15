@@ -1,12 +1,9 @@
-use std::{cmp::Ordering, ops::Not};
-
 use bevy::{
-    log::{error, info, trace, warn},
+    log::debug,
     math::{bounding::BoundingVolume, Vec3, Vec3A},
     utils::HashMap,
 };
 use strum::{EnumCount, IntoEnumIterator};
-use terrain_player_client::trace::terrain_trace_vertex;
 
 use crate::isosurface::{
     dc::octree::tables::{EDGE_CELLS_VERTICES, FACE_TO_SUB_EDGES_AXIS_TYPE},
@@ -54,7 +51,7 @@ impl<'a, 'b> DualContouringVisiter for DefaultDualContouringVisiter<'a, 'b> {
 
         // terrain_trace_vertex(self.positions.len(), *self.positions.last().unwrap());
         self.normals.push(cell.normal_estimate);
-        info!(
+        debug!(
             "visit cell address::{}, positions:{}",
             cell.address, cell.vertex_estimate
         );
@@ -64,7 +61,7 @@ impl<'a, 'b> DualContouringVisiter for DefaultDualContouringVisiter<'a, 'b> {
         let vertex_0 = self.address_vertex_id_map.get(&cells[0].address).unwrap();
         let vertex_1 = self.address_vertex_id_map.get(&cells[1].address).unwrap();
         let vertex_2 = self.address_vertex_id_map.get(&cells[2].address).unwrap();
-        info!(
+        debug!(
             "visit triangle: {}:{}, {}:{}, {}:{}",
             cells[0].address, vertex_0, cells[1].address, vertex_1, cells[2].address, vertex_2
         );
@@ -77,7 +74,7 @@ impl<'a, 'b> DualContouringVisiter for DefaultDualContouringVisiter<'a, 'b> {
         let vertex_1 = self.address_vertex_id_map.get(&cells[1].address).unwrap();
         let vertex_2 = self.address_vertex_id_map.get(&cells[2].address).unwrap();
         let vertex_3 = self.address_vertex_id_map.get(&cells[3].address).unwrap();
-        info!(
+        debug!(
             "visit quad: {}:{}, {}:{}, {}:{}, {}:{}",
             cells[0].address,
             vertex_0,
@@ -130,7 +127,7 @@ struct EdgeCells<'a> {
 }
 
 fn cell_proc(octree: &OctreeProxy, parent_cell: &Cell, visiter: &mut impl DualContouringVisiter) {
-    info!("cell proc: {:?}", parent_cell.address);
+    debug!("cell proc: {:?}", parent_cell.address);
 
     if parent_cell.cell_type == CellType::Leaf {
         visiter.visit_cell(parent_cell);
@@ -160,7 +157,7 @@ fn cell_proc(octree: &OctreeProxy, parent_cell: &Cell, visiter: &mut impl DualCo
                     axis_type: AxisType::from_repr(axis).unwrap(),
                 };
 
-                info!("cell call face proc");
+                debug!("cell call face proc");
                 face_proc(octree, &face_cells, visiter);
             }
         }
@@ -179,7 +176,7 @@ fn cell_proc(octree: &OctreeProxy, parent_cell: &Cell, visiter: &mut impl DualCo
                 subcells[cell_index_3 as usize],
             ) {
                 let cells = [cell_1, cell_2, cell_3, cell_4];
-                info!("cell call edge proc");
+                debug!("cell call edge proc");
                 edge_proc(
                     octree,
                     EdgeCells {
@@ -212,7 +209,7 @@ fn face_proc(
     face_cells: &FaceCells,
     visiter: &mut impl DualContouringVisiter,
 ) {
-    info!(
+    debug!(
         "face proc: axix type: {:?}, left cell: {}, right cell: {}",
         face_cells.axis_type, face_cells.cells[0].address, face_cells.cells[1].address
     );
@@ -233,7 +230,7 @@ fn face_proc(
                         cells: [subcell_0, subcell_1],
                         axis_type: face_cells.axis_type,
                     };
-                    info!("face call face proc");
+                    debug!("face call face proc");
                     face_proc(octree, &child_face_cells, visiter);
                 }
             }
@@ -276,7 +273,7 @@ fn face_proc(
                 && child_cell_2.is_some()
                 && child_cell_3.is_some()
             {
-                info!(
+                debug!(
                     "mark: 1:{:?}, 2:{:?}, 3:{:?}",
                     child_cell_1.unwrap().coord,
                     child_cell_2.unwrap().coord,
@@ -299,7 +296,7 @@ fn face_proc(
                 ];
                 let edge_axis_type =
                     FACE_TO_SUB_EDGES_AXIS_TYPE[face_cells.axis_type as usize][edge_axis_index];
-                info!("face call edge proc");
+                debug!("face call edge proc");
                 edge_proc(
                     octree,
                     EdgeCells {
@@ -319,7 +316,7 @@ fn edge_proc(
     edge_cells: EdgeCells,
     visiter: &mut impl DualContouringVisiter,
 ) {
-    info!(
+    debug!(
         "edge proc: axix type: {:?}, 0 cell: {}, 1 cell: {}, 2 cell: {}, 3 cell: {}",
         edge_cells.axis_type,
         edge_cells.cells[0].coord,
@@ -349,7 +346,7 @@ fn edge_proc(
         let child_cell_2 = get_child_cell(octree, cell_3, subcell_index_3);
         let child_cell_3 = get_child_cell(octree, cell_4, subcell_index_4);
 
-        info!(
+        debug!(
             "edge proc: {:?}, {:?}, {:?}, {:?}",
             child_cell_0, child_cell_1, child_cell_2, child_cell_3
         );
@@ -358,7 +355,7 @@ fn edge_proc(
         {
             let sub_edge_cells = [child_cell_0, child_cell_1, child_cell_2, child_cell_3];
 
-            info!("edge call edge proc");
+            debug!("edge call edge proc");
             edge_proc(
                 octree,
                 EdgeCells {
@@ -388,7 +385,7 @@ fn visit_leaf_edge(
         .iter()
         .all(|cell| cell.cell_type == CellType::Leaf));
 
-    info!(
+    debug!(
         "leaf edge proc: axix type: {:?}, 0 cell: {}, 1 cell: {}, 2 cell: {}, 3 cell: {}",
         edge_cells.axis_type,
         edge_cells.cells[0].coord,
@@ -420,7 +417,7 @@ fn visit_leaf_edge(
         (octree::cell::VoxelMaterialType::Block, octree::cell::VoxelMaterialType::Block)
         | (octree::cell::VoxelMaterialType::Air, octree::cell::VoxelMaterialType::Air) => {
             // Not a bipolar edge.
-            info!(
+            debug!(
                 "visit leaf edge is not a bipolar edge, mat0: {:?}, mat1: {:?}, axis:{:?}, \
                 min_cell_index:{}, vertex_samplers:{:?}->{:?}, {:?}->{:?}, {:?}->{:?}, {:?}->{:?}, {:?}, {:?}",
                 mat0,
@@ -441,7 +438,7 @@ fn visit_leaf_edge(
             return;
         }
     };
-    info!(
+    debug!(
         "cell pos: {:?}, {:?}, {:?}, {:?}, {:?}",
         edge_cells.axis_type,
         edge_cells.cells[0].coord,

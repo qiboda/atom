@@ -81,7 +81,7 @@ fn update_visible_chunks(
         });
 
         if add_count > 0 {
-            info!("added count: {}", add_count);
+            debug!("added count: {}", add_count);
         }
 
         let mut removed_count = 0;
@@ -102,7 +102,7 @@ fn update_visible_chunks(
         });
 
         if removed_count > 0 {
-            info!("removed count: {}", removed_count);
+            debug!("removed count: {}", removed_count);
         }
     }
 }
@@ -120,7 +120,7 @@ fn spawn_terrain_chunks(
         },))
         .id();
 
-    info!("spawn_terrain_chunks: {:?}", terrain_chunk_coord);
+    debug!("spawn_terrain_chunks: {:?}", terrain_chunk_coord);
 
     let mut terrian = commands.get_entity(terrain_entity).unwrap();
     terrian.add_child(child);

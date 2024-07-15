@@ -21,6 +21,6 @@ fn fragment(
     @builtin(front_facing) is_front: bool,
 ) -> FragmentOutput {
     var out: FragmentOutput;
-    out.color = in.world_normal;
+    out.color = color;
     return out;
 }

@@ -12,8 +12,8 @@ pub struct TerrainChunkSettings {
 impl Default for TerrainChunkSettings {
     fn default() -> Self {
         Self {
-            chunk_size: 32.0,
-            voxel_size: 1.0,
+            chunk_size: 16.0,
+            voxel_size: 0.25,
         }
     }
 }

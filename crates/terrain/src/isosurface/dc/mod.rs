@@ -83,8 +83,9 @@ pub enum DualContouringState {
 fn debug_draw_octree_cell(
     query: Query<&Octree>,
     mut octree_cell_gizmos: Gizmos<OctreeCellGizmos>,
-    surface: Res<IsosurfaceContext>,
 ) {
+    return ;
+
     octree_cell_gizmos.axes(
         Transform {
             translation: Vec3::ZERO,
@@ -94,17 +95,14 @@ fn debug_draw_octree_cell(
         3.0,
     );
 
-    let shape_surface = surface.shape_surface.read().unwrap();
-
     for octree in query.iter() {
         let cell_addresses = octree.cell_addresses.read().unwrap();
         if cell_addresses.is_empty().not() {
-            info!("cell num: {}", cell_addresses.len());
+            debug!("cell num: {}", cell_addresses.len());
             for (address, cell) in cell_addresses.iter() {
                 if cell.cell_type == CellType::Leaf {
                     let loc = cell.vertex_estimate;
-                    let delta = cell.aabb.half_size().x * 2.0;
-                    let normal = Cell::central_gradient(&shape_surface, loc.into(), delta);
+                    let normal = cell.normal_estimate;
 
                     octree_cell_gizmos.arrow(loc, loc + Vec3::from(normal) * 2.0, css::RED);
 

@@ -136,7 +136,7 @@ impl Cell {
         let qef =
             Cell::estimate_interior_vertex_qef(&self.aabb, &self.vertices_samples, sdf, precision);
         self.estimate_vertex_with_qef(qef.0, qef.1, qef.2);
-        info!(
+        debug!(
             "estimate_vertex: {:?}, vertex is mass_point: {}",
             self.qef_error,
             self.vertex_estimate == qef.1.into()
@@ -150,11 +150,11 @@ impl Cell {
         self.qef = Some(qef);
         self.qef_error = qef_error;
         self.normal_estimate = normal;
-        if self.qef_error < 0.0001 {
+        // if self.qef_error < -0.0001 {
             self.vertex_estimate = p.into();
-        } else {
-            self.vertex_estimate = mass_point.into();
-        }
+        // } else {
+            // self.vertex_estimate = mass_point.into();
+        // }
     }
 
     pub fn point_gradient(sdf: &impl OctreeSampler, p: Vec3A, delta: f32) -> Vec3A {
@@ -197,7 +197,7 @@ impl Cell {
         precision: f32,
     ) -> (Quadric, Vec3A, Vec3A) {
         let mut qef = Quadric::default();
-        info!("estimate_interior_vertex_qef, start");
+        debug!("estimate_interior_vertex_qef, start");
         let corners = Cell::get_cell_vertex_locations(*aabb);
         let mut avg_normal = Vec3A::ZERO;
         let mut count = 0;
@@ -242,7 +242,7 @@ impl Cell {
                     precision,
                 );
 
-                info!(
+                debug!(
                     "estimate_interior_vertex_qef: s1: {}, s2: {}, corners: {} , {}, edge_cross_p: {}, normal: {}, delta: {} \
                     qef mini: {}, error: {}",
                     s1, s2,
@@ -257,7 +257,7 @@ impl Cell {
             }
         }
 
-        info!("estimate_interior_vertex_qef, end");
+        debug!("estimate_interior_vertex_qef, end");
 
         avg_normal /= count as f32;
         masspoint /= count as f32;
