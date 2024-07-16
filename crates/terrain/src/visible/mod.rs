@@ -18,8 +18,8 @@ impl Plugin for TerrainVisibleAreaPlugin {
             Update,
             (
                 add_terrain_visible_areas,
-                update_terrain_visible_areas,
                 remove_terrain_visible_areas,
+                update_terrain_visible_areas,
             )
                 .chain()
                 .in_set(TerrainSystemSet::VisibleAreas),

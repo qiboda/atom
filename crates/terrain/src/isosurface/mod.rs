@@ -21,9 +21,6 @@ pub mod materials;
 pub mod mesh;
 pub mod surface;
 
-#[derive(Default, Component, Debug, Reflect)]
-pub struct IsosurfaceExtract;
-
 #[derive(Default, Debug)]
 pub struct IsosurfaceExtractionPlugin;
 
@@ -31,13 +28,13 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(IsosurfaceContext {
             shape_surface: Arc::new(RwLock::new(ShapeSurface {
-                // density_function: Box::new(Cube),
-                density_function: Box::new(NoiseSurface {
-                    frequency: 0.3,
-                    lacunarity: 0.02,
-                    gain: 5.0,
-                    octaves: 3,
-                }),
+                density_function: Box::new(Panel),
+                // density_function: Box::new(NoiseSurface {
+                //     frequency: 0.3,
+                //     lacunarity: 0.02,
+                //     gain: 5.0,
+                //     octaves: 3,
+                // }),
                 iso_level: Vec3::ZERO,
             })),
         })
@@ -47,4 +44,10 @@ impl Plugin for IsosurfaceExtractionPlugin {
         >::default())
         .add_plugins(DualContouringPlugin);
     }
+}
+
+#[derive(Debug, Reflect, SystemSet, PartialEq, Eq, Hash, Clone)]
+pub enum IsosurfaceSystemSet {
+    GenerateMainMesh,
+    GenerateSeamMesh,
 }

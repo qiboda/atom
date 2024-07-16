@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
-use super::{chunk_lod::TerrainChunkLod, state::TerrainChunkState};
+use super::{chunk_lod::TerrainChunkLod, state::{SeamMeshIdGenerator, TerrainChunkState}};
 
 #[derive(Bundle)]
 pub struct TerrainChunkBundle {
@@ -10,6 +10,7 @@ pub struct TerrainChunkBundle {
     pub terrain_chunk_lod: TerrainChunkLod,
     pub terrain_chunk_state: TerrainChunkState,
     pub chunk_coord: TerrainChunkCoord,
+    pub seam_mesh_id_generator: SeamMeshIdGenerator,
     pub transform_bundle: TransformBundle,
     pub visibility_bundle: VisibilityBundle,
 }
@@ -23,6 +24,7 @@ impl TerrainChunkBundle {
             chunk_coord: default(),
             transform_bundle: default(),
             visibility_bundle: default(),
+            seam_mesh_id_generator: SeamMeshIdGenerator::new(),
         }
     }
 }

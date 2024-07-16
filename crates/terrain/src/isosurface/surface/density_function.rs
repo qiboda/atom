@@ -1,10 +1,7 @@
 use std::fmt::Debug;
 
 use bevy::{
-    math::{
-        bounding::{Aabb3d, BoundingVolume},
-        Vec3A,
-    },
+    math::Vec3A,
     prelude::{Vec2, Vec3},
 };
 
@@ -76,7 +73,7 @@ pub fn cube(b: Vec3A, p: Vec3A) -> f32 {
 
 impl DensityFunction for Cube {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        cube(Vec3A::splat(5.0), Vec3A::new(x - 8.0, y - 8.0, z - 8.0))
+        cube(Vec3A::splat(10.0), Vec3A::new(x - 8.0, y - 8.0, z - 8.0))
     }
 }
 

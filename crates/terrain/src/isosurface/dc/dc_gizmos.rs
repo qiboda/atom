@@ -2,7 +2,7 @@ use std::ops::Not;
 
 use bevy::{color::palettes::css, math::bounding::BoundingVolume, prelude::*};
 
-use crate::isosurface::dc::octree::cell::CellType;
+use crate::isosurface::dc::octree::node::NodeType;
 
 use super::octree::Octree;
 
@@ -27,6 +27,8 @@ struct WorldCoordinateGizmos;
 #[derive(Default, Reflect, GizmoConfigGroup)]
 struct VoxelGizmos;
 
+// TODO: move to other debug crate
+#[allow(dead_code)]
 fn draw_world_coordinate_axes(mut world_coordinate_gizmos: Gizmos<WorldCoordinateGizmos>) {
     world_coordinate_gizmos.axes(
         Transform {
@@ -38,35 +40,37 @@ fn draw_world_coordinate_axes(mut world_coordinate_gizmos: Gizmos<WorldCoordinat
     );
 }
 
-fn draw_voxel_normal(query: Query<&Octree>, mut octree_cell_gizmos: Gizmos<VoxelGizmos>) {
+#[allow(dead_code)]
+fn draw_voxel_normal(query: Query<&Octree>, mut octree_node_gizmos: Gizmos<VoxelGizmos>) {
     for octree in query.iter() {
-        let cell_addresses = octree.address_cell_map.read().unwrap();
-        if cell_addresses.is_empty().not() {
-            debug!("cell num: {}", cell_addresses.len());
-            for (_, cell) in cell_addresses.iter() {
-                if cell.cell_type == CellType::Leaf {
-                    let loc = cell.vertex_estimate;
-                    let normal = cell.normal_estimate;
+        let node_addresses = octree.address_node_map.read().unwrap();
+        if node_addresses.is_empty().not() {
+            debug!("node num: {}", node_addresses.len());
+            for (_, node) in node_addresses.iter() {
+                if node.node_type == NodeType::Leaf {
+                    let loc = node.vertex_estimate;
+                    let normal = node.normal_estimate;
 
-                    octree_cell_gizmos.arrow(loc, loc + Vec3::from(normal) * 2.0, css::RED);
+                    octree_node_gizmos.arrow(loc, loc + Vec3::from(normal) * 2.0, css::RED);
                 }
             }
         }
     }
 }
 
-fn draw_octree_voxel(query: Query<&Octree>, mut octree_cell_gizmos: Gizmos<VoxelGizmos>) {
+#[allow(dead_code)]
+fn draw_octree_voxel(query: Query<&Octree>, mut octree_node_gizmos: Gizmos<VoxelGizmos>) {
     for octree in query.iter() {
-        let cell_addresses = octree.address_cell_map.read().unwrap();
-        if cell_addresses.is_empty().not() {
-            debug!("cell num: {}", cell_addresses.len());
-            for (address, cell) in cell_addresses.iter() {
-                debug!("pos: {}", cell.vertex_estimate);
-                octree_cell_gizmos.cuboid(
+        let node_addresses = octree.address_node_map.read().unwrap();
+        if node_addresses.is_empty().not() {
+            debug!("node num: {}", node_addresses.len());
+            for (address, node) in node_addresses.iter() {
+                debug!("pos: {}", node.vertex_estimate);
+                octree_node_gizmos.cuboid(
                     Transform {
-                        translation: cell.aabb.center().into(),
+                        translation: node.aabb.center().into(),
                         rotation: Quat::IDENTITY,
-                        scale: (cell.aabb.half_size() * 2.0).into(),
+                        scale: (node.aabb.half_size() * 2.0).into(),
                     },
                     match address.depth() {
                         1 => css::RED,

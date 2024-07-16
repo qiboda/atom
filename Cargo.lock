@@ -226,13 +226,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anime"
-version = "0.1.0"
-dependencies = [
- "bevy",
-]
-
-[[package]]
 name = "anstream"
 version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -544,6 +537,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "atom_internal"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_console",
+ "bevy_debug_grid",
+ "datatables",
+ "leafwing-input-manager",
+ "log_layers",
+ "project",
+ "seldom_state",
+ "settings",
+]
+
+[[package]]
 name = "atom_utils"
 version = "0.1.0"
 dependencies = [
@@ -564,6 +572,25 @@ name = "autocfg"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
+
+[[package]]
+name = "autoincrement"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc81b6ad0c9122715c741113fb97ba283f723b1dd86e186dd7df00a2b6877bfe"
+dependencies = [
+ "autoincrement_derive",
+]
+
+[[package]]
+name = "autoincrement_derive"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1259ce9b9a586a3f5ada3d236800ad0aa446b0d4c3dbac4158084a1dd704a228"
+dependencies = [
+ "quote",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "avian3d"
@@ -912,6 +939,15 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror",
+]
+
+[[package]]
+name = "bevy_debug_grid"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cec97f2d56a2c00ac8cc3fd3915555f322d28558671adbb9efc5dd08ee41d34e"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
@@ -2619,6 +2655,7 @@ dependencies = [
  "ability",
  "aery",
  "atom_camera",
+ "atom_internal",
  "atom_utils",
  "avian3d",
  "bevy",
@@ -3671,7 +3708,9 @@ checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "noisy_bevy"
-version = "0.6.0"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a498a5310e40540a941aca31ef341a0b229e11b04fb359c9c023ac412e34465b"
 dependencies = [
  "bevy",
 ]
@@ -4396,6 +4435,7 @@ checksum = "43d84d1d7a6ac92673717f9f6d1518374ef257669c24ebc5ac25d5033828be58"
 name = "project"
 version = "0.1.0"
 dependencies = [
+ "bevy",
  "once_cell",
 ]
 
@@ -4711,6 +4751,16 @@ dependencies = [
  "memmap2",
  "smithay-client-toolkit",
  "tiny-skia",
+]
+
+[[package]]
+name = "seldom_state"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54d24dafdd047875e7ae44049f35cc0e83816d6d8a08c7c0a79a21fe74cf50a7"
+dependencies = [
+ "bevy",
+ "either",
 ]
 
 [[package]]
@@ -5044,12 +5094,14 @@ dependencies = [
 name = "terrain"
 version = "0.1.0"
 dependencies = [
+ "atom_internal",
+ "autoincrement",
  "bevy",
  "bevy_async_task",
+ "bevy_debug_grid",
  "bevy_flycam",
  "bitfield-struct",
  "bitflags 2.6.0",
- "futures-lite 2.3.0",
  "log_layers",
  "ndshape",
  "noisy_bevy",
@@ -5064,6 +5116,7 @@ dependencies = [
  "strum_macros",
  "terrain_core",
  "terrain_player_client",
+ "tracing",
 ]
 
 [[package]]

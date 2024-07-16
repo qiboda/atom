@@ -1,4 +1,7 @@
-use std::ops::{Add, Mul, Sub};
+use std::{
+    fmt::{Display, Formatter},
+    ops::{Add, Mul, Sub},
+};
 
 use bevy::{math::Vec3, prelude::Component, reflect::Reflect};
 use serde::{Deserialize, Serialize};
@@ -46,13 +49,32 @@ impl TerrainChunkCoord {
     }
 }
 
-impl From<&[i64; 3]> for TerrainChunkCoord {
-    fn from(value: &[i64; 3]) -> Self {
-        Self {
-            x: value[0],
-            y: value[1],
-            z: value[2],
+macro_rules! impl_from_terrain_chunk_coord {
+    ($t: ty) => {
+        impl From<[$t; 3]> for TerrainChunkCoord {
+            fn from(value: [$t; 3]) -> Self {
+                Self {
+                    x: value[0] as i64,
+                    y: value[1] as i64,
+                    z: value[2] as i64,
+                }
+            }
         }
+    };
+}
+
+impl_from_terrain_chunk_coord!(u64);
+impl_from_terrain_chunk_coord!(i64);
+impl_from_terrain_chunk_coord!(u32);
+impl_from_terrain_chunk_coord!(i32);
+impl_from_terrain_chunk_coord!(u16);
+impl_from_terrain_chunk_coord!(i16);
+impl_from_terrain_chunk_coord!(u8);
+impl_from_terrain_chunk_coord!(i8);
+
+impl Display for TerrainChunkCoord {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
     }
 }
 

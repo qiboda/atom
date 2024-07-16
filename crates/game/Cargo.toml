@@ -18,6 +18,7 @@ leafwing-input-manager = { workspace = true }
 clap = { version = "4.5" }
 atom_camera = { path = "../atom_camera" }
 atom_utils = { path = "../atom_utils" }
+atom_internal = { path = "../atom_internal" }
 
 
 project = { path = "../project" }

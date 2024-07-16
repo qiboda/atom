@@ -1,4 +1,6 @@
+use atom_internal::plugins::AtomDefaultPlugins;
 use bevy::{
+    color::palettes::css,
     core_pipeline::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
@@ -10,34 +12,20 @@ use bevy::{
     },
     prelude::*,
 };
+use bevy_debug_grid::{Grid, GridAxis};
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
-use log_layers::{file_layer, LogLayersPlugin};
-use settings::{SettingSourceConfig, SettingsPlugin};
+use log_layers::LogLayersPlugin;
 use terrain::{visible::visible_range::VisibleTerrainRange, TerrainSubsystemPlugin};
 
 pub fn main() {
     let mut app = App::new();
 
-    app.add_plugins(SettingsPlugin {
-        game_source_config: SettingSourceConfig {
-            source_id: "config_terrain".into(),
-            base_path: "config/terrain".into(),
-        },
-        user_source_config: SettingSourceConfig {
-            source_id: "config_terrain".into(),
-            base_path: "config/terrain".into(),
-        },
-    })
-    .add_plugins((
-        LogLayersPlugin::default().add_layer(file_layer::file_layer),
-        DefaultPlugins.set(LogPlugin {
-            custom_layer: LogLayersPlugin::get_layer,
-            filter: "wgpu=error,naga=warn,terrain=info".to_string(),
-            ..default()
-        }),
-        // ObjPlugin,
-        WireframePlugin,
-    ))
+    app.add_plugins(AtomDefaultPlugins.set(LogPlugin {
+        custom_layer: LogLayersPlugin::get_layer,
+        filter: "wgpu=error,naga=warn,terrain=info".to_string(),
+        ..default()
+    }))
+    .add_plugins(WireframePlugin)
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(NoCameraPlayerPlugin)
     .add_systems(Startup, startup)
@@ -46,6 +34,32 @@ pub fn main() {
 
 fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>) {
     wireframe_config.global = true;
+
+    commands.spawn((
+        Grid {
+            // Space between each line
+            spacing: 16.0,
+            // Line count along a single axis
+            count: 16,
+            // Color of the lines
+            color: css::ORANGE.into(),
+            // Alpha mode for all components
+            alpha_mode: AlphaMode::Opaque,
+        },
+        // SubGrid {
+        //     // Line count between each line of the main grid
+        //     count: 16,
+        //     // Line color
+        //     color: css::GRAY.into(),
+        // },
+        GridAxis {
+            x: Some(css::RED.into()),
+            y: Some(css::GREEN.into()),
+            z: Some(css::BLUE.into()),
+        },
+        TransformBundle::default(),
+        VisibilityBundle::default(),
+    ));
 
     commands.insert_resource(ClearColor(LinearRgba::new(0.3, 0.2, 0.1, 1.0).into()));
     commands.insert_resource(Msaa::Sample4);
@@ -72,7 +86,7 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
         ..Default::default()
     });
 
-    let size = 16.0 * 16.0;
+    let size = 8.0 * 16.0;
 
     commands.spawn((
         Camera3dBundle {

@@ -28,20 +28,23 @@ thiserror = { version = "1.0.61" }
 bitflags = { version = "2.6.0", features = ["serde"] }
 bevy-tnua = { version = "0.19.0", features = [] }
 bevy-tnua-avian3d = { version = "0.1.0" }
+bevy_debug_grid = { version = "0.6.0" }
 # bevy-persistent
 # big-brain = { version = "0.20.0" }
+seldom_state = { version = "0.11" }
 # Bevy Hanabi
 # oxidized_navigation
 # leafwing-input-manager = { git = "https://github.com/qiboda/leafwing-input-manager.git", branch = "atom_main" }
 leafwing-input-manager = { path = "../../leafwing-input-manager" }
 # bevy-sysfail
-# bevy triat query
+# bevy-trait-query = { path = "../../bevy-trait_query" }
 # bevy trait resource
 # bevy_enum_filter
 bevy_common_assets = { version = "0.11.0", features = ["toml"] }
+autoincrement = { version = "1.0" }
 
-# bevy_xpbd_3d = { version = "0.4.2", features = ["simd"] } # "debug-plugin"
-# bevy_xpbd_derive = "0.1.0"
+tracing = { version = "0.1.40", features = [] }
+
 avian3d = { version = "0.1.0" }
 
 # Enable a small amount of optimization in debug mode

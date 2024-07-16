@@ -1,0 +1,45 @@
+(
+    chunk_setting: (
+        chunk_size: 16.0,
+        voxel_size: 0.25,
+        qef_solver: true,
+        qef_solver_threshold: {
+            0: 0.05,
+            1: 0.1,
+            2: 0.2,
+            3: 0.4,
+            4: 0.8,
+            5: 1.6,
+            6: 3.2,
+            7: 3.2,
+            8: 3.2,
+            9: 3.2,
+        },
+        qef_pos_stddev: 0.025,
+        qef_normal_stddev: 0.1,
+    ),
+    clipmap_setting: (
+        lods: [
+            (
+                chunk_chebyshev_distance: 0,
+                lod: 0,
+            ),
+            (
+                chunk_chebyshev_distance: 2,
+                lod: 1,
+            ),
+            (
+                chunk_chebyshev_distance: 4,
+                lod: 2,
+            ),
+            (
+                chunk_chebyshev_distance: 8,
+                lod: 3,
+            ),
+            (
+                chunk_chebyshev_distance: 16,
+                lod: 4,
+            ),
+        ],
+    ),
+)

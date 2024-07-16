@@ -1,16 +1,17 @@
 use bevy::{
     asset::{AssetPath, LoadState},
     prelude::*,
+    utils::info,
 };
 use serde_merge::omerge;
 
 use crate::{
     persist::{PersistSettingEndEvent, PersistSettingEvent},
     setting_path::SettingsPath,
-    Setting, SettingsSource,
+    Setting, SettingsLoadStatus, SettingsSource,
 };
 
-use std::{fmt::Debug, marker::PhantomData, ops::Not, sync::Arc};
+use std::{any::TypeId, fmt::Debug, marker::PhantomData, ops::Not, sync::Arc};
 
 /// first loaded or hot loading will send this event.
 #[derive(Debug, Event, Default)]
@@ -86,10 +87,12 @@ pub(crate) fn create_game_setting<S>(
     mut persist_event: EventWriter<PersistSettingEvent<S>>,
     mut load_stage: ResMut<SettingLoadStageWrap<S>>,
     s: Res<S>,
+    mut settings_status: ResMut<SettingsLoadStatus>,
 ) where
     S: Setting + Debug,
 {
     if let SettingLoadStage::LoadWait = load_stage.setting_load_stage {
+        settings_status.status.insert(TypeId::of::<S>(), false);
         if let Some(game_config_path) = paths.get_game_config_path() {
             if settings_source
                 .game_source_path
@@ -161,13 +164,6 @@ pub(crate) fn start_load_settings<S>(
         }
 
         commands.insert_resource(handle);
-
-        if let SettingLoadStage::Loading(loaded) = &load_stage.setting_load_stage {
-            if loaded.game == LoadState::Loaded && loaded.user == LoadState::Loaded {
-                info!("load setting file over: {:?}", paths);
-                load_stage.setting_load_stage = SettingLoadStage::LoadOver;
-            }
-        }
     }
 }
 
@@ -178,49 +174,26 @@ pub(crate) fn refresh_final_settings<S>(
     assets: Res<Assets<S>>,
     mut setting_update_event: EventWriter<SettingUpdateEvent<S>>,
     mut s: ResMut<S>,
+    mut settings_status: ResMut<SettingsLoadStatus>,
 ) where
     S: Setting,
 {
     asset_event_reader.read().for_each(|event| match event {
         AssetEvent::Added { id } | AssetEvent::Modified { id } => {
-            let mut game_asset = None;
             if let Some(game) = &handle.game_handle {
                 if game.id() == *id {
-                    if let Some(b) = assets.get(game) {
-                        game_asset = Some(b);
-                        if let SettingLoadStage::Loading(loaded) =
-                            &mut load_stage.setting_load_stage
-                        {
-                            loaded.game = LoadState::Loaded;
-                        }
+                    if let SettingLoadStage::Loading(loaded) = &mut load_stage.setting_load_stage {
+                        loaded.game = LoadState::Loaded;
                     }
                 }
             }
 
-            let mut user_asset = None;
             if let Some(user) = &handle.user_handle {
                 if user.id() == *id {
-                    if let Some(u) = assets.get(user) {
-                        user_asset = Some(u);
-                        if let SettingLoadStage::Loading(loaded) =
-                            &mut load_stage.setting_load_stage
-                        {
-                            loaded.user = LoadState::Loaded;
-                        }
+                    if let SettingLoadStage::Loading(loaded) = &mut load_stage.setting_load_stage {
+                        loaded.user = LoadState::Loaded;
                     }
                 }
-            }
-
-            match (game_asset, user_asset) {
-                (Some(game), Some(user)) => {
-                    *s = omerge(game, user).unwrap();
-                    setting_update_event.send_default();
-                }
-                (Some(game), None) => {
-                    *s = game.clone();
-                    setting_update_event.send_default();
-                }
-                _ => {}
             }
         }
         _ => {}
@@ -228,7 +201,28 @@ pub(crate) fn refresh_final_settings<S>(
 
     if let SettingLoadStage::Loading(loaded) = &load_stage.setting_load_stage {
         if loaded.game == LoadState::Loaded && loaded.user == LoadState::Loaded {
+            let game_asset = handle
+                .game_handle
+                .as_ref()
+                .and_then(|game| assets.get(game));
+            let user_asset = handle
+                .user_handle
+                .as_ref()
+                .and_then(|user| assets.get(user));
+            if let (Some(game), Some(user)) = (game_asset, user_asset) {
+                *s = omerge(game, user).unwrap();
+                setting_update_event.send_default();
+            }
+
             load_stage.setting_load_stage = SettingLoadStage::LoadOver;
+
+            let status = settings_status
+                .status
+                .get_mut(&TypeId::of::<S>())
+                .expect("must have");
+            *status = true;
+
+            info!("setting load over: {:?}", *s);
         }
     }
 }

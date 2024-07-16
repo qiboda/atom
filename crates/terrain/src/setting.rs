@@ -46,16 +46,16 @@ impl Default for TerrainChunkSetting {
             voxel_size,
             qef_solver: true,
             qef_solver_threshold: HashMap::from([
-                (0, 0.1),
+                (0, 0.05),
                 (1, 0.1),
-                (2, 0.1),
-                (3, 0.1),
-                (4, 0.1),
-                (5, 0.1),
-                (6, 0.1),
-                (7, 0.1),
-                (8, 0.1),
-                (9, 0.1),
+                (2, 0.5),
+                (3, 1.0),
+                (4, 2.0),
+                (5, 4.0),
+                (6, 8.0),
+                (7, 10.0),
+                (8, 10.0),
+                (9, 10.0),
             ]),
             qef_pos_stddev: 0.1 * voxel_size,
             qef_normal_stddev: 0.1,
@@ -90,9 +90,10 @@ impl Default for TerrainClipMapSetting {
         Self {
             lods: vec![
                 TerrainClipMapLod::new(0, 0),
-                TerrainClipMapLod::new(4, 1),
-                TerrainClipMapLod::new(8, 2),
-                TerrainClipMapLod::new(16, 3),
+                TerrainClipMapLod::new(1, 1),
+                TerrainClipMapLod::new(2, 2),
+                TerrainClipMapLod::new(3, 3),
+                TerrainClipMapLod::new(4, 4),
             ],
         }
     }
@@ -112,14 +113,14 @@ impl TerrainClipMapSetting {
 
 #[derive(Setting, Resource, Debug, Clone, Serialize, Deserialize, TypePath, Asset, Default)]
 pub struct TerrainSetting {
-    pub chunk_settings: TerrainChunkSetting,
-    pub clipmap_settings: TerrainClipMapSetting,
+    pub chunk_setting: TerrainChunkSetting,
+    pub clipmap_setting: TerrainClipMapSetting,
 }
 
 impl SettingValidate for TerrainSetting {
     fn validate(&self) -> bool {
         let mut validation = true;
-        validation &= self.chunk_settings.validate();
+        validation &= self.chunk_setting.validate();
         validation
     }
 }

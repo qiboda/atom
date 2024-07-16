@@ -2,7 +2,7 @@ use std::ops::Not;
 
 use bevy::prelude::*;
 
-use crate::chunk_mgr::chunk::{bundle::TerrainChunk, chunk_lod::LodType};
+use crate::chunk_mgr::chunk::{bundle::TerrainChunk, chunk_lod::LodType, state::SeamMeshId};
 
 /// 状态转换
 ///
@@ -21,7 +21,7 @@ use crate::chunk_mgr::chunk::{bundle::TerrainChunk, chunk_lod::LodType};
 /// 添加chunk和更新lod的事件，整合为一个。事件处理在Chunk上处理。
 /// 当所有的Chunk都创建完毕了，再开始创建缝隙。检测是否有chunk更新了chunk，但是没有更新seam。
 #[derive(PartialEq, Eq, Debug, Clone, Copy, Hash, Component)]
-pub enum IsosurfaceState {
+pub enum MainMeshState {
     ConstructOctree,
     SimplifyOctree,
     DualContouring,
@@ -30,65 +30,80 @@ pub enum IsosurfaceState {
     Done,
 }
 
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash, Component)]
+pub enum SeamMeshState {
+    ConstructOctree,
+    DualContouring,
+    // SimplifyMesh,
+    CreateMesh,
+    Done,
+    PendingRemove,
+}
+
 #[derive(Debug, Default, PartialEq, Eq, Copy, Clone, Component)]
-pub struct TerrainChunkGenerator {
+pub struct TerrainChunkMainGenerator {
     pub lod: LodType,
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Component)]
+pub struct TerrainChunkSeamGenerator {
+    pub(crate) seam_mesh_id: SeamMeshId,
+}
+
 #[derive(Debug, Event, Clone, Copy)]
-pub struct TerrainChunkUpdateLodEvent {
+pub struct TerrainChunkCreateMainMeshEvent {
     pub entity: Entity,
     pub lod: LodType,
 }
 
 #[derive(Debug, Event, Clone, Copy)]
-pub struct TerrainChunkMainMeshCreatedEvent {
+pub struct TerrainChunkCreateSeamMeshEvent {
     pub chunk_entity: Entity,
-    pub lod: LodType,
+    pub seam_mesh_id: SeamMeshId,
 }
 
 pub(crate) fn read_chunk_udpate_lod_event(
-    mut event_reader: EventReader<TerrainChunkUpdateLodEvent>,
+    mut event_reader: EventReader<TerrainChunkCreateMainMeshEvent>,
     chunk_children: Query<&Children, With<TerrainChunk>>,
-    chunk_generator: Query<(&TerrainChunkGenerator, Option<&Handle<Mesh>>)>,
+    chunk_generator: Query<&TerrainChunkMainGenerator>,
     mut commands: Commands,
-    mut event_writer: EventWriter<TerrainChunkMainMeshCreatedEvent>,
 ) {
     for event in event_reader.read() {
-        match chunk_children.get(event.entity) {
-            Ok(chunk_children) => {
-                let mut find_lod_generator = false;
-                for child in chunk_children.iter() {
-                    if let Ok((generator, mesh)) = chunk_generator.get(*child) {
-                        if generator.lod == event.lod {
-                            find_lod_generator = true;
-                            if mesh.is_some() {
-                                event_writer.send(TerrainChunkMainMeshCreatedEvent {
-                                    chunk_entity: event.entity,
-                                    lod: generator.lod,
-                                });
-                            }
-                        }
+        let mut find_lod_generator = false;
+        if let Ok(chunk_children) = chunk_children.get(event.entity) {
+            for child in chunk_children.iter() {
+                if let Ok(generator) = chunk_generator.get(*child) {
+                    if generator.lod == event.lod {
+                        find_lod_generator = true;
                     }
                 }
-
-                if find_lod_generator.not() {
-                    commands
-                        .spawn((
-                            TerrainChunkGenerator { lod: event.lod },
-                            IsosurfaceState::ConstructOctree,
-                        ))
-                        .set_parent(event.entity);
-                }
-            }
-            Err(_) => {
-                commands
-                    .spawn((
-                        TerrainChunkGenerator { lod: event.lod },
-                        IsosurfaceState::ConstructOctree,
-                    ))
-                    .set_parent(event.entity);
             }
         }
+        if find_lod_generator.not() {
+            commands
+                .spawn((
+                    TerrainChunkMainGenerator { lod: event.lod },
+                    MainMeshState::ConstructOctree,
+                ))
+                .set_parent(event.entity);
+        }
+    }
+}
+
+/// 获取周围的chunk，如果有两个或者以上的chunk，则创建缝隙，lod选择尽可能小的。
+pub(crate) fn read_chunk_udpate_seam_event(
+    mut event_reader: EventReader<TerrainChunkCreateSeamMeshEvent>,
+    mut commands: Commands,
+) {
+    for event in event_reader.read() {
+        info!("read_chunk_udpate_seam_event");
+        commands
+            .spawn((
+                TerrainChunkSeamGenerator {
+                    seam_mesh_id: event.seam_mesh_id,
+                },
+                SeamMeshState::ConstructOctree,
+            ))
+            .set_parent(event.chunk_entity);
     }
 }

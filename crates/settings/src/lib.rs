@@ -30,8 +30,10 @@ pub mod persist;
 pub mod setting_path;
 pub mod toml_diff;
 
+use bevy::utils::TypeIdMap;
 pub use settings_derive::Setting;
 
+use std::any::TypeId;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
@@ -63,6 +65,18 @@ pub struct SettingsSource {
     pub user_source_id: AssetSourceId<'static>,
     pub user_source_path: PathBuf,
 }
+
+#[derive(Debug, Resource)]
+pub struct SettingsLoadStatus {
+    pub status: TypeIdMap<bool>,
+}
+
+impl SettingsLoadStatus {
+    pub fn all_loaded(&self) -> bool {
+        self.status.values().all(|v| *v)
+    }
+}
+
 #[derive(Debug)]
 pub struct SettingsPlugin {
     pub game_source_config: SettingSourceConfig,
@@ -89,7 +103,10 @@ impl Plugin for SettingsPlugin {
             std::fs::create_dir_all(&self.user_source_config.base_path).unwrap();
         }
 
-        app.insert_resource(SettingsSource {
+        app.insert_resource(SettingsLoadStatus {
+            status: TypeIdMap::default(),
+        })
+        .insert_resource(SettingsSource {
             game_source_id: self.game_source_config.source_id.clone(),
             game_source_path: self.game_source_config.base_path.clone(),
             user_source_id: self.user_source_config.source_id.clone(),
@@ -176,7 +193,7 @@ where
 /// settings limits:
 ///   1. all fields must be Optional
 pub trait Setting:
-    Resource + Clone + Serialize + TypePath + Default + for<'a> Deserialize<'a> + Asset
+    Resource + Clone + Serialize + TypePath + Default + for<'a> Deserialize<'a> + Asset + Debug
 {
 }
 

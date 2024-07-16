@@ -1,7 +1,10 @@
-use bevy::log::{debug, info};
+use bevy::{
+    app::Update,
+    log::{debug, info},
+};
 use std::sync::Arc;
 
-use bevy::prelude::{Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res, Startup};
+use bevy::prelude::{Added, App, AssetServer, Commands, Entity, Plugin, Query, Res, Startup};
 
 use crate::chunk_mgr::chunk::bundle::TerrainChunk;
 
@@ -27,7 +30,7 @@ pub struct EcologyPlugin;
 impl Plugin for EcologyPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, startup)
-            .add_systems(Last, add_ecology_layer_sampler);
+            .add_systems(Update, add_ecology_layer_sampler);
     }
 }
 

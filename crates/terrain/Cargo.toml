@@ -10,6 +10,7 @@ edition = "2021"
 # bevy_mod_debugdump = "0.7.0"
 bevy = { workspace = true }
 serde = { workspace = true }
+tracing = { workspace = true }
 # lightyear = { workspace = true }
 # bevy_xpbd_3d = { workspace = true }
 # bevy_xpbd_derive = { workspace = true }
@@ -19,17 +20,16 @@ strum = { version = "0.26.3", features = ["derive", "strum_macros"] }
 strum_macros = "0.26.4"
 pqef = { path = "../pqef" }
 project = { path = "../project" }
-
+atom_internal = { path = "../atom_internal" }
 terrain_player_client = { path = "../terrain_player_client" }
 terrain_core = { path = "../terrain_core" }
 settings = { path = "../settings" }
 log_layers = { path = "../log_layers" }
 
 rand = "0.8.5"
-futures-lite = "2.3.0"
 ndshape = { version = "0.3.0" }
 
-noisy_bevy = { path = "../../../noisy_bevy" }
+noisy_bevy = { version = "0.7.0" }
 
 # bevy_obj = "0.13.0"
 
@@ -44,6 +44,8 @@ bitfield-struct = "0.8.0"
 
 
 bevy_async_task = { version = "0.2.0" }
+autoincrement = { workspace = true }
 
 [dev-dependencies]
 bevy_flycam = { version = "0.14.0" }
+bevy_debug_grid = { workspace = true }

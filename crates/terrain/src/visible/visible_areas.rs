@@ -102,7 +102,6 @@ pub fn add_terrain_visible_areas(
     }
 }
 
-// #[bevycheck::system]
 #[allow(clippy::type_complexity)]
 pub fn update_terrain_visible_areas(
     terrain_settings: Res<TerrainSetting>,
@@ -132,7 +131,7 @@ pub fn update_terrain_visible_areas(
         }
 
         let camera_position = global_transform.translation();
-        let chunk_size = terrain_settings.chunk_settings.chunk_size;
+        let chunk_size = terrain_settings.chunk_setting.chunk_size;
 
         let center_coord = camera_position / chunk_size;
         let min_coord = (camera_position + visible_range.min()) / chunk_size;

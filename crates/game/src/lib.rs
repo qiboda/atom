@@ -1,4 +1,5 @@
 use atom_camera::CameraManagerPlugin;
+use atom_internal::plugins::AtomDefaultPlugins;
 use atom_utils::follow::TransformFollowPlugin;
 use avian3d::{debug_render::PhysicsDebugPlugin, PhysicsPlugins};
 use bevy::{
@@ -36,45 +37,12 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        let task_pool_plugin = TaskPoolPlugin {
-            task_pool_options: TaskPoolOptions {
-                async_compute: TaskPoolThreadAssignmentPolicy {
-                    min_threads: 1,
-                    max_threads: usize::MAX,
-                    percent: 0.25,
-                },
-                ..default()
-            },
-        };
 
-        let settings_plugin = SettingsPlugin {
-            game_source_config: SettingSourceConfig {
-                source_id: "game_settings".into(),
-                base_path: "config".into(),
-            },
-            user_source_config: SettingSourceConfig {
-                source_id: "user_settings".into(),
-                base_path: "config".into(),
-            },
-        };
-
-        app.add_plugins(settings_plugin)
-            .add_plugins((
-                LogLayersPlugin::default().add_layer(file_layer::file_layer),
-                DefaultPlugins
-                    .set(LogPlugin {
-                        custom_layer: LogLayersPlugin::get_layer,
-                        ..default()
-                    })
-                    .set(task_pool_plugin),
-            ))
+        app.add_plugins(AtomDefaultPlugins)
             .add_plugins(SettingPlugin::<PlayerInputSetting> {
                 paths: SettingsPath::default(),
             })
-            .add_plugins(InputManagerSubsystemPlugin)
             .add_plugins(InputManagerPlugin::<PlayerAction>::default())
-            .add_plugins(ConsolePlugin)
-            .add_plugins(DataTablePlugin)
             .add_plugins(TransformFollowPlugin)
             .add_plugins(CameraManagerPlugin)
             .add_plugins((PhysicsPlugins::default(), PhysicsDebugPlugin::default()))
