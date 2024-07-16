@@ -69,20 +69,14 @@ impl DensityFunction for Panel {
 #[derive(Default, Debug)]
 pub struct Cube;
 
+pub fn cube(b: Vec3A, p: Vec3A) -> f32 {
+    let q = p.abs() - b;
+    q.max(Vec3A::ZERO).length() + q.max_element().min(0.0)
+}
+
 impl DensityFunction for Cube {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        let x = (x - 8.0).abs();
-        let y = (y - 8.0).abs();
-        let z = (z - 8.0).abs();
-
-        let x_2 = x - 5.0;
-        let y_2 = y - 5.0;
-        let z_2 = z - 5.0;
-        if x_2 >= 0.0 || y_2 >= 0.0 || z_2 >= 0.0 {
-            Vec3::new(x_2.max(0.0), y_2.max(0.0), z_2.max(0.0)).length()
-        } else {
-            -Vec3::new(x_2, y_2, z_2).length()
-        }
+        cube(Vec3A::splat(5.0), Vec3A::new(x - 8.0, y - 8.0, z - 8.0))
     }
 }
 
@@ -95,7 +89,6 @@ pub struct NoiseSurface {
 }
 
 impl DensityFunction for NoiseSurface {
-    // TODO: fix without freq
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
         y - noisy_bevy::fbm_simplex_2d(
             Vec2::new(x, z) * self.frequency,

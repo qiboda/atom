@@ -158,7 +158,7 @@ impl Quadric {
         mean_r: Pos3A,
         stddev: f32,
     ) -> Quadric {
-        let sigma = stddev * stddev;
+        let sigma: f32 = stddev * stddev;
 
         let pxq = mean_p.cross(mean_q);
         let qxr = mean_q.cross(mean_r);
@@ -512,7 +512,7 @@ impl Mul<Quadric> for f32 {
 mod tests {
     use bevy::math::Vec3A;
 
-    use crate::Quadric;
+    use crate::{math::covariance_matrix, Quadric};
 
     #[test]
     fn test_single_quadric() {
@@ -556,6 +556,40 @@ mod tests {
         println!("error: {}", error);
 
         let quadric = quadric_1 + quadric_2;
+
+        let pos = quadric.minimizer();
+        println!("pos: {}", pos);
+        let error = quadric.residual_l2_error(pos);
+        println!("error: {}", error);
+    }
+
+    #[test]
+    fn test_probabilistic_plane_quadric_sigma() {
+        let positions = [
+            Vec3A::new(0.0, 0.0, 1.0),
+            Vec3A::new(1.0, 0.0, 0.0),
+            Vec3A::new(0.0, 1.0, 0.3),
+            Vec3A::new(0.5, 0.5, 0.0),
+        ];
+        let pos_mat = covariance_matrix(&positions);
+        let mean_pos = positions.iter().fold(Vec3A::ZERO, |acc, &x| acc + x) / 4.0;
+        println!("pos mat: {}", pos_mat);
+        println!("pos mean: {}", mean_pos);
+
+        let normals = [
+            Vec3A::new(1.0, 1.0, 0.2).normalize(),
+            Vec3A::new(0.0, 1.0, 0.0).normalize(),
+            Vec3A::new(1.0, 0.0, 0.5).normalize(),
+            Vec3A::new(0.25, 0.25, 0.0).normalize(),
+        ];
+        let normal_mat = covariance_matrix(&normals);
+        let mean_normal: Vec3A =
+            (normals.iter().fold(Vec3A::ZERO, |acc, &x| acc + x) / 4.0).normalize();
+        println!("normal mat: {}", normal_mat);
+        println!("normal mean: {}", mean_normal);
+
+        let quadric =
+            Quadric::probabilistic_plane_quadric_sigma(mean_pos, mean_normal, pos_mat, normal_mat);
 
         let pos = quadric.minimizer();
         println!("pos: {}", pos);

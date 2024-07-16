@@ -419,19 +419,15 @@ fn visit_leaf_edge(
             // Not a bipolar edge.
             debug!(
                 "visit leaf edge is not a bipolar edge, mat0: {:?}, mat1: {:?}, axis:{:?}, \
-                min_cell_index:{}, vertex_samplers:{:?}->{:?}, {:?}->{:?}, {:?}->{:?}, {:?}->{:?}, {:?}, {:?}",
+                min_cell_index:{}, vertex_samplers:{:?}, {:?}, {:?}, {:?}, {:?}, {:?}",
                 mat0,
                 mat1,
                 edge_cells.axis_type,
                 min_cell_index,
                 edge_cells.cells[0].coord,
-                edge_cells.cells[0].vertices_samples,
                 edge_cells.cells[1].coord,
-                edge_cells.cells[1].vertices_samples,
                 edge_cells.cells[2].coord,
-                edge_cells.cells[2].vertices_samples,
                 edge_cells.cells[3].coord,
-                edge_cells.cells[3].vertices_samples,
                 cell_vertex_indices[0],
                 cell_vertex_indices[1],
             );

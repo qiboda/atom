@@ -1201,7 +1201,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51bd6ce2174d3237d30e0ab5b2508480cc7593ca4d96ffb3a3095f9fc6bbc34c"
 dependencies = [
  "bevy_reflect",
- "glam 0.27.0",
+ "glam",
  "rand",
  "serde",
  "smallvec",
@@ -1214,7 +1214,7 @@ version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7ce4266293629a2d10459cc112dffe3b3e9229a4f2b8a4d20061b8dd53316d0"
 dependencies = [
- "glam 0.27.0",
+ "glam",
 ]
 
 [[package]]
@@ -1278,7 +1278,7 @@ dependencies = [
  "bevy_utils",
  "downcast-rs",
  "erased-serde",
- "glam 0.27.0",
+ "glam",
  "petgraph",
  "serde",
  "smallvec",
@@ -2307,7 +2307,7 @@ checksum = "5a9299a95fa5671ddf29ecc22b00e121843a65cb9ff24911e394b4ae556baf36"
 dependencies = [
  "const_panic",
  "encase_derive",
- "glam 0.27.0",
+ "glam",
  "thiserror",
 ]
 
@@ -2434,16 +2434,6 @@ checksum = "0f214dc438f977e6d4e3500aaa277f5ad94ca83fbbd9b1a15713ce2344ccc5a1"
 dependencies = [
  "event-listener 5.3.1",
  "pin-project-lite",
-]
-
-[[package]]
-name = "fast-surface-nets"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d332c6935fee77eb269b29eb27c92dbfe4b4043592c399fb3f6a4e5a1aa03ad3"
-dependencies = [
- "glam 0.20.5",
- "ndshape",
 ]
 
 [[package]]
@@ -2736,12 +2726,6 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.20.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f43e957e744be03f5801a55472f593d43fabdebf25a4585db250f04d86b1675f"
-
-[[package]]
-name = "glam"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e05e7e6723e3455f4818c7b26e855439f7546cf617ef669d1adedb8669e5cb9"
@@ -2962,7 +2946,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edd6b038160f086b0a7496edae34169ae22f328793cbe2b627a5a3d8373748ec"
 dependencies = [
  "constgebra",
- "glam 0.27.0",
+ "glam",
 ]
 
 [[package]]
@@ -3584,7 +3568,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b5c17de023a86f59ed79891b2e5d5a94c705dbe904a5b5c9c952ea6221b03e4"
 dependencies = [
  "approx",
- "glam 0.27.0",
+ "glam",
  "matrixmultiply",
  "nalgebra-macros",
  "num-complex",
@@ -5065,7 +5049,6 @@ dependencies = [
  "bevy_flycam",
  "bitfield-struct",
  "bitflags 2.6.0",
- "fast-surface-nets",
  "futures-lite 2.3.0",
  "log_layers",
  "ndshape",

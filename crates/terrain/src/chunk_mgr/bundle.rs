@@ -1,6 +1,6 @@
 use bevy::{prelude::*, transform::bundles::TransformBundle};
 
-use super::chunk::chunk_mapper::TerrainChunkMapper;
+use super::chunk_mapper::TerrainChunkMapper;
 
 // root entity
 #[derive(Debug, Component, Default, Reflect)]

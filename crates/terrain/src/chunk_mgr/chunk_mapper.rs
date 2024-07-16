@@ -1,14 +1,20 @@
 use bevy::{prelude::*, utils::HashMap};
 
 use crate::{
-    bundle::Terrain,
-    chunk::{chunk_data::TerrainChunkData, TerrainChunk, TerrainChunkBundle},
+    chunk_mgr::chunk::{bundle::TerrainChunkBundle, state::TerrainChunkState},
+    isosurface::comp::TerrainChunkUpdateLodEvent,
     setting::TerrainSetting,
     visible::{visible_areas::TerrainSingleVisibleAreaProxy, visible_range::VisibleTerrainRange},
     TerrainSystemSet,
 };
 
 use terrain_core::chunk::coords::TerrainChunkCoord;
+
+use super::{
+    bundle::Terrain,
+    chunk::{bundle::TerrainChunk, chunk_lod::TerrainChunkLod},
+    event::read_main_mesh_created_event,
+};
 
 #[derive(Debug, Component, Default, Reflect)]
 pub struct TerrainChunkMapper {
@@ -36,7 +42,11 @@ impl Plugin for TerrainChunkPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (update_visible_chunks, update_visible_chunks_lod)
+            (
+                read_main_mesh_created_event,
+                update_visible_chunks,
+                update_visible_chunks_lod,
+            )
                 .chain()
                 .in_set(TerrainSystemSet::UpdateChunk),
         );
@@ -77,6 +87,7 @@ fn update_visible_chunks(
                 chunk_coord,
                 &mut terrain_data,
             );
+
             add_count += 1;
         });
 
@@ -113,12 +124,9 @@ fn spawn_terrain_chunks(
     terrain_chunk_coord: TerrainChunkCoord,
     terrain_data: &mut TerrainChunkMapper,
 ) {
-    let child = commands
-        .spawn((TerrainChunkBundle {
-            terrain_chunk_coord,
-            ..default()
-        },))
-        .id();
+    let mut bundle = TerrainChunkBundle::new(TerrainChunkState::Done);
+    bundle.chunk_coord = terrain_chunk_coord;
+    let child = commands.spawn(bundle).id();
 
     debug!("spawn_terrain_chunks: {:?}", terrain_chunk_coord);
 
@@ -138,43 +146,48 @@ fn update_visible_chunks_lod(
         ),
     >,
     terrain_query: Query<&TerrainChunkMapper, With<Terrain>>,
-    mut terrain_chunk_query: Query<(&TerrainChunkCoord, &mut TerrainChunkData), With<TerrainChunk>>,
+    mut terrain_chunk_query: Query<
+        (
+            Entity,
+            &TerrainChunkCoord,
+            &mut TerrainChunkLod,
+            &mut TerrainChunkState,
+        ),
+        With<TerrainChunk>,
+    >,
+    mut event_writer: EventWriter<TerrainChunkUpdateLodEvent>,
 ) {
     for visible_area in visible_changed_query.iter() {
-        let current_terrain_single_visible_area = visible_area.get_current();
+        let current_visible_area = visible_area.get_current();
 
         let terrain_data = terrain_query.single();
-        current_terrain_single_visible_area.iter_chunk(&mut |x, y, z| {
+        current_visible_area.iter_chunk(&mut |x, y, z| {
             let chunk_coord = TerrainChunkCoord::from(&[x, y, z]);
             if let Some(chunk_entity) = terrain_data.get_chunk_entity_by_coord(chunk_coord) {
-                if let Ok((terrain_chunk_coord, mut chunk_data)) =
+                if let Ok((chunk_entity, terrain_chunk_coord, mut chunk_lod, mut chunk_state)) =
                     terrain_chunk_query.get_mut(*chunk_entity)
                 {
                     assert_eq!(terrain_chunk_coord, &chunk_coord);
-                    chunk_data.lod = 0;
-                }
-            }
-        });
-    }
-
-    for visible_area in visible_changed_query.iter() {
-        let current_terrain_single_visible_area = visible_area.get_current();
-
-        let terrain_data = terrain_query.single();
-        current_terrain_single_visible_area.iter_chunk(&mut |x, y, z| {
-            let chunk_coord = TerrainChunkCoord::from(&[x, y, z]);
-            if let Some(chunk_entity) = terrain_data.get_chunk_entity_by_coord(chunk_coord) {
-                if let Ok((terrain_chunk_coord, mut chunk_data)) =
-                    terrain_chunk_query.get_mut(*chunk_entity)
-                {
-                    assert_eq!(terrain_chunk_coord, &chunk_coord);
-                    let chunk_coord_diff =
-                        &current_terrain_single_visible_area.center_chunk_coord - &chunk_coord;
+                    let chunk_coord_diff = &current_visible_area.center_chunk_coord - &chunk_coord;
                     if let Some(clipmap_lod) =
                         terrain_settings.clipmap_settings.get_lod(chunk_coord_diff)
                     {
-                        chunk_data.lod = chunk_data.lod.max(clipmap_lod.lod);
-                        trace!("lod: {} final {}", clipmap_lod.lod, chunk_data.lod);
+                        chunk_lod.set_lod(clipmap_lod.lod);
+                        // 最新创建的Chunk，lod总是dirty。也会触发这个事件。
+                        if chunk_lod.is_dirty() {
+                            event_writer.send(TerrainChunkUpdateLodEvent {
+                                entity: chunk_entity,
+                                lod: chunk_lod.get_lod(),
+                            });
+                            *chunk_state = TerrainChunkState::CreateMainMesh(chunk_lod.get_lod());
+                            chunk_lod.clean_dirty();
+                            info!(
+                                "terrain_chunk_coord: {:?}, lod: {}, final {}",
+                                terrain_chunk_coord,
+                                clipmap_lod.lod,
+                                chunk_lod.get_lod()
+                            );
+                        }
                     } else {
                         error!("{:?} is not a valid lod distance", chunk_coord_diff);
                     }

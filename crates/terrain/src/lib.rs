@@ -1,17 +1,17 @@
-pub mod bundle;
-pub mod chunk;
-pub mod ecology;
+/// TODO: lod和chunk的删除和更改，使用弱边界。
+/// TODO: Tree移动到子实体。
+/// TODO: 等待setting加载完毕了再生成地形。
+/// TODO: 销毁的Chunk，存储到文件中。
+pub mod chunk_mgr;
 pub mod isosurface;
-pub mod materials;
 pub mod setting;
 pub mod visible;
 
-use bevy::{pbr::ExtendedMaterial, prelude::*};
-use bundle::TerrainBundle;
-use chunk::chunk_mapper::TerrainChunkPlugin;
+use bevy::prelude::*;
+use chunk_mgr::bundle::TerrainBundle;
+use chunk_mgr::chunk_mapper::TerrainChunkPlugin;
 use isosurface::IsosurfaceExtractionPlugin;
-use materials::{terrain::TerrainMaterial, terrain_debug::TerrainDebugMaterial};
-use setting::{TerrainChunkSettings, TerrainClipMapSettings, TerrainSetting};
+use setting::{TerrainChunkSetting, TerrainClipMapSetting, TerrainSetting};
 use settings::SettingPlugin;
 use visible::TerrainVisibleAreaPlugin;
 
@@ -28,8 +28,8 @@ pub struct TerrainSubsystemPlugin;
 impl Plugin for TerrainSubsystemPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(TerrainSetting {
-            chunk_settings: TerrainChunkSettings::default(),
-            clipmap_settings: TerrainClipMapSettings::default(),
+            chunk_settings: TerrainChunkSetting::default(),
+            clipmap_settings: TerrainClipMapSetting::default(),
         })
         .add_plugins((SettingPlugin::<TerrainSetting> {
             paths: Default::default(),
@@ -43,10 +43,6 @@ impl Plugin for TerrainSubsystemPlugin {
             )
                 .chain(),
         )
-        .add_plugins(MaterialPlugin::<
-            ExtendedMaterial<StandardMaterial, TerrainMaterial>,
-        >::default())
-        .add_plugins(MaterialPlugin::<TerrainDebugMaterial>::default())
         .add_plugins(TerrainVisibleAreaPlugin)
         .add_plugins(TerrainChunkPlugin)
         .add_plugins(IsosurfaceExtractionPlugin)

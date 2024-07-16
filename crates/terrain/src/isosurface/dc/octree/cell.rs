@@ -1,11 +1,14 @@
 use bevy::{
     math::{
         bounding::{Aabb3d, BoundingVolume},
-        Vec3A,
+        Vec3A, VectorSpace,
     },
     prelude::*,
 };
-use pqef::Quadric;
+use pqef::{
+    math::{covariance_matrix, standard_deviation},
+    Quadric,
+};
 use strum::{EnumCount, IntoEnumIterator};
 
 use super::{
@@ -33,14 +36,11 @@ pub struct Cell {
     pub address: CellAddress,
     pub coord: Vec3A,
     // positions
-    #[reflect(ignore)]
     pub aabb: Aabb3d,
-
-    // position sampler values
-    pub vertices_samples: [f32; VertexIndex::COUNT],
+    // vertices mats
     pub vertices_mat_types: [VoxelMaterialType; VertexIndex::COUNT],
-    pub qef: Option<Quadric>,
 
+    pub qef: Option<Quadric>,
     pub qef_error: f32,
     pub vertex_estimate: Vec3,
     pub normal_estimate: Vec3A,
@@ -52,8 +52,6 @@ impl Cell {
             cell_type,
             address,
             aabb: Aabb3d::new(Vec3::ZERO, Vec3::ONE),
-
-            vertices_samples: [0.0; VertexIndex::COUNT],
             qef: None,
             qef_error: 0.0,
             vertex_estimate: Vec3::ZERO,
@@ -131,10 +129,21 @@ impl Cell {
 
 impl Cell {
     #[inline]
-    pub fn estimate_vertex(&mut self, sdf: &impl OctreeSampler, precision: f32) {
-        self.estimate_vertex_mat();
-        let qef =
-            Cell::estimate_interior_vertex_qef(&self.aabb, &self.vertices_samples, sdf, precision);
+    pub fn estimate_vertex(
+        &mut self,
+        sdf: &impl OctreeSampler,
+        vertices_values: [f32; VertexIndex::COUNT],
+        std_dev_pos: f32,
+        std_dev_normal: f32,
+    ) {
+        self.estimate_vertex_mat(vertices_values);
+        let qef = Cell::estimate_interior_vertex_qef(
+            &self.aabb,
+            &vertices_values,
+            sdf,
+            std_dev_pos,
+            std_dev_normal,
+        );
         self.estimate_vertex_with_qef(qef.0, qef.1, qef.2);
         debug!(
             "estimate_vertex: {:?}, vertex is mass_point: {}",
@@ -150,10 +159,10 @@ impl Cell {
         self.qef = Some(qef);
         self.qef_error = qef_error;
         self.normal_estimate = normal;
-        // if self.qef_error < -0.0001 {
-            self.vertex_estimate = p.into();
+        // if self.qef_error < 0.00001 {
+        self.vertex_estimate = p.into();
         // } else {
-            // self.vertex_estimate = mass_point.into();
+        //     self.vertex_estimate = mass_point.into();
         // }
     }
 
@@ -179,10 +188,10 @@ impl Cell {
         .normalize()
     }
 
-    pub fn estimate_vertex_mat(&mut self) {
+    pub fn estimate_vertex_mat(&mut self, vertices_values: [f32; VertexIndex::COUNT]) {
         assert!(self.cell_type == CellType::Leaf);
         for i in VertexIndex::iter() {
-            if self.vertices_samples[i as usize] < 0.0 {
+            if vertices_values[i as usize] < 0.0 {
                 self.vertices_mat_types[i as usize] = VoxelMaterialType::Block;
             } else {
                 self.vertices_mat_types[i as usize] = VoxelMaterialType::Air;
@@ -190,11 +199,35 @@ impl Cell {
         }
     }
 
+    fn get_positions_and_normals(
+        sdf: &impl OctreeSampler,
+        center_pos: Vec3A,
+        delta: f32,
+    ) -> ([Vec3A; 9], [Vec3A; 9]) {
+        let mut positions = [Vec3A::ZERO; 9];
+        // positions[0] = center_pos;
+        let mut normals = [Vec3A::ZERO; 9];
+        // normals[0] = Cell::central_gradient(sdf, positions[0], delta);
+
+        let mut index = 0;
+        for x in [-1, 0, 1] {
+            for y in [-1, 0, 1] {
+                positions[index] = center_pos + Vec3A::new(delta * x as f32, delta * y as f32, 0.0);
+                normals[index] = Cell::central_gradient(sdf, positions[index], delta);
+                index += 1;
+            }
+        }
+        // assert_eq!(index, 9);
+
+        (positions, normals)
+    }
+
     pub fn estimate_interior_vertex_qef(
         aabb: &Aabb3d,
-        samples: &[f32; 8],
+        samples: &[f32; VertexIndex::COUNT],
         sdf: &impl OctreeSampler,
-        precision: f32,
+        std_dev_pos: f32,
+        std_dev_normal: f32,
     ) -> (Quadric, Vec3A, Vec3A) {
         let mut qef = Quadric::default();
         debug!("estimate_interior_vertex_qef, start");
@@ -225,35 +258,51 @@ impl Cell {
                 }
 
                 let delta = aabb.half_size().x;
-                let mut normal = Cell::central_gradient(sdf, cross_pos.into(), delta);
-                if normal.is_nan() {
-                    error!("estimate_interior_vertex_qef normal is nan");
-                    normal = (aabb.center() - Vec3A::from(cross_pos)).normalize();
-                }
+                let central_normal = Cell::central_gradient(sdf, cross_pos.into(), 0.001);
 
-                avg_normal += normal;
-                masspoint += Vec3A::from(cross_pos);
-                count += 1;
+                let (positions, normals) =
+                    Cell::get_positions_and_normals(sdf, cross_pos.into(), delta);
+                let mean_pos = positions.iter().sum::<Vec3A>() / 9.0;
+                let mean_normal = normals.iter().sum::<Vec3A>().normalize();
+
+                // qef += Quadric::probabilistic_plane_quadric_sigma(
+                //     mean_pos,
+                //     mean_normal,
+                //     covariance_matrix(&positions),
+                //     covariance_matrix(&normals),
+                // );
+
+                // qef += Quadric::probabilistic_plane_quadric(
+                //     cross_pos.into(),
+                //     central_normal,
+                //     0.00000 * delta * 0.0,
+                //     0.10,
+                // );
 
                 qef += Quadric::probabilistic_plane_quadric(
                     cross_pos.into(),
-                    normal,
-                    precision * delta,
-                    precision,
+                    central_normal,
+                    std_dev_pos,
+                    std_dev_normal,
                 );
 
-                debug!(
-                    "estimate_interior_vertex_qef: s1: {}, s2: {}, corners: {} , {}, edge_cross_p: {}, normal: {}, delta: {} \
-                    qef mini: {}, error: {}",
-                    s1, s2,
-                    corners[v1 as usize],
-                    corners[v2 as usize],
-                    cross_pos,
-                    normal,
-                    delta,
-                    qef.minimizer(),
-                    qef.residual_l2_error(qef.minimizer())
-                );
+                avg_normal += central_normal;
+                masspoint += Vec3A::from(cross_pos);
+                count += 1;
+
+                // info!(
+                //     "estimate_interior_vertex_qef: s1: {}, s2: {}, corners: {} , {}, qef mini: {}, edge_cross_p: {}, \
+                //     mean pos: {}, mean normal: {}, delta: {} error: {}",
+                //     s1, s2,
+                //     corners[v1 as usize],
+                //     corners[v2 as usize],
+                //     qef.minimizer(),
+                //     cross_pos,
+                //     // mean_pos,
+                //     // mean_normal,
+                //     // delta,
+                //     qef.residual_l2_error(qef.minimizer())
+                // );
             }
         }
 

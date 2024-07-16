@@ -5,49 +5,36 @@ use bevy::{
     pbr::wireframe::Wireframe,
     prelude::*,
 };
-use bevy_async_task::AsyncTaskPool;
-use mesh_info::{MeshInfo, TerrainChunkMesh};
+use mesh_info::MeshInfo;
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::{
-    chunk::{chunk_data::TerrainChunkData, TerrainChunk},
-    ecology::layer::{EcologyLayerSampler, Sampler},
-    materials::{
-        terrain::{TerrainExtendedMaterial, TerrainMaterial},
-        terrain_debug::TerrainDebugMaterial,
-    },
-    setting::TerrainSetting,
+    chunk_mgr::chunk::bundle::TerrainChunk,
+    isosurface::{ecology::layer::Sampler, materials::terrain::TerrainMaterial},
 };
 
-use super::{state::IsosurfaceState, surface::shape_surface::IsosurfaceContext};
+use super::{
+    comp::{IsosurfaceState, TerrainChunkGenerator, TerrainChunkMainMeshCreatedEvent},
+    ecology::layer::EcologyLayerSampler,
+    materials::terrain::TerrainExtendedMaterial,
+};
 
 #[allow(clippy::type_complexity)]
 pub fn create_mesh(
     mut commands: Commands,
-    mut query: Query<
-        (
-            Entity,
-            &TerrainChunkCoord,
-            &TerrainChunkData,
-            &MeshInfo,
-            &EcologyLayerSampler,
-            &mut IsosurfaceState,
-        ),
-        With<TerrainChunk>,
-    >,
+    chunk_query: Query<(&TerrainChunkCoord, &EcologyLayerSampler), With<TerrainChunk>>,
+    mut query: Query<(
+        Entity,
+        &Parent,
+        &MeshInfo,
+        &mut IsosurfaceState,
+        &TerrainChunkGenerator,
+    )>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TerrainExtendedMaterial>>,
-    mut debug_materials: ResMut<Assets<TerrainDebugMaterial>>,
+    mut event_writer: EventWriter<TerrainChunkMainMeshCreatedEvent>,
 ) {
-    for (
-        terrain_chunk_entity,
-        terrain_chunk_coord,
-        terrain_chunk_data,
-        mesh_info,
-        ecology_layer_sampler,
-        mut state,
-    ) in query.iter_mut()
-    {
+    for (chunk_generator_entity, parent, mesh_info, mut state, generator) in query.iter_mut() {
         if *state != IsosurfaceState::CreateMesh {
             continue;
         }
@@ -56,6 +43,10 @@ pub fn create_mesh(
             *state = IsosurfaceState::Done;
             continue;
         }
+
+        let Ok((terrain_chunk_coord, ecology_layer_sampler)) = chunk_query.get(parent.get()) else {
+            continue;
+        };
 
         let _create_mesh = info_span!("create mesh", chunk_coord = ?terrain_chunk_coord).entered();
 
@@ -113,37 +104,25 @@ pub fn create_mesh(
             }
         }
 
-        // let mut debug_material = TerrainDebugMaterial {
-        //     color: match terrain_chunk_data.lod {
-        //         0 => LinearRgba::RED,
-        //         1 => LinearRgba::GREEN,
-        //         2 => LinearRgba::BLUE,
-        //         4 => LinearRgba::RED,
-        //         5 => LinearRgba::GREEN,
-        //         _ => LinearRgba::WHITE,
-        //     },
-        // };
-        // let material = debug_materials.add(debug_material);
+        commands.entity(chunk_generator_entity).insert((
+            MaterialMeshBundle {
+                mesh: meshes.add(Mesh::from(mesh_info)),
+                material,
+                transform: Transform::from_translation(Vec3::splat(0.0)),
+                visibility: Visibility::Hidden,
+                ..Default::default()
+            },
+            // RigidBody::Static,
+            // Collider::from(&*mesh_cache),
+            Wireframe,
+        ));
 
-        let id = commands
-            .spawn((
-                MaterialMeshBundle {
-                    mesh: meshes.add(Mesh::from(mesh_info)),
-                    material,
-                    transform: Transform::from_translation(Vec3::splat(0.0)),
-                    ..Default::default()
-                },
-                // RigidBody::Static,
-                // Collider::from(&*mesh_cache),
-                Wireframe,
-                TerrainChunkMesh,
-            ))
-            .id();
-
-        if let Some(mut entity_cmds) = commands.get_entity(terrain_chunk_entity) {
-            entity_cmds.add_child(id);
-        }
-        *state = IsosurfaceState::UpdateLod;
+        *state = IsosurfaceState::Done;
         info!("create mesh end");
+
+        event_writer.send(TerrainChunkMainMeshCreatedEvent {
+            chunk_entity: parent.get(),
+            lod: generator.lod,
+        });
     }
 }

@@ -1,17 +1,16 @@
 use bevy::{
-    color::palettes::css,
     core_pipeline::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
     },
-    log::{Level, LogPlugin},
+    log::LogPlugin,
     pbr::{
         wireframe::{WireframeConfig, WireframePlugin},
         ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
     },
     prelude::*,
 };
-use bevy_flycam::{FlyCam, NoCameraPlayerPlugin, PlayerPlugin};
+use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
 use log_layers::{file_layer, LogLayersPlugin};
 use settings::{SettingSourceConfig, SettingsPlugin};
 use terrain::{visible::visible_range::VisibleTerrainRange, TerrainSubsystemPlugin};
@@ -45,12 +44,7 @@ pub fn main() {
     .run();
 }
 
-fn startup(
-    mut commands: Commands,
-    mut wireframe_config: ResMut<WireframeConfig>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>) {
     wireframe_config.global = true;
 
     commands.insert_resource(ClearColor(LinearRgba::new(0.3, 0.2, 0.1, 1.0).into()));
@@ -66,18 +60,6 @@ fn startup(
         brightness: 0.3,
     });
 
-    // commands.spawn(MaterialMeshBundle {
-    //     mesh: meshes.add(Mesh::from(Cuboid {
-    //         half_size: Vec3::splat(2.0),
-    //     })),
-    //     material: materials.add(StandardMaterial {
-    //         base_color: LinearRgba::WHITE.into(),
-    //         ..Default::default()
-    //     }),
-    //     transform: Transform::from_xyz(8.0, 8.0, 8.0),
-    //     ..Default::default()
-    // });
-
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             color: Color::WHITE,
@@ -90,7 +72,7 @@ fn startup(
         ..Default::default()
     });
 
-    let size = 4.0 * 16.0;
+    let size = 16.0 * 16.0;
 
     commands.spawn((
         Camera3dBundle {

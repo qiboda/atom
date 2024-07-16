@@ -1,3 +1,4 @@
+pub mod dc_gizmos;
 pub mod dual_contouring;
 pub mod octree;
 
@@ -6,32 +7,30 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use bevy::{
-    color::palettes::css::{self, GREEN, LINEN, RED},
-    math::bounding::BoundingVolume,
-    prelude::*,
-    utils::HashMap,
-};
+use bevy::{prelude::*, utils::HashMap};
 use bevy_async_task::AsyncTaskPool;
+use dc_gizmos::DcGizmosPlugin;
 use dual_contouring::DefaultDualContouringVisiter;
 use ndshape::{RuntimeShape, Shape};
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::{
-    chunk::{chunk_data::TerrainChunkData, TerrainChunk},
+    chunk_mgr::chunk::{bundle::TerrainChunk, chunk_lod::LodType},
     setting::TerrainSetting,
 };
 
 use octree::{
-    address::{construct_octree_address_map, CellAddress},
-    build_bottom_up,
-    cell::{Cell, CellType},
+    address::{construct_octree_depth_coord_map, CellAddress, DepthCoordMap},
+    cell::Cell,
     Octree, OctreeProxy,
 };
 
 use super::{
+    comp::{
+        read_chunk_udpate_lod_event, IsosurfaceState, TerrainChunkGenerator,
+        TerrainChunkMainMeshCreatedEvent, TerrainChunkUpdateLodEvent,
+    },
     mesh::{create_mesh, mesh_info::MeshInfo},
-    state::IsosurfaceState,
     surface::shape_surface::{IsosurfaceContext, ShapeSurface},
 };
 
@@ -45,17 +44,19 @@ impl Plugin for DualContouringPlugin {
             / terrain_setting.chunk_settings.voxel_size) as u32;
         let shape = RuntimeShape::<u32, 3>::new([size, size, size]);
 
-        app.insert_resource(CellAddressMapper {
-            mapper: Arc::new(RwLock::new(construct_octree_address_map(&shape))),
+        app.insert_resource(OctreeDepthCoordMapper {
+            mapper: Arc::new(RwLock::new(construct_octree_depth_coord_map(&shape))),
         })
-        .init_gizmo_group::<OctreeCellGizmos>()
-        .observe(trigger_on_add_terrain_chunk)
+        .add_plugins(DcGizmosPlugin)
+        .add_event::<TerrainChunkUpdateLodEvent>()
+        .add_event::<TerrainChunkMainMeshCreatedEvent>()
+        .add_systems(PreUpdate, read_chunk_udpate_lod_event)
         .add_systems(
             Update,
             (
-                debug_draw_octree_cell,
                 construct_octree,
-                gen_mesh_info,
+                simplity_octree,
+                dual_contouring,
                 create_mesh,
             )
                 .chain(),
@@ -64,157 +65,53 @@ impl Plugin for DualContouringPlugin {
 }
 
 #[derive(Resource, Default, Debug)]
-pub struct CellAddressMapper {
+pub struct OctreeDepthCoordMapper {
     /// depth is from 1 to n
     mapper: Arc<RwLock<HashMap<u16, Vec<CellAddress>>>>,
 }
 
-// We can create our own gizmo config group!
-#[derive(Default, Reflect, GizmoConfigGroup)]
-struct OctreeCellGizmos {}
-
-#[derive(Debug, Default, Component, Reflect, PartialEq, Eq)]
-pub enum DualContouringState {
-    #[default]
-    ConstructOctree,
-    DualContouring,
-}
-
-fn debug_draw_octree_cell(
-    query: Query<&Octree>,
-    mut octree_cell_gizmos: Gizmos<OctreeCellGizmos>,
-) {
-    return ;
-
-    octree_cell_gizmos.axes(
-        Transform {
-            translation: Vec3::ZERO,
-            rotation: Quat::from_axis_angle(Vec3::X, 0.0),
-            scale: Vec3::ONE,
-        },
-        3.0,
-    );
-
-    for octree in query.iter() {
-        let cell_addresses = octree.cell_addresses.read().unwrap();
-        if cell_addresses.is_empty().not() {
-            debug!("cell num: {}", cell_addresses.len());
-            for (address, cell) in cell_addresses.iter() {
-                if cell.cell_type == CellType::Leaf {
-                    let loc = cell.vertex_estimate;
-                    let normal = cell.normal_estimate;
-
-                    octree_cell_gizmos.arrow(loc, loc + Vec3::from(normal) * 2.0, css::RED);
-
-                    // info!("pos: {}", cell.vertex_estimate);
-                    //     octree_cell_gizmos.cuboid(
-                    //         Transform {
-                    //             translation: cell.aabb.center().into(),
-                    //             rotation: Quat::IDENTITY,
-                    //             scale: (cell.aabb.half_size() * 2.0).into(),
-                    //         },
-                    //         css::RED,
-                    //         // match address.depth() {
-                    //         //     1 => css::RED,
-                    //         //     2 => css::GREEN,
-                    //         //     3 => css::BLUE,
-                    //         //     4 => css::YELLOW,
-                    //         //     5 => css::ORANGE,
-                    //         //     6 => css::MAGENTA,
-                    //         //     7 => css::WHITE,
-                    //         //     _ => css::BLACK,
-                    //         // },
-                    //     );
-                }
-            }
-        }
-    }
-}
-
-fn trigger_on_add_terrain_chunk(
-    trigger: Trigger<OnAdd, TerrainChunk>,
-    mut commands: Commands,
-    query: Query<(), (With<TerrainChunk>, Without<IsosurfaceState>)>,
-) {
-    let entity = trigger.entity();
-    if let Ok(()) = query.get(entity) {
-        if let Some(mut entity_cmds) = commands.get_entity(entity) {
-            entity_cmds.insert((
-                DualContouringState::ConstructOctree,
-                IsosurfaceState::GenMeshInfo,
-            ));
-        }
-    } else {
-        warn!(
-            "trigger_on_add_terrain_chunk: entity not found: {:?}",
-            entity
-        );
-        panic!(
-            "trigger_on_add_terrain_chunk: entity not found: {:?}",
-            entity
-        )
-    }
-}
-
+#[allow(clippy::too_many_arguments)]
 async fn construct_octree_task(
     entity: Entity,
     surface: Arc<RwLock<ShapeSurface>>,
     cell_address_mapper: Arc<RwLock<HashMap<u16, Vec<CellAddress>>>>,
+    lod: LodType,
     chunk_size: f32,
     voxel_size: f32,
     chunk_coord: TerrainChunkCoord,
+    std_dev_pos: f32,
+    std_dev_normal: f32,
 ) -> (Entity, Octree) {
-    let mut octree = Octree::default();
-
+    let lod_voxel_size = voxel_size * 2.0_f32.powf((lod + 1) as f32);
     let offset = chunk_coord * chunk_size;
-    let size = (chunk_size / voxel_size) as u32 + 1;
+    let size = (chunk_size / lod_voxel_size) as u32 + 1;
     let shape = RuntimeShape::<u32, 3>::new([size, size, size]);
+    debug!("lod_voxle size: {}, size: {}", lod_voxel_size, size);
 
     let mut samples = Vec::with_capacity(shape.usize());
     let surface: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 
     for i in 0..shape.size() {
-        let loc = offset + Vec3::from_array(shape.delinearize(i).map(|v| v as f32)) * voxel_size;
+        let loc =
+            offset + Vec3::from_array(shape.delinearize(i).map(|v| v as f32)) * lod_voxel_size;
         let density = surface.get_value_from_vec(loc);
         samples.push(density);
     }
 
-    // info!("samples: {:?}", samples);
-    build_bottom_up(
+    let mut octree = Octree::new(RuntimeShape::<u32, 3>::new([size - 1, size - 1, size - 1]));
+    Octree::build_bottom_up(
         &mut octree,
         &samples,
         &shape,
-        voxel_size,
+        lod_voxel_size,
+        std_dev_pos,
+        std_dev_normal,
         offset,
         &surface,
         cell_address_mapper,
     );
 
-    // check octree children relation
-    {
-        let cell_addresses = octree.cell_addresses.read().unwrap();
-        cell_addresses
-            .iter()
-            .for_each(|(address, cell)| match cell.cell_type {
-                CellType::Branch => {
-                    assert_eq!(cell.address, *address);
-                    let mut exist_child = false;
-                    for child_address in cell.address.get_children_addresses() {
-                        if cell_addresses.get(&child_address).is_some() {
-                            exist_child = true;
-                            break;
-                        }
-                    }
-                    assert!(exist_child);
-                }
-                CellType::Leaf => {
-                    assert_eq!(cell.address, *address);
-                    for child_address in cell.address.get_children_addresses() {
-                        assert!(cell_addresses.get(&child_address).is_none());
-                    }
-                }
-            });
-    }
+    Octree::check_children_relation(octree.address_cell_map.clone());
 
     (entity, octree)
 }
@@ -223,39 +120,39 @@ async fn construct_octree_task(
 fn construct_octree(
     mut commands: Commands,
     mut task_pool: AsyncTaskPool<(Entity, Octree)>,
-    mut chunk_query: ParamSet<(
-        Query<
-            (
-                Entity,
-                &TerrainChunkCoord,
-                &IsosurfaceState,
-                &DualContouringState,
-            ),
-            With<TerrainChunk>,
-        >,
-        Query<&mut DualContouringState, With<TerrainChunk>>,
+    chunk_query: Query<&TerrainChunkCoord, With<TerrainChunk>>,
+    mut chunk_generator_query: ParamSet<(
+        Query<(Entity, &Parent, &IsosurfaceState, &TerrainChunkGenerator)>,
+        Query<&mut IsosurfaceState, With<TerrainChunkGenerator>>,
     )>,
-    settings: Res<TerrainSetting>,
+    setting: Res<TerrainSetting>,
     surface: Res<IsosurfaceContext>,
-    cell_mapper: Res<CellAddressMapper>,
+    cell_mapper: Res<OctreeDepthCoordMapper>,
 ) {
     if task_pool.is_idle() {
-        for (entity, chunk_coord, state, dc_state) in chunk_query.p0().iter() {
-            if state == &IsosurfaceState::GenMeshInfo
-                && dc_state == &DualContouringState::ConstructOctree
-            {
-                let chunk_size = settings.chunk_settings.chunk_size;
-                let voxel_size = settings.chunk_settings.voxel_size;
-                let shape_surface = surface.shape_surface.clone();
-                let mapper = cell_mapper.mapper.clone();
-                task_pool.spawn(construct_octree_task(
-                    entity,
-                    shape_surface,
-                    mapper.clone(),
-                    chunk_size,
-                    voxel_size,
-                    *chunk_coord,
-                ));
+        for (entity, parent, state, generator) in chunk_generator_query.p0().iter() {
+            if state == &IsosurfaceState::ConstructOctree {
+                debug!("construct_octree");
+                if let Ok(chunk_coord) = chunk_query.get(parent.get()) {
+                    let chunk_size = setting.chunk_settings.chunk_size;
+                    let voxel_size = setting.chunk_settings.voxel_size;
+                    let lod = generator.lod;
+                    let shape_surface = surface.shape_surface.clone();
+                    let mapper = cell_mapper.mapper.clone();
+                    let stddev_pos = setting.chunk_settings.qef_pos_stddev;
+                    let stddev_normal = setting.chunk_settings.qef_normal_stddev;
+                    task_pool.spawn(construct_octree_task(
+                        entity,
+                        shape_surface,
+                        mapper.clone(),
+                        lod,
+                        chunk_size,
+                        voxel_size,
+                        *chunk_coord,
+                        stddev_pos,
+                        stddev_normal,
+                    ));
+                }
             }
         }
     }
@@ -267,9 +164,79 @@ fn construct_octree(
             bevy_async_task::AsyncTaskStatus::Finished((entity, octree)) => {
                 if let Some(mut entity_cmds) = commands.get_entity(entity) {
                     entity_cmds.insert(octree);
-                    if let Ok(mut state) = chunk_query.p1().get_mut(entity) {
-                        *state = DualContouringState::DualContouring;
+                    if let Ok(mut state) = chunk_generator_query.p1().get_mut(entity) {
+                        *state = IsosurfaceState::SimplifyOctree;
                     }
+                }
+            }
+        }
+    }
+}
+
+async fn simplity_octree_task(
+    entity: Entity,
+    deep_coord_mapper: Arc<RwLock<DepthCoordMap>>,
+    address_cell_map: Arc<RwLock<HashMap<CellAddress, Cell>>>,
+    cell_shape: RuntimeShape<u32, 3>,
+    qef_threshold_map: HashMap<u16, f32>,
+) -> Entity {
+    Octree::simplify_octree(
+        address_cell_map.clone(),
+        cell_shape,
+        deep_coord_mapper,
+        qef_threshold_map,
+    );
+
+    Octree::check_children_relation(address_cell_map.clone());
+
+    entity
+}
+
+#[allow(clippy::type_complexity)]
+fn simplity_octree(
+    mut task_pool: AsyncTaskPool<Entity>,
+    mut chunk_generator_query: ParamSet<(
+        Query<(Entity, &Octree, &IsosurfaceState), With<TerrainChunkGenerator>>,
+        Query<&mut IsosurfaceState, With<TerrainChunkGenerator>>,
+    )>,
+    settings: Res<TerrainSetting>,
+    depth_coord_mapper: Res<OctreeDepthCoordMapper>,
+) {
+    if settings.chunk_settings.qef_solver.not() {
+        for mut state in chunk_generator_query.p1().iter_mut() {
+            if *state == IsosurfaceState::SimplifyOctree {
+                *state = IsosurfaceState::DualContouring;
+            }
+        }
+        return;
+    }
+
+    if task_pool.is_idle() {
+        for (entity, octree, state) in chunk_generator_query.p0().iter() {
+            if state == &IsosurfaceState::SimplifyOctree {
+                debug!("simplity_octree");
+                let mapper = depth_coord_mapper.mapper.clone();
+                let address_cell_map = octree.address_cell_map.clone();
+                let cell_shape = octree.cell_shape.clone();
+                let qef_threshold_map = settings.chunk_settings.qef_solver_threshold.clone();
+                task_pool.spawn(simplity_octree_task(
+                    entity,
+                    mapper,
+                    address_cell_map,
+                    cell_shape,
+                    qef_threshold_map,
+                ));
+            }
+        }
+    }
+
+    for status in task_pool.iter_poll() {
+        match status {
+            bevy_async_task::AsyncTaskStatus::Idle => {}
+            bevy_async_task::AsyncTaskStatus::Pending => {}
+            bevy_async_task::AsyncTaskStatus::Finished(entity) => {
+                if let Ok(mut state) = chunk_generator_query.p1().get_mut(entity) {
+                    *state = IsosurfaceState::DualContouring;
                 }
             }
         }
@@ -280,11 +247,7 @@ async fn dual_contouring_run_task(
     entity: Entity,
     surface: Arc<RwLock<ShapeSurface>>,
     cell_addresses: Arc<RwLock<HashMap<CellAddress, Cell>>>,
-    chunk_size: f32,
-    chunk_coord: TerrainChunkCoord,
-    lod: u8,
 ) -> (Entity, MeshInfo) {
-    let offset = chunk_coord * chunk_size;
     let surface: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 
     let mut mesh_info = MeshInfo::default();
@@ -302,47 +265,29 @@ async fn dual_contouring_run_task(
         .map(|n| (*n).into())
         .collect();
     mesh_info.indices = default_visiter.tri_indices;
-    mesh_info.lod = lod;
     (entity, mesh_info)
 }
 
 #[allow(clippy::type_complexity)]
-pub fn gen_mesh_info(
+pub fn dual_contouring(
     mut commands: Commands,
     mut task_pool: AsyncTaskPool<(Entity, MeshInfo)>,
-    mut chunk_query: ParamSet<(
-        Query<
-            (
-                Entity,
-                &Octree,
-                &TerrainChunkCoord,
-                &TerrainChunkData,
-                &IsosurfaceState,
-                &DualContouringState,
-            ),
-            With<TerrainChunk>,
-        >,
-        Query<&mut IsosurfaceState, With<TerrainChunk>>,
+    mut chunk_generator_query: ParamSet<(
+        Query<(Entity, &Octree, &IsosurfaceState), With<TerrainChunkGenerator>>,
+        Query<&mut IsosurfaceState, With<TerrainChunkGenerator>>,
     )>,
-    settings: Res<TerrainSetting>,
     surface: Res<IsosurfaceContext>,
 ) {
     if task_pool.is_idle() {
-        for (entity, octree, chunk_coord, chuk_data, state, dc_state) in chunk_query.p0().iter() {
-            if state == &IsosurfaceState::GenMeshInfo
-                && dc_state == &DualContouringState::DualContouring
-            {
-                let lod = chuk_data.lod;
-                let chunk_size = settings.chunk_settings.chunk_size;
+        for (entity, octree, state) in chunk_generator_query.p0().iter() {
+            if state == &IsosurfaceState::DualContouring {
                 let shape_surface = surface.shape_surface.clone();
-                let octree_cell_address = octree.cell_addresses.clone();
+                let octree_cell_address = octree.address_cell_map.clone();
+                debug!("dual_contouring");
                 task_pool.spawn(dual_contouring_run_task(
                     entity,
                     shape_surface,
                     octree_cell_address,
-                    chunk_size,
-                    *chunk_coord,
-                    lod,
                 ));
             }
         }
@@ -353,10 +298,12 @@ pub fn gen_mesh_info(
             bevy_async_task::AsyncTaskStatus::Idle => {}
             bevy_async_task::AsyncTaskStatus::Pending => {}
             bevy_async_task::AsyncTaskStatus::Finished((entity, mesh_info)) => {
+                debug!("dual_contouring end");
                 if let Some(mut entity_cmds) = commands.get_entity(entity) {
                     entity_cmds.insert(mesh_info);
-                    if let Ok(mut state) = chunk_query.p1().get_mut(entity) {
+                    if let Ok(mut state) = chunk_generator_query.p1().get_mut(entity) {
                         *state = IsosurfaceState::CreateMesh;
+                        debug!("dual_contouring end over");
                     }
                 }
             }

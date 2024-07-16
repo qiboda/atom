@@ -6,15 +6,11 @@ use bevy::{
     render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
 };
 
-#[derive(Debug, Clone, Copy, Component, Default)]
-pub struct TerrainChunkMesh;
-
 #[derive(Debug, Clone, Component, Default, Reflect)]
 pub struct MeshInfo {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
     pub indices: Vec<u32>,
-    pub lod: u8,
 }
 
 impl MeshInfo {

@@ -179,3 +179,9 @@ pub trait Setting:
     Resource + Clone + Serialize + TypePath + Default + for<'a> Deserialize<'a> + Asset
 {
 }
+
+/// settings validate
+/// TODO: Add Setting Validate Feature
+pub trait SettingValidate {
+    fn validate(&self) -> bool;
+}

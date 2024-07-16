@@ -1,15 +1,15 @@
-use bevy::log::info;
+use bevy::log::{debug, info};
 use std::sync::Arc;
 
 use bevy::prelude::{Added, App, AssetServer, Commands, Entity, Last, Plugin, Query, Res, Startup};
+
+use crate::chunk_mgr::chunk::bundle::TerrainChunk;
 
 use self::{
     category::forest::ForestEcologyMaterial,
     ecology_set::EcologyMaterials,
     layer::{first::FirstLayer, EcologyLayerSampler},
 };
-
-use super::chunk::TerrainChunk;
 
 pub mod category;
 pub mod ecology_set;
@@ -73,7 +73,7 @@ fn add_ecology_layer_sampler(
     ecology_materials: Res<EcologyMaterials>,
 ) {
     for entity in terrain_query.iter() {
-        info!(
+        debug!(
             "add_ecology_layer_sampler: entity count: {}",
             terrain_query.iter().count()
         );

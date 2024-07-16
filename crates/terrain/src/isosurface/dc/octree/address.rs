@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use super::tables::{EdgeIndex, FaceIndex, SubCellIndex, VertexIndex, NEIGHBOUR_ADDRESS_TABLE};
 
-use bevy::{log::info, reflect::Reflect, utils::hashbrown::HashMap};
+use bevy::{reflect::Reflect, utils::hashbrown::HashMap};
 use bitfield_struct::bitfield;
 use ndshape::Shape;
 use strum::EnumCount;
@@ -176,7 +176,10 @@ impl VertexAddress {
     }
 }
 
-pub fn construct_octree_address_map<S>(shape: &S) -> HashMap<u16, Vec<CellAddress>>
+pub type CoordAddressVec = Vec<CellAddress>;
+pub type DepthCoordMap = HashMap<u16, CoordAddressVec>;
+
+pub fn construct_octree_depth_coord_map<S>(shape: &S) -> DepthCoordMap
 where
     S: Shape<3, Coord = u32>,
 {
@@ -185,25 +188,25 @@ where
     assert_eq!(size[0], size[2]);
     let depth = (size[0] as f32).log2().ceil() as u16 + 1;
 
-    let mut leaf_address_map: HashMap<u16, Vec<CellAddress>> = HashMap::default();
+    let mut depth_coord_map: DepthCoordMap = HashMap::default();
     let mut size = size[0];
     for i in 0..depth {
         if size == 0 {
             break;
         }
         let shape = ndshape::RuntimeShape::<u32, 3>::new([size, size, size]);
-        let vec = construct_octree_address_vec(&shape);
-        leaf_address_map.insert(depth - i, vec);
+        let vec = construct_octree_coord_address_vec(&shape);
+        depth_coord_map.insert(depth - i, vec);
         size >>= 1;
     }
-    leaf_address_map
+    depth_coord_map
 }
 
-pub fn construct_octree_address_vec<S>(shape: &S) -> Vec<CellAddress>
+pub fn construct_octree_coord_address_vec<S>(shape: &S) -> CoordAddressVec
 where
     S: Shape<3, Coord = u32>,
 {
-    let mut leaf_address_vec: Vec<CellAddress> = vec![CellAddress::root(); shape.usize()];
+    let mut coord_address_vec: CoordAddressVec = vec![CellAddress::root(); shape.usize()];
 
     let size = shape.as_array();
     assert_eq!(size[0], size[1]);
@@ -216,7 +219,7 @@ where
             for z in 0..size[2] {
                 let mut half_size = [size[0] / 2, size[1] / 2, size[2] / 2];
                 let index = shape.linearize([x, y, z]);
-                let leaf_address = leaf_address_vec.get_mut(index as usize).unwrap();
+                let leaf_address = coord_address_vec.get_mut(index as usize).unwrap();
 
                 for i in 0..depth {
                     let half_offset = match (x < half_size[0], y < half_size[1], z < half_size[2]) {
@@ -296,7 +299,7 @@ where
         }
     }
 
-    leaf_address_vec
+    coord_address_vec
 }
 
 #[cfg(test)]
@@ -381,7 +384,7 @@ mod tests {
     fn test_construct_octree_address_vec() {
         let shape = [2, 2, 2];
         let shape = ndshape::RuntimeShape::<u32, 3>::new(shape);
-        let leaf_address = construct_octree_address_vec(&shape);
+        let leaf_address = construct_octree_coord_address_vec(&shape);
         assert_eq!(leaf_address.len(), 8);
 
         assert_eq!(
@@ -409,7 +412,7 @@ mod tests {
     fn test_construct_octree_address_map() {
         let shape = [16, 16, 16];
         let shape = ndshape::RuntimeShape::<u32, 3>::new(shape);
-        let leaf_address_map = construct_octree_address_map(&shape);
+        let leaf_address_map = construct_octree_depth_coord_map(&shape);
         assert_eq!(leaf_address_map.len(), 5);
 
         assert!(leaf_address_map.get(&0).is_none());
