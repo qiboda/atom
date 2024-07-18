@@ -234,6 +234,7 @@ async fn dual_contouring_run_task(
     let mut default_visiter = DefaultDualContouringVisiter::new(&surface);
     let octree = OctreeProxy {
         node_addresses: node_addresses.read().unwrap(),
+        is_seam: false,
     };
     dual_contouring::dual_contouring(&octree, &mut default_visiter);
 

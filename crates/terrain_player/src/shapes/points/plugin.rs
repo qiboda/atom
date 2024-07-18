@@ -11,9 +11,6 @@ pub struct PointsPlugin;
 
 impl Plugin for PointsPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        // TODO: use emmbeded_asset!();
-        // embedded_asset!(app, "shaders/point.wgsl");
-
         load_internal_asset!(
             app,
             POINT_SHADER_HANDLE,

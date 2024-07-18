@@ -7,7 +7,10 @@ use bevy::prelude::*;
 use dc::DualContouringPlugin;
 use ecology::EcologyPlugin;
 use materials::TerrainMaterialPlugin;
-use surface::{density_function::NoiseSurface, shape_surface::ShapeSurface};
+use surface::{
+    density_function::{NoiseSurface, Panel},
+    shape_surface::ShapeSurface,
+};
 
 use self::surface::shape_surface::IsosurfaceContext;
 
@@ -25,13 +28,13 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(IsosurfaceContext {
             shape_surface: Arc::new(RwLock::new(ShapeSurface {
-                // density_function: Box::new(Panel),
-                density_function: Box::new(NoiseSurface {
-                    frequency: 0.3,
-                    lacunarity: 0.02,
-                    gain: 5.0,
-                    octaves: 3,
-                }),
+                density_function: Box::new(Panel),
+                // density_function: Box::new(NoiseSurface {
+                //     frequency: 0.3,
+                //     lacunarity: 0.02,
+                //     gain: 5.0,
+                //     octaves: 3,
+                // }),
                 iso_level: Vec3::ZERO,
             })),
         })

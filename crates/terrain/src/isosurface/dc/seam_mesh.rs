@@ -157,7 +157,6 @@ pub(crate) fn construct_octree(
                     }
                 }
 
-                // FIXME: 没有邻居节点，不进行创建。
                 if num < 2 {
                     *state = SeamMeshState::Done;
                     continue;
@@ -215,6 +214,7 @@ async fn dual_contouring_run_task(
     let mut default_visiter = DefaultDualContouringVisiter::new(&surface);
     let octree = OctreeProxy {
         node_addresses: node_addresses.read().unwrap(),
+        is_seam: true,
     };
     dual_contouring::dual_contouring(&octree, &mut default_visiter);
 

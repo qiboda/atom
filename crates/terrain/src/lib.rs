@@ -1,6 +1,13 @@
-/// TODO: lod和chunk的删除和更改，使用弱边界。
-/// TODO: 等待setting加载完毕了再生成地形。
-/// TODO: 销毁的Chunk，存储到文件中。
+/// TODO lod和chunk的删除和更改，使用弱边界。
+/// TODO 销毁的Chunk，存储到文件中。
+/// TODO 纹理数组的支持，还是使用standard material 还是自定义材质。
+/// TODO 地形的用户修改。
+/// TODO 如何支持地形的函数自定义，以及曲线修改地形。
+/// TODO 自定义地形的函数组合。
+/// TODO 水面的支持。
+/// TODO 河流的支持。
+/// TODO 地形和生态的分布。
+/// TODO 缓存密度函数的值，避免重复计算。
 pub mod chunk_mgr;
 pub mod isosurface;
 pub mod setting;

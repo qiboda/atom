@@ -3,7 +3,7 @@ use bevy::{
     utils::HashMap,
 };
 use strum::{EnumCount, IntoEnumIterator};
-use tracing::{instrument, trace};
+use tracing::{info, instrument, trace, warn};
 
 use crate::isosurface::{
     dc::octree::tables::{EDGE_NODES_VERTICES, FACE_TO_SUB_EDGES_AXIS_TYPE},
@@ -298,6 +298,16 @@ fn edge_proc(
         .iter()
         .all(|node| node.node_type == NodeType::Leaf)
     {
+        if octree.is_seam {
+            // TODO 过滤掉了mesh的索引，但没有删除Position，需要去压缩数据。
+            let pos_0 = edge_nodes.nodes[0].address.get_pos_by_depth(2).unwrap();
+            let pos_1 = edge_nodes.nodes[1].address.get_pos_by_depth(2).unwrap();
+            let pos_2 = edge_nodes.nodes[2].address.get_pos_by_depth(2).unwrap();
+            let pos_3 = edge_nodes.nodes[3].address.get_pos_by_depth(2).unwrap();
+            if pos_0 == pos_1 && pos_0 == pos_2 && pos_0 == pos_3 {
+                return;
+            }
+        }
         visit_leaf_edge(octree, edge_nodes, visiter);
         return;
     }

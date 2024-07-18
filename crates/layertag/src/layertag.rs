@@ -46,7 +46,6 @@ impl LayerTag {
         &self.tags
     }
 
-    // TODO: 修改分隔符。
     pub fn raw_layertag(&self) -> String {
         self.tags
             .iter()

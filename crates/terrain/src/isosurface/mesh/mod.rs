@@ -92,10 +92,10 @@ pub fn create_main_mesh(
             },
             RigidBody::Static,
             Collider::from(mesh_info),
-            // Wireframe,
-            // WireframeColor {
-            //     color: LinearRgba::GREEN.into(),
-            // },
+            Wireframe,
+            WireframeColor {
+                color: LinearRgba::GREEN.into(),
+            },
         ));
 
         *state = MainMeshState::Done;
@@ -152,6 +152,7 @@ pub fn create_seam_mesh(
 
         match &ecology_material {
             Some(ecology_material) => {
+                // TODO: 缓存材质，避免重复创建
                 material = materials.add(TerrainMaterial {
                     color_texture: Some(ecology_material.get_albedo_texture()),
                     metallic_texture: Some(ecology_material.get_metallic_texture()),
@@ -179,10 +180,10 @@ pub fn create_seam_mesh(
             },
             RigidBody::Static,
             Collider::from(mesh_info),
-            // Wireframe,
-            // WireframeColor {
-            //     color: LinearRgba::RED.into(),
-            // },
+            Wireframe,
+            WireframeColor {
+                color: LinearRgba::RED.into(),
+            },
         ));
 
         *state = SeamMeshState::Done;

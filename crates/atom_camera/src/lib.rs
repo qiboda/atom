@@ -8,7 +8,7 @@ pub mod bundle;
 pub mod setting;
 
 use atom_utils::follow::TransformFollowPlugin;
-// TODO: format to reorder import
+// TODO: format to reorder import，等待rust fmt标准支持。
 use bevy::prelude::*;
 use leafwing_input_manager::plugin::InputManagerPlugin;
 use setting::{CameraAction, CameraSetting};

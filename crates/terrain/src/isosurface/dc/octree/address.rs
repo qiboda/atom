@@ -69,13 +69,21 @@ impl NodeAddress {
         parent_address
     }
 
-    pub fn get_pos_in_parent(&self) -> Option<SubNodeIndex> {
-        if self.depth() <= 1 {
+    pub fn get_pos_by_depth(&self, depth: u16) -> Option<SubNodeIndex> {
+        if depth < 1 || self.depth() < depth {
             return None;
         }
 
-        let pos_in_parent = self.raw_address() & 0b111;
+        let mut pos_in_parent = self.raw_address() & (0b111 << ((self.depth() - depth) * 3));
+        pos_in_parent >>= (self.depth() - depth) * 3;
         SubNodeIndex::from_repr(pos_in_parent as usize)
+    }
+
+    pub fn get_pos_in_parent(&self) -> Option<SubNodeIndex> {
+        if self.depth() == 1 {
+            return None;
+        }
+        self.get_pos_by_depth(self.depth())
     }
 
     pub fn get_depth(&self) -> usize {
@@ -344,6 +352,33 @@ mod tests {
     }
 
     #[test]
+    fn test_get_pos_by_depth() {
+        let address = NodeAddress::root();
+        let pos = address.get_pos_by_depth(0);
+        assert_eq!(pos, None);
+
+        let pos = address.get_pos_by_depth(1);
+        assert_eq!(pos, Some(SubNodeIndex::X0Y0Z0));
+
+        let child_address = address.get_child_address(SubNodeIndex::X0Y1Z0);
+        assert_eq!(
+            child_address.get_pos_by_depth(1),
+            Some(SubNodeIndex::X0Y0Z0)
+        );
+        assert_eq!(
+            child_address.get_pos_by_depth(2),
+            Some(SubNodeIndex::X0Y1Z0)
+        );
+
+        let mut address = NodeAddress::new();
+        address.set_depth(5);
+        address.set_raw_address(0o34);
+
+        assert_eq!(address.get_pos_by_depth(2), Some(SubNodeIndex::X0Y0Z0));
+        assert_eq!(address.get_pos_by_depth(4), SubNodeIndex::from_repr(3));
+    }
+
+    #[test]
     fn test_get_neighbour_address_simple() {
         let address = NodeAddress::root();
         assert_eq!(
@@ -421,7 +456,8 @@ mod tests {
 
     #[test]
     fn test_construct_octree_address_map() {
-        let leaf_address_map = construct_octree_depth_coord_map(2.0, 0.5);
+        let leaf_address_map = construct_octree_depth_coord_map(4.0, 0.5);
+        // 8, 4, 2, 1, 0.5
         assert_eq!(leaf_address_map.len(), 5);
 
         assert!(leaf_address_map.get(&0).is_none());

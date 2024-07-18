@@ -56,6 +56,7 @@ pub struct Octree {
 #[derive(Debug)]
 pub struct OctreeProxy<'a> {
     pub node_addresses: RwLockReadGuard<'a, HashMap<NodeAddress, Node>>,
+    pub is_seam: bool,
 }
 
 impl Octree {
