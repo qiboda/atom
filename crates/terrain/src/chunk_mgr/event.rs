@@ -38,7 +38,7 @@ pub fn update_to_wait_create_seam(
             for child in children.iter() {
                 if let Ok((visibility, mesh_state, generator)) = generator_query.get_mut(*child) {
                     if *mesh_state == MainMeshState::Done && generator.lod == chunk_lod.get_lod() {
-                        info!(
+                        debug!(
                             "update_to_wait_create_seam:{}, lod: {}",
                             chunk_coord,
                             chunk_lod.get_lod()
@@ -48,12 +48,36 @@ pub fn update_to_wait_create_seam(
                             *visibility = Visibility::Visible;
                         }
                         count += 1;
-                    } else if let Some(mut visibility) = visibility {
-                        *visibility = Visibility::Hidden;
                     }
                 }
             }
             assert!(count < 2);
+        }
+    }
+}
+
+pub fn hidden_main_mesh(
+    query: Query<(&Children, &TerrainChunkLod, &TerrainChunkCoord), With<TerrainChunk>>,
+    mut generator_query: Query<(&ViewVisibility, &mut Visibility, &TerrainChunkMainGenerator)>,
+) {
+    for (children, chunk_lod, chunk_coord) in query.iter() {
+        let mut main_mesh_visiblity = false;
+        for child in children.iter() {
+            if let Ok((view_visibility, _, generator)) = generator_query.get_mut(*child) {
+                if generator.lod == chunk_lod.get_lod() && view_visibility.get() {
+                    main_mesh_visiblity = true;
+                }
+            }
+        }
+        if main_mesh_visiblity {
+            debug!("main_mesh_visiblity: {}", chunk_coord);
+            for child in children.iter() {
+                if let Ok((_, mut visibility, generator)) = generator_query.get_mut(*child) {
+                    if generator.lod != chunk_lod.get_lod() {
+                        *visibility = Visibility::Hidden;
+                    }
+                }
+            }
         }
     }
 }
@@ -71,7 +95,7 @@ pub fn to_create_seam_mesh(
 ) {
     let exist_create_main_mesh_state = query.p0().iter().any(|state| {
         if *state == TerrainChunkState::CreateMainMesh {
-            info!("state is create main mesh, state: {:?}", state);
+            debug!("state is create main mesh, state: {:?}", state);
             return true;
         }
         false
@@ -103,9 +127,14 @@ pub fn to_create_seam_mesh(
     for chunk_coord in udpate_seam_chunk_coords {
         if let Some(entity) = chunk_mapper.get_chunk_entity_by_coord(chunk_coord) {
             if let Ok((mut state, mut seam_mesh_id_generator)) = query.p2().get_mut(*entity) {
-                let seam_mesh_id = seam_mesh_id_generator.pull();
+                let seam_mesh_id = seam_mesh_id_generator.gen();
                 *state = TerrainChunkState::CreateSeamMesh;
-                info!("to crate seam chunks coords: {}", chunk_coord);
+                info!(
+                    "to create seam chunks, coords: {}, id:{:?}, current id: {:?}",
+                    chunk_coord,
+                    seam_mesh_id,
+                    seam_mesh_id_generator.current(),
+                );
                 event_writer.send(TerrainChunkCreateSeamMeshEvent {
                     chunk_entity: *entity,
                     seam_mesh_id,
@@ -135,18 +164,19 @@ pub fn update_create_seam_mesh_over(
     for (children, mut chunk_state, chunk_coord, id_generator) in query.iter_mut() {
         if TerrainChunkState::CreateSeamMesh == *chunk_state {
             let mut count = 0;
-            info!(
-                "update_create_seam_mesh_over: {}, seam mesh id:{:?}",
-                chunk_coord,
-                id_generator.current()
-            );
             for child in children {
                 if let Ok((visibility, mut state, seam_generator)) = generator_query.get_mut(*child)
                 {
                     if *state == SeamMeshState::Done {
                         count += 1;
+                        info!(
+                            "update_create_seam_mesh_over first: {}, {:?} == {:?}",
+                            chunk_coord,
+                            id_generator.current(),
+                            seam_generator.seam_mesh_id
+                        );
                         if id_generator.current() == seam_generator.seam_mesh_id {
-                            info!("update_create_seam_mesh_over: {:?}", visibility);
+                            info!("update_create_seam_mesh_over: {}", chunk_coord);
                             *chunk_state = TerrainChunkState::Done;
                             if let Some(mut visibility) = visibility {
                                 *visibility = Visibility::Visible;

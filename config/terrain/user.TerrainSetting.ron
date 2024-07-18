@@ -25,19 +25,19 @@
                 lod: 0,
             ),
             (
-                chunk_chebyshev_distance: 2,
+                chunk_chebyshev_distance: 3,
                 lod: 1,
             ),
             (
-                chunk_chebyshev_distance: 4,
+                chunk_chebyshev_distance: 9,
                 lod: 2,
             ),
             (
-                chunk_chebyshev_distance: 8,
+                chunk_chebyshev_distance: 18,
                 lod: 3,
             ),
             (
-                chunk_chebyshev_distance: 16,
+                chunk_chebyshev_distance: 32,
                 lod: 4,
             ),
         ],

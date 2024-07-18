@@ -20,12 +20,14 @@
 // group 1 is material, because only one group, so can not support multipe materials on on mesh.
 // group 2 is mesh animation
 
-struct TerrainMaterial {
-    base_color: vec4<f32>,
+#ifdef COLOR_DEBUG
+struct TerrainDebugMaterial {
+    debug_color: vec4<f32>,
 }
 
-@group(1) @binding(100)
-var<uniform> terrain_material: TerrainMaterial;
+@group(2) @binding(30)
+var<uniform> terrain_debug_material: TerrainDebugMaterial;
+#endif
 
 @fragment
 fn fragment(
@@ -33,35 +35,40 @@ fn fragment(
     @builtin(front_facing) is_front: bool,
 ) -> FragmentOutput {
 
+    var out: FragmentOutput;
+#ifdef COLOR_DEBUG
+    out.color = terrain_debug_material.debug_color;
+#else ifdef NORMAL_DEBUG
+    out.color = vec4<f32>(in.world_normal, 1.0);
+#else 
     // generate a PbrInput struct from the StandardMaterial bindings
-     var pbr_input = pbr_input_from_standard_material(in, is_front);
+    var pbr_input = pbr_input_from_standard_material(in, is_front);
 
     // we can optionally modify the input before lighting and alpha_discard is applied
 //    pbr_input.material.base_color.b = pbr_input.material.base_color.r;
 
     // alpha discard
-     pbr_input.material.base_color = alpha_discard(pbr_input.material, pbr_input.material.base_color);
+    pbr_input.material.base_color = alpha_discard(pbr_input.material, pbr_input.material.base_color);
 
 #ifdef PREPASS_PIPELINE
     // in deferred mode we can't modify anything after that, as lighting is run in a separate fullscreen shader.
-    let out = deferred_output(in, pbr_input);
-#else
-    var out: FragmentOutput;
+    out = deferred_output(in, pbr_input);
+#else // PREPASS_PIPELINE
     // apply lighting
-     out.color = apply_pbr_lighting(pbr_input);
+    out.color = apply_pbr_lighting(pbr_input);
 
 //     we can optionally modify the lit color before post-processing is applied
 //     out.color = vec4<f32>(vec4<u32>(out.color * f32(my_extended_material.quantize_steps))) / f32(my_extended_material.quantize_steps);
 
 //     apply in-shader post processing (fog, alpha-premultiply, and also tonemapping, debanding if the camera is non-hdr)
 //     note this does not include fullscreen postprocessing effects like bloom.
-     out.color = main_pass_post_lighting_processing(pbr_input, out.color);
+    out.color = main_pass_post_lighting_processing(pbr_input, out.color);
 
 //     we can optionally modify the final result here
 //        out.color = out.color * 0.2;
-#endif
+#endif // PREPASS_PIPELINE
 
-    // out.color = vec4<f32>(in.world_normal, 1.0);
+#endif // DEBUG_
 
     return out;
 }

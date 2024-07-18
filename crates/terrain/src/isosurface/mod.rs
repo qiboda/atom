@@ -3,11 +3,11 @@
 /// mesh, mesh cache, octree，作为TerrainChunk的子实体存在。
 use std::sync::{Arc, RwLock};
 
-use bevy::{pbr::ExtendedMaterial, prelude::*};
+use bevy::prelude::*;
 use dc::DualContouringPlugin;
 use ecology::EcologyPlugin;
-use materials::terrain::TerrainMaterial;
-use surface::{density_function::Panel, shape_surface::ShapeSurface};
+use materials::terrain::TerrainExtendedMaterial;
+use surface::{density_function::NoiseSurface, shape_surface::ShapeSurface};
 
 use self::surface::shape_surface::IsosurfaceContext;
 
@@ -25,20 +25,18 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(IsosurfaceContext {
             shape_surface: Arc::new(RwLock::new(ShapeSurface {
-                density_function: Box::new(Panel),
-                // density_function: Box::new(NoiseSurface {
-                //     frequency: 0.3,
-                //     lacunarity: 0.02,
-                //     gain: 5.0,
-                //     octaves: 3,
-                // }),
+                // density_function: Box::new(Panel),
+                density_function: Box::new(NoiseSurface {
+                    frequency: 0.3,
+                    lacunarity: 0.02,
+                    gain: 5.0,
+                    octaves: 3,
+                }),
                 iso_level: Vec3::ZERO,
             })),
         })
         .add_plugins(EcologyPlugin)
-        .add_plugins(MaterialPlugin::<
-            ExtendedMaterial<StandardMaterial, TerrainMaterial>,
-        >::default())
+        .add_plugins(MaterialPlugin::<TerrainExtendedMaterial>::default())
         .add_plugins(DualContouringPlugin);
     }
 }

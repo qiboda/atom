@@ -73,7 +73,7 @@ async fn construct_octree_task(
     debug!("lod_voxle size: {}, size: {}", lod_voxel_size, size);
 
     let mut octree = Octree::new(shape);
-    debug!("seam_leaf_nodes size: {}", seam_leaf_nodes.len());
+    info!("seam_leaf_nodes size: {}", seam_leaf_nodes.len());
     debug!("seam_leaf_nodes {:?}", seam_leaf_nodes);
     octree.address_node_map = Arc::new(RwLock::new(seam_leaf_nodes));
     Octree::build_bottom_up_from_leaf_nodes(
@@ -81,6 +81,10 @@ async fn construct_octree_task(
         lod_voxel_size,
         offset,
         node_address_mapper,
+    );
+    info!(
+        "build after seam_leaf_nodes size: {}",
+        octree.address_node_map.read().unwrap().len()
     );
 
     check_octree_nodes_relation!(octree.address_node_map.clone());
@@ -214,7 +218,7 @@ async fn dual_contouring_run_task(
     };
     dual_contouring::dual_contouring(&octree, &mut default_visiter);
 
-    trace!("seam mesh positions: {}", default_visiter.positions.len());
+    info!("seam mesh positions: {}", default_visiter.positions.len());
     mesh_info.positions = default_visiter.positions;
     mesh_info.normals = default_visiter
         .normals

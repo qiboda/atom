@@ -96,7 +96,6 @@ pub(crate) fn read_chunk_udpate_seam_event(
     mut commands: Commands,
 ) {
     for event in event_reader.read() {
-        info!("read_chunk_udpate_seam_event");
         commands
             .spawn((
                 TerrainChunkSeamGenerator {

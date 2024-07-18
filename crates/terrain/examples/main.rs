@@ -5,6 +5,7 @@ use bevy::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
     },
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     log::LogPlugin,
     pbr::{
         wireframe::{WireframeConfig, WireframePlugin},
@@ -22,12 +23,24 @@ pub fn main() {
 
     app.add_plugins(AtomDefaultPlugins.set(LogPlugin {
         custom_layer: LogLayersPlugin::get_layer,
-        filter: "wgpu=error,naga=warn,terrain=info".to_string(),
+        filter: "wgpu=error,naga=warn,terrain=warn".to_string(),
         ..default()
     }))
     .add_plugins(WireframePlugin)
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(NoCameraPlayerPlugin)
+    .add_plugins(FpsOverlayPlugin {
+        config: FpsOverlayConfig {
+            text_config: TextStyle {
+                // Here we define size of our overlay
+                font_size: 50.0,
+                // We can also change color of the overlay
+                color: Color::srgb(0.0, 1.0, 0.0),
+                // If we want, we can use a custom font
+                font: default(),
+            },
+        },
+    })
     .add_systems(Startup, startup)
     .run();
 }
@@ -86,7 +99,7 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
         ..Default::default()
     });
 
-    let size = 8.0 * 16.0;
+    let size = 32.0 * 16.0;
 
     commands.spawn((
         Camera3dBundle {

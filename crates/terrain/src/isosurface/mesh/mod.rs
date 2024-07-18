@@ -2,7 +2,7 @@ pub mod mesh_info;
 
 use bevy::{
     math::{bounding::Aabb3d, Vec3A},
-    pbr::wireframe::Wireframe,
+    pbr::wireframe::{Wireframe, WireframeColor},
     prelude::*,
 };
 use mesh_info::MeshInfo;
@@ -79,7 +79,8 @@ pub fn create_main_mesh(
                         ..default()
                     },
                     extension: TerrainMaterial {
-                        base_color: Color::WHITE.into(),
+                        debug_type: None,
+                        debug_color: None,
                     },
                 })
             }
@@ -92,7 +93,8 @@ pub fn create_main_mesh(
                         ..default()
                     },
                     extension: TerrainMaterial {
-                        base_color: LinearRgba::BLUE,
+                        debug_type: None,
+                        debug_color: None,
                     },
                 })
             }
@@ -109,6 +111,9 @@ pub fn create_main_mesh(
             // RigidBody::Static,
             // Collider::from(&*mesh_cache),
             Wireframe,
+            WireframeColor {
+                color: LinearRgba::GREEN.into(),
+            },
         ));
 
         *state = MainMeshState::Done;
@@ -179,7 +184,8 @@ pub fn create_seam_mesh(
                         ..default()
                     },
                     extension: TerrainMaterial {
-                        base_color: Color::WHITE.into(),
+                        debug_type: None,
+                        debug_color: None,
                     },
                 })
             }
@@ -192,7 +198,8 @@ pub fn create_seam_mesh(
                         ..default()
                     },
                     extension: TerrainMaterial {
-                        base_color: LinearRgba::BLUE,
+                        debug_type: None,
+                        debug_color: None,
                     },
                 })
             }
@@ -209,6 +216,9 @@ pub fn create_seam_mesh(
             // RigidBody::Static,
             // Collider::from(&*mesh_cache),
             Wireframe,
+            WireframeColor {
+                color: LinearRgba::RED.into(),
+            },
         ));
 
         *state = SeamMeshState::Done;

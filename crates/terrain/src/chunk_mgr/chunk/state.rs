@@ -26,8 +26,15 @@ impl SeamMeshIdGenerator {
         Self(SeamMeshId::init())
     }
 
+    /// 递增id，返回旧的id。
     pub fn pull(&mut self) -> SeamMeshId {
         self.0.pull()
+    }
+
+    // 递增id，并返回一个递增了的id。
+    pub fn gen(&mut self) -> SeamMeshId {
+        self.pull();
+        self.current()
     }
 
     pub fn current(&self) -> SeamMeshId {

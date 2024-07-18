@@ -2,7 +2,7 @@ use std::ops::Not;
 
 use bevy::{color::palettes::css, math::bounding::BoundingVolume, prelude::*};
 
-use crate::isosurface::dc::octree::node::NodeType;
+use crate::isosurface::{comp::TerrainChunkSeamGenerator, dc::octree::node::NodeType};
 
 use super::octree::Octree;
 
@@ -13,9 +13,10 @@ impl Plugin for DcGizmosPlugin {
     fn build(&self, app: &mut App) {
         app.init_gizmo_group::<WorldCoordinateGizmos>()
             .init_gizmo_group::<VoxelGizmos>()
-            .add_systems(Update, draw_world_coordinate_axes)
+            .add_systems(Update, draw_world_coordinate_axes);
             // .add_systems(Update, draw_octree_voxel)
-            .add_systems(Update, draw_voxel_normal);
+            // .add_systems(Update, draw_seam_octree_voxel);
+        // .add_systems(Update, draw_voxel_normal);
     }
 }
 
@@ -73,16 +74,57 @@ fn draw_octree_voxel(query: Query<&Octree>, mut octree_node_gizmos: Gizmos<Voxel
                         scale: (node.aabb.half_size() * 2.0).into(),
                     },
                     match address.depth() {
-                        1 => css::RED,
-                        2 => css::GREEN,
-                        3 => css::BLUE,
-                        4 => css::YELLOW,
-                        5 => css::ORANGE,
-                        6 => css::MAGENTA,
-                        7 => css::WHITE,
-                        _ => css::BLACK,
+                        1 => LinearRgba::RED,
+                        2 => LinearRgba::GREEN,
+                        3 => LinearRgba::BLUE,
+                        4 => LinearRgba::RED,
+                        5 => LinearRgba::GREEN,
+                        6 => LinearRgba::BLUE,
+                        7 => LinearRgba::RED,
+                        8 => LinearRgba::GREEN,
+                        _ => LinearRgba::BLUE,
                     },
                 );
+            }
+        }
+    }
+}
+
+#[allow(dead_code)]
+fn draw_seam_octree_voxel(
+    query: Query<&Octree, With<TerrainChunkSeamGenerator>>,
+    mut octree_node_gizmos: Gizmos<VoxelGizmos>,
+) {
+    for octree in query.iter() {
+        let node_addresses = octree.address_node_map.read().unwrap();
+        if node_addresses.is_empty().not() {
+            debug!("node num: {}", node_addresses.len());
+            for (address, node) in node_addresses.iter() {
+                if node.node_type == NodeType::Leaf {
+                    octree_node_gizmos.cuboid(
+                        Transform {
+                            translation: node.aabb.center().into(),
+                            rotation: Quat::IDENTITY,
+                            scale: (node.aabb.half_size() * 2.0).into(),
+                        },
+                        match address.depth() {
+                            1 => LinearRgba::RED,
+                            2 => LinearRgba::GREEN,
+                            3 => LinearRgba::BLUE,
+                            4 => LinearRgba::RED,
+                            5 => LinearRgba::GREEN,
+                            6 => LinearRgba::BLUE,
+                            7 => LinearRgba::RED,
+                            8 => LinearRgba::GREEN,
+                            9 => LinearRgba::BLUE,
+                            10 => LinearRgba::RED,
+                            11 => LinearRgba::GREEN,
+                            12 => LinearRgba::BLUE,
+                            13 => LinearRgba::RED,
+                            _ => LinearRgba::GREEN,
+                        },
+                    );
+                }
             }
         }
     }
