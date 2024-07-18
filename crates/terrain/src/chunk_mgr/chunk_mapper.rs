@@ -159,7 +159,7 @@ pub(crate) fn update_visible_chunks_lod(
                     {
                         // 最新创建的Chunk，lod总是设置成功。也会触发这个事件。
                         if chunk_lod.set_lod(clipmap_lod.lod) {
-                            *chunk_state = TerrainChunkState::CreateMainMesh(chunk_lod.get_lod());
+                            *chunk_state = TerrainChunkState::CreateMainMesh;
                             event_writer.send(TerrainChunkCreateMainMeshEvent {
                                 entity: chunk_entity,
                                 lod: chunk_lod.get_lod(),

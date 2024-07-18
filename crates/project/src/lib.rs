@@ -1,7 +1,5 @@
 use std::{fs, path::PathBuf};
 
-use bevy::log::info;
-
 pub fn log_all_path() {
     let root_path = project_root_path();
     println!(
@@ -29,8 +27,7 @@ pub fn project_root_path() -> &'static PathBuf {
     static CELL: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
     CELL.get_or_init(|| {
         let root_path = std::env::var("ATOM_ROOT").unwrap();
-        let root_path = PathBuf::from(&root_path);
-        root_path
+        PathBuf::from(&root_path)
     })
 }
 

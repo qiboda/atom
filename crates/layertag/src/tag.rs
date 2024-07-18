@@ -19,6 +19,7 @@ impl Deref for Tag {
     }
 }
 
+#[macro_export]
 macro_rules! tags {
     [$($name:expr),*] => {
         vec![$(Tag::new($name),)*]

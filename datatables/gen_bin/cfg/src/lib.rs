@@ -8,16 +8,27 @@
 */
 
 #![allow(clippy::all)]
+#![allow(warnings)]
+
+
+
 
 pub mod prelude{
     pub use crate::*;
+    pub use crate::effect::*;
+    pub use crate::layertag::*;
+    pub use crate::unit::*;
     pub use crate::item::*;
+    pub use crate::global::*;
     pub use crate::test::*;
 }
 
+use crate::effect::*;
+use crate::layertag::*;
+use crate::unit::*;
 use crate::item::*;
+use crate::global::*;
 use crate::test::*;
-use bevy::asset::AssetApp;
 
 
 type AbstractBase = dyn std::any::Any + Sync + Send;
@@ -61,16 +72,60 @@ pub enum TableLoaderError {
 
 #[derive(Debug, bevy::prelude::Resource, Default)]
 pub struct Tables{
-    pub TbItem: bevy::asset::Handle<crate::item::TbItem>,
+    pub tb_ability: bevy::asset::Handle<crate::effect::TbAbility>,
+    pub tb_buff: bevy::asset::Handle<crate::effect::TbBuff>,
+    pub tb_layer_tag: bevy::asset::Handle<crate::layertag::TbLayerTag>,
+    pub tb_monster: bevy::asset::Handle<crate::unit::TbMonster>,
+    pub tb_npc: bevy::asset::Handle<crate::unit::TbNpc>,
+    pub tb_player: bevy::asset::Handle<crate::unit::TbPlayer>,
+    pub tb_relation_ship: bevy::asset::Handle<crate::unit::TbRelationShip>,
+    pub tb_item: bevy::asset::Handle<crate::item::TbItem>,
+    pub tb_global: bevy::asset::Handle<crate::global::TbGlobal>,
+    pub tb_multi_index_list: bevy::asset::Handle<crate::test::TbMultiIndexList>,
+    pub tb_multi_union_index_list: bevy::asset::Handle<crate::test::TbMultiUnionIndexList>,
+    pub tb_null_index_list: bevy::asset::Handle<crate::test::TbNullIndexList>,
+    pub table_handle_map: bevy::utils::HashMap<std::any::TypeId, bevy::asset::UntypedHandle>,
 }
-
-
 
 impl Tables {
     pub fn new<G: Clone + Send + Sync + 'static>(asset_server: bevy::prelude::Res<bevy::asset::AssetServer>, tables_path: std::path::PathBuf, guard: G) -> Tables {
-        Tables {
+        let mut tables = Tables {
+            tb_ability: asset_server.load_acquire(tables_path.join("effect_tbability.bytes"), guard.clone()),
+            tb_buff: asset_server.load_acquire(tables_path.join("effect_tbbuff.bytes"), guard.clone()),
+            tb_layer_tag: asset_server.load_acquire(tables_path.join("layertag_tblayertag.bytes"), guard.clone()),
+            tb_monster: asset_server.load_acquire(tables_path.join("unit_tbmonster.bytes"), guard.clone()),
+            tb_npc: asset_server.load_acquire(tables_path.join("unit_tbnpc.bytes"), guard.clone()),
+            tb_player: asset_server.load_acquire(tables_path.join("unit_tbplayer.bytes"), guard.clone()),
+            tb_relation_ship: asset_server.load_acquire(tables_path.join("unit_tbrelationship.bytes"), guard.clone()),
             tb_item: asset_server.load_acquire(tables_path.join("item_tbitem.bytes"), guard.clone()),
-        }
+            tb_global: asset_server.load_acquire(tables_path.join("global_tbglobal.bytes"), guard.clone()),
+            tb_multi_index_list: asset_server.load_acquire(tables_path.join("test_tbmultiindexlist.bytes"), guard.clone()),
+            tb_multi_union_index_list: asset_server.load_acquire(tables_path.join("test_tbmultiunionindexlist.bytes"), guard.clone()),
+            tb_null_index_list: asset_server.load_acquire(tables_path.join("test_tbnullindexlist.bytes"), guard.clone()),
+            table_handle_map: bevy::utils::HashMap::default(),
+        };
+
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::effect::TbAbility>(), tables.tb_ability.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::effect::TbBuff>(), tables.tb_buff.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::layertag::TbLayerTag>(), tables.tb_layer_tag.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::unit::TbMonster>(), tables.tb_monster.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::unit::TbNpc>(), tables.tb_npc.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::unit::TbPlayer>(), tables.tb_player.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::unit::TbRelationShip>(), tables.tb_relation_ship.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::item::TbItem>(), tables.tb_item.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::global::TbGlobal>(), tables.tb_global.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::test::TbMultiIndexList>(), tables.tb_multi_index_list.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::test::TbMultiUnionIndexList>(), tables.tb_multi_union_index_list.clone_weak().untyped());
+        tables.table_handle_map.insert(std::any::TypeId::of::<crate::test::TbNullIndexList>(), tables.tb_null_index_list.clone_weak().untyped());
+
+        tables
+    }
+
+    pub fn get_table_handle<T: 'static + bevy::asset::Asset>(&self) -> Result<bevy::asset::Handle<T>, LubanError> {
+        self.table_handle_map
+            .get(&std::any::TypeId::of::<T>())
+            .map(|handle| handle.clone_weak().typed())
+            .ok_or(LubanError::Table(format!("table not found: {}", std::any::type_name::<T>())))
     }
 }
 
@@ -79,29 +134,92 @@ pub struct TableAssetsPlugin;
 
 impl bevy::app::Plugin for TableAssetsPlugin {
     fn build(&self, app: &mut bevy::app::App) {
+        use bevy::asset::AssetApp;
         app
+            .add_event::<TablesLoadedEvent>()
+            .init_asset_loader::<TbAbilityLoader>()
+            .init_asset::<TbAbility>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbAbility>)
+            .init_asset_loader::<TbBuffLoader>()
+            .init_asset::<TbBuff>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbBuff>)
+            .init_asset_loader::<TbLayerTagLoader>()
+            .init_asset::<TbLayerTag>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbLayerTag>)
+            .init_asset_loader::<TbMonsterLoader>()
+            .init_asset::<TbMonster>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbMonster>)
+            .init_asset_loader::<TbNpcLoader>()
+            .init_asset::<TbNpc>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbNpc>)
+            .init_asset_loader::<TbPlayerLoader>()
+            .init_asset::<TbPlayer>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbPlayer>)
+            .init_asset_loader::<TbRelationShipLoader>()
+            .init_asset::<TbRelationShip>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbRelationShip>)
             .init_asset_loader::<TbItemLoader>()
             .init_asset::<TbItem>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbItem>)
+            .init_asset_loader::<TbGlobalLoader>()
+            .init_asset::<TbGlobal>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbGlobal>)
+            .init_asset_loader::<TbMultiIndexListLoader>()
+            .init_asset::<TbMultiIndexList>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbMultiIndexList>)
+            .init_asset_loader::<TbMultiUnionIndexListLoader>()
+            .init_asset::<TbMultiUnionIndexList>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbMultiUnionIndexList>)
+            .init_asset_loader::<TbNullIndexListLoader>()
+            .init_asset::<TbNullIndexList>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<TbNullIndexList>)
             ;
     }
 }
 
+#[derive(Debug, bevy::ecs::event::Event)]
+pub struct TablesLoadedEvent {
+    pub asset_handles: smallvec::SmallVec<[bevy::asset::UntypedHandle;1]>,
+}
+
+
+fn table_asset_loadeds<A: bevy::asset::Asset>(
+    mut event_reader: bevy::prelude::EventReader<bevy::asset::AssetEvent<A>>,
+    mut event_writer: bevy::prelude::EventWriter<TablesLoadedEvent>,
+    tables: bevy::prelude::Res<Tables>,
+    asset_server: bevy::prelude::Res<bevy::asset::AssetServer>,
+) {
+    let mut asset_handles = smallvec::SmallVec::<[bevy::asset::UntypedHandle;1]>::new();
+    for event in event_reader.read() {
+        if let bevy::asset::AssetEvent::<A>::Modified { id } = event {
+           if tables.table_handle_map.iter().all(|(k, v)| {
+                asset_server.get_load_state(v) == Some(bevy::asset::LoadState::Loaded)
+            }) {
+                let handle = asset_server.get_id_handle(*id).unwrap();
+                asset_handles.push(handle.untyped());
+            }
+        }
+    }
+    if asset_handles.len() > 0 {
+        event_writer.send(TablesLoadedEvent { asset_handles });
+    }
+}
+pub mod effect;
+pub mod layertag;
+pub mod unit;
 pub mod item;
+pub mod global;
 pub mod test;
 
-use luban_lib::*;
-use serde::Deserialize;
-use bevy::prelude::*;
-use bevy::asset::AsyncReadExt;
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct vector2 {
     pub x: f32,
     pub y: f32,
 }
 
 impl vector2{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<vector2, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<vector2, LubanError> {
         let x = buf.read_float();
         let y = buf.read_float();
         
@@ -111,7 +229,7 @@ impl vector2{
     pub const __ID__: i32 = 337790799;
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct vector3 {
     pub x: f32,
     pub y: f32,
@@ -119,7 +237,7 @@ pub struct vector3 {
 }
 
 impl vector3{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<vector3, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<vector3, LubanError> {
         let x = buf.read_float();
         let y = buf.read_float();
         let z = buf.read_float();
@@ -130,7 +248,7 @@ impl vector3{
     pub const __ID__: i32 = 337790800;
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct vector4 {
     pub x: f32,
     pub y: f32,
@@ -139,7 +257,7 @@ pub struct vector4 {
 }
 
 impl vector4{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<vector4, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<vector4, LubanError> {
         let x = buf.read_float();
         let y = buf.read_float();
         let z = buf.read_float();
@@ -151,7 +269,319 @@ impl vector4{
     pub const __ID__: i32 = 337790801;
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct MultiIndexList {
+    pub id1: i32,
+    pub id2: i32,
+    pub id3: String,
+    pub num: i32,
+    pub desc: String,
+}
+
+impl MultiIndexList{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiIndexList, LubanError> {
+        let id1 = buf.read_int();
+        let id2 = buf.read_int();
+        let id3 = buf.read_string();
+        let num = buf.read_int();
+        let desc = buf.read_string();
+        
+        Ok(MultiIndexList { id1, id2, id3, num, desc, })
+    }
+
+    pub const __ID__: i32 = 563510135;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct RelationShip {
+    /// 主动方阵营
+    pub active_camp: i32,
+    /// 被动方阵营
+    pub passive_camp: i32,
+    /// 关系
+    pub relationship_type: crate::unit::RelationShipType,
+}
+
+impl RelationShip{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<RelationShip, LubanError> {
+        let active_camp = buf.read_int();
+        let passive_camp = buf.read_int();
+        let relationship_type = buf.read_int().into();
+        
+        Ok(RelationShip { active_camp, passive_camp, relationship_type, })
+    }
+
+    pub const __ID__: i32 = -98484616;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct NullIndexList {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl NullIndexList{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<NullIndexList, LubanError> {
+        let x = buf.read_int();
+        let y = buf.read_int();
+        
+        Ok(NullIndexList { x, y, })
+    }
+
+    pub const __ID__: i32 = 1457546921;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct MultiUnionIndexList {
+    pub id1: i32,
+    pub id2: i32,
+    pub id3: String,
+    pub num: i32,
+    pub desc: String,
+}
+
+impl MultiUnionIndexList{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<MultiUnionIndexList, LubanError> {
+        let id1 = buf.read_int();
+        let id2 = buf.read_int();
+        let id3 = buf.read_string();
+        let num = buf.read_int();
+        let desc = buf.read_string();
+        
+        Ok(MultiUnionIndexList { id1, id2, id3, num, desc, })
+    }
+
+    pub const __ID__: i32 = 1014949882;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct LayerTag {
+    /// layertag，以.作为分隔符
+    pub raw_layertag: String,
+    /// 描述
+    pub desc: String,
+    /// 是否计数
+    pub counter: bool,
+}
+
+impl LayerTag{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<LayerTag, LubanError> {
+        let raw_layertag = buf.read_string();
+        let desc = buf.read_string();
+        let counter = buf.read_bool();
+        
+        Ok(LayerTag { raw_layertag, desc, counter, })
+    }
+
+    pub const __ID__: i32 = -1235973975;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct Global {
+    /// 参数1
+    pub x1: i32,
+    /// 道具
+    pub x2: i32,
+    pub x3: i32,
+    pub x4: i32,
+    pub x5: i32,
+    pub x6: i32,
+    pub x7: Vec<i32>,
+}
+
+impl Global{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Global, LubanError> {
+        let x1 = buf.read_int();
+        let x2 = buf.read_int();
+        let x3 = buf.read_int();
+        let x4 = buf.read_int();
+        let x5 = buf.read_int();
+        let x6 = buf.read_int();
+        let x7 = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_int()); } _e0 };
+        
+        Ok(Global { x1, x2, x3, x4, x5, x6, x7, })
+    }
+
+    pub const __ID__: i32 = 2135814083;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct Npc {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 阵营
+    pub camp: i32,
+}
+
+impl Npc{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Npc, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let camp = buf.read_int();
+        
+        Ok(Npc { id, name, desc, camp, })
+    }
+
+    pub const __ID__: i32 = 78529;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct Monster {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 阵营
+    pub camp: i32,
+}
+
+impl Monster{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Monster, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let camp = buf.read_int();
+        
+        Ok(Monster { id, name, desc, camp, })
+    }
+
+    pub const __ID__: i32 = -1393696838;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct Buff {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 技能图类型名字
+    pub graph_class: String,
+    /// 最大层数
+    pub max_layer: i32,
+    /// 时长
+    pub duration: f32,
+    /// 间隔
+    pub interval: f32,
+    /// 技能启动需要的状态
+    pub start_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_disabled_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_added_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub start_removed_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub abort_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub abort_disabled_layertags: Vec<String>,
+}
+
+impl Buff{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Buff, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let graph_class = buf.read_string();
+        let max_layer = buf.read_int();
+        let duration = buf.read_float();
+        let interval = buf.read_float();
+        let start_required_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let start_disabled_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let start_added_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(crate::effect::RevertableLayerTag::new(&mut buf)?); } _e0 };
+        let start_removed_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(crate::effect::RevertableLayerTag::new(&mut buf)?); } _e0 };
+        let abort_required_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let abort_disabled_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        
+        Ok(Buff { id, name, desc, graph_class, max_layer, duration, interval, start_required_layertags, start_disabled_layertags, start_added_layertags, start_removed_layertags, abort_required_layertags, abort_disabled_layertags, })
+    }
+
+    pub const __ID__: i32 = 2081907;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct Ability {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 技能图类型名字
+    pub graph_class: String,
+    /// 类型
+    pub activation_type: crate::effect::AbilityType,
+    /// CD
+    pub cd: f32,
+    /// 技能启动需要的状态
+    pub start_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_disabled_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_added_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub start_removed_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub abort_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub abort_disabled_layertags: Vec<String>,
+}
+
+impl Ability{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Ability, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let graph_class = buf.read_string();
+        let activation_type = buf.read_int().into();
+        let cd = buf.read_float();
+        let start_required_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let start_disabled_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let start_added_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(crate::effect::RevertableLayerTag::new(&mut buf)?); } _e0 };
+        let start_removed_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(crate::effect::RevertableLayerTag::new(&mut buf)?); } _e0 };
+        let abort_required_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let abort_disabled_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        
+        Ok(Ability { id, name, desc, graph_class, activation_type, cd, start_required_layertags, start_disabled_layertags, start_added_layertags, start_removed_layertags, abort_required_layertags, abort_disabled_layertags, })
+    }
+
+    pub const __ID__: i32 = 464145674;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct Player {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 阵营
+    pub camp: i32,
+}
+
+impl Player{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Player, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let camp = buf.read_int();
+        
+        Ok(Player { id, name, desc, camp, })
+    }
+
+    pub const __ID__: i32 = -1901885695;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct Item {
     /// 这是id
     pub id: i32,
@@ -177,7 +607,7 @@ pub struct Item {
 }
 
 impl Item{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<Item, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Item, LubanError> {
         let id = buf.read_int();
         let name = buf.read_string();
         let desc = buf.read_string();
@@ -195,5 +625,11 @@ impl Item{
 
     pub const __ID__: i32 = 2289459;
 }
+
+
+
+
+
+
 
 

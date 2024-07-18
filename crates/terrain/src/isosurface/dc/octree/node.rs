@@ -45,7 +45,7 @@ pub struct Node {
 impl Node {
     pub fn new(node_type: NodeType, address: NodeAddress) -> Self {
         Self {
-            node_type: node_type,
+            node_type,
             address,
             aabb: Aabb3d::new(Vec3::ZERO, Vec3::ONE),
             coord: Vec3A::ZERO,

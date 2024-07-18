@@ -1,13 +1,11 @@
-use autoincrement::{AsyncIncremental, AutoIncrement, Incremental};
+use autoincrement::{AutoIncrement, Incremental};
 use bevy::prelude::*;
 
-use super::chunk_lod::LodType;
-
-#[derive(Debug, Component)]
+#[derive(Debug, Component, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum TerrainChunkState {
-    CreateMainMesh(LodType),
-    WaitToCreateSeam(LodType),
-    CreateSeamMesh(SeamMeshId),
+    CreateMainMesh,
+    WaitToCreateSeam,
+    CreateSeamMesh,
     Done,
 }
 
@@ -28,7 +26,7 @@ impl SeamMeshIdGenerator {
         Self(SeamMeshId::init())
     }
 
-    pub fn next(&mut self) -> SeamMeshId {
+    pub fn pull(&mut self) -> SeamMeshId {
         self.0.pull()
     }
 

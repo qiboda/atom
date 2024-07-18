@@ -1,7 +1,6 @@
 use bevy::{
     asset::{AssetPath, LoadState},
     prelude::*,
-    utils::info,
 };
 use serde_merge::omerge;
 

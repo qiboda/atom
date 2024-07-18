@@ -9,10 +9,6 @@
 
 
 use super::*;
-use luban_lib::*;
-use serde::Deserialize;
-use bevy::prelude::*;
-use bevy::asset::AsyncReadExt;
 
 bitflags::bitflags!{    
     #[derive(Debug, Hash, Eq, PartialEq)]
@@ -25,7 +21,7 @@ bitflags::bitflags!{
         const READ_WRITE = 3;
     }
 }
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct TestExcelBean1 {
     /// 最高品质
     pub x1: i32,
@@ -38,7 +34,7 @@ pub struct TestExcelBean1 {
 }
 
 impl TestExcelBean1{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<TestExcelBean1, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<TestExcelBean1, LubanError> {
         let x1 = buf.read_int();
         let x2 = buf.read_string();
         let x3 = buf.read_int();
@@ -50,7 +46,7 @@ impl TestExcelBean1{
     pub const __ID__: i32 = -1738345160;
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct TestExcelBean2 {
     /// 最高品质
     pub y1: i32,
@@ -61,7 +57,7 @@ pub struct TestExcelBean2 {
 }
 
 impl TestExcelBean2{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<TestExcelBean2, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<TestExcelBean2, LubanError> {
         let y1 = buf.read_int();
         let y2 = buf.read_string();
         let y3 = buf.read_float();
@@ -72,12 +68,12 @@ impl TestExcelBean2{
     pub const __ID__: i32 = -1738345159;
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct Shape {
 }
 
 impl Shape {
-    pub fn new(mut buf: &mut ByteBuf) -> Result<std::sync::Arc<AbstractBase>, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<std::sync::Arc<AbstractBase>, LubanError> {
         let type_id = buf.read_int();
         match type_id {
             crate::test::Circle::__ID__ => Ok(std::sync::Arc::new(crate::test::Circle::new(buf)?)),
@@ -111,7 +107,7 @@ impl<'a> GetBase<'a, &'a dyn crate::test::TShape> for AbstractBase {
     }
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 #[derive(macros::TryIntoBase)]
 pub struct Circle {
     /// 半径
@@ -119,7 +115,7 @@ pub struct Circle {
 }
 
 impl Circle{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<Circle, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Circle, LubanError> {
         let radius = buf.read_float();
         
         Ok(Circle { radius, })
@@ -128,7 +124,7 @@ impl Circle{
     pub const __ID__: i32 = 2131829196;
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 #[derive(macros::TryIntoBase)]
 pub struct Rectangle {
     /// 宽度
@@ -138,7 +134,7 @@ pub struct Rectangle {
 }
 
 impl Rectangle{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<Rectangle, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Rectangle, LubanError> {
         let width = buf.read_float();
         let height = buf.read_float();
         
@@ -146,6 +142,300 @@ impl Rectangle{
     }
 
     pub const __ID__: i32 = -31893773;
+}
+
+
+
+
+
+
+
+
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
+pub struct TbMultiIndexList {
+    pub data_list: Vec<std::sync::Arc<crate::MultiIndexList>>,
+    pub data_map_id1: bevy::utils::HashMap<i32, std::sync::Arc<crate::MultiIndexList>>,
+    pub data_map_id2: bevy::utils::HashMap<i32, std::sync::Arc<crate::MultiIndexList>>,
+    pub data_map_id3: bevy::utils::HashMap<String, std::sync::Arc<crate::MultiIndexList>>,
+}
+
+impl TbMultiIndexList {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbMultiIndexList, LubanError> {
+        let mut data_list: Vec<std::sync::Arc<crate::MultiIndexList>> = vec![];
+
+        for x in (0..buf.read_size()).rev() {
+            let row = std::sync::Arc::new(crate::MultiIndexList::new(&mut buf)?);
+            data_list.push(row.clone());
+        }
+        let mut data_map_id1: bevy::utils::HashMap<i32, std::sync::Arc<crate::MultiIndexList>> = Default::default();
+        let mut data_map_id2: bevy::utils::HashMap<i32, std::sync::Arc<crate::MultiIndexList>> = Default::default();
+        let mut data_map_id3: bevy::utils::HashMap<String, std::sync::Arc<crate::MultiIndexList>> = Default::default();
+        for x in &data_list {
+            data_map_id1.insert(x.id1.clone(), x.clone());
+            data_map_id2.insert(x.id2.clone(), x.clone());
+            data_map_id3.insert(x.id3.clone(), x.clone());
+        }
+
+    Ok(TbMultiIndexList { 
+            data_list,
+            data_map_id1,
+            data_map_id2,
+            data_map_id3,
+        })
+    }
+
+    pub fn get_by_id1(&self, key: &i32) -> Option<std::sync::Arc<crate::MultiIndexList>> {
+        self.data_map_id1.get(key).map(|x| x.clone())
+    }
+    pub fn get_by_id2(&self, key: &i32) -> Option<std::sync::Arc<crate::MultiIndexList>> {
+        self.data_map_id2.get(key).map(|x| x.clone())
+    }
+    pub fn get_by_id3(&self, key: &String) -> Option<std::sync::Arc<crate::MultiIndexList>> {
+        self.data_map_id3.get(key).map(|x| x.clone())
+    }
+}
+
+impl luban_lib::table::Table for TbMultiIndexList {
+    type Value = std::sync::Arc<crate::MultiIndexList>;
+}
+impl luban_lib::table::ListTable for TbMultiIndexList {}
+
+
+#[derive(Debug, bevy::reflect::Reflect)]
+pub enum TbMultiIndexListKey {
+    Id1(i32),
+    Id2(i32),
+    Id3(String),
+}
+
+#[derive(Debug, bevy::reflect::Reflect)]
+pub enum TbMultiIndexListMap<'a> {
+    Id1(&'a bevy::utils::HashMap<i32, std::sync::Arc<crate::MultiIndexList>>),
+    Id2(&'a bevy::utils::HashMap<i32, std::sync::Arc<crate::MultiIndexList>>),
+    Id3(&'a bevy::utils::HashMap<String, std::sync::Arc<crate::MultiIndexList>>),
+}
+
+impl<'a> luban_lib::table::MultiIndexListTable<'a> for TbMultiIndexList {
+    type Key = TbMultiIndexListKey;
+    type List = Vec<std::sync::Arc<crate::MultiIndexList>>;
+    type Map = TbMultiIndexListMap<'a>;
+
+    fn get_row_by(&self, key: &Self::Key) -> Option<Self::Value> {
+        match key {
+            TbMultiIndexListKey::Id1(key) => self.data_map_id1.get(key).map(|x| x.clone()),
+            TbMultiIndexListKey::Id2(key) => self.data_map_id2.get(key).map(|x| x.clone()),
+            TbMultiIndexListKey::Id3(key) => self.data_map_id3.get(key).map(|x| x.clone()),
+        }
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map_by(&'a self, key: &Self::Key) -> Self::Map {
+        match key {
+            TbMultiIndexListKey::Id1(key) => TbMultiIndexListMap::Id1(&self.data_map_id1),
+            TbMultiIndexListKey::Id2(key) => TbMultiIndexListMap::Id2(&self.data_map_id2),
+            TbMultiIndexListKey::Id3(key) => TbMultiIndexListMap::Id3(&self.data_map_id3),
+        }
+    }
+}
+
+
+#[derive(Debug, Default)]
+pub struct TbMultiIndexListLoader;
+
+impl bevy::asset::AssetLoader for TbMultiIndexListLoader {
+    type Asset = TbMultiIndexList;
+
+    type Settings = ();
+
+    type Error = TableLoaderError;
+
+    async fn load<'a>(
+        &'a self,
+        reader: &'a mut bevy::asset::io::Reader<'_>,
+        settings: &'a Self::Settings,
+        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        bevy::log::info!("TbMultiIndexListLoader loading start");
+        let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
+        reader.read_to_end(&mut bytes).await?;
+        let buf = luban_lib::ByteBuf::new(bytes);
+        let tb = TbMultiIndexList::new(buf).unwrap();
+        bevy::log::info!("TbMultiIndexListLoader loading over");
+        Ok(tb)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["bytes"]
+    }
+}
+
+
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
+pub struct TbMultiUnionIndexList {
+    pub data_list: Vec<std::sync::Arc<crate::MultiUnionIndexList>>,
+    pub data_map_union: bevy::utils::HashMap<(i32, i32, String), std::sync::Arc<crate::MultiUnionIndexList>>,
+}
+
+impl TbMultiUnionIndexList {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbMultiUnionIndexList, LubanError> {
+        let mut data_list: Vec<std::sync::Arc<crate::MultiUnionIndexList>> = vec![];
+
+        for x in (0..buf.read_size()).rev() {
+            let row = std::sync::Arc::new(crate::MultiUnionIndexList::new(&mut buf)?);
+            data_list.push(row.clone());
+        }
+        let mut data_map_union: bevy::utils::HashMap<(i32, i32, String), std::sync::Arc<crate::MultiUnionIndexList>> = Default::default();
+        for x in &data_list {
+            data_map_union.insert((x.id1, x.id2, x.id3.clone()), x.clone());
+        }
+
+    Ok(TbMultiUnionIndexList { 
+            data_list,
+            data_map_union,
+        })
+    }
+
+    pub fn get(&self, key: &(i32, i32, String)) -> Option<std::sync::Arc<crate::MultiUnionIndexList>> {
+        self.data_map_union.get(key).map(|x| x.clone())
+    }
+}
+
+impl luban_lib::table::Table for TbMultiUnionIndexList {
+    type Value = std::sync::Arc<crate::MultiUnionIndexList>;
+}
+impl luban_lib::table::ListTable for TbMultiUnionIndexList {}
+
+
+pub type TbMultiUnionIndexListKey = (i32, i32, String);
+#[derive(Debug, Default, bevy::reflect::Reflect, bevy::prelude::Component)]
+pub struct TbMultiUnionIndexListRow {
+    pub key: TbMultiUnionIndexListKey,
+    pub data: Option<std::sync::Arc<crate::MultiUnionIndexList>>,
+}
+impl luban_lib::table::MultiUnionIndexListTable for TbMultiUnionIndexList {
+    type Key = TbMultiUnionIndexListKey;
+    type List = Vec<std::sync::Arc<crate::MultiUnionIndexList>>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
+
+    fn get_row_by_key(&self, key: &Self::Key) -> Option<Self::Value> {
+        self.data_map_union.get(key).map(|x| x.clone())
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map_union
+    }
+}
+
+
+#[derive(Debug, Default)]
+pub struct TbMultiUnionIndexListLoader;
+
+impl bevy::asset::AssetLoader for TbMultiUnionIndexListLoader {
+    type Asset = TbMultiUnionIndexList;
+
+    type Settings = ();
+
+    type Error = TableLoaderError;
+
+    async fn load<'a>(
+        &'a self,
+        reader: &'a mut bevy::asset::io::Reader<'_>,
+        settings: &'a Self::Settings,
+        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        bevy::log::info!("TbMultiUnionIndexListLoader loading start");
+        let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
+        reader.read_to_end(&mut bytes).await?;
+        let buf = luban_lib::ByteBuf::new(bytes);
+        let tb = TbMultiUnionIndexList::new(buf).unwrap();
+        bevy::log::info!("TbMultiUnionIndexListLoader loading over");
+        Ok(tb)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["bytes"]
+    }
+}
+
+
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
+pub struct TbNullIndexList {
+    pub data_list: Vec<std::sync::Arc<crate::NullIndexList>>,
+}
+
+impl TbNullIndexList {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbNullIndexList, LubanError> {
+        let mut data_list: Vec<std::sync::Arc<crate::NullIndexList>> = vec![];
+
+        for x in (0..buf.read_size()).rev() {
+            let row = std::sync::Arc::new(crate::NullIndexList::new(&mut buf)?);
+            data_list.push(row.clone());
+        }
+
+    Ok(TbNullIndexList { 
+            data_list,
+        })
+    }
+
+}
+
+impl luban_lib::table::Table for TbNullIndexList {
+    type Value = std::sync::Arc<crate::NullIndexList>;
+}
+impl luban_lib::table::ListTable for TbNullIndexList {}
+
+
+impl luban_lib::table::NotIndexListTable for TbNullIndexList {
+    type List = Vec<Self::Value>;
+    fn iter(&self) -> impl Iterator<Item=&Self::Value> {
+        self.data_list.iter()
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+}
+
+
+
+#[derive(Debug, Default)]
+pub struct TbNullIndexListLoader;
+
+impl bevy::asset::AssetLoader for TbNullIndexListLoader {
+    type Asset = TbNullIndexList;
+
+    type Settings = ();
+
+    type Error = TableLoaderError;
+
+    async fn load<'a>(
+        &'a self,
+        reader: &'a mut bevy::asset::io::Reader<'_>,
+        settings: &'a Self::Settings,
+        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        bevy::log::info!("TbNullIndexListLoader loading start");
+        let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
+        reader.read_to_end(&mut bytes).await?;
+        let buf = luban_lib::ByteBuf::new(bytes);
+        let tb = TbNullIndexList::new(buf).unwrap();
+        bevy::log::info!("TbNullIndexListLoader loading over");
+        Ok(tb)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["bytes"]
+    }
 }
 
 

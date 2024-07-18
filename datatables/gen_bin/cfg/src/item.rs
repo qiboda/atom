@@ -9,12 +9,8 @@
 
 
 use super::*;
-use luban_lib::*;
-use serde::Deserialize;
-use bevy::prelude::*;
-use bevy::asset::AsyncReadExt;
 
-#[derive(Debug, Hash, Eq, PartialEq, macros::EnumFromNum)]
+#[derive(Debug, Hash, Eq, PartialEq, bevy::reflect::Reflect, macros::EnumFromNum)]
 pub enum EQuality {
     ///最差品质
     WHITE = 1,
@@ -37,7 +33,7 @@ impl From<i32> for EQuality {
     }
 }
 
-#[derive(Debug)]
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct ItemExchange {
     /// 道具id
     pub id: i32,
@@ -46,7 +42,7 @@ pub struct ItemExchange {
 }
 
 impl ItemExchange{
-    pub fn new(mut buf: &mut ByteBuf) -> Result<ItemExchange, LubanError> {
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<ItemExchange, LubanError> {
         let id = buf.read_int();
         let num = buf.read_int();
         
@@ -57,14 +53,20 @@ impl ItemExchange{
 }
 
 
-#[derive(Debug, bevy::asset::Asset, Default, bevy::reflect::TypePath)]
+
+
+
+
+
+
+#[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbItem {
     pub data_list: Vec<std::sync::Arc<crate::Item>>,
     pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Item>>,
 }
 
 impl TbItem {
-    pub fn new(mut buf: ByteBuf) -> Result<TbItem, LubanError> {
+    pub fn new(mut buf: luban_lib::ByteBuf) -> Result<TbItem, LubanError> {
         let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Item>> = Default::default();
         let mut data_list: Vec<std::sync::Arc<crate::Item>> = vec![];
 
@@ -89,6 +91,61 @@ impl std::ops::Index<i32> for TbItem {
         &self.data_map.get(&index).unwrap()
     }
 }
+impl luban_lib::table::Table for TbItem {
+    type Value = std::sync::Arc<crate::Item>;
+}
+pub type TbItemKey = i32;
+#[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component)]
+pub struct TbItemRow {
+    pub key: TbItemKey,
+    pub data: Option<std::sync::Arc<crate::Item>>,
+}
+
+impl TbItemRow {
+    pub fn new(key: TbItemKey, data: Option<std::sync::Arc<crate::Item>>) -> Self {
+        Self { key, data }
+    }
+
+    pub fn key(&self) -> &TbItemKey {
+        &self.key
+    }
+
+    pub fn set_key(&mut self, key: TbItemKey) {
+        self.key = key;
+    }
+
+    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::Item>>) {
+        self.data = data;
+    }
+
+    pub fn get_data(&self) -> Option<std::sync::Arc<crate::Item>> {
+        self.data.clone()
+    }
+
+    pub fn data(&self) -> std::sync::Arc<crate::Item> {
+        self.data.clone().unwrap()
+    }
+}
+
+
+impl luban_lib::table::MapTable for TbItem {
+    type Key = TbItemKey;
+    type List = Vec<std::sync::Arc<crate::Item>>;
+    type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
+
+    fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
+        self.data_map.get(key).map(|x| x.clone())
+    }
+
+    fn get_data_list(&self) -> &Self::List {
+        &self.data_list
+    }
+
+    fn get_data_map(&self) -> &Self::Map {
+        &self.data_map
+    }
+}
+
 
 #[derive(Debug, Default)]
 pub struct TbItemLoader;
@@ -106,13 +163,14 @@ impl bevy::asset::AssetLoader for TbItemLoader {
         settings: &'a Self::Settings,
         load_context: &'a mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        info!("TbItemLoader loading start");
+        bevy::log::info!("TbItemLoader loading start");
         let mut bytes = Vec::new();
+        use bevy::asset::AsyncReadExt;
         reader.read_to_end(&mut bytes).await?;
-        let buf = ByteBuf::new(bytes);
-        let tb_item = TbItem::new(buf).unwrap();
-        info!("TbItemLoader loading over");
-        Ok(tb_item)
+        let buf = luban_lib::ByteBuf::new(bytes);
+        let tb = TbItem::new(buf).unwrap();
+        bevy::log::info!("TbItemLoader loading over");
+        Ok(tb)
     }
 
     fn extensions(&self) -> &[&str] {

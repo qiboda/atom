@@ -33,7 +33,6 @@ pub mod toml_diff;
 use bevy::utils::TypeIdMap;
 pub use settings_derive::Setting;
 
-use std::any::TypeId;
 use std::fmt::Debug;
 use std::path::PathBuf;
 

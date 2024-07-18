@@ -26,8 +26,7 @@ pub mod plugin;
 pub mod movement;
 
 use bevy::{
-    math::Vec3,
-    prelude::{Component, CubicBSpline, Entity},
+    prelude::{Component, Entity},
 };
 
 #[derive(Debug, Default, Component)]

@@ -16,7 +16,7 @@ use super::octree::{
     node::{Node, NodeType},
     tables::{
         AxisType, SubNodeIndex, FACES_SUBNODES_NEIGHBOUR_PAIRS, FACES_TO_SUB_EDGES_NODES,
-        SUBNODE_EDGES_NEIGHBOUR_PAIRS, SUBNODE_FACES_NEIGHBOUR_PAIRS, SUBEDGE_NODES,
+        SUBEDGE_NODES, SUBNODE_EDGES_NEIGHBOUR_PAIRS, SUBNODE_FACES_NEIGHBOUR_PAIRS,
     },
     OctreeProxy,
 };
@@ -256,12 +256,12 @@ fn face_proc(
             ) = (child_node_0, child_node_1, child_node_2, child_node_3)
             {
                 let nodes = [child_node_0, child_node_1, child_node_2, child_node_3];
-                let is_dup = [
-                    nodes[0].address == face_nodes.nodes[axis_value_0.bits() as usize].address,
-                    nodes[1].address == face_nodes.nodes[axis_value_1.bits() as usize].address,
-                    nodes[2].address == face_nodes.nodes[axis_value_2.bits() as usize].address,
-                    nodes[3].address == face_nodes.nodes[axis_value_3.bits() as usize].address,
-                ];
+                // let is_dup = [
+                //     nodes[0].address == face_nodes.nodes[axis_value_0.bits() as usize].address,
+                //     nodes[1].address == face_nodes.nodes[axis_value_1.bits() as usize].address,
+                //     nodes[2].address == face_nodes.nodes[axis_value_2.bits() as usize].address,
+                //     nodes[3].address == face_nodes.nodes[axis_value_3.bits() as usize].address,
+                // ];
                 let edge_axis_type =
                     FACE_TO_SUB_EDGES_AXIS_TYPE[face_nodes.axis_type as usize][edge_axis_index];
                 edge_proc(

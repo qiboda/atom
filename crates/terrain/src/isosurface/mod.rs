@@ -7,12 +7,9 @@ use bevy::{pbr::ExtendedMaterial, prelude::*};
 use dc::DualContouringPlugin;
 use ecology::EcologyPlugin;
 use materials::terrain::TerrainMaterial;
-use surface::{
-    density_function::{Cube, Panel, Sphere},
-    shape_surface::ShapeSurface,
-};
+use surface::{density_function::Panel, shape_surface::ShapeSurface};
 
-use self::surface::{density_function::NoiseSurface, shape_surface::IsosurfaceContext};
+use self::surface::shape_surface::IsosurfaceContext;
 
 pub mod comp;
 pub mod dc;

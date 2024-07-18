@@ -270,6 +270,35 @@ impl vector4{
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]
+pub struct Global {
+    /// 参数1
+    pub x1: i32,
+    /// 道具
+    pub x2: i32,
+    pub x3: i32,
+    pub x4: i32,
+    pub x5: i32,
+    pub x6: i32,
+    pub x7: Vec<i32>,
+}
+
+impl Global{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Global, LubanError> {
+        let x1 = buf.read_int();
+        let x2 = buf.read_int();
+        let x3 = buf.read_int();
+        let x4 = buf.read_int();
+        let x5 = buf.read_int();
+        let x6 = buf.read_int();
+        let x7 = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_int()); } _e0 };
+        
+        Ok(Global { x1, x2, x3, x4, x5, x6, x7, })
+    }
+
+    pub const __ID__: i32 = 2135814083;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct RelationShip {
     /// 主动方阵营
     pub active_camp: i32,
@@ -315,6 +344,23 @@ impl MultiIndexList{
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]
+pub struct NullIndexList {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl NullIndexList{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<NullIndexList, LubanError> {
+        let x = buf.read_int();
+        let y = buf.read_int();
+        
+        Ok(NullIndexList { x, y, })
+    }
+
+    pub const __ID__: i32 = 1457546921;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct MultiUnionIndexList {
     pub id1: i32,
     pub id2: i32,
@@ -338,99 +384,74 @@ impl MultiUnionIndexList{
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]
-pub struct Global {
-    /// 参数1
-    pub x1: i32,
-    /// 道具
-    pub x2: i32,
-    pub x3: i32,
-    pub x4: i32,
-    pub x5: i32,
-    pub x6: i32,
-    pub x7: Vec<i32>,
+pub struct LayerTag {
+    /// layertag，以.作为分隔符
+    pub raw_layertag: String,
+    /// 描述
+    pub desc: String,
+    /// 是否计数
+    pub counter: bool,
 }
 
-impl Global{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Global, LubanError> {
-        let x1 = buf.read_int();
-        let x2 = buf.read_int();
-        let x3 = buf.read_int();
-        let x4 = buf.read_int();
-        let x5 = buf.read_int();
-        let x6 = buf.read_int();
-        let x7 = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_int()); } _e0 };
+impl LayerTag{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<LayerTag, LubanError> {
+        let raw_layertag = buf.read_string();
+        let desc = buf.read_string();
+        let counter = buf.read_bool();
         
-        Ok(Global { x1, x2, x3, x4, x5, x6, x7, })
+        Ok(LayerTag { raw_layertag, desc, counter, })
     }
 
-    pub const __ID__: i32 = 2135814083;
+    pub const __ID__: i32 = -1235973975;
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]
-pub struct NullIndexList {
-    pub x: i32,
-    pub y: i32,
-}
-
-impl NullIndexList{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<NullIndexList, LubanError> {
-        let x = buf.read_int();
-        let y = buf.read_int();
-        
-        Ok(NullIndexList { x, y, })
-    }
-
-    pub const __ID__: i32 = 1457546921;
-}
-
-#[derive(bevy::reflect::Reflect, Debug)]
-pub struct Npc {
+pub struct Ability {
     /// 这是id
     pub id: i32,
     /// 名字
     pub name: String,
     /// 描述
     pub desc: String,
-    /// 阵营
-    pub camp: i32,
+    /// 技能图类型名字
+    pub graph_class: String,
+    /// 类型
+    pub activation_type: crate::effect::AbilityType,
+    /// CD
+    pub cd: f32,
+    /// 技能启动需要的状态
+    pub start_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_disabled_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_added_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub start_removed_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub abort_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub abort_disabled_layertags: Vec<String>,
 }
 
-impl Npc{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Npc, LubanError> {
+impl Ability{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Ability, LubanError> {
         let id = buf.read_int();
         let name = buf.read_string();
         let desc = buf.read_string();
-        let camp = buf.read_int();
+        let graph_class = buf.read_string();
+        let activation_type = buf.read_int().into();
+        let cd = buf.read_float();
+        let start_required_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let start_disabled_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let start_added_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(crate::effect::RevertableLayerTag::new(&mut buf)?); } _e0 };
+        let start_removed_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(crate::effect::RevertableLayerTag::new(&mut buf)?); } _e0 };
+        let abort_required_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let abort_disabled_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
         
-        Ok(Npc { id, name, desc, camp, })
+        Ok(Ability { id, name, desc, graph_class, activation_type, cd, start_required_layertags, start_disabled_layertags, start_added_layertags, start_removed_layertags, abort_required_layertags, abort_disabled_layertags, })
     }
 
-    pub const __ID__: i32 = 78529;
-}
-
-#[derive(bevy::reflect::Reflect, Debug)]
-pub struct Player {
-    /// 这是id
-    pub id: i32,
-    /// 名字
-    pub name: String,
-    /// 描述
-    pub desc: String,
-    /// 阵营
-    pub camp: i32,
-}
-
-impl Player{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Player, LubanError> {
-        let id = buf.read_int();
-        let name = buf.read_string();
-        let desc = buf.read_string();
-        let camp = buf.read_int();
-        
-        Ok(Player { id, name, desc, camp, })
-    }
-
-    pub const __ID__: i32 = -1901885695;
+    pub const __ID__: i32 = 464145674;
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]
@@ -486,6 +507,31 @@ impl Buff{
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]
+pub struct Npc {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 阵营
+    pub camp: i32,
+}
+
+impl Npc{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Npc, LubanError> {
+        let id = buf.read_int();
+        let name = buf.read_string();
+        let desc = buf.read_string();
+        let camp = buf.read_int();
+        
+        Ok(Npc { id, name, desc, camp, })
+    }
+
+    pub const __ID__: i32 = 78529;
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct Monster {
     /// 这是id
     pub id: i32,
@@ -511,74 +557,28 @@ impl Monster{
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]
-pub struct Ability {
+pub struct Player {
     /// 这是id
     pub id: i32,
     /// 名字
     pub name: String,
     /// 描述
     pub desc: String,
-    /// 技能图类型名字
-    pub graph_class: String,
-    /// 类型
-    pub activation_type: crate::effect::AbilityType,
-    /// CD
-    pub cd: f32,
-    /// 技能启动需要的状态
-    pub start_required_layertags: Vec<String>,
-    /// 技能启动需要的状态
-    pub start_disabled_layertags: Vec<String>,
-    /// 技能启动需要的状态
-    pub start_added_layertags: Vec<crate::effect::RevertableLayerTag>,
-    /// 技能启动需要的状态
-    pub start_removed_layertags: Vec<crate::effect::RevertableLayerTag>,
-    /// 技能启动需要的状态
-    pub abort_required_layertags: Vec<String>,
-    /// 技能启动需要的状态
-    pub abort_disabled_layertags: Vec<String>,
+    /// 阵营
+    pub camp: i32,
 }
 
-impl Ability{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Ability, LubanError> {
+impl Player{
+    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<Player, LubanError> {
         let id = buf.read_int();
         let name = buf.read_string();
         let desc = buf.read_string();
-        let graph_class = buf.read_string();
-        let activation_type = buf.read_int().into();
-        let cd = buf.read_float();
-        let start_required_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
-        let start_disabled_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
-        let start_added_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(crate::effect::RevertableLayerTag::new(&mut buf)?); } _e0 };
-        let start_removed_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(crate::effect::RevertableLayerTag::new(&mut buf)?); } _e0 };
-        let abort_required_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
-        let abort_disabled_layertags = {let n0 = std::cmp::min(buf.read_size(), buf.size());let mut _e0 = vec![]; for i0 in 0..n0 { _e0.push(buf.read_string()); } _e0 };
+        let camp = buf.read_int();
         
-        Ok(Ability { id, name, desc, graph_class, activation_type, cd, start_required_layertags, start_disabled_layertags, start_added_layertags, start_removed_layertags, abort_required_layertags, abort_disabled_layertags, })
+        Ok(Player { id, name, desc, camp, })
     }
 
-    pub const __ID__: i32 = 464145674;
-}
-
-#[derive(bevy::reflect::Reflect, Debug)]
-pub struct LayerTag {
-    /// layertag，以.作为分隔符
-    pub raw_layertag: String,
-    /// 描述
-    pub desc: String,
-    /// 是否计数
-    pub counter: bool,
-}
-
-impl LayerTag{
-    pub fn new(mut buf: &mut luban_lib::ByteBuf) -> Result<LayerTag, LubanError> {
-        let raw_layertag = buf.read_string();
-        let desc = buf.read_string();
-        let counter = buf.read_bool();
-        
-        Ok(LayerTag { raw_layertag, desc, counter, })
-    }
-
-    pub const __ID__: i32 = -1235973975;
+    pub const __ID__: i32 = -1901885695;
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]

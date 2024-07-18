@@ -14,6 +14,7 @@ pub struct ByteBuf {
 }
 
 impl ByteBuf {
+    #[allow(dead_code)]
     const MIN_CAPACITY: usize = 16;
 
     pub fn new(bytes: Vec<u8>) -> Self {
@@ -118,7 +119,7 @@ impl ByteBuf {
                 | ((self.bytes[self.reader_index + 2] as u32) << 8)
                 | (self.bytes[self.reader_index + 3] as u32);
             self.reader_index += 4;
-            return x;
+            x
         } else {
             self.ensure_read(5);
             let x = ((self.bytes[self.reader_index + 1] as u32) << 24)
@@ -126,7 +127,7 @@ impl ByteBuf {
                 | ((self.bytes[self.reader_index + 3] as u32) << 8)
                 | (self.bytes[self.reader_index + 4] as u32);
             self.reader_index += 5;
-            return x;
+            x
         }
     }
 
@@ -206,7 +207,7 @@ impl ByteBuf {
                 | ((self.bytes[self.reader_index + 2] as u64) << 8)
                 | (self.bytes[self.reader_index + 3] as u64);
             self.reader_index += 8;
-            return (xh << 32) | xl;
+            (xh << 32) | xl
         } else {
             self.ensure_read(9);
             let xl = ((self.bytes[self.reader_index + 5] as u64) << 24)
@@ -218,7 +219,7 @@ impl ByteBuf {
                 | ((self.bytes[self.reader_index + 3] as u64) << 8)
                 | (self.bytes[self.reader_index + 4] as u64);
             self.reader_index += 9;
-            return (xh << 32) | xl;
+            (xh << 32) | xl
         }
     }
 
@@ -243,7 +244,7 @@ impl ByteBuf {
         }
 
         self.reader_index += 4;
-        return x;
+        x
     }
 
     pub fn read_double(&mut self) -> f64 {
@@ -268,7 +269,7 @@ impl ByteBuf {
         }
 
         self.reader_index += 8;
-        return x;
+        x
     }
 
     pub fn read_size(&mut self) -> usize {
@@ -288,6 +289,7 @@ impl ByteBuf {
     }
     //region internal
 
+    #[allow(dead_code)]
     fn prop_size(init_size: usize, need_size: usize) -> usize {
         let mut i = usize::max(init_size, Self::MIN_CAPACITY);
         loop {
@@ -306,6 +308,7 @@ impl ByteBuf {
         }
     }
 
+    #[allow(dead_code)]
     #[inline]
     fn can_read(&self, size: usize) -> bool {
         self.reader_index + size <= self.writer_index
