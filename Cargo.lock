@@ -5124,6 +5124,7 @@ version = "0.1.0"
 dependencies = [
  "atom_internal",
  "autoincrement",
+ "avian3d",
  "bevy",
  "bevy_async_task",
  "bevy_debug_grid",

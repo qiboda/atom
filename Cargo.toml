@@ -12,7 +12,7 @@ resolver = "2"
 # bevy = { version = "0.12.0", features = ["trace", "trace_tracy", "embedded_watcher"] }
 # lightyear = { version = "0.15.1", features = [] }
 
-bevy = { version = "0.14", features = ["file_watcher", "bevy_dev_tools"] }
+bevy = { version = "0.14", features = ["file_watcher", "embedded_watcher", "bevy_dev_tools"] }
 # bevy_asset_loader = { path = "../bevy_asset_loader/bevy_asset_loader" }
 # bevy_asset_loader_derive = { path = "../bevy_asset_loader/bevy_asset_loader_derive" }
 # bevy_mod_scripting_rune = { version = "0.6.0" }

@@ -26,7 +26,7 @@ pub fn main() {
         filter: "wgpu=error,naga=warn,terrain=warn".to_string(),
         ..default()
     }))
-    .add_plugins(WireframePlugin)
+    // .add_plugins(WireframePlugin)
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(NoCameraPlayerPlugin)
     .add_plugins(FpsOverlayPlugin {
@@ -45,9 +45,10 @@ pub fn main() {
     .run();
 }
 
-fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>) {
-    wireframe_config.global = true;
+// fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>) {
+//     wireframe_config.global = true;
 
+fn startup(mut commands: Commands) {
     commands.spawn((
         Grid {
             // Space between each line

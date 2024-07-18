@@ -6,7 +6,7 @@ use std::sync::{Arc, RwLock};
 use bevy::prelude::*;
 use dc::DualContouringPlugin;
 use ecology::EcologyPlugin;
-use materials::terrain::TerrainExtendedMaterial;
+use materials::TerrainMaterialPlugin;
 use surface::{density_function::NoiseSurface, shape_surface::ShapeSurface};
 
 use self::surface::shape_surface::IsosurfaceContext;
@@ -36,7 +36,7 @@ impl Plugin for IsosurfaceExtractionPlugin {
             })),
         })
         .add_plugins(EcologyPlugin)
-        .add_plugins(MaterialPlugin::<TerrainExtendedMaterial>::default())
+        .add_plugins(TerrainMaterialPlugin)
         .add_plugins(DualContouringPlugin);
     }
 }

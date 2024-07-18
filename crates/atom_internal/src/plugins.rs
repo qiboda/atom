@@ -69,7 +69,7 @@ impl PluginGroup for AtomDefaultPlugins {
             .add(ConsolePlugin)
             .add(StateMachinePlugin)
             .add(DataTablePlugin)
-            .add(DebugGridPlugin::without_floor_grid())
+            // .add(DebugGridPlugin::without_floor_grid())
             .add(AppStatePlugin);
 
         group

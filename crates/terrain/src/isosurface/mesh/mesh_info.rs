@@ -1,5 +1,6 @@
 use std::ops::Not;
 
+use avian3d::collision::Collider;
 use bevy::{
     prelude::{debug, Component, Mesh, Vec3},
     reflect::Reflect,
@@ -76,25 +77,15 @@ impl From<&MeshInfo> for Mesh {
     }
 }
 
-// impl From<&MeshCache> for Collider {
-//     fn from(mesh_cache: &MeshCache) -> Self {
-//         mesh_cache.check();
+impl From<&MeshInfo> for Collider {
+    fn from(mesh_info: &MeshInfo) -> Self {
+        mesh_info.check();
 
-//         let mut vertices: Vec<Point<Real>> =
-//             Vec::with_capacity(mesh_cache.get_vertice_positions().len());
-//         let mut indices: Vec<[u32; 3]> = Vec::with_capacity(mesh_cache.get_indices().len() / 3);
+        let mut indices: Vec<[u32; 3]> = Vec::with_capacity(mesh_info.get_indices().len() / 3);
+        for index in mesh_info.get_indices().chunks(3) {
+            indices.push(index.try_into().unwrap());
+        }
 
-//         mesh_cache
-//             .get_vertice_positions()
-//             .iter()
-//             .for_each(|vertex| {
-//                 vertices.push(Point::from_slice(&[vertex.x, vertex.y, vertex.z]));
-//             });
-
-//         for index in mesh_cache.get_indices().chunks(3) {
-//             indices.push(index.try_into().unwrap());
-//         }
-
-//         Collider::from(SharedShape::trimesh(vertices, indices))
-//     }
-// }
+        Collider::trimesh(mesh_info.get_vertice_positions().clone(), indices)
+    }
+}

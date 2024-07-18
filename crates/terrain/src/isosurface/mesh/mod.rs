@@ -1,5 +1,6 @@
 pub mod mesh_info;
 
+use avian3d::{collision::Collider, prelude::RigidBody};
 use bevy::{
     math::{bounding::Aabb3d, Vec3A},
     pbr::wireframe::{Wireframe, WireframeColor},
@@ -10,13 +11,12 @@ use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::{
     chunk_mgr::chunk::{bundle::TerrainChunk, chunk_lod::TerrainChunkLod},
-    isosurface::{ecology::layer::Sampler, materials::terrain::TerrainMaterial},
+    isosurface::{ecology::layer::Sampler, materials::terrain_mat::TerrainMaterial},
 };
 
 use super::{
     comp::{MainMeshState, SeamMeshState, TerrainChunkMainGenerator, TerrainChunkSeamGenerator},
     ecology::layer::EcologyLayerSampler,
-    materials::terrain::TerrainExtendedMaterial,
 };
 
 #[allow(clippy::type_complexity)]
@@ -31,7 +31,7 @@ pub fn create_main_mesh(
         &TerrainChunkMainGenerator,
     )>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<TerrainExtendedMaterial>>,
+    mut materials: ResMut<Assets<TerrainMaterial>>,
 ) {
     for (chunk_generator_entity, parent, mesh_info, mut state, generator) in query.iter_mut() {
         if *state != MainMeshState::CreateMesh {
@@ -65,37 +65,19 @@ pub fn create_main_mesh(
 
         match &ecology_material {
             Some(ecology_material) => {
-                material = materials.add(TerrainExtendedMaterial {
-                    base: StandardMaterial {
-                        base_color: Color::WHITE,
-                        base_color_texture: Some(ecology_material.get_albedo_texture()),
-                        perceptual_roughness: 1.0,
-                        metallic: 1.0,
-                        metallic_roughness_texture: Some(ecology_material.get_roughness_texture()),
-                        normal_map_texture: Some(ecology_material.get_normal_texture()),
-                        occlusion_texture: Some(ecology_material.get_occlusion_texture()),
-                        // double_sided: true,
-                        // cull_mode: None,
-                        ..default()
-                    },
-                    extension: TerrainMaterial {
-                        debug_type: None,
-                        debug_color: None,
-                    },
+                material = materials.add(TerrainMaterial {
+                    color_texture: Some(ecology_material.get_albedo_texture()),
+                    metallic_texture: Some(ecology_material.get_metallic_texture()),
+                    normal_texture: Some(ecology_material.get_normal_texture()),
+                    roughness_texture: Some(ecology_material.get_roughness_texture()),
                 })
             }
             None => {
-                material = materials.add(TerrainExtendedMaterial {
-                    base: StandardMaterial {
-                        base_color: LinearRgba::BLUE.into(),
-                        // double_sided: true,
-                        // cull_mode: None,
-                        ..default()
-                    },
-                    extension: TerrainMaterial {
-                        debug_type: None,
-                        debug_color: None,
-                    },
+                material = materials.add(TerrainMaterial {
+                    color_texture: None,
+                    metallic_texture: None,
+                    normal_texture: None,
+                    roughness_texture: None,
                 })
             }
         }
@@ -108,12 +90,12 @@ pub fn create_main_mesh(
                 visibility: Visibility::Hidden,
                 ..Default::default()
             },
-            // RigidBody::Static,
-            // Collider::from(&*mesh_cache),
-            Wireframe,
-            WireframeColor {
-                color: LinearRgba::GREEN.into(),
-            },
+            RigidBody::Static,
+            Collider::from(mesh_info),
+            // Wireframe,
+            // WireframeColor {
+            //     color: LinearRgba::GREEN.into(),
+            // },
         ));
 
         *state = MainMeshState::Done;
@@ -133,7 +115,7 @@ pub fn create_seam_mesh(
         With<TerrainChunkSeamGenerator>,
     >,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<TerrainExtendedMaterial>>,
+    mut materials: ResMut<Assets<TerrainMaterial>>,
 ) {
     for (seam_generator_entity, parent, mesh_info, mut state) in query.iter_mut() {
         if *state != SeamMeshState::CreateMesh {
@@ -170,37 +152,19 @@ pub fn create_seam_mesh(
 
         match &ecology_material {
             Some(ecology_material) => {
-                material = materials.add(TerrainExtendedMaterial {
-                    base: StandardMaterial {
-                        base_color: Color::WHITE,
-                        base_color_texture: Some(ecology_material.get_albedo_texture()),
-                        perceptual_roughness: 1.0,
-                        metallic: 1.0,
-                        metallic_roughness_texture: Some(ecology_material.get_roughness_texture()),
-                        normal_map_texture: Some(ecology_material.get_normal_texture()),
-                        occlusion_texture: Some(ecology_material.get_occlusion_texture()),
-                        // double_sided: true,
-                        // cull_mode: None,
-                        ..default()
-                    },
-                    extension: TerrainMaterial {
-                        debug_type: None,
-                        debug_color: None,
-                    },
+                material = materials.add(TerrainMaterial {
+                    color_texture: Some(ecology_material.get_albedo_texture()),
+                    metallic_texture: Some(ecology_material.get_metallic_texture()),
+                    normal_texture: Some(ecology_material.get_normal_texture()),
+                    roughness_texture: Some(ecology_material.get_roughness_texture()),
                 })
             }
             None => {
-                material = materials.add(TerrainExtendedMaterial {
-                    base: StandardMaterial {
-                        base_color: LinearRgba::BLUE.into(),
-                        // double_sided: true,
-                        // cull_mode: None,
-                        ..default()
-                    },
-                    extension: TerrainMaterial {
-                        debug_type: None,
-                        debug_color: None,
-                    },
+                material = materials.add(TerrainMaterial {
+                    color_texture: None,
+                    metallic_texture: None,
+                    normal_texture: None,
+                    roughness_texture: None,
                 })
             }
         }
@@ -213,12 +177,12 @@ pub fn create_seam_mesh(
                 visibility: Visibility::Hidden,
                 ..Default::default()
             },
-            // RigidBody::Static,
-            // Collider::from(&*mesh_cache),
-            Wireframe,
-            WireframeColor {
-                color: LinearRgba::RED.into(),
-            },
+            RigidBody::Static,
+            Collider::from(mesh_info),
+            // Wireframe,
+            // WireframeColor {
+            //     color: LinearRgba::RED.into(),
+            // },
         ));
 
         *state = SeamMeshState::Done;
