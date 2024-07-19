@@ -7,7 +7,6 @@ use bevy::{
     DefaultPlugins,
 };
 use bevy_console::ConsolePlugin;
-use bevy_debug_grid::DebugGridPlugin;
 use datatables::DataTablePlugin;
 use leafwing_input_manager::plugin::InputManagerSubsystemPlugin;
 use log_layers::{file_layer, LogLayersPlugin};

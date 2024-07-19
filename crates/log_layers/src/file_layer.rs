@@ -7,7 +7,7 @@ use crate::LogLayerRes;
 pub fn file_layer(app: &mut App) -> Option<BoxedLayer> {
     let saved_path = project_saved_root_path();
 
-    let file_filter = EnvFilter::new("debug");
+    let file_filter = EnvFilter::new("trace");
 
     let file_appender = tracing_appender::rolling::daily(saved_path.join("logs"), "log"); // This should be user configurable
     let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);

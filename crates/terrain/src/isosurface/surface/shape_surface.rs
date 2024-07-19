@@ -6,12 +6,12 @@ use crate::isosurface::dc::octree::OctreeSampler;
 
 use super::density_function::DensityFunction;
 
-#[derive(Resource, Debug)]
+#[derive(Resource)]
 pub struct IsosurfaceContext {
     pub shape_surface: Arc<RwLock<ShapeSurface>>,
 }
 
-#[derive(Debug)]
+#[derive()]
 pub struct ShapeSurface {
     pub density_function: Box<dyn DensityFunction>,
 

@@ -53,10 +53,11 @@ pub struct Octree {
     pub node_shape: ndshape::RuntimeShape<u32, 3>,
 }
 
-#[derive(Debug)]
+#[derive()]
 pub struct OctreeProxy<'a> {
     pub node_addresses: RwLockReadGuard<'a, HashMap<NodeAddress, Node>>,
     pub is_seam: bool,
+    pub surface: RwLockReadGuard<'a, ShapeSurface>,
 }
 
 impl Octree {
@@ -244,6 +245,7 @@ impl Octree {
                         let mut all_children_leaf = true;
                         let mut mid_mat = None;
                         let mut node_mats = [None; VertexIndex::COUNT];
+                        let mut conner_values = [None; 8];
                         for (children_index, child_address) in
                             node_address.get_children_addresses().iter().enumerate()
                         {
@@ -258,8 +260,11 @@ impl Octree {
                                         // child node的children_index对角的点的材质
                                         mid_mat =
                                             Some(child_node.vertices_mat_types[7 - children_index]);
+                                        // Some(VoxelMaterialType::Air);
                                         node_mats[children_index] =
                                             Some(child_node.vertices_mat_types[children_index]);
+                                        conner_values[children_index] =
+                                            Some(child_node.conner_sampler_data[children_index]);
                                     }
                                 }
                             }
@@ -278,6 +283,7 @@ impl Octree {
                                 ) + octree_offset,
                                 Vec3::splat(node_half_size),
                             );
+                            // TODO move mat to simplify_octree
                             trace!("depth: {}, aabb half size: {}", i, node_half_size);
                             if all_children_leaf {
                                 for (vertex_index, _) in VertexIndex::iter().enumerate() {
@@ -287,6 +293,14 @@ impl Octree {
                                             node.vertices_mat_types[vertex_index] = mid_mat.unwrap()
                                         }
                                     }
+                                    // let mut values = [0.0; 8];
+                                    // for (i, value) in conner_values.iter().enumerate() {
+                                    //     match value {
+                                    //         Some(value) => values[i] = *value,
+                                    //         None => values[i] = f32::MAX,
+                                    //     }
+                                    // }
+                                    // node.estimate_vertex_mat(values);
                                 }
                             }
                             address_node_map.insert(node_address, node);
@@ -393,7 +407,10 @@ impl Octree {
                                 avg_normal.normalize(),
                             );
                             trace!("node, vertex: {}, qef error {}, {}, coord:{:?}, leaf_children_count: {}", node.vertex_estimate, node.qef_error, node.address, node.coord, leaf_children_count);
-                            if node.qef_error < *qef_threshold {
+                            if node.qef_error < *qef_threshold
+                                && node.aabb.closest_point(node.vertex_estimate)
+                                    == node.vertex_estimate.into()
+                            {
                                 node.node_type = NodeType::Leaf;
 
                                 for child_address in node_address.get_children_addresses() {
@@ -433,6 +450,8 @@ macro_rules! check_octree_nodes_relation {
     };
 }
 pub(crate) use check_octree_nodes_relation;
+
+use crate::isosurface::surface::shape_surface::ShapeSurface;
 
 impl Octree {
     #[cfg(debug_assertions)]
@@ -512,8 +531,20 @@ impl Octree {
                 NodeType::Leaf => {
                     if Octree::SELECT_SEAM_LEAF_NODE_FN[subnode_index as usize](node, &octree_aabb)
                     {
+                        trace!(
+                            "get_all_seam_leaf_nodes, success: coord:{}, node aabb: {:?}, octree aabb: {:?}",
+                            node.coord,
+                            node.aabb,
+                            octree_aabb
+                        );
                         Some(node)
                     } else {
+                        trace!(
+                            "get_all_seam_leaf_nodes, fail: coord:{}, node aabb: {:?}, octree aabb: {:?}",
+                            node.coord,
+                            node.aabb,
+                            octree_aabb
+                        );
                         None
                     }
                 }

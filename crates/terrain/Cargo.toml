@@ -30,7 +30,7 @@ log_layers = { path = "../log_layers" }
 rand = "0.8.5"
 ndshape = { version = "0.3.0" }
 
-noisy_bevy = { version = "0.7.0" }
+noise = { workspace = true }
 
 # bevy_obj = "0.13.0"
 

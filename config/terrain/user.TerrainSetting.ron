@@ -14,6 +14,13 @@
             7: 3.2,
             8: 3.2,
             9: 3.2,
+            10: 3.2,
+            11: 3.2,
+            12: 3.2,
+            13: 3.2,
+            14: 3.2,
+            15: 3.2,
+            16: 3.2,
         },
         qef_pos_stddev: 0.025,
         qef_normal_stddev: 0.1,
@@ -22,23 +29,43 @@
         lods: [
             (
                 chunk_chebyshev_distance: 0,
-                lod: 0,
-            ),
-            (
-                chunk_chebyshev_distance: 3,
                 lod: 1,
             ),
             (
-                chunk_chebyshev_distance: 9,
-                lod: 2,
-            ),
-            (
-                chunk_chebyshev_distance: 18,
-                lod: 3,
-            ),
-            (
-                chunk_chebyshev_distance: 32,
+                chunk_chebyshev_distance: 1,
                 lod: 4,
+            ),
+            (
+                chunk_chebyshev_distance: 2,
+                lod: 1,
+            ),
+            (
+                chunk_chebyshev_distance: 3,
+                lod: 4,
+            ),
+            (
+                chunk_chebyshev_distance: 4,
+                lod: 1,
+            ),
+            (
+                chunk_chebyshev_distance: 5,
+                lod: 4,
+            ),
+            (
+                chunk_chebyshev_distance: 6,
+                lod: 1,
+            ),
+            (
+                chunk_chebyshev_distance: 7,
+                lod: 4,
+            ),
+            (
+                chunk_chebyshev_distance: 8,
+                lod: 5,
+            ),
+            (
+                chunk_chebyshev_distance: 9,
+                lod: 5,
             ),
         ],
     ),

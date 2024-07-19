@@ -198,7 +198,7 @@ pub fn remove_unused_seam_mesh(
         Entity,
         &Parent,
         &SeamMeshState,
-        &ViewVisibility,
+        Option<&ViewVisibility>,
         &TerrainChunkSeamGenerator,
     )>,
     mut commands: Commands,
@@ -209,11 +209,17 @@ pub fn remove_unused_seam_mesh(
             if let Ok((children, _, id_generator)) = chunk_query.get(parent.get()) {
                 for child in children.iter() {
                     if let Ok((_, _, _, view_visibility, seam_generator)) = query.get(*child) {
-                        if seam_generator.seam_mesh_id == id_generator.current()
-                            && view_visibility.get()
-                        {
-                            can_destroy = true;
-                            break;
+                        if seam_generator.seam_mesh_id == id_generator.current() {
+                            match view_visibility {
+                                Some(vv) => {
+                                    if vv.get() {
+                                        can_destroy = true;
+                                    }
+                                }
+                                None => {
+                                    can_destroy = true;
+                                }
+                            }
                         }
                     }
                 }

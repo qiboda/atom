@@ -1,9 +1,11 @@
+use std::sync::RwLockReadGuard;
+
 use bevy::{
     math::{bounding::BoundingVolume, Vec3, Vec3A},
     utils::HashMap,
 };
 use strum::{EnumCount, IntoEnumIterator};
-use tracing::{info, instrument, trace, warn};
+use tracing::{instrument, trace, warn};
 
 use crate::isosurface::{
     dc::octree::tables::{EDGE_NODES_VERTICES, FACE_TO_SUB_EDGES_AXIS_TYPE},
@@ -21,16 +23,16 @@ use super::octree::{
     OctreeProxy,
 };
 
-pub struct DefaultDualContouringVisiter<'a, 'b> {
+pub struct DefaultDualContouringVisiter<'a> {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3A>,
     pub tri_indices: Vec<u32>,
     pub address_vertex_id_map: HashMap<NodeAddress, u32>,
-    pub shape_surface: &'a std::sync::RwLockReadGuard<'b, ShapeSurface>,
+    pub shape_surface: RwLockReadGuard<'a, ShapeSurface>,
 }
 
-impl<'a, 'b> DefaultDualContouringVisiter<'a, 'b> {
-    pub fn new(shape_surface: &'a std::sync::RwLockReadGuard<'b, ShapeSurface>) -> Self {
+impl<'a> DefaultDualContouringVisiter<'a> {
+    pub fn new(shape_surface: std::sync::RwLockReadGuard<'a, ShapeSurface>) -> Self {
         Self {
             shape_surface,
             positions: Default::default(),
@@ -41,7 +43,7 @@ impl<'a, 'b> DefaultDualContouringVisiter<'a, 'b> {
     }
 }
 
-impl<'a, 'b> DualContouringVisiter for DefaultDualContouringVisiter<'a, 'b> {
+impl<'a> DualContouringVisiter for DefaultDualContouringVisiter<'a> {
     fn visit_node(&mut self, node: &Node) {
         let old = self
             .address_vertex_id_map
@@ -357,7 +359,7 @@ fn edge_proc(
 
 #[instrument(skip_all)]
 fn visit_leaf_edge(
-    _octree: &OctreeProxy,
+    octree: &OctreeProxy,
     edge_nodes: EdgeNodes,
     visiter: &mut impl DualContouringVisiter,
 ) {
@@ -397,12 +399,28 @@ fn visit_leaf_edge(
         (octree::node::VoxelMaterialType::Block, octree::node::VoxelMaterialType::Air) => false,
         (octree::node::VoxelMaterialType::Block, octree::node::VoxelMaterialType::Block)
         | (octree::node::VoxelMaterialType::Air, octree::node::VoxelMaterialType::Air) => {
-            // Not a bipolar edge.
-            trace!(
-                "visit leaf edge is not a bipolar edge, mat0: {:?}, mat1: {:?}, axis:{:?}, \
+            let corners = Node::get_node_vertex_locations(edge_nodes.nodes[min_node_index].aabb);
+            let value_0 = octree
+                .surface
+                .get_value_from_vec(corners[node_vertex_indices[0] as usize]);
+            let value_1 = octree
+                .surface
+                .get_value_from_vec(corners[node_vertex_indices[1] as usize]);
+
+            if value_0 >= 0.0 && value_1 < 0.0 {
+                true
+            } else if value_0 < 0.0 && value_1 >= 0.0 {
+                false
+            } else {
+                // Not a bipolar edge.
+
+                trace!(
+                "visit leaf edge is not a bipolar edge, mat0: {:?}, mat1: {:?}, value0: {}, value1: {}, axis:{:?}, \
                 min_node_index:{}, vertex_samplers:{:?}, {:?}, {:?}, {:?}, {:?}, {:?}",
                 mat0,
                 mat1,
+                value_0,
+                value_1,
                 edge_nodes.axis_type,
                 min_node_index,
                 edge_nodes.nodes[0].coord,
@@ -412,7 +430,8 @@ fn visit_leaf_edge(
                 node_vertex_indices[0],
                 node_vertex_indices[1],
             );
-            return;
+                return;
+            }
         }
     };
     trace!(
@@ -458,5 +477,212 @@ fn visit_leaf_edge(
         } else {
             visiter.visit_quad(edge_nodes.nodes);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, RwLock};
+
+    use bevy::{
+        math::{bounding::Aabb3d, Vec3, Vec3A},
+        utils::hashbrown::HashMap,
+    };
+
+    use crate::isosurface::{
+        dc::octree::{
+            address::NodeAddress,
+            node::{Node, NodeType, VoxelMaterialType},
+            tables::SubNodeIndex,
+            OctreeProxy,
+        },
+        surface::{density_function::Panel, shape_surface::ShapeSurface},
+    };
+
+    use super::{dual_contouring, DefaultDualContouringVisiter};
+
+    //      (2)o--------------o(3)
+    //        /.             /|
+    //       / .            / |
+    //      /  .           /  |
+    //     /   .          /   |     ^ Y
+    // (6)o--------------o(7) |     |
+    //    | (0)o. . . . . |. . o(1)  --> X
+    //    |   .          |   /     /
+    //    |  .           |  /     /
+    //    | .            | /     z
+    //    |.             |/
+    // (4)o--------------o(5)
+    //
+    //
+    #[test]
+    pub fn test_dual_contouring() {
+        let mut node_addresses = HashMap::new();
+
+        // 3层
+        let root = NodeAddress::root();
+        let child_0 = root.get_child_address(SubNodeIndex::X0Y0Z0);
+        let child_1 = root.get_child_address(SubNodeIndex::X1Y0Z0);
+        // let child_3 = root.get_child_address(SubNodeIndex::X1Y1Z0);
+        let child_1_2 = child_1.get_child_address(SubNodeIndex::X0Y1Z0);
+        let child_1_6 = child_1.get_child_address(SubNodeIndex::X0Y1Z1);
+
+        node_addresses.insert(
+            root,
+            Node {
+                address: root,
+                node_type: NodeType::Branch,
+                vertex_estimate: Vec3::new(2.0, 2.0, 2.0),
+                normal_estimate: Default::default(),
+                vertices_mat_types: [
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                ],
+                aabb: Aabb3d::new(Vec3A::new(2.0, 2.0, 2.0), Vec3A::new(2.0, 2.0, 2.0)),
+                coord: Vec3A::ZERO,
+                conner_sampler_data: [0.0; 8],
+                qef: None,
+                qef_error: 0.0,
+            },
+        );
+
+        node_addresses.insert(
+            child_0,
+            Node {
+                address: child_0,
+                node_type: NodeType::Leaf,
+                vertex_estimate: Vec3::new(1.0, 1.0, 1.0),
+                normal_estimate: Default::default(),
+                vertices_mat_types: [
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                ],
+                aabb: Aabb3d::new(Vec3A::new(1.0, 1.0, 1.0), Vec3A::new(1.0, 1.0, 1.0)),
+                coord: Vec3A::ZERO,
+                conner_sampler_data: [0.0; 8],
+                qef: None,
+                qef_error: 0.0,
+            },
+        );
+
+        node_addresses.insert(
+            child_1,
+            Node {
+                address: child_1,
+                node_type: NodeType::Branch,
+                vertex_estimate: Vec3::new(3.0, 1.0, 1.0),
+                normal_estimate: Default::default(),
+                vertices_mat_types: [
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                ],
+                aabb: Aabb3d::new(Vec3A::new(3.0, 1.0, 1.0), Vec3A::new(1.0, 1.0, 1.0)),
+                coord: Vec3A::ZERO,
+                conner_sampler_data: [0.0; 8],
+                qef: None,
+                qef_error: 0.0,
+            },
+        );
+
+        //      (2)o--------------o(3)
+        //        /.             /|
+        //       / .            / |
+        //      /  .           /  |
+        //     /   .          /   |     ^ Y
+        // (6)o--------------o(7) |     |
+        //    | (0)o. . . . . |. . o(1)  --> X
+        //    |   .          |   /     /
+        //    |  .           |  /     /
+        //    | .            | /     z
+        //    |.             |/
+        // (4)o--------------o(5)
+        //
+        //
+        node_addresses.insert(
+            child_1_2,
+            Node {
+                address: child_1_2,
+                node_type: NodeType::Leaf,
+                vertex_estimate: Vec3::new(2.5, 0.5, 0.5),
+                normal_estimate: Default::default(),
+                vertices_mat_types: [
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                ],
+                aabb: Aabb3d::new(Vec3A::new(2.5, 0.5, 0.5), Vec3A::new(0.5, 0.5, 0.5)),
+                coord: Vec3A::ZERO,
+                conner_sampler_data: [0.0; 8],
+                qef: None,
+                qef_error: 0.0,
+            },
+        );
+
+        node_addresses.insert(
+            child_1_6,
+            Node {
+                address: child_1_6,
+                node_type: NodeType::Leaf,
+                vertex_estimate: Vec3::new(2.5, 0.5, 1.5),
+                normal_estimate: Default::default(),
+                vertices_mat_types: [
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Block,
+                    VoxelMaterialType::Air,
+                    VoxelMaterialType::Air,
+                ],
+                aabb: Aabb3d::new(Vec3A::new(2.5, 0.5, 1.5), Vec3A::new(0.5, 0.5, 0.5)),
+                coord: Vec3A::ZERO,
+                conner_sampler_data: [0.0; 8],
+                qef: None,
+                qef_error: 0.0,
+            },
+        );
+
+        let surface = Arc::new(RwLock::new(ShapeSurface {
+            density_function: Box::new(Panel),
+            iso_level: Vec3::ZERO,
+        }));
+        let node_addresses = RwLock::new(node_addresses);
+        let octree = OctreeProxy {
+            node_addresses: node_addresses.read().unwrap(),
+            is_seam: true,
+            surface: surface.read().unwrap(),
+        };
+
+        let mut visiter = DefaultDualContouringVisiter::new(surface.read().unwrap());
+        dual_contouring(&octree, &mut visiter);
+        println!(
+            "positions len: {}, indices len: {}",
+            visiter.positions.len(),
+            visiter.tri_indices.len()
+        );
     }
 }

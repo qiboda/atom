@@ -1,6 +1,7 @@
 use std::ops::Not;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::hashbrown::HashMap};
+use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::chunk_mgr::chunk::{bundle::TerrainChunk, chunk_lod::LodType, state::SeamMeshId};
 
@@ -45,9 +46,10 @@ pub struct TerrainChunkMainGenerator {
     pub lod: LodType,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Component)]
+#[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub struct TerrainChunkSeamGenerator {
     pub(crate) seam_mesh_id: SeamMeshId,
+    pub lod_map: HashMap<TerrainChunkCoord, LodType>,
 }
 
 #[derive(Debug, Event, Clone, Copy)]
@@ -100,6 +102,7 @@ pub(crate) fn read_chunk_udpate_seam_event(
             .spawn((
                 TerrainChunkSeamGenerator {
                     seam_mesh_id: event.seam_mesh_id,
+                    lod_map: HashMap::new(),
                 },
                 SeamMeshState::ConstructOctree,
             ))

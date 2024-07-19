@@ -20,7 +20,7 @@ use crate::{
 use super::{
     dual_contouring::{self, DefaultDualContouringVisiter},
     octree::{
-        address::{NodeAddress, DepthCoordMap},
+        address::{DepthCoordMap, NodeAddress},
         node::Node,
         Octree, OctreeProxy,
     },
@@ -43,7 +43,7 @@ async fn construct_octree_task(
 ) -> (Entity, Octree) {
     let _span = debug_span!("main mesh construct octree", %chunk_coord, lod).entered();
 
-    let lod_voxel_size = voxel_size * 2.0_f32.powf((lod + 1) as f32);
+    let lod_voxel_size = voxel_size * 2.0_f32.powf(lod as f32);
     let offset = chunk_coord * chunk_size;
     let size = (chunk_size / lod_voxel_size) as u32 + 1;
     let shape = RuntimeShape::<u32, 3>::new([size, size, size]);
@@ -227,14 +227,17 @@ async fn dual_contouring_run_task(
 ) -> (Entity, MeshInfo) {
     let _span = debug_span!("main mesh dual contouring", %chunk_coord, lod).entered();
 
-    let surface: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
+    let surface_guard: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 
     let mut mesh_info = MeshInfo::default();
 
-    let mut default_visiter = DefaultDualContouringVisiter::new(&surface);
+    let mut default_visiter = DefaultDualContouringVisiter::new(surface_guard);
+
+    let surface: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
     let octree = OctreeProxy {
         node_addresses: node_addresses.read().unwrap(),
         is_seam: false,
+        surface,
     };
     dual_contouring::dual_contouring(&octree, &mut default_visiter);
 

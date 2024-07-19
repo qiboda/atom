@@ -9,7 +9,7 @@ use pqef::Quadric;
 use strum::{EnumCount, IntoEnumIterator};
 
 use super::{
-    address::{NodeAddress, FaceAddress},
+    address::{FaceAddress, NodeAddress},
     tables::{FaceIndex, SubNodeIndex, VertexIndex, EDGE_VERTEX_PAIRS},
     OctreeSampler,
 };
@@ -35,6 +35,7 @@ pub struct Node {
     pub aabb: Aabb3d,
     pub coord: Vec3A,
     pub vertices_mat_types: [VoxelMaterialType; VertexIndex::COUNT],
+    pub conner_sampler_data: [f32; 8],
 
     pub qef: Option<Quadric>,
     pub qef_error: f32,
@@ -54,6 +55,7 @@ impl Node {
             vertex_estimate: Vec3::ZERO,
             normal_estimate: Vec3A::ZERO,
             vertices_mat_types: [VoxelMaterialType::Air; VertexIndex::COUNT],
+            conner_sampler_data: [0.0; 8],
         }
     }
 
@@ -185,7 +187,8 @@ impl Node {
     }
 
     pub fn estimate_vertex_mat(&mut self, vertices_values: [f32; VertexIndex::COUNT]) {
-        assert!(self.node_type == NodeType::Leaf);
+        // assert!(self.node_type == NodeType::Leaf);
+        self.conner_sampler_data = vertices_values;
         for i in VertexIndex::iter() {
             if vertices_values[i as usize] < 0.0 {
                 self.vertices_mat_types[i as usize] = VoxelMaterialType::Block;

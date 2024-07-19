@@ -1,3 +1,7 @@
+//! 使用地形纹理数组
+//! 根据地形的block type，选择不同的纹理
+//! 过渡有根据高度混合和权重mix混合。
+//! 还有根据自定义纹理进行混合的。纹理内存储的是数组纹理的索引，而不是纹理本身。
 use bevy::{
     app::Plugin,
     asset::{load_internal_asset, Handle},

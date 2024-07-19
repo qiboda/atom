@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{math::Vec3A, prelude::*, utils::hashbrown::HashMap};
 use ndshape::RuntimeShape;
 use strum::IntoEnumIterator;
 
@@ -14,7 +14,7 @@ use crate::{
     },
     isosurface::{
         comp::{SeamMeshState, TerrainChunkMainGenerator, TerrainChunkSeamGenerator},
-        dc::octree::{check_octree_nodes_relation, tables::SubNodeIndex},
+        dc::octree::{check_octree_nodes_relation, node::NodeType, tables::SubNodeIndex},
         mesh::mesh_info::MeshInfo,
         surface::shape_surface::{IsosurfaceContext, ShapeSurface},
     },
@@ -49,23 +49,30 @@ async fn construct_octree_task(
         };
 
         let node_map = octree.read().unwrap();
-        if node_map.len() < 2 {
+        if node_map.len() < 1 {
             return;
         }
 
         let octree_aabb = node_map.get(&NodeAddress::root()).unwrap().aabb;
         let subnode_index = SubNodeIndex::from_repr(i).unwrap();
         let leaf_nodes = Octree::get_all_seam_leaf_nodes(&node_map, octree_aabb, subnode_index);
+        debug!("{}th, get leaf nodes: {}", i, leaf_nodes.len());
 
+        let index_array = subnode_index.to_array();
         let parent_address = NodeAddress::root().get_child_address(subnode_index);
         for node in leaf_nodes {
             let mut new_node = node.clone();
             new_node.address = parent_address.concat_address(new_node.address);
+            new_node.coord += Vec3A::new(
+                index_array[0] as f32,
+                index_array[1] as f32,
+                index_array[2] as f32,
+            ) * 16.0;
             seam_leaf_nodes.insert(new_node.address, new_node);
         }
     });
 
-    let lod_voxel_size = voxel_size * 2.0_f32.powf((lod + 1) as f32);
+    let lod_voxel_size = voxel_size * 2.0_f32.powf(lod as f32);
     let offset = chunk_coord * chunk_size;
     // 两倍的chunk size，因为是相邻chunk的边界
     let size = (chunk_size * 2.0 / lod_voxel_size) as u32;
@@ -75,6 +82,9 @@ async fn construct_octree_task(
     let mut octree = Octree::new(shape);
     info!("seam_leaf_nodes size: {}", seam_leaf_nodes.len());
     debug!("seam_leaf_nodes {:?}", seam_leaf_nodes);
+
+    let addresses = seam_leaf_nodes.clone();
+
     octree.address_node_map = Arc::new(RwLock::new(seam_leaf_nodes));
     Octree::build_bottom_up_from_leaf_nodes(
         &mut octree,
@@ -86,6 +96,22 @@ async fn construct_octree_task(
         "build after seam_leaf_nodes size: {}",
         octree.address_node_map.read().unwrap().len()
     );
+
+    octree
+        .address_node_map
+        .read()
+        .unwrap()
+        .iter()
+        .for_each(|(address, node)| {
+            if node.node_type == NodeType::Leaf {
+                let old_node = addresses.get(address).unwrap();
+                assert!(old_node.address == node.address);
+                assert!(old_node.aabb.min == node.aabb.min);
+                assert!(old_node.aabb.max == node.aabb.max);
+                assert!(old_node.vertices_mat_types == node.vertices_mat_types);
+                assert!(old_node.vertex_estimate == node.vertex_estimate);
+            }
+        });
 
     check_octree_nodes_relation!(octree.address_node_map.clone());
 
@@ -101,7 +127,12 @@ pub(crate) fn construct_octree(
     chunk_query: Query<(&TerrainChunkCoord, &TerrainChunkLod, &Children), With<TerrainChunk>>,
     chunk_generator_query: Query<(&Octree, &TerrainChunkMainGenerator)>,
     mut seam_generator_query: ParamSet<(
-        Query<(Entity, &Parent, &mut SeamMeshState), With<TerrainChunkSeamGenerator>>,
+        Query<(
+            Entity,
+            &Parent,
+            &mut SeamMeshState,
+            &mut TerrainChunkSeamGenerator,
+        )>,
         Query<&mut SeamMeshState, With<TerrainChunkSeamGenerator>>,
     )>,
     setting: Res<TerrainSetting>,
@@ -109,14 +140,15 @@ pub(crate) fn construct_octree(
     chunk_mapper: Res<TerrainChunkMapper>,
 ) {
     if task_pool.is_idle() {
-        for (entity, parent, mut state) in seam_generator_query.p0().iter_mut() {
+        for (entity, parent, mut state, mut seam_generator) in seam_generator_query.p0().iter_mut()
+        {
             if *state == SeamMeshState::ConstructOctree {
                 let Ok((chunk_coord, lod, _)) = chunk_query.get(parent.get()) else {
                     panic!("parent chunk musts exist!");
                 };
 
                 let _span =
-                    debug_span!("seam mesh construct octree", chunk_coord = %*chunk_coord, lod = lod.get_lod())
+                    info_span!("seam mesh construct octree", chunk_coord = %*chunk_coord, lod = lod.get_lod())
                         .entered();
 
                 let mut chunk_entities = [None, None, None, None, None, None, None, None];
@@ -125,6 +157,10 @@ pub(crate) fn construct_octree(
                     let chunk_entity =
                         chunk_mapper.get_chunk_entity_by_coord(chunk_coord + &offset);
                     chunk_entities[vi as usize] = chunk_entity;
+                    info!(
+                        "seam mesh construct octree: coord: {} add chunk entity, offset: {}",
+                        chunk_coord, offset
+                    );
                 }
 
                 // 获取八个chunk的最小lod和nodes
@@ -139,8 +175,12 @@ pub(crate) fn construct_octree(
                                         if lod.get_lod() < min_lod {
                                             min_lod = lod.get_lod();
                                         }
-
                                         octrees[index] = Some(octree.address_node_map.clone());
+                                        let offset =
+                                            SubNodeIndex::from_repr(index).unwrap().to_array();
+                                        seam_generator
+                                            .lod_map
+                                            .insert(chunk_coord + &offset.into(), lod.get_lod());
                                         break;
                                     }
                                 }
@@ -152,17 +192,25 @@ pub(crate) fn construct_octree(
                 let mut num = 0;
                 for octree in octrees.iter().flatten() {
                     let node_map = octree.read().unwrap();
-                    if node_map.len() > 1 {
+                    if node_map.len() > 0 {
                         num += 1;
                     }
                 }
 
+                info!(
+                    "seam mesh construct octree: octree num:{}, num: {}, chunk_coord: {}",
+                    octrees.len(),
+                    num,
+                    chunk_coord
+                );
+
                 if num < 2 {
                     *state = SeamMeshState::Done;
+                    info!("seam mesh construct octree: {} fail", chunk_coord);
                     continue;
                 }
-
-                assert_ne!(min_lod, LodType::MAX);
+                // TODO: assert change to debug assert
+                debug_assert_ne!(min_lod, LodType::MAX);
 
                 let chunk_size = setting.chunk_setting.chunk_size;
                 let voxel_size = setting.chunk_setting.voxel_size;
@@ -207,18 +255,21 @@ async fn dual_contouring_run_task(
 ) -> (Entity, MeshInfo) {
     let _span = debug_span!("seam mesh dual contouring", %chunk_coord, lod).entered();
 
-    let surface: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
+    let surface_guard: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 
     let mut mesh_info = MeshInfo::default();
 
-    let mut default_visiter = DefaultDualContouringVisiter::new(&surface);
+    let mut default_visiter = DefaultDualContouringVisiter::new(surface_guard);
+    let surface: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
     let octree = OctreeProxy {
         node_addresses: node_addresses.read().unwrap(),
         is_seam: true,
+        surface,
     };
     dual_contouring::dual_contouring(&octree, &mut default_visiter);
 
     info!("seam mesh positions: {}", default_visiter.positions.len());
+    info!("seam mesh indices: {}", default_visiter.tri_indices.len());
     mesh_info.positions = default_visiter.positions;
     mesh_info.normals = default_visiter
         .normals

@@ -100,11 +100,11 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
         ..Default::default()
     });
 
-    let size = 32.0 * 16.0;
+    let size = 16.0 * 16.0;
 
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(8.0, 8.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(8.0, -0.1, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera: Camera {
                 hdr: true,
                 order: 0,

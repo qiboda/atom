@@ -13,9 +13,10 @@ impl Plugin for DcGizmosPlugin {
     fn build(&self, app: &mut App) {
         app.init_gizmo_group::<WorldCoordinateGizmos>()
             .init_gizmo_group::<VoxelGizmos>()
+            .add_systems(Update, update_config)
             .add_systems(Update, draw_world_coordinate_axes);
-            // .add_systems(Update, draw_octree_voxel)
-            // .add_systems(Update, draw_seam_octree_voxel);
+        // .add_systems(Update, draw_octree_voxel)
+        // .add_systems(PostUpdate, draw_seam_octree_voxel);
         // .add_systems(Update, draw_voxel_normal);
     }
 }
@@ -90,6 +91,14 @@ fn draw_octree_voxel(query: Query<&Octree>, mut octree_node_gizmos: Gizmos<Voxel
     }
 }
 
+fn update_config(mut config_store: ResMut<GizmoConfigStore>) {
+    for (_, config, _) in config_store.iter_mut() {
+        config.depth_bias = 0.0;
+        config.line_width = 20.0;
+        config.line_perspective = true;
+    }
+}
+
 #[allow(dead_code)]
 fn draw_seam_octree_voxel(
     query: Query<&Octree, With<TerrainChunkSeamGenerator>>,
@@ -98,7 +107,6 @@ fn draw_seam_octree_voxel(
     for octree in query.iter() {
         let node_addresses = octree.address_node_map.read().unwrap();
         if node_addresses.is_empty().not() {
-            debug!("node num: {}", node_addresses.len());
             for (address, node) in node_addresses.iter() {
                 if node.node_type == NodeType::Leaf {
                     octree_node_gizmos.cuboid(
