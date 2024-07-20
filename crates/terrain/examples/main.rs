@@ -15,6 +15,7 @@ use bevy::{
 };
 use bevy_debug_grid::{Grid, GridAxis};
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use log_layers::LogLayersPlugin;
 use terrain::{visible::visible_range::VisibleTerrainRange, TerrainSubsystemPlugin};
 
@@ -26,6 +27,7 @@ pub fn main() {
         filter: "wgpu=error,naga=warn,terrain=warn".to_string(),
         ..default()
     }))
+    // .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(0.5)))
     .add_plugins(WireframePlugin)
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(NoCameraPlayerPlugin)
@@ -42,6 +44,7 @@ pub fn main() {
         },
     })
     .add_systems(Startup, startup)
+    .add_plugins(WorldInspectorPlugin::new())
     .run();
 }
 

@@ -63,7 +63,7 @@ impl Plugin for DualContouringPlugin {
             (
                 read_chunk_update_seam_event,
                 seam_mesh::construct_octree,
-                // seam_mesh::simplity_octree,
+                // seam_mesh::simplify_octree,
                 seam_mesh::dual_contouring,
                 create_seam_mesh,
             )

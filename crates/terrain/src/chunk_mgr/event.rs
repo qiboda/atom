@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use bevy::{prelude::*, utils::hashbrown::HashSet};
 use ndshape::{AbstractShape, ConstShape, ConstShape3i64};
 use terrain_core::chunk::coords::TerrainChunkCoord;
@@ -57,25 +59,34 @@ pub fn update_to_wait_create_seam(
 }
 
 pub fn hidden_main_mesh(
-    query: Query<(&Children, &TerrainChunkLod, &TerrainChunkCoord), With<TerrainChunk>>,
+    query: Query<
+        (
+            &Children,
+            &TerrainChunkLod,
+            &TerrainChunkState,
+            &TerrainChunkCoord,
+        ),
+        With<TerrainChunk>,
+    >,
     mut generator_query: Query<(&ViewVisibility, &mut Visibility, &TerrainChunkMainGenerator)>,
 ) {
-    for (children, chunk_lod, chunk_coord) in query.iter() {
-        let mut main_mesh_visibility = false;
-        for child in children.iter() {
-            if let Ok((view_visibility, _, generator)) = generator_query.get_mut(*child) {
-                if generator.lod == chunk_lod.get_lod() && view_visibility.get() {
-                    main_mesh_visibility = true;
-                }
-            }
+    let all_create_over = query.iter().all(|(_, _, state, _)| {
+        if *state == TerrainChunkState::Done {
+            return true;
         }
-        if main_mesh_visibility {
-            debug!("main_mesh_visibility: {}", chunk_coord);
-            for child in children.iter() {
-                if let Ok((_, mut visibility, generator)) = generator_query.get_mut(*child) {
-                    if generator.lod != chunk_lod.get_lod() {
-                        *visibility = Visibility::Hidden;
-                    }
+        false
+    });
+
+    if all_create_over.not() {
+        return;
+    }
+
+    for (children, chunk_lod, _, chunk_coord) in query.iter() {
+        debug!("main_mesh_visibility: {}", chunk_coord);
+        for child in children.iter() {
+            if let Ok((_, mut visibility, generator)) = generator_query.get_mut(*child) {
+                if generator.lod != chunk_lod.get_lod() {
+                    *visibility = Visibility::Hidden;
                 }
             }
         }

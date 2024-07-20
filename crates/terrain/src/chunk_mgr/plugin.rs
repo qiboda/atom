@@ -18,13 +18,13 @@ pub struct TerrainChunkPlugin;
 impl Plugin for TerrainChunkPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TerrainChunkMapper>()
+            .add_systems(Last, hidden_main_mesh)
             .add_systems(
                 Update,
                 (
                     // 按照事件发送的顺序执行
                     update_visible_chunks_lod,
                     update_to_wait_create_seam,
-                    hidden_main_mesh,
                     to_create_seam_mesh,
                     update_create_seam_mesh_over,
                 )

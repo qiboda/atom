@@ -19,7 +19,7 @@
         qef_normal_stddev: 0.1,
     ),
     clipmap_setting: (
-        lods: [
+        lod_vec: [
             (
                 chunk_chebyshev_distance: 0,
                 lod: 0,

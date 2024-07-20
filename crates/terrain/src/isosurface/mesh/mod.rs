@@ -87,7 +87,7 @@ pub fn create_main_mesh(
                 mesh: meshes.add(Mesh::from(mesh_info)),
                 material,
                 transform: Transform::from_translation(Vec3::splat(0.0)),
-                visibility: Visibility::Hidden,
+                visibility: Visibility::Visible,
                 ..Default::default()
             },
             RigidBody::Static,

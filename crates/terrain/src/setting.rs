@@ -11,7 +11,7 @@ pub struct TerrainChunkSetting {
     pub chunk_size: f32,
     /// 体素大小
     pub voxel_size: f32,
-    /// 是否启用octre的节点收缩
+    /// 是否启用octree的节点收缩
     pub qef_solver: bool,
     /// octree的深度对应的qef的阈值，小于这个阈值，则可以收缩节点。
     pub qef_solver_threshold: HashMap<u16, f32>,
@@ -82,13 +82,13 @@ impl TerrainClipMapLod {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TerrainClipMapSetting {
-    lods: Vec<TerrainClipMapLod>,
+    lod_vec: Vec<TerrainClipMapLod>,
 }
 
 impl Default for TerrainClipMapSetting {
     fn default() -> Self {
         Self {
-            lods: vec![
+            lod_vec: vec![
                 TerrainClipMapLod::new(0, 0),
                 TerrainClipMapLod::new(1, 1),
                 TerrainClipMapLod::new(2, 2),
@@ -105,7 +105,7 @@ impl TerrainClipMapSetting {
         terrain_chunk_coord_offset: TerrainChunkCoord,
     ) -> Option<&TerrainClipMapLod> {
         let chunk_coord_offset = terrain_chunk_coord_offset.chebyshev_distance();
-        self.lods
+        self.lod_vec
             .iter()
             .find(|lod| chunk_coord_offset <= lod.chunk_chebyshev_distance)
     }

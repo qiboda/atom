@@ -14,10 +14,15 @@
         "cSpell.words": [
             "Aabb",
             "bitfield",
+            "chebyshev",
+            "clipmap",
             "cmds",
             "datatables",
             "delinearize",
+            "despawn",
+            "egui",
             "flycam",
+            "fract",
             "hashbrown",
             "isosurface",
             "lacunarity",
@@ -43,5 +48,10 @@
             "wgpu",
             "wireframe"
         ],
+        "cSpell.enableFiletypes": [
+            "rust",
+            "wgsl"
+        ],
+        "cSpell.language": "en,en-GB,en-US,lorem",
     }
 }
