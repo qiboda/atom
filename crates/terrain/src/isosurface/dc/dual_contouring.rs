@@ -17,8 +17,8 @@ use super::octree::{
     address::NodeAddress,
     node::{Node, NodeType},
     tables::{
-        AxisType, SubNodeIndex, FACES_SUBNODES_NEIGHBOUR_PAIRS, FACES_TO_SUB_EDGES_NODES,
-        SUBEDGE_NODES, SUBNODE_EDGES_NEIGHBOUR_PAIRS, SUBNODE_FACES_NEIGHBOUR_PAIRS,
+        AxisType, SubNodeIndex, FACES_SUBNODES_NEIGHBOR_PAIRS, FACES_TO_SUB_EDGES_NODES,
+        SUBEDGE_NODES, SUBNODE_EDGES_NEIGHBOR_PAIRS, SUBNODE_FACES_NEIGHBOR_PAIRS,
     },
     OctreeProxy,
 };
@@ -129,7 +129,7 @@ fn node_proc(octree: &OctreeProxy, parent_node: &Node, visiter: &mut impl DualCo
     // 12 faces within subnode in one node
     // 作用在于连接八叉树划分下的Node. 不断细分面，并通过边，将不同Node内部的点连接起来。
     (0..AxisType::COUNT).for_each(|axis| {
-        for (left_node_index, right_node_index) in SUBNODE_FACES_NEIGHBOUR_PAIRS[axis] {
+        for (left_node_index, right_node_index) in SUBNODE_FACES_NEIGHBOR_PAIRS[axis] {
             if let (Some(left), Some(right)) = (
                 subnodes[left_node_index as usize],
                 subnodes[right_node_index as usize],
@@ -148,7 +148,7 @@ fn node_proc(octree: &OctreeProxy, parent_node: &Node, visiter: &mut impl DualCo
     // 连接八叉树划分下的Node. 且不断细分边，将不同Node内部的点连接起来。
     (0..AxisType::COUNT).for_each(|axis| {
         for (node_index_0, node_index_1, node_index_2, node_index_3) in
-            SUBNODE_EDGES_NEIGHBOUR_PAIRS[axis]
+            SUBNODE_EDGES_NEIGHBOR_PAIRS[axis]
         {
             if let (Some(node_1), Some(node_2), Some(node_3), Some(node_4)) = (
                 subnodes[node_index_0 as usize],
@@ -191,7 +191,7 @@ fn face_proc(
     visiter: &mut impl DualContouringVisiter,
 ) {
     trace!(
-        "face proc: axix type: {:?}, left node: {}, right node: {}",
+        "face proc: axis type: {:?}, left node: {}, right node: {}",
         face_nodes.axis_type,
         face_nodes.nodes[0].address,
         face_nodes.nodes[1].address
@@ -203,7 +203,7 @@ fn face_proc(
         | (NodeType::Branch, NodeType::Leaf)
         | (NodeType::Leaf, NodeType::Branch) => {
             let subnode_indices: [(octree::tables::VertexIndex, octree::tables::VertexIndex); 4] =
-                FACES_SUBNODES_NEIGHBOUR_PAIRS[face_nodes.axis_type as usize];
+                FACES_SUBNODES_NEIGHBOR_PAIRS[face_nodes.axis_type as usize];
             for (subnode_index_0, subnode_index_1) in subnode_indices {
                 let subnode_0 = get_child_node(octree, face_nodes.nodes[0], subnode_index_0);
                 let subnode_1 = get_child_node(octree, face_nodes.nodes[1], subnode_index_1);
@@ -287,7 +287,7 @@ fn edge_proc(
     visiter: &mut impl DualContouringVisiter,
 ) {
     trace!(
-        "edge proc: axix type: {:?}, 0 node: {}, 1 node: {}, 2 node: {}, 3 node: {}",
+        "edge proc: axis type: {:?}, 0 node: {}, 1 node: {}, 2 node: {}, 3 node: {}",
         edge_nodes.axis_type,
         edge_nodes.nodes[0].coord,
         edge_nodes.nodes[1].coord,
@@ -369,7 +369,7 @@ fn visit_leaf_edge(
         .all(|node| node.node_type == NodeType::Leaf));
 
     trace!(
-        "leaf edge proc: axix type: {:?}, 0 node: {}, 1 node: {}, 2 node: {}, 3 node: {}",
+        "leaf edge proc: axis type: {:?}, 0 node: {}, 1 node: {}, 2 node: {}, 3 node: {}",
         edge_nodes.axis_type,
         edge_nodes.nodes[0].coord,
         edge_nodes.nodes[1].coord,
@@ -447,17 +447,17 @@ fn visit_leaf_edge(
     // nodes). Because the triangles must share a diagonal, we know a
     // duplicate can't occur in both triangles. We also know that if any
     // duplicate exists, it will necessarily appear twice around this edge.
-    let tris = [[0, 2, 1], [1, 2, 3]];
-    let first_tri_num_dups = tris[0]
+    let triples = [[0, 2, 1], [1, 2, 3]];
+    let first_tri_num_duplicates = triples[0]
         .iter()
         .map(|&t| edge_nodes.is_dup[t] as u8)
         .sum::<u8>();
-    if first_tri_num_dups > 0 {
+    if first_tri_num_duplicates > 0 {
         // Skip the degenerate triangle.
-        let use_tri = if first_tri_num_dups == 1 {
-            tris[0]
+        let use_tri = if first_tri_num_duplicates == 1 {
+            triples[0]
         } else {
-            tris[1]
+            triples[1]
         };
         if flip {
             let flipped_tri = [use_tri[0], use_tri[2], use_tri[1]];

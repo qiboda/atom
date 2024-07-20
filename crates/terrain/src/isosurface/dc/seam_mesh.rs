@@ -77,7 +77,7 @@ async fn construct_octree_task(
     // 两倍的chunk size，因为是相邻chunk的边界
     let size = (chunk_size * 2.0 / lod_voxel_size) as u32;
     let shape = RuntimeShape::<u32, 3>::new([size, size, size]);
-    debug!("lod_voxle size: {}, size: {}", lod_voxel_size, size);
+    debug!("lod_voxel size: {}, size: {}", lod_voxel_size, size);
 
     let mut octree = Octree::new(shape);
     info!("seam_leaf_nodes size: {}", seam_leaf_nodes.len());

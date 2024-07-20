@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::tables::{EdgeIndex, FaceIndex, SubNodeIndex, VertexIndex, NEIGHBOUR_ADDRESS_TABLE};
+use super::tables::{EdgeIndex, FaceIndex, SubNodeIndex, VertexIndex, NEIGHBOR_ADDRESS_TABLE};
 
 use bevy::{reflect::Reflect, utils::hashbrown::HashMap};
 use bitfield_struct::bitfield;
@@ -106,10 +106,10 @@ impl NodeAddress {
         child_address
     }
 
-    pub fn get_neighbour_address(&self, face_index: FaceIndex) -> NodeAddress {
+    pub fn get_neighbor_address(&self, face_index: FaceIndex) -> NodeAddress {
         let mut address = *self;
 
-        let mut neighbour_address = NodeAddress::new();
+        let mut neighbor_address = NodeAddress::new();
         let mut shift_count = 0;
 
         loop {
@@ -117,26 +117,26 @@ impl NodeAddress {
                 return address;
             };
 
-            // if searching for right(+X), top(+Y) or front(+Z) neighbour
+            // if searching for right(+X), top(+Y) or front(+Z) neighbor
             // it should always have a greater slot value
-            // if searching for left(-X), bottom(-Y) or back(-Z) neighbour
-            // the neighbour should always have a smaller slot value,
+            // if searching for left(-X), bottom(-Y) or back(-Z) neighbor
+            // the neighbor should always have a smaller slot value,
             // OTHERWISE it means it belongs to a different parent
-            let (neighbour_sub_node_index, same_parent) =
-                NEIGHBOUR_ADDRESS_TABLE[face_index as usize][sub_node_index as usize];
+            let (neighbor_sub_node_index, same_parent) =
+                NEIGHBOR_ADDRESS_TABLE[face_index as usize][sub_node_index as usize];
 
-            neighbour_address.set_raw_address(
-                neighbour_address.raw_address() | (neighbour_sub_node_index as u64) << shift_count,
+            neighbor_address.set_raw_address(
+                neighbor_address.raw_address() | (neighbor_sub_node_index as u64) << shift_count,
             );
-            neighbour_address.set_depth(neighbour_address.depth() + 1);
+            neighbor_address.set_depth(neighbor_address.depth() + 1);
 
             address = address.get_parent_address();
             shift_count += 3;
             if same_parent {
-                neighbour_address.set_raw_address(
-                    neighbour_address.raw_address() | address.raw_address() << shift_count,
+                neighbor_address.set_raw_address(
+                    neighbor_address.raw_address() | address.raw_address() << shift_count,
                 );
-                neighbour_address.set_depth(neighbour_address.depth() + 1);
+                neighbor_address.set_depth(neighbor_address.depth() + 1);
                 break;
             }
 
@@ -145,7 +145,7 @@ impl NodeAddress {
             }
         }
 
-        neighbour_address
+        neighbor_address
     }
 }
 
@@ -379,41 +379,41 @@ mod tests {
     }
 
     #[test]
-    fn test_get_neighbour_address_simple() {
+    fn test_get_neighbor_address_simple() {
         let address = NodeAddress::root();
         assert_eq!(
-            address.get_neighbour_address(FaceIndex::Right),
+            address.get_neighbor_address(FaceIndex::Right),
             NodeAddress::root()
         );
 
         let address = NodeAddress::root();
         let child_address = address.get_child_address(SubNodeIndex::X0Y0Z0);
         assert_eq!(
-            child_address.get_neighbour_address(FaceIndex::Right),
+            child_address.get_neighbor_address(FaceIndex::Right),
             NodeAddress::new().with_raw_address(1).with_depth(2)
         );
     }
 
     #[test]
-    fn test_get_neighbour_address() {
+    fn test_get_neighbor_address() {
         let address = NodeAddress::root();
         let child_address_1 = address.get_child_address(SubNodeIndex::X0Y0Z0);
         let child_address_2 = address.get_child_address(SubNodeIndex::X0Y0Z1);
         assert_eq!(
-            child_address_1.get_neighbour_address(FaceIndex::Front),
+            child_address_1.get_neighbor_address(FaceIndex::Front),
             child_address_2
         );
     }
 
     #[test]
-    fn test_get_neighbour_address_crossing_node() {
+    fn test_get_neighbor_address_crossing_node() {
         let address = NodeAddress::root();
 
         let child_address_1 = address.get_child_address(SubNodeIndex::X1Y1Z0);
         let child_child_address_1 = child_address_1.get_child_address(SubNodeIndex::X0Y0Z0);
 
         assert_eq!(
-            child_child_address_1.get_neighbour_address(FaceIndex::Left),
+            child_child_address_1.get_neighbor_address(FaceIndex::Left),
             NodeAddress::new().with_raw_address(0o021).with_depth(3)
         );
 
@@ -421,7 +421,7 @@ mod tests {
         let child_child_address_2 = child_address_2.get_child_address(SubNodeIndex::X1Y0Z0);
 
         assert_eq!(
-            child_child_address_1.get_neighbour_address(FaceIndex::Left),
+            child_child_address_1.get_neighbor_address(FaceIndex::Left),
             child_child_address_2
         );
     }
@@ -497,12 +497,12 @@ mod tests {
         let address = NodeAddress::root();
         let child_address_2 = address.get_child_address(SubNodeIndex::X0Y1Z0);
 
-        let concated_address = child_address_1.concat_address(child_address_2);
+        let concatenate_address = child_address_1.concat_address(child_address_2);
 
         let address = NodeAddress::root();
         let child_address = address.get_child_address(SubNodeIndex::X0Y1Z1);
         let child_child_address = child_address.get_child_address(SubNodeIndex::X0Y1Z0);
-        assert_eq!(concated_address, child_child_address);
+        assert_eq!(concatenate_address, child_child_address);
 
         let address_1 = NodeAddress::root();
         let address_2 = NodeAddress::root();

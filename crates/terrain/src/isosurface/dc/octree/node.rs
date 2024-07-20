@@ -109,8 +109,8 @@ impl Node {
 
 impl Node {
     pub fn get_twin_face_address(&self, face_index: FaceIndex) -> FaceAddress {
-        let neighbour_address = self.address.get_neighbour_address(face_index);
-        let neighbour_face_index = match face_index {
+        let neighbor_address = self.address.get_neighbor_address(face_index);
+        let neighbor_face_index = match face_index {
             FaceIndex::Back => FaceIndex::Front,
             FaceIndex::Front => FaceIndex::Back,
             FaceIndex::Bottom => FaceIndex::Top,
@@ -119,8 +119,8 @@ impl Node {
             FaceIndex::Right => FaceIndex::Left,
         };
         FaceAddress {
-            node_address: neighbour_address,
-            face_index: neighbour_face_index,
+            node_address: neighbor_address,
+            face_index: neighbor_face_index,
         }
     }
 }
@@ -237,25 +237,25 @@ impl Node {
         let corners = Node::get_node_vertex_locations(*aabb);
         let mut avg_normal = Vec3A::ZERO;
         let mut count = 0;
-        let mut masspoint = Vec3A::ZERO;
+        let mut avg_loc = Vec3A::ZERO;
         for [v1, v2] in EDGE_VERTEX_PAIRS {
             let s1 = samples[v1 as usize];
             let s2: f32 = samples[v2 as usize];
 
             if (s1 < 0.0 && s2 >= 0.0) || (s1 >= 0.0 && s2 < 0.0) {
-                // Lerp the edge vertices.
+                // get the edge vertices.
                 let dir = if s2 > s1 { 1.0 } else { -1.0 };
                 let mut cross_pos =
                     corners[v1 as usize] + (corners[v2 as usize] - corners[v1 as usize]) * 0.5;
                 let mut step = (corners[v2 as usize] - corners[v1 as usize]) / 4.0;
-                let mut corss_value = sdf.sampler(cross_pos);
+                let mut cross_value = sdf.sampler(cross_pos);
                 for _i in 0..8 {
-                    if corss_value == 0.0 {
+                    if cross_value == 0.0 {
                         break;
                     } else {
-                        let offset_dir = if corss_value < 0.0 { dir } else { -dir };
+                        let offset_dir = if cross_value < 0.0 { dir } else { -dir };
                         cross_pos += offset_dir * step;
-                        corss_value = sdf.sampler(cross_pos);
+                        cross_value = sdf.sampler(cross_pos);
                         step /= 2.0;
                     }
                 }
@@ -281,7 +281,7 @@ impl Node {
                 );
 
                 avg_normal += central_normal;
-                masspoint += Vec3A::from(cross_pos);
+                avg_loc += Vec3A::from(cross_pos);
                 count += 1;
 
                 trace!(
@@ -300,7 +300,7 @@ impl Node {
         trace!("estimate_interior_vertex_qef, end");
 
         avg_normal /= count as f32;
-        masspoint /= count as f32;
-        (qef, masspoint, avg_normal.normalize())
+        avg_loc /= count as f32;
+        (qef, avg_loc, avg_normal.normalize())
     }
 }

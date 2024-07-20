@@ -64,7 +64,7 @@ pub struct TerrainChunkCreateSeamMeshEvent {
     pub seam_mesh_id: SeamMeshId,
 }
 
-pub(crate) fn read_chunk_udpate_lod_event(
+pub(crate) fn read_chunk_update_lod_event(
     mut event_reader: EventReader<TerrainChunkCreateMainMeshEvent>,
     chunk_children: Query<&Children, With<TerrainChunk>>,
     chunk_generator: Query<&TerrainChunkMainGenerator>,
@@ -93,19 +93,33 @@ pub(crate) fn read_chunk_udpate_lod_event(
 }
 
 /// 获取周围的chunk，如果有两个或者以上的chunk，则创建缝隙，lod选择尽可能小的。
-pub(crate) fn read_chunk_udpate_seam_event(
+pub(crate) fn read_chunk_update_seam_event(
     mut event_reader: EventReader<TerrainChunkCreateSeamMeshEvent>,
+    chunk_query: Query<&Children, With<TerrainChunk>>,
+    mut seam_query: Query<(&mut TerrainChunkSeamGenerator, &mut SeamMeshState)>,
     mut commands: Commands,
 ) {
     for event in event_reader.read() {
-        commands
-            .spawn((
-                TerrainChunkSeamGenerator {
-                    seam_mesh_id: event.seam_mesh_id,
-                    lod_map: HashMap::new(),
-                },
-                SeamMeshState::ConstructOctree,
-            ))
-            .set_parent(event.chunk_entity);
+        if let Ok(children) = chunk_query.get(event.chunk_entity) {
+            let mut find_seam_generator = false;
+            for child in children {
+                if let Ok((mut generator, mut state)) = seam_query.get_mut(*child) {
+                    generator.seam_mesh_id = event.seam_mesh_id;
+                    *state = SeamMeshState::ConstructOctree;
+                    find_seam_generator = true;
+                }
+            }
+            if find_seam_generator.not() {
+                commands
+                    .spawn((
+                        TerrainChunkSeamGenerator {
+                            seam_mesh_id: event.seam_mesh_id,
+                            lod_map: HashMap::new(),
+                        },
+                        SeamMeshState::ConstructOctree,
+                    ))
+                    .set_parent(event.chunk_entity);
+            }
+        }
     }
 }

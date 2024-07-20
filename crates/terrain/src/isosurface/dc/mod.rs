@@ -15,7 +15,7 @@ use octree::address::{construct_octree_depth_coord_map, NodeAddress};
 
 use super::{
     comp::{
-        read_chunk_udpate_lod_event, read_chunk_udpate_seam_event, TerrainChunkCreateMainMeshEvent,
+        read_chunk_update_lod_event, read_chunk_update_seam_event, TerrainChunkCreateMainMeshEvent,
         TerrainChunkCreateSeamMeshEvent,
     },
     mesh::{create_main_mesh, create_seam_mesh},
@@ -49,9 +49,9 @@ impl Plugin for DualContouringPlugin {
         .add_systems(
             Update,
             (
-                read_chunk_udpate_lod_event,
+                read_chunk_update_lod_event,
                 main_mesh::construct_octree,
-                main_mesh::simplity_octree,
+                main_mesh::simplify_octree,
                 main_mesh::dual_contouring,
                 create_main_mesh,
             )
@@ -61,7 +61,7 @@ impl Plugin for DualContouringPlugin {
         .add_systems(
             Update,
             (
-                read_chunk_udpate_seam_event,
+                read_chunk_update_seam_event,
                 seam_mesh::construct_octree,
                 // seam_mesh::simplity_octree,
                 seam_mesh::dual_contouring,

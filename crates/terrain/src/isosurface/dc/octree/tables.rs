@@ -29,7 +29,7 @@ use strum_macros::EnumIter;
 
 bitflags::bitflags! {
     /**
-     *  If Vertex or edge or face is axis left/buttom/back, then the value is 0, other than 1.
+     *  If Vertex or edge or face is axis left/bottom/back, then the value is 0, other than 1.
      */
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct AxisValue: u8 {
@@ -172,7 +172,7 @@ pub type SubNodeIndex = VertexIndex;
 //
 // 连接两个Node的Face，根据方向轴，找到分解的四个面的两侧的SubNodeIndex
 // 在输入轴方向，从小到大，连接的SubNodeIndex， ==0表示在输入轴的左边， ==1表示在输入轴的右边
-pub const FACES_SUBNODES_NEIGHBOUR_PAIRS: [[(SubNodeIndex, SubNodeIndex); 4]; AxisType::COUNT] = [
+pub const FACES_SUBNODES_NEIGHBOR_PAIRS: [[(SubNodeIndex, SubNodeIndex); 4]; AxisType::COUNT] = [
     // x axis
     [
         (SubNodeIndex::X1Y0Z0, SubNodeIndex::X0Y0Z0),
@@ -214,7 +214,7 @@ pub const FACES_SUBNODES_NEIGHBOUR_PAIRS: [[(SubNodeIndex, SubNodeIndex); 4]; Ax
 // 在一个Node中，坐标轴垂直的内部的四个面，所对应的SubNodeIndex
 // 根据输入轴，找到面相邻的四个SubNodeIndex
 // 轴垂直穿过的Node中间内部的面, 负半轴的SubNodeIndex,在tuple的左边, 正半轴的SubNodeIndex,在tuple的右边
-pub const SUBNODE_FACES_NEIGHBOUR_PAIRS: [[(SubNodeIndex, SubNodeIndex); 4]; AxisType::COUNT] = [
+pub const SUBNODE_FACES_NEIGHBOR_PAIRS: [[(SubNodeIndex, SubNodeIndex); 4]; AxisType::COUNT] = [
     // x axis
     [
         (SubNodeIndex::X0Y0Z0, SubNodeIndex::X1Y0Z0),
@@ -255,7 +255,7 @@ pub const SUBNODE_FACES_NEIGHBOUR_PAIRS: [[(SubNodeIndex, SubNodeIndex); 4]; Axi
 //
 // 根据边的朝向，获取负半轴和正半轴的四个SubNodeIndex.
 // node index 排列顺序间 EdgeNodes的注释。
-pub const SUBNODE_EDGES_NEIGHBOUR_PAIRS: [[(
+pub const SUBNODE_EDGES_NEIGHBOR_PAIRS: [[(
     SubNodeIndex,
     SubNodeIndex,
     SubNodeIndex,
@@ -379,10 +379,10 @@ pub enum FaceIndex {
 // (4)o--------------o(5)
 //
 //
-/// @brief Node neighbour table
+/// @brief Node neighbor table
 ///  找到一个subnode在FaceIndex的方向是否有邻居subnode,以及相邻的Subnode的位置
 ///
-pub const NEIGHBOUR_ADDRESS_TABLE: [[(SubNodeIndex, bool); SubNodeIndex::COUNT]; FaceIndex::COUNT] = [
+pub const NEIGHBOR_ADDRESS_TABLE: [[(SubNodeIndex, bool); SubNodeIndex::COUNT]; FaceIndex::COUNT] = [
     // left
     [
         (SubNodeIndex::X1Y0Z0, false),

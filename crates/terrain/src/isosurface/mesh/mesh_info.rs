@@ -25,19 +25,19 @@ impl MeshInfo {
         debug_assert!(self.indices.len() % 3 == 0);
     }
 
-    pub fn get_vertice_positions(&self) -> &Vec<Vec3> {
+    pub fn get_vertex_positions(&self) -> &Vec<Vec3> {
         &self.positions
     }
 
-    pub fn set_vertice_positions(&mut self, positions: Vec<Vec3>) {
+    pub fn set_vertex_positions(&mut self, positions: Vec<Vec3>) {
         self.positions = positions;
     }
 
-    pub fn get_vertice_normals(&self) -> &Vec<Vec3> {
+    pub fn get_vertex_normals(&self) -> &Vec<Vec3> {
         &self.normals
     }
 
-    pub fn set_vertice_normals(&mut self, normals: Vec<Vec3>) {
+    pub fn set_vertex_normals(&mut self, normals: Vec<Vec3>) {
         self.normals = normals;
     }
 
@@ -63,11 +63,11 @@ impl From<&MeshInfo> for Mesh {
         );
         mesh.insert_attribute(
             Mesh::ATTRIBUTE_POSITION,
-            mesh_cache.get_vertice_positions().clone(),
+            mesh_cache.get_vertex_positions().clone(),
         );
         mesh.insert_attribute(
             Mesh::ATTRIBUTE_NORMAL,
-            mesh_cache.get_vertice_normals().clone(),
+            mesh_cache.get_vertex_normals().clone(),
         );
         debug!("mesh cache from: {:?}", mesh_cache.get_indices());
         mesh.insert_indices(bevy::render::mesh::Indices::U32(
@@ -86,6 +86,6 @@ impl From<&MeshInfo> for Collider {
             indices.push(index.try_into().unwrap());
         }
 
-        Collider::trimesh(mesh_info.get_vertice_positions().clone(), indices)
+        Collider::trimesh(mesh_info.get_vertex_positions().clone(), indices)
     }
 }

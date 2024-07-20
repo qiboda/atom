@@ -61,16 +61,16 @@ pub fn hidden_main_mesh(
     mut generator_query: Query<(&ViewVisibility, &mut Visibility, &TerrainChunkMainGenerator)>,
 ) {
     for (children, chunk_lod, chunk_coord) in query.iter() {
-        let mut main_mesh_visiblity = false;
+        let mut main_mesh_visibility = false;
         for child in children.iter() {
             if let Ok((view_visibility, _, generator)) = generator_query.get_mut(*child) {
                 if generator.lod == chunk_lod.get_lod() && view_visibility.get() {
-                    main_mesh_visiblity = true;
+                    main_mesh_visibility = true;
                 }
             }
         }
-        if main_mesh_visiblity {
-            debug!("main_mesh_visiblity: {}", chunk_coord);
+        if main_mesh_visibility {
+            debug!("main_mesh_visibility: {}", chunk_coord);
             for child in children.iter() {
                 if let Ok((_, mut visibility, generator)) = generator_query.get_mut(*child) {
                     if generator.lod != chunk_lod.get_lod() {
@@ -113,18 +113,18 @@ pub fn to_create_seam_mesh(
         }
     }
 
-    let mut udpate_seam_chunk_coords = HashSet::new();
+    let mut update_seam_chunk_coords = HashSet::new();
     to_create_seam_chunks.iter().for_each(|x| {
         for i in 0..ConstShape3i64::<2, 2, 2>::SIZE {
             let offset: TerrainChunkCoord = ConstShape3i64::<2, 2, 2>.delinearize(i).into();
             // 增加轴向负方向的8个chunk，其中一个是x。
             // 因为负方向的chunk和 x共享边界，所以需要更新。
             let new_chunk_coord = *x - &offset;
-            udpate_seam_chunk_coords.insert(new_chunk_coord);
+            update_seam_chunk_coords.insert(new_chunk_coord);
         }
     });
 
-    for chunk_coord in udpate_seam_chunk_coords {
+    for chunk_coord in update_seam_chunk_coords {
         if let Some(entity) = chunk_mapper.get_chunk_entity_by_coord(chunk_coord) {
             if let Ok((mut state, mut seam_mesh_id_generator)) = query.p2().get_mut(*entity) {
                 let seam_mesh_id = seam_mesh_id_generator.gen();
@@ -155,81 +155,27 @@ pub fn update_create_seam_mesh_over(
         ),
         With<TerrainChunk>,
     >,
-    mut generator_query: Query<(
-        Option<&mut Visibility>,
-        &mut SeamMeshState,
-        &TerrainChunkSeamGenerator,
-    )>,
+    mut generator_query: Query<(&SeamMeshState, &TerrainChunkSeamGenerator)>,
 ) {
     for (children, mut chunk_state, chunk_coord, id_generator) in query.iter_mut() {
         if TerrainChunkState::CreateSeamMesh == *chunk_state {
             let mut count = 0;
             for child in children {
-                if let Ok((visibility, mut state, seam_generator)) = generator_query.get_mut(*child)
-                {
+                if let Ok((state, seam_generator)) = generator_query.get_mut(*child) {
                     if *state == SeamMeshState::Done {
                         count += 1;
-                        info!(
-                            "update_create_seam_mesh_over first: {}, {:?} == {:?}",
-                            chunk_coord,
-                            id_generator.current(),
-                            seam_generator.seam_mesh_id
-                        );
                         if id_generator.current() == seam_generator.seam_mesh_id {
-                            info!("update_create_seam_mesh_over: {}", chunk_coord);
+                            info!(
+                                "update_create_seam_mesh_over: {}, {:?}",
+                                chunk_coord,
+                                id_generator.current()
+                            );
                             *chunk_state = TerrainChunkState::Done;
-                            if let Some(mut visibility) = visibility {
-                                *visibility = Visibility::Visible;
-                            }
-                        } else {
-                            *state = SeamMeshState::PendingRemove;
                         }
                     }
                 }
             }
-            assert!(count < 3);
-        }
-    }
-}
-
-pub fn remove_unused_seam_mesh(
-    chunk_query: Query<(&Children, &TerrainChunkCoord, &SeamMeshIdGenerator), With<TerrainChunk>>,
-    query: Query<(
-        Entity,
-        &Parent,
-        &SeamMeshState,
-        Option<&ViewVisibility>,
-        &TerrainChunkSeamGenerator,
-    )>,
-    mut commands: Commands,
-) {
-    for (entity, parent, state, _, _) in query.iter() {
-        if *state == SeamMeshState::PendingRemove {
-            let mut can_destroy = false;
-            if let Ok((children, _, id_generator)) = chunk_query.get(parent.get()) {
-                for child in children.iter() {
-                    if let Ok((_, _, _, view_visibility, seam_generator)) = query.get(*child) {
-                        if seam_generator.seam_mesh_id == id_generator.current() {
-                            match view_visibility {
-                                Some(vv) => {
-                                    if vv.get() {
-                                        can_destroy = true;
-                                    }
-                                }
-                                None => {
-                                    can_destroy = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if can_destroy {
-                let (_, coord, _) = chunk_query.get(parent.get()).unwrap();
-                info!("destroy seam mesh: {}", coord);
-                commands.entity(entity).despawn_recursive();
-            }
+            assert!(count < 2);
         }
     }
 }

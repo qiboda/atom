@@ -47,7 +47,7 @@ async fn construct_octree_task(
     let offset = chunk_coord * chunk_size;
     let size = (chunk_size / lod_voxel_size) as u32 + 1;
     let shape = RuntimeShape::<u32, 3>::new([size, size, size]);
-    debug!("lod_voxle size: {}, size: {}", lod_voxel_size, size);
+    debug!("lod_voxel size: {}, size: {}", lod_voxel_size, size);
 
     let mut samples = Vec::with_capacity(shape.usize());
     let surface: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
@@ -134,7 +134,7 @@ pub(crate) fn construct_octree(
     }
 }
 
-async fn simplity_octree_task(
+async fn simplify_octree_task(
     entity: Entity,
     deep_coord_mapper: Arc<RwLock<DepthCoordMap>>,
     address_node_map: Arc<RwLock<HashMap<NodeAddress, Node>>>,
@@ -143,7 +143,7 @@ async fn simplity_octree_task(
     chunk_coord: TerrainChunkCoord,
     lod: LodType,
 ) -> Entity {
-    let _span = debug_span!("main mesh simplity octree task", %chunk_coord, lod).entered();
+    let _span = debug_span!("main mesh simplify octree task", %chunk_coord, lod).entered();
 
     Octree::simplify_octree(
         address_node_map.clone(),
@@ -158,7 +158,7 @@ async fn simplity_octree_task(
 }
 
 #[allow(clippy::type_complexity)]
-pub(crate) fn simplity_octree(
+pub(crate) fn simplify_octree(
     mut task_pool: AsyncTaskPool<Entity>,
     chunk_query: Query<&TerrainChunkCoord, With<TerrainChunk>>,
     mut chunk_generator_query: ParamSet<(
@@ -192,7 +192,7 @@ pub(crate) fn simplity_octree(
                 let qef_threshold_map = settings.chunk_setting.qef_solver_threshold.clone();
                 let chunk_coord = chunk_query.get(parent.get()).unwrap();
                 let lod = generator.lod;
-                task_pool.spawn(simplity_octree_task(
+                task_pool.spawn(simplify_octree_task(
                     entity,
                     mapper,
                     address_node_map,

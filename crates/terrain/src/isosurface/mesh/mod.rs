@@ -53,7 +53,7 @@ pub fn create_main_mesh(
 
         debug!(
             "create main mesh: position: {}, indices:{}",
-            mesh_info.get_vertice_positions().len(),
+            mesh_info.get_vertex_positions().len(),
             mesh_info.get_indices().len(),
         );
 
@@ -111,13 +111,19 @@ pub fn create_seam_mesh(
         With<TerrainChunk>,
     >,
     mut query: Query<
-        (Entity, &Parent, &MeshInfo, &mut SeamMeshState),
+        (
+            Entity,
+            &Parent,
+            &MeshInfo,
+            &mut SeamMeshState,
+            Option<&Handle<Mesh>>,
+        ),
         With<TerrainChunkSeamGenerator>,
     >,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
 ) {
-    for (seam_generator_entity, parent, mesh_info, mut state) in query.iter_mut() {
+    for (seam_generator_entity, parent, mesh_info, mut state, mesh_handle) in query.iter_mut() {
         if *state != SeamMeshState::CreateMesh {
             continue;
         }
@@ -140,7 +146,7 @@ pub fn create_seam_mesh(
 
         debug!(
             "create seam mesh: position: {}, indices:{}",
-            mesh_info.get_vertice_positions().len(),
+            mesh_info.get_vertex_positions().len(),
             mesh_info.get_indices().len(),
         );
 
@@ -170,21 +176,30 @@ pub fn create_seam_mesh(
             }
         }
 
-        commands.entity(seam_generator_entity).insert((
-            MaterialMeshBundle {
-                mesh: meshes.add(Mesh::from(mesh_info)),
-                material,
-                transform: Transform::from_translation(Vec3::splat(0.0)),
-                visibility: Visibility::Hidden,
-                ..Default::default()
-            },
-            RigidBody::Static,
-            Collider::from(mesh_info),
-            Wireframe,
-            WireframeColor {
-                color: LinearRgba::RED.into(),
-            },
-        ));
+        match mesh_handle {
+            Some(handle) => {
+                let mesh = meshes.get_mut(handle.id()).unwrap();
+                *mesh = Mesh::from(mesh_info);
+                warn!("replace mesh");
+            }
+            None => {
+                commands.entity(seam_generator_entity).insert((
+                    MaterialMeshBundle {
+                        mesh: meshes.add(Mesh::from(mesh_info)),
+                        material,
+                        transform: Transform::from_translation(Vec3::splat(0.0)),
+                        visibility: Visibility::Visible,
+                        ..Default::default()
+                    },
+                    RigidBody::Static,
+                    Collider::from(mesh_info),
+                    Wireframe,
+                    WireframeColor {
+                        color: LinearRgba::RED.into(),
+                    },
+                ));
+            }
+        }
 
         *state = SeamMeshState::Done;
         info!("create seam mesh end: {}", terrain_chunk_coord);
