@@ -1,3 +1,4 @@
+pub mod builder;
 /// layer tag crate.
 /// tree data structure for layer tag
 ///
@@ -9,5 +10,3 @@ pub mod layertag;
 pub mod registry;
 pub mod single_container;
 pub mod tag;
-pub mod builder;
-

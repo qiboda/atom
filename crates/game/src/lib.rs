@@ -2,18 +2,15 @@ use atom_camera::CameraManagerPlugin;
 use atom_internal::plugins::AtomDefaultPlugins;
 use atom_utils::follow::TransformFollowPlugin;
 use avian3d::{debug_render::PhysicsDebugPlugin, PhysicsPlugins};
-use bevy::{
-    app::Plugin,
-    prelude::*,
-};
-use bevy_console::{AddConsoleCommand};
+use bevy::{app::Plugin, prelude::*};
+use bevy_console::AddConsoleCommand;
 use bevy_tnua::controller::TnuaControllerPlugin;
 use bevy_tnua_avian3d::TnuaAvian3dPlugin;
 use input::setting::{
     input_setting_persist_command, update_player_input, PlayerAction, PlayerInputSetting,
     PlayerInputSettingPersistCommand,
 };
-use leafwing_input_manager::plugin::{InputManagerPlugin};
+use leafwing_input_manager::plugin::InputManagerPlugin;
 use scene::init_scene;
 use settings::{setting_path::SettingsPath, SettingPlugin};
 use state::{next_to_init_game_state, GameState};
@@ -32,7 +29,6 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-
         app.add_plugins(AtomDefaultPlugins)
             .add_plugins(SettingPlugin::<PlayerInputSetting> {
                 paths: SettingsPath::default(),

@@ -64,7 +64,7 @@ pub(crate) fn persist<S>(
                         });
 
                         std::fs::write(source_path.join(&filename), settings_str).unwrap_or_else(
-                            |err| 
+                        |err|
                             panic!("couldn't persist the settings {:?} while trying to write the string tg disk: {:?}", filename.as_os_str(), err)
                         );
 

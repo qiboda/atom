@@ -1,4 +1,7 @@
-use bevy::{prelude::{Component, Vec3}, reflect::Reflect};
+use bevy::{
+    prelude::{Component, Vec3},
+    reflect::Reflect,
+};
 
 #[derive(Debug, Component, Reflect)]
 pub struct VisibleTerrainRange {

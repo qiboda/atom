@@ -1,9 +1,9 @@
 pub mod bundle;
 pub mod comp;
 pub mod event;
-pub mod plugin;
 pub mod layertag;
 pub mod node;
+pub mod plugin;
 
 // 主动和被动技能不需要区分，因为技能可以根据是否是用户特定的事件来触发来决定。
 

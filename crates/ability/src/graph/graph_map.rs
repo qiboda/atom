@@ -62,14 +62,16 @@ impl EffectGraphBuilderMapExt for App {
         self.register_type::<T>();
 
         let graph_builder = Box::<T>::default();
-        if let Err(e) = self.world_mut()
-                    .get_resource_mut::<EffectGraphBuilderMap>()
-                    .expect("EffectGraphBuilderMap must insert before insert_effect_graph_builder!")
-                    .map
-                    .try_insert(
-                        graph_builder.get_effect_graph_name().to_string(),
-                        graph_builder,
-                    ) {
+        if let Err(e) = self
+            .world_mut()
+            .get_resource_mut::<EffectGraphBuilderMap>()
+            .expect("EffectGraphBuilderMap must insert before insert_effect_graph_builder!")
+            .map
+            .try_insert(
+                graph_builder.get_effect_graph_name().to_string(),
+                graph_builder,
+            )
+        {
             error!("insert_effect_graph_builder error: {}", e)
         }
 

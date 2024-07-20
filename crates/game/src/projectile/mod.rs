@@ -22,12 +22,10 @@
 /// 跟踪 -> 朝向变化
 /// 旋转(转向)速度曲线(角速度，角加速度)，匀速
 pub mod event;
-pub mod plugin;
 pub mod movement;
+pub mod plugin;
 
-use bevy::{
-    prelude::{Component, Entity},
-};
+use bevy::prelude::{Component, Entity};
 
 #[derive(Debug, Default, Component)]
 pub struct Projectile;
