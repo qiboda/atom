@@ -1,7 +1,6 @@
 use std::ops::Not;
 
 use bevy::{prelude::*, utils::hashbrown::HashMap};
-use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::chunk_mgr::chunk::{bundle::TerrainChunk, chunk_lod::LodType, state::SeamMeshId};
 
@@ -49,7 +48,6 @@ pub struct TerrainChunkMainGenerator {
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub struct TerrainChunkSeamGenerator {
     pub(crate) seam_mesh_id: SeamMeshId,
-    pub lod_map: HashMap<TerrainChunkCoord, LodType>,
 }
 
 #[derive(Debug, Event, Clone, Copy)]
@@ -71,6 +69,7 @@ pub(crate) fn read_chunk_update_lod_event(
     mut commands: Commands,
 ) {
     for event in event_reader.read() {
+        info!("read_chunk_update_lod_event");
         let mut find_lod_generator = false;
         if let Ok(chunk_children) = chunk_children.get(event.entity) {
             for child in chunk_children.iter() {
@@ -82,10 +81,12 @@ pub(crate) fn read_chunk_update_lod_event(
             }
         }
         if find_lod_generator.not() {
+            info!(": {:?}", event.lod);
             commands
                 .spawn((
                     TerrainChunkMainGenerator { lod: event.lod },
                     MainMeshState::ConstructOctree,
+                    Name::new("terrain chunk main mesh"),
                 ))
                 .set_parent(event.entity);
         }
@@ -114,9 +115,9 @@ pub(crate) fn read_chunk_update_seam_event(
                     .spawn((
                         TerrainChunkSeamGenerator {
                             seam_mesh_id: event.seam_mesh_id,
-                            lod_map: HashMap::new(),
                         },
                         SeamMeshState::ConstructOctree,
+                        Name::new("terrain chunk seam mesh"),
                     ))
                     .set_parent(event.chunk_entity);
             }

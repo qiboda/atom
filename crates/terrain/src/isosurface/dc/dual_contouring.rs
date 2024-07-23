@@ -81,7 +81,6 @@ pub trait DualContouringVisiter {
     fn visit_quad(&mut self, nodes: [&Node; 4]);
 }
 
-#[instrument(skip_all)]
 pub fn dual_contouring(octree: &OctreeProxy, visiter: &mut impl DualContouringVisiter) {
     let root_address = NodeAddress::root();
     if let Some(root_node) = octree.node_addresses.get(&root_address) {
@@ -89,11 +88,13 @@ pub fn dual_contouring(octree: &OctreeProxy, visiter: &mut impl DualContouringVi
     }
 }
 
+#[derive(Debug)]
 struct FaceNodes<'a> {
     pub nodes: [&'a Node; 2],
     pub axis_type: AxisType,
 }
 
+#[derive(Debug)]
 struct EdgeNodes<'a> {
     // node的存储顺序是，沿着axis的正方向看去，
     // 2 3
@@ -107,7 +108,6 @@ struct EdgeNodes<'a> {
     pub is_dup: [bool; 4],
 }
 
-#[instrument(skip_all)]
 fn node_proc(octree: &OctreeProxy, parent_node: &Node, visiter: &mut impl DualContouringVisiter) {
     trace!("node proc: {:?}", parent_node.address);
 
@@ -184,7 +184,6 @@ fn get_child_node<'a>(
     }
 }
 
-#[instrument(skip_all)]
 fn face_proc(
     octree: &OctreeProxy,
     face_nodes: &FaceNodes,
@@ -280,7 +279,6 @@ fn face_proc(
     }
 }
 
-#[instrument(skip_all)]
 fn edge_proc(
     octree: &OctreeProxy,
     edge_nodes: EdgeNodes,
@@ -302,10 +300,10 @@ fn edge_proc(
     {
         if octree.is_seam {
             // TODO 过滤掉了mesh的索引，但没有删除Position，需要去压缩数据。
-            let pos_0 = edge_nodes.nodes[0].address.get_pos_by_depth(2).unwrap();
-            let pos_1 = edge_nodes.nodes[1].address.get_pos_by_depth(2).unwrap();
-            let pos_2 = edge_nodes.nodes[2].address.get_pos_by_depth(2).unwrap();
-            let pos_3 = edge_nodes.nodes[3].address.get_pos_by_depth(2).unwrap();
+            let pos_0 = edge_nodes.nodes[0].address.get_pos_by_depth(1).unwrap();
+            let pos_1 = edge_nodes.nodes[1].address.get_pos_by_depth(1).unwrap();
+            let pos_2 = edge_nodes.nodes[2].address.get_pos_by_depth(1).unwrap();
+            let pos_3 = edge_nodes.nodes[3].address.get_pos_by_depth(1).unwrap();
             if pos_0 == pos_1 && pos_0 == pos_2 && pos_0 == pos_3 {
                 return;
             }
@@ -357,7 +355,6 @@ fn edge_proc(
     }
 }
 
-#[instrument(skip_all)]
 fn visit_leaf_edge(
     octree: &OctreeProxy,
     edge_nodes: EdgeNodes,

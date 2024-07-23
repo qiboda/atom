@@ -57,6 +57,24 @@ const fn get_axis_value(
     (x_axis_value.bits() + (y_axis_value.bits() << 1) + (z_axis_value.bits() << 2)) as isize
 }
 
+/*
+
+ Vertex and Edge Index Map
+
+       2-------1------3
+      /.             /|
+     10.           11 |
+    /  4           /  5
+   /   .          /   |     ^ Y
+  6-------3------7    |     |
+  |    0 . . 0 . |. . 1     --> X
+  |   .          |   /     /
+  6  8           7  9     / z
+  | .            | /     |/
+  |.             |/
+  4-------2------5
+
+*/
 /**
  * Edge Index Map
  *
@@ -92,6 +110,60 @@ pub enum EdgeIndex {
     ZAxisX1Y1 = 4 * 2 + 1 * 1 + 2 * 1,
 }
 
+/*
+
+ Vertex and Edge Index Map
+
+       2-------1------3
+      /.             /|
+     10.           11 |
+    /  4           /  5
+   /   .          /   |     ^ Y
+  6-------3------7    |     |
+  |    0 . . 0 . |. . 1     --> X
+  |   .          |   /     /
+  6  8           7  9     / z
+  | .            | /     |/
+  |.             |/
+  4-------2------5
+
+*/
+pub const TWIN_EDGE_INDEX: [EdgeIndex; EdgeIndex::COUNT] = [
+    // x axis
+    EdgeIndex::XAxisY1Z1,
+    EdgeIndex::XAxisY0Z1,
+    EdgeIndex::XAxisY1Z0,
+    EdgeIndex::XAxisY0Z0,
+    // y axis
+    EdgeIndex::YAxisX1Z1,
+    EdgeIndex::YAxisX0Z1,
+    EdgeIndex::YAxisX1Z0,
+    EdgeIndex::YAxisX0Z0,
+    // z axis
+    EdgeIndex::ZAxisX1Y1,
+    EdgeIndex::ZAxisX0Y1,
+    EdgeIndex::ZAxisX1Y0,
+    EdgeIndex::ZAxisX0Y0,
+];
+
+/*
+
+ Vertex and Edge Index Map
+
+       2-------1------3
+      /.             /|
+     10.           11 |
+    /  4           /  5
+   /   .          /   |     ^ Y
+  6-------3------7    |     |
+  |    0 . . 0 . |. . 1     --> X
+  |   .          |   /     /
+  6  8           7  9     / z
+  | .            | /     |/
+  |.             |/
+  4-------2------5
+
+*/
 // x, y, z => xyz
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount, Hash)]
 pub enum VertexIndex {
@@ -104,6 +176,35 @@ pub enum VertexIndex {
     X0Y1Z1 = get_axis_value(XAxisValue::Zero, YAxisValue::One, ZAxisValue::One),
     X1Y1Z1 = get_axis_value(XAxisValue::One, YAxisValue::One, ZAxisValue::One),
 }
+
+/*
+
+ Vertex and Edge Index Map
+
+       2-------1------3
+      /.             /|
+     10.           11 |
+    /  4           /  5
+   /   .          /   |     ^ Y
+  6-------3------7    |     |
+  |    0 . . 0 . |. . 1     --> X
+  |   .          |   /     /
+  6  8           7  9     / z
+  | .            | /     |/
+  |.             |/
+  4-------2------5
+
+*/
+pub const TWIN_VERTEX_INDEX: [VertexIndex; VertexIndex::COUNT] = [
+    VertexIndex::X1Y1Z1,
+    VertexIndex::X0Y1Z1,
+    VertexIndex::X1Y0Z1,
+    VertexIndex::X0Y0Z1,
+    VertexIndex::X1Y1Z0,
+    VertexIndex::X0Y1Z0,
+    VertexIndex::X1Y0Z0,
+    VertexIndex::X0Y0Z0,
+];
 
 impl VertexIndex {
     pub fn to_array(&self) -> [u8; 3] {
@@ -153,7 +254,12 @@ pub const EDGE_VERTEX_PAIRS: [[VertexIndex; 2]; EdgeIndex::COUNT] = [
     [VertexIndex::X1Y1Z0, VertexIndex::X1Y1Z1],
 ];
 
+pub const EDGE_SUBNODE_PAIRS: [[SubNodeIndex; 2]; EdgeIndex::COUNT] = EDGE_VERTEX_PAIRS;
+
 pub type SubNodeIndex = VertexIndex;
+pub const FACE_SUBNODE_COUNT: usize = SubNodeIndex::COUNT / 2;
+pub const EDGE_SUBNODE_COUNT: usize = SubNodeIndex::COUNT / 4;
+pub const VERTEX_SUBNODE_COUNT: usize = SubNodeIndex::COUNT / 8;
 
 //  Node Point and Subnode Layout
 //
@@ -255,12 +361,8 @@ pub const SUBNODE_FACES_NEIGHBOR_PAIRS: [[(SubNodeIndex, SubNodeIndex); 4]; Axis
 //
 // 根据边的朝向，获取负半轴和正半轴的四个SubNodeIndex.
 // node index 排列顺序间 EdgeNodes的注释。
-pub const SUBNODE_EDGES_NEIGHBOR_PAIRS: [[(
-    SubNodeIndex,
-    SubNodeIndex,
-    SubNodeIndex,
-    SubNodeIndex,
-); 2]; AxisType::COUNT] = [
+pub const SUBNODE_EDGES_NEIGHBOR_PAIRS: [[(SubNodeIndex, SubNodeIndex, SubNodeIndex, SubNodeIndex);
+    2]; AxisType::COUNT] = [
     // two group indices is x axis
     [
         (
@@ -363,6 +465,142 @@ pub enum FaceIndex {
     Front = 5,
 }
 
+pub const TWIN_FACE_INDEX: [FaceIndex; FaceIndex::COUNT] = [
+    FaceIndex::Right,
+    FaceIndex::Left,
+    FaceIndex::Top,
+    FaceIndex::Bottom,
+    FaceIndex::Front,
+    FaceIndex::Back,
+];
+
+//  Node Point and Subnode Layout
+//
+//      (2)o--------------o(3)
+//        /.             /|
+//       / .            / |
+//      /  .           /  |
+//     /   .          /   |     ^ Y
+// (6)o--------------o(7) |     |
+//    | (0)o. . . . . |. . o(1)  --> X
+//    |   .          |   /     /
+//    |  .           |  /     /
+//    | .            | /     z
+//    |.             |/
+// (4)o--------------o(5)
+//
+pub const SUBNODE_IN_FACE: [[SubNodeIndex; FACE_SUBNODE_COUNT]; FaceIndex::COUNT] = [
+    // left
+    [
+        SubNodeIndex::X0Y0Z0,
+        SubNodeIndex::X0Y1Z0,
+        SubNodeIndex::X0Y0Z1,
+        SubNodeIndex::X0Y1Z1,
+    ],
+    // right
+    [
+        SubNodeIndex::X1Y0Z0,
+        SubNodeIndex::X1Y1Z0,
+        SubNodeIndex::X1Y0Z1,
+        SubNodeIndex::X1Y1Z1,
+    ],
+    // bottom
+    [
+        SubNodeIndex::X0Y0Z0,
+        SubNodeIndex::X1Y0Z0,
+        SubNodeIndex::X0Y0Z1,
+        SubNodeIndex::X1Y0Z1,
+    ],
+    // top
+    [
+        SubNodeIndex::X0Y1Z0,
+        SubNodeIndex::X1Y1Z0,
+        SubNodeIndex::X0Y1Z1,
+        SubNodeIndex::X1Y1Z1,
+    ],
+    // back
+    [
+        SubNodeIndex::X0Y0Z0,
+        SubNodeIndex::X1Y0Z0,
+        SubNodeIndex::X0Y1Z0,
+        SubNodeIndex::X1Y1Z0,
+    ],
+    // front
+    [
+        SubNodeIndex::X0Y0Z1,
+        SubNodeIndex::X1Y0Z1,
+        SubNodeIndex::X0Y1Z1,
+        SubNodeIndex::X1Y1Z1,
+    ],
+];
+
+/*
+
+ Vertex and Edge Index Map
+
+       2-------1------3
+      /.             /|
+     10.           11 |
+    /  4           /  5
+   /   .          /   |     ^ Y
+  6-------3------7    |     |
+  |    0 . . 0 . |. . 1     --> X
+  |   .          |   /     /
+  6  8           7  9     / z
+  | .            | /     |/
+  |.             |/
+  4-------2------5
+
+*/
+/// 找到边相邻的节点地址需要的两个FaceIndex。
+pub const NEIGHBOR_NODE_IN_EDGE: [[FaceIndex; 2]; EdgeIndex::COUNT] = [
+    // x axis
+    [FaceIndex::Bottom, FaceIndex::Back],
+    [FaceIndex::Top, FaceIndex::Back],
+    [FaceIndex::Bottom, FaceIndex::Front],
+    [FaceIndex::Top, FaceIndex::Front],
+    // y axis
+    [FaceIndex::Left, FaceIndex::Back],
+    [FaceIndex::Right, FaceIndex::Back],
+    [FaceIndex::Left, FaceIndex::Front],
+    [FaceIndex::Right, FaceIndex::Front],
+    // z axis
+    [FaceIndex::Left, FaceIndex::Bottom],
+    [FaceIndex::Right, FaceIndex::Bottom],
+    [FaceIndex::Left, FaceIndex::Top],
+    [FaceIndex::Right, FaceIndex::Top],
+];
+
+/*
+
+ Vertex and Edge Index Map
+
+       2-------1------3
+      /.             /|
+     10.           11 |
+    /  4           /  5
+   /   .          /   |     ^ Y
+  6-------3------7    |     |
+  |    0 . . 0 . |. . 1     --> X
+  |   .          |   /     /
+  6  8           7  9     / z
+  | .            | /     |/
+  |.             |/
+  4-------2------5
+
+*/
+/// 找到顶点相邻的节点地址需要的3个FaceIndex。
+pub const NEIGHBOR_NODE_IN_VERTEX: [[FaceIndex; 3]; VertexIndex::COUNT] = [
+    [FaceIndex::Left, FaceIndex::Bottom, FaceIndex::Back],
+    [FaceIndex::Right, FaceIndex::Bottom, FaceIndex::Back],
+    [FaceIndex::Left, FaceIndex::Top, FaceIndex::Back],
+    [FaceIndex::Right, FaceIndex::Top, FaceIndex::Back],
+    [FaceIndex::Left, FaceIndex::Bottom, FaceIndex::Front],
+    [FaceIndex::Right, FaceIndex::Bottom, FaceIndex::Front],
+    [FaceIndex::Left, FaceIndex::Top, FaceIndex::Front],
+    [FaceIndex::Right, FaceIndex::Top, FaceIndex::Front],
+];
+
 //  Node Point and Subnode Layout
 //
 //      (2)o--------------o(3)
@@ -380,7 +618,7 @@ pub enum FaceIndex {
 //
 //
 /// @brief Node neighbor table
-///  找到一个subnode在FaceIndex的方向是否有邻居subnode,以及相邻的Subnode的位置
+///  找到一个subnode在FaceIndex的方向相邻的Subnode的位置，以及是否在同一个Node中
 ///
 pub const NEIGHBOR_ADDRESS_TABLE: [[(SubNodeIndex, bool); SubNodeIndex::COUNT]; FaceIndex::COUNT] = [
     // left

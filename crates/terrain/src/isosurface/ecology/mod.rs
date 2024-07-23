@@ -80,15 +80,17 @@ fn add_ecology_layer_sampler(
             "add_ecology_layer_sampler: entity count: {}",
             terrain_query.iter().count()
         );
-        commands.entity(entity).insert(EcologyLayerSampler {
-            all_layer: vec![
-                Box::new(FirstLayer {
-                    forest_material: ecology_materials.forest_material.clone(),
-                }),
-                Box::new(FirstLayer {
-                    forest_material: ecology_materials.desert_material.clone(),
-                }),
-            ],
-        });
+        if let Some(mut cmds) = commands.get_entity(entity) {
+            cmds.try_insert(EcologyLayerSampler {
+                all_layer: vec![
+                    Box::new(FirstLayer {
+                        forest_material: ecology_materials.forest_material.clone(),
+                    }),
+                    Box::new(FirstLayer {
+                        forest_material: ecology_materials.desert_material.clone(),
+                    }),
+                ],
+            });
+        }
     }
 }

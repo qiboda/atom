@@ -12,16 +12,17 @@
 /// TODO 视窗剔除。
 pub mod chunk_mgr;
 pub mod isosurface;
+pub mod lod;
 pub mod setting;
-pub mod visible;
+pub mod utils;
 
 use atom_internal::app_state::AppState;
-use bevy::prelude::*;
+use bevy::{prelude::*, render::camera::CameraProjection};
 use chunk_mgr::plugin::TerrainChunkPlugin;
 use isosurface::IsosurfaceExtractionPlugin;
+use lod::lod_octree::TerrainLodOctreePlugin;
 use setting::TerrainSetting;
 use settings::SettingPlugin;
-use visible::TerrainVisibleAreaPlugin;
 
 #[derive(Debug, Default)]
 pub struct TerrainSubsystemPlugin;
@@ -32,14 +33,14 @@ impl Plugin for TerrainSubsystemPlugin {
             .configure_sets(
                 Update,
                 (
-                    TerrainSystemSet::VisibleAreas,
+                    TerrainSystemSet::UpdateLodOctree,
                     TerrainSystemSet::UpdateChunk,
                     TerrainSystemSet::GenerateTerrain,
                 )
                     .chain()
                     .run_if(in_state(AppState::AppRunning)),
             )
-            .add_plugins(TerrainVisibleAreaPlugin)
+            .add_plugins(TerrainLodOctreePlugin)
             .add_plugins(TerrainChunkPlugin)
             .add_plugins(IsosurfaceExtractionPlugin);
     }
@@ -47,7 +48,10 @@ impl Plugin for TerrainSubsystemPlugin {
 
 #[derive(Debug, Reflect, SystemSet, PartialEq, Eq, Hash, Clone)]
 pub enum TerrainSystemSet {
-    VisibleAreas,
+    UpdateLodOctree,
     UpdateChunk,
     GenerateTerrain,
 }
+
+#[derive(Component, Debug, Default)]
+pub struct TerrainObserver;

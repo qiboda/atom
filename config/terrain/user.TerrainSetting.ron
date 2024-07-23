@@ -1,72 +1,61 @@
 (
     chunk_setting: (
-        chunk_size: 16.0,
-        voxel_size: 0.25,
+        chunk_size: 64.0,
+        depth: 6,
         qef_solver: true,
         qef_solver_threshold: {
+            6: 8.0,
+            7: 10.0,
+            8: 10.0,
+            2: 0.5,
+            4: 2.0,
+            3: 1.0,
+            5: 4.0,
             0: 0.05,
             1: 0.1,
-            2: 0.2,
-            3: 0.4,
-            4: 0.8,
-            5: 1.6,
-            6: 3.2,
-            7: 3.2,
-            8: 3.2,
-            9: 3.2,
-            10: 3.2,
-            11: 3.2,
-            12: 3.2,
-            13: 3.2,
-            14: 3.2,
-            15: 3.2,
-            16: 3.2,
+            9: 10.0,
         },
-        qef_pos_stddev: 0.025,
-        qef_normal_stddev: 0.1,
+        qef_stddev: 0.1,
     ),
-    clipmap_setting: (
+    lod_setting: (
         lod_vec: [
             (
-                chunk_chebyshev_distance: 0,
-                lod: 1,
-            ),
-            (
-                chunk_chebyshev_distance: 1,
-                lod: 4,
-            ),
-            (
                 chunk_chebyshev_distance: 2,
-                lod: 1,
-            ),
-            (
-                chunk_chebyshev_distance: 3,
-                lod: 4,
-            ),
-            (
-                chunk_chebyshev_distance: 4,
-                lod: 1,
-            ),
-            (
-                chunk_chebyshev_distance: 5,
-                lod: 4,
+                lod: 0,
             ),
             (
                 chunk_chebyshev_distance: 6,
                 lod: 1,
             ),
             (
-                chunk_chebyshev_distance: 7,
+                chunk_chebyshev_distance: 12,
+                lod: 2,
+            ),
+            (
+                chunk_chebyshev_distance: 24,
+                lod: 3,
+            ),
+            (
+                chunk_chebyshev_distance: 48,
                 lod: 4,
             ),
             (
-                chunk_chebyshev_distance: 8,
-                lod: 5,
+                chunk_chebyshev_distance: 96,
+                lod: 6,
             ),
             (
-                chunk_chebyshev_distance: 9,
-                lod: 5,
+                chunk_chebyshev_distance: 192,
+                lod: 7,
+            ),
+            (
+                chunk_chebyshev_distance: 364,
+                lod: 7,
+            ),
+            (
+                chunk_chebyshev_distance: 2560000,
+                lod: 7,
             ),
         ],
+        lod_octree_depth: 8,
     ),
 )

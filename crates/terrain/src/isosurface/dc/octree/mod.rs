@@ -68,9 +68,9 @@ impl Octree {
         }
     }
 
-    pub fn get_octree_depth(node_shape: &ndshape::RuntimeShape<u32, 3>) -> u16 {
+    pub fn get_octree_depth(node_shape: &ndshape::RuntimeShape<u32, 3>) -> OctreeDepthType {
         let node_shape_size = node_shape.as_array();
-        (node_shape_size[0] as f32).log2().ceil() as u16 + 1
+        (node_shape_size[0] as f32).log2().ceil() as OctreeDepthType
     }
 
     /// size: is the size of the sampler_data
@@ -80,11 +80,10 @@ impl Octree {
         sampler_data: &[f32],
         shape: &S,
         voxel_size: f32,
-        std_dev_pos: f32,
-        std_dev_normal: f32,
-        octree_offset: Vec3,
+        qef_stddev: f32,
+        octree_offset: Vec3A,
         sampler_source: &impl OctreeSampler,
-        node_address: Arc<RwLock<HashMap<u16, Vec<NodeAddress>>>>,
+        node_address: Arc<RwLock<HashMap<OctreeDepthType, Vec<NodeAddress>>>>,
     ) where
         S: ndshape::Shape<3, Coord = u32>,
     {
@@ -105,8 +104,7 @@ impl Octree {
             voxel_size,
             octree_offset,
             sampler_source,
-            std_dev_pos,
-            std_dev_normal,
+            qef_stddev,
         );
 
         Octree::build_bottom_up_from_leaf_nodes(octree, voxel_size, octree_offset, node_address);
@@ -116,14 +114,13 @@ impl Octree {
     #[instrument(fields(shape_size = shape.size()), skip(shape, node_address, octree, sampler_data, sampler_source))]
     fn build_leaf_nodes<S>(
         shape: &S,
-        node_address: &Arc<RwLock<HashMap<u16, Vec<NodeAddress>>>>,
+        node_address: &Arc<RwLock<HashMap<OctreeDepthType, Vec<NodeAddress>>>>,
         octree: &mut Octree,
         sampler_data: &[f32],
         voxel_size: f32,
-        octree_offset: Vec3,
+        octree_offset: Vec3A,
         sampler_source: &impl OctreeSampler,
-        std_dev_pos: f32,
-        std_dev_normal: f32,
+        qef_stddev: f32,
     ) where
         S: ndshape::Shape<3, Coord = u32>,
     {
@@ -187,19 +184,14 @@ impl Octree {
                     let node_half_size = voxel_size * 0.5;
                     node.coord = Vec3A::new(x as f32, y as f32, z as f32);
                     node.aabb = Aabb3d::new(
-                        Vec3::new(
+                        Vec3A::new(
                             x as f32 * node_size + node_half_size,
                             y as f32 * node_size + node_half_size,
                             z as f32 * node_size + node_half_size,
                         ) + octree_offset,
-                        Vec3::splat(node_half_size),
+                        Vec3A::splat(node_half_size),
                     );
-                    node.estimate_vertex(
-                        sampler_source,
-                        conner_sampler_data,
-                        std_dev_pos,
-                        std_dev_normal,
-                    );
+                    node.estimate_vertex(sampler_source, conner_sampler_data, qef_stddev);
 
                     address_node_map.insert(node_address, node);
                 }
@@ -213,8 +205,8 @@ impl Octree {
     pub fn build_bottom_up_from_leaf_nodes(
         octree: &mut Octree,
         voxel_size: f32,
-        octree_offset: Vec3,
-        node_address: Arc<RwLock<HashMap<u16, Vec<NodeAddress>>>>,
+        octree_offset: Vec3A,
+        node_address: Arc<RwLock<HashMap<OctreeDepthType, Vec<NodeAddress>>>>,
     ) {
         let mut node_shape_size = octree.node_shape.as_array();
         node_shape_size = [
@@ -232,7 +224,7 @@ impl Octree {
         let mut address_node_map = octree.address_node_map.write().unwrap();
 
         let depth = Octree::get_octree_depth(&octree.node_shape);
-        for i in (1..depth).rev() {
+        for i in (0..depth).rev() {
             trace!("depth: {}", i);
             let node_address_mapper = node_address.get(&i).unwrap();
             for x in 0..node_shape_size[0] {
@@ -276,12 +268,12 @@ impl Octree {
                             let mut node = Node::new(NodeType::Branch, node_address);
                             node.coord = Vec3A::new(x as f32, y as f32, z as f32);
                             node.aabb = Aabb3d::new(
-                                Vec3::new(
+                                Vec3A::new(
                                     x as f32 * node_size + node_half_size,
                                     y as f32 * node_size + node_half_size,
                                     z as f32 * node_size + node_half_size,
                                 ) + octree_offset,
-                                Vec3::splat(node_half_size),
+                                Vec3A::splat(node_half_size),
                             );
                             // TODO move mat to simplify_octree
                             trace!("depth: {}, aabb half size: {}", i, node_half_size);
@@ -334,7 +326,7 @@ impl Octree {
         address_node_map: Arc<RwLock<HashMap<NodeAddress, Node>>>,
         node_shape: ndshape::RuntimeShape<u32, 3>,
         deep_coord_mapper: Arc<RwLock<DepthCoordMap>>,
-        qef_threshold_map: HashMap<u16, f32>,
+        qef_threshold_map: HashMap<OctreeDepthType, f32>,
     ) {
         let mut address_node_map = address_node_map.write().unwrap();
         let deep_coord_mapper = deep_coord_mapper.read().unwrap();
@@ -354,7 +346,7 @@ impl Octree {
             node_shape_size[2],
         ]);
 
-        for i in (1..depth).rev() {
+        for i in (0..depth).rev() {
             trace!("simplify_octree depth: {}", i);
             let coord_address_vec = deep_coord_mapper.get(&i).unwrap();
             let qef_threshold = qef_threshold_map.get(&i).unwrap_or(&0.1);
@@ -451,7 +443,11 @@ macro_rules! check_octree_nodes_relation {
 }
 pub(crate) use check_octree_nodes_relation;
 
-use crate::isosurface::surface::shape_surface::ShapeSurface;
+use crate::{
+    chunk_mgr::chunk::chunk_lod::OctreeDepthType, isosurface::surface::shape_surface::ShapeSurface,
+};
+
+use super::OctreeDepthCoordMapper;
 
 impl Octree {
     #[cfg(debug_assertions)]
@@ -499,22 +495,40 @@ impl Octree {
                 || node.aabb.max.y == aabb.max.y
                 || node.aabb.max.z == aabb.max.z
         },
-        |node: &Node, aabb: &Aabb3d| -> bool { node.aabb.min.x == aabb.min.x },
-        |node: &Node, aabb: &Aabb3d| -> bool { node.aabb.min.y == aabb.min.y },
         |node: &Node, aabb: &Aabb3d| -> bool {
-            node.aabb.min.y == aabb.min.y && node.aabb.min.x == aabb.min.x
-        },
-        |node: &Node, aabb: &Aabb3d| -> bool { node.aabb.min.z == aabb.min.z },
-        |node: &Node, aabb: &Aabb3d| -> bool {
-            node.aabb.min.x == aabb.min.x && node.aabb.min.z == aabb.min.z
+            node.aabb.min.x == aabb.max.x
+                && (aabb.min.y <= node.aabb.min.y && node.aabb.max.y <= aabb.max.y)
+                && (aabb.min.z <= node.aabb.min.z && node.aabb.max.z <= aabb.max.z)
         },
         |node: &Node, aabb: &Aabb3d| -> bool {
-            node.aabb.min.y == aabb.min.y && node.aabb.min.z == aabb.min.z
+            node.aabb.min.y == aabb.max.y
+                && (aabb.min.x <= node.aabb.min.x && node.aabb.max.x <= aabb.max.x)
+                && (aabb.min.z <= node.aabb.min.z && node.aabb.max.z <= aabb.max.z)
         },
         |node: &Node, aabb: &Aabb3d| -> bool {
-            node.aabb.min.x == aabb.min.x
-                && node.aabb.min.y == aabb.min.y
-                && node.aabb.min.z == aabb.min.z
+            node.aabb.min.y == aabb.max.y
+                && node.aabb.min.x == aabb.max.x
+                && (aabb.min.z <= node.aabb.min.z && node.aabb.max.z <= aabb.max.z)
+        },
+        |node: &Node, aabb: &Aabb3d| -> bool {
+            node.aabb.min.z == aabb.max.z
+                && (aabb.min.x <= node.aabb.min.x && node.aabb.max.x <= aabb.max.x)
+                && (aabb.min.y <= node.aabb.min.y && node.aabb.max.y <= aabb.max.y)
+        },
+        |node: &Node, aabb: &Aabb3d| -> bool {
+            node.aabb.min.x == aabb.max.x
+                && node.aabb.min.z == aabb.max.z
+                && (aabb.min.y <= node.aabb.min.y && node.aabb.max.y <= aabb.max.y)
+        },
+        |node: &Node, aabb: &Aabb3d| -> bool {
+            node.aabb.min.y == aabb.max.y
+                && node.aabb.min.z == aabb.max.z
+                && (aabb.min.x <= node.aabb.min.x && node.aabb.max.x <= aabb.max.x)
+        },
+        |node: &Node, aabb: &Aabb3d| -> bool {
+            node.aabb.min.x == aabb.max.x
+                && node.aabb.min.y == aabb.max.y
+                && node.aabb.min.z == aabb.max.z
         },
     ];
 
@@ -550,5 +564,23 @@ impl Octree {
                 }
             })
             .collect::<Vec<&'a Node>>()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_pow() {
+        let a = 2.0f32.powi(3);
+        assert_eq!(a, 8.0);
+
+        let a = 2.0f32.powi(0);
+        assert_eq!(a, 1.0);
+
+        let a = 2.0f32.powi(-1);
+        assert_eq!(a, 0.5);
+
+        let a = 2.0f32.powi(-3);
+        assert_eq!(a, 0.125);
     }
 }

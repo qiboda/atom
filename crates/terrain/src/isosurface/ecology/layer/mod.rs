@@ -28,11 +28,11 @@ pub struct EcologyLayerSampler {
 impl Sampler for EcologyLayerSampler {
     fn sample(
         &self,
-        chunk_coord: TerrainChunkCoord,
+        chunk_address: TerrainChunkCoord,
         aabb: Aabb3d,
     ) -> Option<Arc<dyn EcologyMaterial>> {
         if let ControlFlow::Break(mat) = self.all_layer.iter().rev().try_for_each(|layer| {
-            match layer.sample(chunk_coord, aabb) {
+            match layer.sample(chunk_address, aabb) {
                 mat if mat.is_some() => ControlFlow::Break(mat),
                 _ => ControlFlow::Continue(()),
             }

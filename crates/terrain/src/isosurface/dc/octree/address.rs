@@ -1,6 +1,12 @@
 use std::fmt::Display;
 
-use super::tables::{EdgeIndex, FaceIndex, SubNodeIndex, VertexIndex, NEIGHBOR_ADDRESS_TABLE};
+use crate::chunk_mgr::chunk::chunk_lod::OctreeDepthType;
+
+use super::tables::{
+    EdgeIndex, FaceIndex, SubNodeIndex, VertexIndex, EDGE_SUBNODE_COUNT, EDGE_SUBNODE_PAIRS,
+    FACE_SUBNODE_COUNT, NEIGHBOR_ADDRESS_TABLE, NEIGHBOR_NODE_IN_EDGE, NEIGHBOR_NODE_IN_VERTEX,
+    SUBNODE_IN_FACE,
+};
 
 use bevy::{reflect::Reflect, utils::hashbrown::HashMap};
 use bitfield_struct::bitfield;
@@ -43,7 +49,7 @@ impl NodeAddress {
 
     pub fn concat_address(&self, node_address: NodeAddress) -> NodeAddress {
         let mut address = *self;
-        let depth_offset = node_address.depth() - 1;
+        let depth_offset = node_address.depth();
         address.set_raw_address(
             address.raw_address() << (depth_offset * 3) | node_address.raw_address(),
         );
@@ -57,7 +63,7 @@ impl NodeAddress {
     }
 
     pub fn root() -> Self {
-        NodeAddress::new().with_raw_address(0).with_depth(1)
+        NodeAddress::new().with_raw_address(0).with_depth(0)
     }
 }
 
@@ -70,7 +76,7 @@ impl NodeAddress {
     }
 
     pub fn get_pos_by_depth(&self, depth: u16) -> Option<SubNodeIndex> {
-        if depth < 1 || self.depth() < depth {
+        if self.depth() < depth {
             return None;
         }
 
@@ -80,14 +86,14 @@ impl NodeAddress {
     }
 
     pub fn get_pos_in_parent(&self) -> Option<SubNodeIndex> {
-        if self.depth() == 1 {
+        if self.depth() == 0 {
             return None;
         }
         self.get_pos_by_depth(self.depth())
     }
 
-    pub fn get_depth(&self) -> usize {
-        self.depth() as usize
+    pub fn get_depth(&self) -> OctreeDepthType {
+        self.depth() as OctreeDepthType
     }
 
     pub fn get_children_addresses(&self) -> [NodeAddress; SubNodeIndex::COUNT] {
@@ -99,6 +105,32 @@ impl NodeAddress {
         children_address
     }
 
+    pub fn get_children_addresses_by_face(
+        &self,
+        face_index: FaceIndex,
+    ) -> [NodeAddress; FACE_SUBNODE_COUNT] {
+        let mut children_address = [NodeAddress::new(); FACE_SUBNODE_COUNT];
+        for (index, sub_node_index) in SUBNODE_IN_FACE[face_index as usize].iter().enumerate() {
+            children_address[index] = self.get_child_address(*sub_node_index);
+        }
+        children_address
+    }
+
+    pub fn get_children_addresses_by_edge(
+        &self,
+        edge_index: EdgeIndex,
+    ) -> [NodeAddress; EDGE_SUBNODE_COUNT] {
+        let mut children_address = [NodeAddress::new(); EDGE_SUBNODE_COUNT];
+        for (index, sub_node_index) in EDGE_SUBNODE_PAIRS[edge_index as usize].iter().enumerate() {
+            children_address[index] = self.get_child_address(*sub_node_index);
+        }
+        children_address
+    }
+
+    pub fn get_children_addresses_by_vertex(&self, vertex_index: VertexIndex) -> NodeAddress {
+        self.get_child_address(vertex_index)
+    }
+
     pub fn get_child_address(&self, sub_node_index: SubNodeIndex) -> NodeAddress {
         let mut child_address = NodeAddress::new();
         child_address.set_raw_address(self.raw_address() << 3 | sub_node_index as u64);
@@ -106,7 +138,23 @@ impl NodeAddress {
         child_address
     }
 
-    pub fn get_neighbor_address(&self, face_index: FaceIndex) -> NodeAddress {
+    pub fn get_edge_neighbor_address(&self, edge_index: EdgeIndex) -> NodeAddress {
+        let mut neighbor_address = *self;
+        for face_index in NEIGHBOR_NODE_IN_EDGE[edge_index as usize] {
+            neighbor_address = neighbor_address.get_face_neighbor_address(face_index);
+        }
+        neighbor_address
+    }
+
+    pub fn get_vertex_neighbor_address(&self, vertex_index: VertexIndex) -> NodeAddress {
+        let mut neighbor_address = *self;
+        for face_index in NEIGHBOR_NODE_IN_VERTEX[vertex_index as usize] {
+            neighbor_address = self.get_face_neighbor_address(face_index);
+        }
+        neighbor_address
+    }
+
+    pub fn get_face_neighbor_address(&self, face_index: FaceIndex) -> NodeAddress {
         let mut address = *self;
 
         let mut neighbor_address = NodeAddress::new();
@@ -136,7 +184,7 @@ impl NodeAddress {
                 neighbor_address.set_raw_address(
                     neighbor_address.raw_address() | address.raw_address() << shift_count,
                 );
-                neighbor_address.set_depth(neighbor_address.depth() + 1);
+                neighbor_address.set_depth(neighbor_address.depth() + address.depth());
                 break;
             }
 
@@ -149,53 +197,8 @@ impl NodeAddress {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EdgeAddress {
-    pub node_address: NodeAddress,
-    pub edge_index: EdgeIndex,
-}
-
-impl EdgeAddress {
-    pub fn new(node_address: NodeAddress, edge_index: EdgeIndex) -> Self {
-        Self {
-            node_address,
-            edge_index,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FaceAddress {
-    pub node_address: NodeAddress,
-    pub face_index: FaceIndex,
-}
-
-impl FaceAddress {
-    pub fn new(node_address: NodeAddress, face_index: FaceIndex) -> Self {
-        Self {
-            node_address,
-            face_index,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct VertexAddress {
-    pub node_address: NodeAddress,
-    pub vertex_index: VertexIndex,
-}
-
-impl VertexAddress {
-    pub fn new(node_address: NodeAddress, vertex_index: VertexIndex) -> Self {
-        Self {
-            node_address,
-            vertex_index,
-        }
-    }
-}
-
 pub type CoordAddressVec = Vec<NodeAddress>;
-pub type DepthCoordMap = HashMap<u16, CoordAddressVec>;
+pub type DepthCoordMap = HashMap<OctreeDepthType, CoordAddressVec>;
 
 pub fn construct_octree_depth_coord_map(chunk_size: f32, voxel_size: f32) -> DepthCoordMap {
     // 此处乘以2是因为考虑到缝合边缘，需要两倍尺寸的八叉树。
@@ -205,11 +208,11 @@ pub fn construct_octree_depth_coord_map(chunk_size: f32, voxel_size: f32) -> Dep
     let size = shape.as_array();
     assert_eq!(size[0], size[1]);
     assert_eq!(size[0], size[2]);
-    let depth = (size[0] as f32).log2().ceil() as u16 + 1;
+    let depth = (size[0] as f32).log2().ceil() as OctreeDepthType;
 
     let mut depth_coord_map: DepthCoordMap = HashMap::default();
     let mut size = size[0];
-    for i in 0..depth {
+    for i in 0..=depth {
         if size == 0 {
             break;
         }
@@ -333,7 +336,7 @@ mod tests {
         let child_address = address.get_child_address(SubNodeIndex::X0Y0Z0);
         assert_eq!(
             child_address,
-            NodeAddress::new().with_raw_address(0).with_depth(2)
+            NodeAddress::new().with_raw_address(0).with_depth(1)
         );
     }
 
@@ -355,42 +358,39 @@ mod tests {
     fn test_get_pos_by_depth() {
         let address = NodeAddress::root();
         let pos = address.get_pos_by_depth(0);
-        assert_eq!(pos, None);
-
-        let pos = address.get_pos_by_depth(1);
         assert_eq!(pos, Some(SubNodeIndex::X0Y0Z0));
 
         let child_address = address.get_child_address(SubNodeIndex::X0Y1Z0);
         assert_eq!(
-            child_address.get_pos_by_depth(1),
+            child_address.get_pos_by_depth(0),
             Some(SubNodeIndex::X0Y0Z0)
         );
         assert_eq!(
-            child_address.get_pos_by_depth(2),
+            child_address.get_pos_by_depth(1),
             Some(SubNodeIndex::X0Y1Z0)
         );
 
         let mut address = NodeAddress::new();
-        address.set_depth(5);
+        address.set_depth(4);
         address.set_raw_address(0o34);
 
-        assert_eq!(address.get_pos_by_depth(2), Some(SubNodeIndex::X0Y0Z0));
-        assert_eq!(address.get_pos_by_depth(4), SubNodeIndex::from_repr(3));
+        assert_eq!(address.get_pos_by_depth(1), Some(SubNodeIndex::X0Y0Z0));
+        assert_eq!(address.get_pos_by_depth(3), SubNodeIndex::from_repr(3));
     }
 
     #[test]
     fn test_get_neighbor_address_simple() {
         let address = NodeAddress::root();
         assert_eq!(
-            address.get_neighbor_address(FaceIndex::Right),
+            address.get_face_neighbor_address(FaceIndex::Right),
             NodeAddress::root()
         );
 
         let address = NodeAddress::root();
         let child_address = address.get_child_address(SubNodeIndex::X0Y0Z0);
         assert_eq!(
-            child_address.get_neighbor_address(FaceIndex::Right),
-            NodeAddress::new().with_raw_address(1).with_depth(2)
+            child_address.get_face_neighbor_address(FaceIndex::Right),
+            NodeAddress::new().with_raw_address(1).with_depth(1)
         );
     }
 
@@ -400,7 +400,7 @@ mod tests {
         let child_address_1 = address.get_child_address(SubNodeIndex::X0Y0Z0);
         let child_address_2 = address.get_child_address(SubNodeIndex::X0Y0Z1);
         assert_eq!(
-            child_address_1.get_neighbor_address(FaceIndex::Front),
+            child_address_1.get_face_neighbor_address(FaceIndex::Front),
             child_address_2
         );
     }
@@ -413,21 +413,22 @@ mod tests {
         let child_child_address_1 = child_address_1.get_child_address(SubNodeIndex::X0Y0Z0);
 
         assert_eq!(
-            child_child_address_1.get_neighbor_address(FaceIndex::Left),
-            NodeAddress::new().with_raw_address(0o021).with_depth(3)
+            child_child_address_1.get_face_neighbor_address(FaceIndex::Left),
+            NodeAddress::new().with_raw_address(0o021).with_depth(2)
         );
 
         let child_address_2 = address.get_child_address(SubNodeIndex::X0Y1Z0);
         let child_child_address_2 = child_address_2.get_child_address(SubNodeIndex::X1Y0Z0);
 
         assert_eq!(
-            child_child_address_1.get_neighbor_address(FaceIndex::Left),
+            child_child_address_1.get_face_neighbor_address(FaceIndex::Left),
             child_child_address_2
         );
     }
 
     #[test]
     fn test_construct_octree_address_vec() {
+        // depth == 1
         let shape = [2, 2, 2];
         let shape = ndshape::RuntimeShape::<u32, 3>::new(shape);
         let leaf_address = construct_octree_coord_address_vec(&shape);
@@ -435,22 +436,22 @@ mod tests {
 
         assert_eq!(
             leaf_address[0],
-            NodeAddress::new().with_depth(2).with_raw_address(0o0)
+            NodeAddress::new().with_depth(1).with_raw_address(0o0)
         );
 
         assert_eq!(
             leaf_address[4],
-            NodeAddress::new().with_depth(2).with_raw_address(0o04)
+            NodeAddress::new().with_depth(1).with_raw_address(0o04)
         );
 
         assert_eq!(
             leaf_address[5],
-            NodeAddress::new().with_depth(2).with_raw_address(0o05)
+            NodeAddress::new().with_depth(1).with_raw_address(0o05)
         );
 
         assert_eq!(
             leaf_address[2],
-            NodeAddress::new().with_depth(2).with_raw_address(0o02)
+            NodeAddress::new().with_depth(1).with_raw_address(0o02)
         );
     }
 
@@ -460,33 +461,36 @@ mod tests {
         // 8, 4, 2, 1, 0.5
         assert_eq!(leaf_address_map.len(), 5);
 
-        assert!(leaf_address_map.get(&0).is_none());
+        let leaf_address = leaf_address_map.get(&0).unwrap();
+        assert_eq!(leaf_address.len(), 1);
+        assert_eq!(leaf_address[0].depth(), 0);
 
         let leaf_address = leaf_address_map.get(&1).unwrap();
-        assert_eq!(leaf_address.len(), 1);
+        assert_eq!(leaf_address.len(), 8_usize.pow(1));
+        assert_eq!(leaf_address[0].depth(), 1);
 
         let leaf_address = leaf_address_map.get(&2).unwrap();
-        assert_eq!(leaf_address.len(), 8_usize.pow(1));
+        assert_eq!(leaf_address.len(), 8_usize.pow(2));
+        assert_eq!(leaf_address[0].depth(), 2);
+        let mut check_set: HashSet<NodeAddress> = HashSet::new();
+        check_set.extend(leaf_address.iter());
+        assert!(check_set.len() == leaf_address.len());
 
         let leaf_address = leaf_address_map.get(&3).unwrap();
-        assert_eq!(leaf_address.len(), 8_usize.pow(2));
+        assert_eq!(leaf_address.len(), 8_usize.pow(3));
+        assert_eq!(leaf_address[0].depth(), 3);
         let mut check_set: HashSet<NodeAddress> = HashSet::new();
         check_set.extend(leaf_address.iter());
         assert!(check_set.len() == leaf_address.len());
 
         let leaf_address = leaf_address_map.get(&4).unwrap();
-        assert_eq!(leaf_address.len(), 8_usize.pow(3));
-        let mut check_set: HashSet<NodeAddress> = HashSet::new();
-        check_set.extend(leaf_address.iter());
-        assert!(check_set.len() == leaf_address.len());
-
-        let leaf_address = leaf_address_map.get(&5).unwrap();
         assert_eq!(leaf_address.len(), 8_usize.pow(4));
+        assert_eq!(leaf_address[0].depth(), 4);
         let mut check_set: HashSet<NodeAddress> = HashSet::new();
         check_set.extend(leaf_address.iter());
         assert!(check_set.len() == leaf_address.len());
 
-        assert!(leaf_address_map.get(&6).is_none());
+        assert!(leaf_address_map.get(&5).is_none());
     }
 
     #[test]

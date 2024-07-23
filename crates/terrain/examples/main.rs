@@ -6,6 +6,8 @@ use bevy::{
         tonemapping::Tonemapping,
     },
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
+    diagnostic::FrameTimeDiagnosticsPlugin,
+    input::keyboard::Key,
     log::LogPlugin,
     pbr::{
         wireframe::{WireframeConfig, WireframePlugin},
@@ -14,17 +16,20 @@ use bevy::{
     prelude::*,
 };
 use bevy_debug_grid::{Grid, GridAxis};
-use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
+use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use dotenv::dotenv;
 use log_layers::LogLayersPlugin;
-use terrain::{visible::visible_range::VisibleTerrainRange, TerrainSubsystemPlugin};
+use terrain::{TerrainObserver, TerrainSubsystemPlugin};
 
 pub fn main() {
+    dotenv().ok();
+
     let mut app = App::new();
 
     app.add_plugins(AtomDefaultPlugins.set(LogPlugin {
         custom_layer: LogLayersPlugin::get_layer,
-        filter: "wgpu=error,naga=warn,terrain=warn".to_string(),
+        filter: "warn,wgpu=error,naga=warn,terrain=info".to_string(),
         ..default()
     }))
     // .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(0.5)))
@@ -44,7 +49,12 @@ pub fn main() {
         },
     })
     .add_systems(Startup, startup)
-    .add_plugins(WorldInspectorPlugin::new())
+    .add_systems(Update, update_terrain_observer)
+    // .add_plugins(WorldInspectorPlugin::new())
+    .insert_resource(MovementSettings {
+        speed: 1000.0,
+        ..default()
+    })
     .run();
 }
 
@@ -55,9 +65,9 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
     commands.spawn((
         Grid {
             // Space between each line
-            spacing: 16.0,
+            spacing: 64.0,
             // Line count along a single axis
-            count: 16,
+            count: 256,
             // Color of the lines
             color: css::ORANGE.into(),
             // Alpha mode for all components
@@ -103,8 +113,6 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
         ..Default::default()
     });
 
-    let size = 16.0 * 16.0;
-
     commands.spawn((
         Camera3dBundle {
             transform: Transform::from_xyz(8.0, -0.1, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -125,6 +133,21 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
             ..Default::default()
         },
         FlyCam,
-        VisibleTerrainRange::new(Vec3::splat(size)),
     ));
+}
+
+pub fn update_terrain_observer(
+    input: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    query: Query<(Entity, Option<&TerrainObserver>), With<Camera>>,
+) {
+    if input.just_pressed(KeyCode::KeyK) {
+        for (entity, observer) in query.iter() {
+            if observer.is_none() {
+                commands.entity(entity).insert(TerrainObserver);
+            } else {
+                commands.entity(entity).remove::<TerrainObserver>();
+            }
+        }
+    }
 }

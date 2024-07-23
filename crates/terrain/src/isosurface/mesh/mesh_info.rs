@@ -6,6 +6,7 @@ use bevy::{
     reflect::Reflect,
     render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
 };
+use tracing::warn;
 
 #[derive(Debug, Clone, Component, Default, Reflect)]
 pub struct MeshInfo {
@@ -73,6 +74,9 @@ impl From<&MeshInfo> for Mesh {
         mesh.insert_indices(bevy::render::mesh::Indices::U32(
             mesh_cache.get_indices().clone(),
         ));
+
+        let aabb = mesh.compute_aabb().unwrap();
+        warn!("mesh aabb: {:?}", aabb);
         mesh
     }
 }

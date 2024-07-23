@@ -1,7 +1,6 @@
 {
     "version": "0.2.0",
     "configurations": [
-    
         {
             "type": "lldb",
             "request": "launch",
@@ -17,6 +16,20 @@
                     "name": "ability",
                     "kind": "lib"
                 }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'main'",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--example=main",
+                    "--package=terrain"
+                ],
             },
             "args": [],
             "cwd": "${workspaceFolder}"

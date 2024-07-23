@@ -1,5 +1,9 @@
+use std::ops::Deref;
+
 use autoincrement::{AutoIncrement, Incremental};
 use bevy::prelude::*;
+
+use crate::isosurface::dc::octree::address::NodeAddress;
 
 #[derive(Debug, Component, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum TerrainChunkState {
@@ -39,5 +43,34 @@ impl SeamMeshIdGenerator {
 
     pub fn current(&self) -> SeamMeshId {
         self.0.current()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Reflect, Clone, Copy, Component, Default)]
+pub struct TerrainChunkAddress(NodeAddress);
+
+impl Deref for TerrainChunkAddress {
+    type Target = NodeAddress;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl TerrainChunkAddress {
+    pub fn new(address: NodeAddress) -> Self {
+        Self(address)
+    }
+}
+
+impl From<&NodeAddress> for TerrainChunkAddress {
+    fn from(value: &NodeAddress) -> Self {
+        Self(*value)
+    }
+}
+
+impl From<NodeAddress> for TerrainChunkAddress {
+    fn from(value: NodeAddress) -> Self {
+        Self(value)
     }
 }

@@ -9,8 +9,8 @@ use pqef::Quadric;
 use strum::{EnumCount, IntoEnumIterator};
 
 use super::{
-    address::{FaceAddress, NodeAddress},
-    tables::{FaceIndex, SubNodeIndex, VertexIndex, EDGE_VERTEX_PAIRS},
+    address::{NodeAddress},
+    tables::{FaceIndex, VertexIndex, EDGE_VERTEX_PAIRS},
     OctreeSampler,
 };
 
@@ -59,38 +59,6 @@ impl Node {
         }
     }
 
-    pub fn get_subnode_aabb(aabb: Aabb3d, subnode_index: SubNodeIndex) -> Aabb3d {
-        let center = aabb.center();
-        let mut min = Vec3::ZERO;
-        let mut max = Vec3::ZERO;
-
-        if subnode_index as u8 & 0b001 == 0b001 {
-            min.x = center.x;
-            max.x = aabb.max.x;
-        } else {
-            min.x = aabb.min.x;
-            max.x = center.x;
-        }
-
-        if subnode_index as u8 & 0b010 == 0b010 {
-            min.y = center.y;
-            max.y = aabb.max.y;
-        } else {
-            min.y = aabb.min.y;
-            max.y = center.y;
-        }
-
-        if subnode_index as u8 & 0b100 == 0b100 {
-            min.z = center.z;
-            max.z = aabb.max.z;
-        } else {
-            min.z = aabb.min.z;
-            max.z = center.z;
-        }
-
-        Aabb3d::new(min, max)
-    }
-
     pub fn get_node_vertex_locations(aabb: Aabb3d) -> [Vec3; VertexIndex::COUNT] {
         let min = aabb.min;
         let max = aabb.max;
@@ -108,40 +76,15 @@ impl Node {
 }
 
 impl Node {
-    pub fn get_twin_face_address(&self, face_index: FaceIndex) -> FaceAddress {
-        let neighbor_address = self.address.get_neighbor_address(face_index);
-        let neighbor_face_index = match face_index {
-            FaceIndex::Back => FaceIndex::Front,
-            FaceIndex::Front => FaceIndex::Back,
-            FaceIndex::Bottom => FaceIndex::Top,
-            FaceIndex::Top => FaceIndex::Bottom,
-            FaceIndex::Left => FaceIndex::Right,
-            FaceIndex::Right => FaceIndex::Left,
-        };
-        FaceAddress {
-            node_address: neighbor_address,
-            face_index: neighbor_face_index,
-        }
-    }
-}
-
-impl Node {
     #[inline]
     pub fn estimate_vertex(
         &mut self,
         sdf: &impl OctreeSampler,
         vertices_values: [f32; VertexIndex::COUNT],
-        std_dev_pos: f32,
-        std_dev_normal: f32,
+        qef_stddev: f32,
     ) {
         self.estimate_vertex_mat(vertices_values);
-        let qef = Node::estimate_interior_vertex_qef(
-            &self.aabb,
-            &vertices_values,
-            sdf,
-            std_dev_pos,
-            std_dev_normal,
-        );
+        let qef = Node::estimate_interior_vertex_qef(&self.aabb, &vertices_values, sdf, qef_stddev);
         self.estimate_vertex_with_qef(qef.0, qef.1, qef.2);
         trace!(
             "estimate_vertex: {:?}, vertex is mass_point: {}",
@@ -229,11 +172,13 @@ impl Node {
         aabb: &Aabb3d,
         samples: &[f32; VertexIndex::COUNT],
         sdf: &impl OctreeSampler,
-        std_dev_pos: f32,
-        std_dev_normal: f32,
+        qef_stddev: f32,
     ) -> (Quadric, Vec3A, Vec3A) {
-        let mut qef = Quadric::default();
         trace!("estimate_interior_vertex_qef, start");
+
+        let mut qef = Quadric::default();
+        let voxel_size = aabb.half_size().x * 2.0;
+
         let corners = Node::get_node_vertex_locations(*aabb);
         let mut avg_normal = Vec3A::ZERO;
         let mut count = 0;
@@ -276,8 +221,8 @@ impl Node {
                 qef += Quadric::probabilistic_plane_quadric(
                     cross_pos.into(),
                     central_normal,
-                    std_dev_pos,
-                    std_dev_normal,
+                    qef_stddev * voxel_size,
+                    qef_stddev,
                 );
 
                 avg_normal += central_normal;

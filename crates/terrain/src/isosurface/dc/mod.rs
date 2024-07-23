@@ -9,7 +9,9 @@ use std::sync::{Arc, RwLock};
 use bevy::{prelude::*, utils::HashMap};
 use dc_gizmos::DcGizmosPlugin;
 
-use crate::{setting::TerrainSetting, TerrainSystemSet};
+use crate::{
+    chunk_mgr::chunk::chunk_lod::OctreeDepthType, setting::TerrainSetting, TerrainSystemSet,
+};
 
 use octree::address::{construct_octree_depth_coord_map, NodeAddress};
 
@@ -30,8 +32,8 @@ impl Plugin for DualContouringPlugin {
         let terrain_setting = app.world().get_resource::<TerrainSetting>().unwrap();
         app.insert_resource(OctreeDepthCoordMapper {
             mapper: Arc::new(RwLock::new(construct_octree_depth_coord_map(
-                terrain_setting.chunk_setting.chunk_size,
-                terrain_setting.chunk_setting.voxel_size,
+                terrain_setting.chunk_setting.chunk_size * 4.0,
+                terrain_setting.chunk_setting.get_voxel_size(0),
             ))),
         })
         .configure_sets(
@@ -76,5 +78,5 @@ impl Plugin for DualContouringPlugin {
 #[derive(Resource, Default, Debug)]
 pub struct OctreeDepthCoordMapper {
     /// depth is from 1 to n
-    mapper: Arc<RwLock<HashMap<u16, Vec<NodeAddress>>>>,
+    mapper: Arc<RwLock<HashMap<OctreeDepthType, Vec<NodeAddress>>>>,
 }

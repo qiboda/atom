@@ -93,7 +93,7 @@ impl NoiseSurface {
         let perlin_fbm = Fbm::<Perlin>::new(32)
             .set_frequency(0.0003)
             .set_lacunarity(3.0)
-            .set_persistence(16.0)
+            .set_persistence(300.0)
             .set_octaves(3);
 
         let noise_map = PlaneMapBuilder::new(perlin_fbm.clone())
@@ -112,6 +112,6 @@ impl NoiseSurface {
 
 impl DensityFunction for NoiseSurface {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        y - self.perlin_fbm.get([x as f64, z as f64]) as f32 * 30.0 + 0.20
+        y - self.perlin_fbm.get([x as f64, z as f64]) as f32 * 300.0
     }
 }

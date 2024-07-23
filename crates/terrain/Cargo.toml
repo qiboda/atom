@@ -51,3 +51,4 @@ autoincrement = { workspace = true }
 bevy_flycam = { version = "0.14.0" }
 bevy_debug_grid = { workspace = true }
 bevy-inspector-egui = { version = "0.25" }
+dotenv = { workspace = true }

@@ -3,11 +3,15 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{math::Vec3A, prelude::*, utils::HashMap};
 use ndshape::{RuntimeShape, Shape};
 
 use crate::{
-    chunk_mgr::chunk::{bundle::TerrainChunk, chunk_lod::LodType},
+    chunk_mgr::chunk::{
+        bundle::TerrainChunk,
+        chunk_lod::{LodType, OctreeDepthType, TerrainChunkAabb},
+        state::TerrainChunkAddress,
+    },
     isosurface::{
         comp::{MainMeshState, TerrainChunkMainGenerator},
         dc::octree::check_octree_nodes_relation,
@@ -27,35 +31,35 @@ use super::{
     OctreeDepthCoordMapper,
 };
 use bevy_async_task::AsyncTaskPool;
-use terrain_core::chunk::coords::TerrainChunkCoord;
 
 #[allow(clippy::too_many_arguments)]
 async fn construct_octree_task(
     entity: Entity,
     surface: Arc<RwLock<ShapeSurface>>,
-    node_address_mapper: Arc<RwLock<HashMap<u16, Vec<NodeAddress>>>>,
+    node_address_mapper: Arc<RwLock<HashMap<OctreeDepthType, Vec<NodeAddress>>>>,
     lod: LodType,
-    chunk_size: f32,
-    voxel_size: f32,
-    chunk_coord: TerrainChunkCoord,
-    std_dev_pos: f32,
-    std_dev_normal: f32,
+    lod_chunk_size: f32,
+    lod_voxel_size: f32,
+    chunk_address: TerrainChunkAddress,
+    qef_stddev: f32,
+    offset: Vec3A,
 ) -> (Entity, Octree) {
-    let _span = debug_span!("main mesh construct octree", %chunk_coord, lod).entered();
+    let _span = debug_span!("main mesh construct octree", ?chunk_address, lod).entered();
 
-    let lod_voxel_size = voxel_size * 2.0_f32.powf(lod as f32);
-    let offset = chunk_coord * chunk_size;
-    let size = (chunk_size / lod_voxel_size) as u32 + 1;
+    let size = (lod_chunk_size / lod_voxel_size) as u32 + 1;
     let shape = RuntimeShape::<u32, 3>::new([size, size, size]);
-    debug!("lod_voxel size: {}, size: {}", lod_voxel_size, size);
+    debug!(
+        "lod chunk size: {}, lod_voxel size: {}, size: {}, offset: {}",
+        lod_chunk_size, lod_voxel_size, size, offset
+    );
 
     let mut samples = Vec::with_capacity(shape.usize());
     let surface: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 
     for i in 0..shape.size() {
         let loc =
-            offset + Vec3::from_array(shape.delinearize(i).map(|v| v as f32)) * lod_voxel_size;
-        let density = surface.get_value_from_vec(loc);
+            offset + Vec3A::from_array(shape.delinearize(i).map(|v| v as f32)) * lod_voxel_size;
+        let density = surface.get_value_from_vec(loc.into());
         samples.push(density);
     }
 
@@ -65,8 +69,7 @@ async fn construct_octree_task(
         &samples,
         &shape,
         lod_voxel_size,
-        std_dev_pos,
-        std_dev_normal,
+        qef_stddev,
         offset,
         &surface,
         node_address_mapper,
@@ -81,7 +84,7 @@ async fn construct_octree_task(
 pub(crate) fn construct_octree(
     mut commands: Commands,
     mut task_pool: AsyncTaskPool<(Entity, Octree)>,
-    chunk_query: Query<&TerrainChunkCoord, With<TerrainChunk>>,
+    chunk_query: Query<(&TerrainChunkAddress, &TerrainChunkAabb), With<TerrainChunk>>,
     mut chunk_generator_query: ParamSet<(
         Query<(Entity, &Parent, &MainMeshState, &TerrainChunkMainGenerator)>,
         Query<&mut MainMeshState, With<TerrainChunkMainGenerator>>,
@@ -93,25 +96,24 @@ pub(crate) fn construct_octree(
     if task_pool.is_idle() {
         for (entity, parent, state, generator) in chunk_generator_query.p0().iter() {
             if state == &MainMeshState::ConstructOctree {
-                if let Ok(chunk_coord) = chunk_query.get(parent.get()) {
+                if let Ok((chunk_address, chunk_aabb)) = chunk_query.get(parent.get()) {
                     let lod = generator.lod;
-                    let chunk_size = setting.chunk_setting.chunk_size;
-                    let voxel_size = setting.chunk_setting.voxel_size;
+                    let lod_chunk_size = setting.chunk_setting.get_chunk_size(lod);
+                    let lod_voxel_size = setting.chunk_setting.get_voxel_size(lod);
                     let shape_surface = surface.shape_surface.clone();
                     let mapper = node_mapper.mapper.clone();
-                    let stddev_pos = setting.chunk_setting.qef_pos_stddev;
-                    let stddev_normal = setting.chunk_setting.qef_normal_stddev;
-
+                    let qef_stddev = setting.chunk_setting.qef_stddev;
+                    let offset = chunk_aabb.min;
                     task_pool.spawn(construct_octree_task(
                         entity,
                         shape_surface,
                         mapper.clone(),
                         lod,
-                        chunk_size,
-                        voxel_size,
-                        *chunk_coord,
-                        stddev_pos,
-                        stddev_normal,
+                        lod_chunk_size,
+                        lod_voxel_size,
+                        *chunk_address,
+                        qef_stddev,
+                        offset,
                     ));
                 }
             }
@@ -139,11 +141,11 @@ async fn simplify_octree_task(
     deep_coord_mapper: Arc<RwLock<DepthCoordMap>>,
     address_node_map: Arc<RwLock<HashMap<NodeAddress, Node>>>,
     node_shape: RuntimeShape<u32, 3>,
-    qef_threshold_map: HashMap<u16, f32>,
-    chunk_coord: TerrainChunkCoord,
+    qef_threshold_map: HashMap<OctreeDepthType, f32>,
+    chunk_address: TerrainChunkAddress,
     lod: LodType,
 ) -> Entity {
-    let _span = debug_span!("main mesh simplify octree task", %chunk_coord, lod).entered();
+    let _span = debug_span!("main mesh simplify octree task", ?chunk_address, lod).entered();
 
     Octree::simplify_octree(
         address_node_map.clone(),
@@ -160,7 +162,7 @@ async fn simplify_octree_task(
 #[allow(clippy::type_complexity)]
 pub(crate) fn simplify_octree(
     mut task_pool: AsyncTaskPool<Entity>,
-    chunk_query: Query<&TerrainChunkCoord, With<TerrainChunk>>,
+    chunk_query: Query<&TerrainChunkAddress, With<TerrainChunk>>,
     mut chunk_generator_query: ParamSet<(
         Query<(
             Entity,
@@ -190,7 +192,7 @@ pub(crate) fn simplify_octree(
                 let address_node_map = octree.address_node_map.clone();
                 let node_shape = octree.node_shape.clone();
                 let qef_threshold_map = settings.chunk_setting.qef_solver_threshold.clone();
-                let chunk_coord = chunk_query.get(parent.get()).unwrap();
+                let chunk_address = chunk_query.get(parent.get()).unwrap();
                 let lod = generator.lod;
                 task_pool.spawn(simplify_octree_task(
                     entity,
@@ -198,7 +200,7 @@ pub(crate) fn simplify_octree(
                     address_node_map,
                     node_shape,
                     qef_threshold_map,
-                    *chunk_coord,
+                    *chunk_address,
                     lod,
                 ));
             }
@@ -222,10 +224,10 @@ async fn dual_contouring_run_task(
     entity: Entity,
     surface: Arc<RwLock<ShapeSurface>>,
     node_addresses: Arc<RwLock<HashMap<NodeAddress, Node>>>,
-    chunk_coord: TerrainChunkCoord,
+    chunk_address: TerrainChunkAddress,
     lod: LodType,
 ) -> (Entity, MeshInfo) {
-    let _span = debug_span!("main mesh dual contouring", %chunk_coord, lod).entered();
+    // let _span = debug_span!("main mesh dual contouring", ?chunk_address, lod).entered();
 
     let surface_guard: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 
@@ -239,8 +241,14 @@ async fn dual_contouring_run_task(
         is_seam: false,
         surface,
     };
+
     dual_contouring::dual_contouring(&octree, &mut default_visiter);
 
+    info!(
+        "dual contouring : positions: {}, indices: {}",
+        default_visiter.positions.len(),
+        default_visiter.tri_indices.len()
+    );
     mesh_info.positions = default_visiter.positions;
     mesh_info.normals = default_visiter
         .normals
@@ -255,7 +263,7 @@ async fn dual_contouring_run_task(
 pub(crate) fn dual_contouring(
     mut commands: Commands,
     mut task_pool: AsyncTaskPool<(Entity, MeshInfo)>,
-    chunk_query: Query<&TerrainChunkCoord, With<TerrainChunk>>,
+    chunk_query: Query<&TerrainChunkAddress, With<TerrainChunk>>,
     mut chunk_generator_query: ParamSet<(
         Query<(
             Entity,
@@ -271,7 +279,7 @@ pub(crate) fn dual_contouring(
     if task_pool.is_idle() {
         for (entity, parent, octree, state, generator) in chunk_generator_query.p0().iter() {
             if state == &MainMeshState::DualContouring {
-                let chunk_coord = chunk_query.get(parent.get()).unwrap();
+                let chunk_address = chunk_query.get(parent.get()).unwrap();
                 let lod = generator.lod;
 
                 let shape_surface = surface.shape_surface.clone();
@@ -280,7 +288,7 @@ pub(crate) fn dual_contouring(
                     entity,
                     shape_surface,
                     octree_node_address,
-                    *chunk_coord,
+                    *chunk_address,
                     lod,
                 ));
             }

@@ -3,7 +3,11 @@ use std::{
     ops::{Add, Mul, Sub},
 };
 
-use bevy::{math::Vec3, prelude::Component, reflect::Reflect};
+use bevy::{
+    math::{Vec3, Vec3A},
+    prelude::Component,
+    reflect::Reflect,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -72,16 +76,36 @@ impl_from_terrain_chunk_coord!(i16);
 impl_from_terrain_chunk_coord!(u8);
 impl_from_terrain_chunk_coord!(i8);
 
+impl From<Vec3> for TerrainChunkCoord {
+    fn from(value: Vec3) -> Self {
+        Self {
+            x: value[0] as i64,
+            y: value[1] as i64,
+            z: value[2] as i64,
+        }
+    }
+}
+
+impl From<Vec3A> for TerrainChunkCoord {
+    fn from(value: Vec3A) -> Self {
+        Self {
+            x: value[0] as i64,
+            y: value[1] as i64,
+            z: value[2] as i64,
+        }
+    }
+}
+
 impl Display for TerrainChunkCoord {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
     }
 }
 
-impl Add<&TerrainChunkCoord> for &TerrainChunkCoord {
+impl Add<TerrainChunkCoord> for TerrainChunkCoord {
     type Output = TerrainChunkCoord;
 
-    fn add(self, rhs: &TerrainChunkCoord) -> Self::Output {
+    fn add(self, rhs: TerrainChunkCoord) -> Self::Output {
         Self::Output {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
@@ -90,10 +114,10 @@ impl Add<&TerrainChunkCoord> for &TerrainChunkCoord {
     }
 }
 
-impl Sub<&TerrainChunkCoord> for &TerrainChunkCoord {
+impl Sub<TerrainChunkCoord> for TerrainChunkCoord {
     type Output = TerrainChunkCoord;
 
-    fn sub(self, rhs: &TerrainChunkCoord) -> Self::Output {
+    fn sub(self, rhs: TerrainChunkCoord) -> Self::Output {
         Self::Output {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
