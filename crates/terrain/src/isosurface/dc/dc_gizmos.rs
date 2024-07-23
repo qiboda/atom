@@ -38,7 +38,7 @@ fn draw_world_coordinate_axes(mut world_coordinate_gizmos: Gizmos<WorldCoordinat
             rotation: Quat::from_axis_angle(Vec3::X, 0.0),
             scale: Vec3::ONE,
         },
-        3.0,
+        60.0,
     );
 }
 
@@ -94,7 +94,7 @@ fn draw_octree_voxel(query: Query<&Octree>, mut octree_node_gizmos: Gizmos<Voxel
 fn update_config(mut config_store: ResMut<GizmoConfigStore>) {
     for (_, config, _) in config_store.iter_mut() {
         config.depth_bias = 0.0;
-        config.line_width = 20.0;
+        config.line_width = 200.0;
         config.line_perspective = true;
     }
 }

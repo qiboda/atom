@@ -10,7 +10,6 @@ use bevy::{
 };
 use terrain_mat::TerrainMaterial;
 
-pub mod terrain;
 pub mod terrain_mat;
 
 #[derive(Debug, Default)]

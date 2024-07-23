@@ -1,61 +1,24 @@
 (
     chunk_setting: (
-        chunk_size: 64.0,
-        depth: 6,
+        chunk_size: 32.0,
+        depth: 5,
         qef_solver: true,
         qef_solver_threshold: {
-            6: 8.0,
-            7: 10.0,
-            8: 10.0,
-            2: 0.5,
             4: 2.0,
-            3: 1.0,
+            6: 8.0,
+            2: 0.5,
+            8: 10.0,
             5: 4.0,
+            9: 10.0,
+            7: 10.0,
             0: 0.05,
             1: 0.1,
-            9: 10.0,
+            3: 1.0,
         },
         qef_stddev: 0.1,
     ),
     lod_setting: (
-        lod_vec: [
-            (
-                chunk_chebyshev_distance: 2,
-                lod: 0,
-            ),
-            (
-                chunk_chebyshev_distance: 6,
-                lod: 1,
-            ),
-            (
-                chunk_chebyshev_distance: 12,
-                lod: 2,
-            ),
-            (
-                chunk_chebyshev_distance: 24,
-                lod: 3,
-            ),
-            (
-                chunk_chebyshev_distance: 48,
-                lod: 4,
-            ),
-            (
-                chunk_chebyshev_distance: 96,
-                lod: 6,
-            ),
-            (
-                chunk_chebyshev_distance: 192,
-                lod: 7,
-            ),
-            (
-                chunk_chebyshev_distance: 364,
-                lod: 7,
-            ),
-            (
-                chunk_chebyshev_distance: 2560000,
-                lod: 7,
-            ),
-        ],
         lod_octree_depth: 8,
+        load_node_num_per_processor_core: 4,
     ),
 )

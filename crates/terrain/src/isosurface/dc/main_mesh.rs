@@ -227,7 +227,7 @@ async fn dual_contouring_run_task(
     chunk_address: TerrainChunkAddress,
     lod: LodType,
 ) -> (Entity, MeshInfo) {
-    // let _span = debug_span!("main mesh dual contouring", ?chunk_address, lod).entered();
+    let _span = debug_span!("main mesh dual contouring", ?chunk_address, lod).entered();
 
     let surface_guard: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 

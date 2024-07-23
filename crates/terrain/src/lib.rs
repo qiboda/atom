@@ -17,7 +17,7 @@ pub mod setting;
 pub mod utils;
 
 use atom_internal::app_state::AppState;
-use bevy::{prelude::*, render::camera::CameraProjection};
+use bevy::prelude::*;
 use chunk_mgr::plugin::TerrainChunkPlugin;
 use isosurface::IsosurfaceExtractionPlugin;
 use lod::lod_octree::TerrainLodOctreePlugin;

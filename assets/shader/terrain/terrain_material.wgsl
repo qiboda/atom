@@ -5,6 +5,9 @@
 #import trimap::biplanar::{calculate_biplanar_mapping, biplanar_texture, biplanar_texture_single, biplanar_texture_splatted}
 #import trimap::triplanar::{calculate_triplanar_mapping, triplanar_normal_to_world, triplanar_normal_to_world_splatted}
 
+@group(2) @binding(0)
+var<uniform> debug_color: vec4<f32>;
+
 @group(2) @binding(1)
 var color_texture: texture_2d<f32>;
 @group(2) @binding(2)
@@ -54,7 +57,13 @@ fn fragment(
         bimap
     );
 
+#ifdef COLOR_DEBUG
+    out.color = debug_color;
+#else ifdef NORMAL_DEBUG
+    out.color = vec4<f32>(in.world_normal, 1.0);
+#else 
     out.color = color;
+#endif
 
     return out;
 }

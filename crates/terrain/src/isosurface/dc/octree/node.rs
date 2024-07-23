@@ -9,8 +9,8 @@ use pqef::Quadric;
 use strum::{EnumCount, IntoEnumIterator};
 
 use super::{
-    address::{NodeAddress},
-    tables::{FaceIndex, VertexIndex, EDGE_VERTEX_PAIRS},
+    address::NodeAddress,
+    tables::{VertexIndex, EDGE_VERTEX_PAIRS},
     OctreeSampler,
 };
 

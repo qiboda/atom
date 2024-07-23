@@ -4,17 +4,12 @@ use bevy::{
         Vec3A,
     },
     prelude::*,
-    render::primitives::Frustum,
     utils::HashMap,
 };
-use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::{
-    chunk_mgr::chunk::chunk_lod::OctreeDepthType,
-    isosurface::dc::octree::address::NodeAddress,
-    setting::TerrainSetting,
-    utils::{OctreeUtil, TerrainChunkUtils},
-    TerrainObserver, TerrainSystemSet,
+    chunk_mgr::chunk::chunk_lod::OctreeDepthType, isosurface::dc::octree::address::NodeAddress,
+    setting::TerrainSetting, utils::OctreeUtil, TerrainObserver, TerrainSystemSet,
 };
 
 #[derive(Debug, Default)]
@@ -27,7 +22,13 @@ impl Plugin for TerrainLodOctreePlugin {
             .observe(trigger_lod_octree_node_removed)
             .add_systems(
                 Update,
-                update_lod_octree_nodes.in_set(TerrainSystemSet::UpdateLodOctree),
+                (
+                    update_lod_octree_nodes,
+                    // apply_deferred,
+                    // check_lod_octree_node_type,
+                )
+                    .chain()
+                    .in_set(TerrainSystemSet::UpdateLodOctree),
             )
             .add_systems(Update, log_lod_octree_nodes);
     }
@@ -35,8 +36,7 @@ impl Plugin for TerrainLodOctreePlugin {
 
 #[derive(Debug, Resource, Default)]
 pub struct LodOctreeMap {
-    node_map: HashMap<NodeAddress, Entity>,
-    leaf_node_map: HashMap<NodeAddress, Entity>,
+    pub node_map: HashMap<NodeAddress, Entity>,
 }
 
 impl LodOctreeMap {
@@ -44,26 +44,12 @@ impl LodOctreeMap {
         self.node_map.get(&address)
     }
 
-    pub fn insert_node(
-        &mut self,
-        address: NodeAddress,
-        entity: Entity,
-        node_type: LodOctreeNodeType,
-    ) {
-        match node_type {
-            LodOctreeNodeType::Leaf => {
-                self.node_map.insert(address, entity);
-                self.leaf_node_map.insert(address, entity);
-            }
-            LodOctreeNodeType::Internal => {
-                self.node_map.insert(address, entity);
-            }
-        }
+    pub fn insert_node(&mut self, address: NodeAddress, entity: Entity) {
+        self.node_map.insert(address, entity);
     }
 
     pub fn remove_node(&mut self, address: NodeAddress) {
         self.node_map.remove(&address);
-        self.leaf_node_map.remove(&address);
     }
 }
 
@@ -74,7 +60,7 @@ fn trigger_lod_octree_node_added(
 ) {
     let entity = trigger.entity();
     if let Ok(lod_octree_node) = query.get(entity) {
-        lod_octree_map.insert_node(lod_octree_node.address, entity, lod_octree_node.node_type);
+        lod_octree_map.insert_node(lod_octree_node.address, entity);
     }
 }
 
@@ -105,18 +91,20 @@ pub struct LodOctreeNode {
     pub node_type: LodOctreeNodeType,
 }
 
-type ObserverCoords = smallvec::SmallVec<[TerrainChunkCoord; 1]>;
+type ObserverLocations = smallvec::SmallVec<[Vec3A; 1]>;
 
+#[allow(clippy::too_many_arguments)]
 fn update_lod_octree_node_top_to_bottom(
     commands: &mut Commands,
     aabb: Aabb3d,
     address: NodeAddress,
-    observer_coords: &ObserverCoords,
+    observer_locations: &ObserverLocations,
     setting: &Res<TerrainSetting>,
     lod_octree_map: &mut ResMut<LodOctreeMap>,
     parent_entity: Entity,
+    children_node_query: &mut Query<&mut LodOctreeNode, With<Parent>>,
 ) {
-    let can_divide = can_divide_node(&address, &aabb, observer_coords, setting);
+    let can_divide = can_divide_node(&address, &aabb, observer_locations, setting);
 
     let node_entity = lod_octree_map.node_map.get(&address);
     let new_node_entity = match node_entity {
@@ -135,7 +123,16 @@ fn update_lod_octree_node_top_to_bottom(
                 .set_parent(parent_entity)
                 .id()
         }
-        Some(node_entity) => *node_entity,
+        Some(node_entity) => {
+            if let Ok(mut node) = children_node_query.get_mut(*node_entity) {
+                if can_divide {
+                    node.node_type = LodOctreeNodeType::Internal;
+                } else {
+                    node.node_type = LodOctreeNodeType::Leaf;
+                }
+            }
+            *node_entity
+        }
     };
 
     if can_divide {
@@ -146,10 +143,11 @@ fn update_lod_octree_node_top_to_bottom(
                 commands,
                 child_aabb,
                 child_address,
-                observer_coords,
+                observer_locations,
                 setting,
                 lod_octree_map,
                 new_node_entity,
+                children_node_query,
             );
         }
     } else {
@@ -163,21 +161,25 @@ fn update_lod_octree_node_top_to_bottom(
 fn update_lod_octree_nodes(
     mut commands: Commands,
     observer_query: Query<&GlobalTransform, With<TerrainObserver>>,
-    root_node_query: Query<(Entity, &LodOctreeNode), Without<Parent>>,
+    mut root_node_query: Query<(Entity, &mut LodOctreeNode), Without<Parent>>,
+    mut children_node_query: Query<&mut LodOctreeNode, With<Parent>>,
     mut lod_octree_map: ResMut<LodOctreeMap>,
     setting: Res<TerrainSetting>,
 ) {
+    let _span = info_span!("update_lod_octree_nodes").entered();
+
     if observer_query.iter().len() == 0 {
+        if let Ok((entity, _node)) = root_node_query.get_single() {
+            if let Some(entity_cmds) = commands.get_entity(entity) {
+                entity_cmds.despawn_recursive();
+            }
+        }
         return;
     }
 
-    let mut observer_coords: ObserverCoords = smallvec::smallvec![];
+    let mut observer_locations: ObserverLocations = smallvec::smallvec![];
     for observer_transform in observer_query.iter() {
-        let coord = TerrainChunkUtils::get_coord_from_location(
-            setting.chunk_setting.chunk_size,
-            observer_transform.translation_vec3a(),
-        );
-        observer_coords.push(coord);
+        observer_locations.push(observer_transform.translation_vec3a());
     }
 
     debug_assert!(root_node_query.iter().len() <= 1);
@@ -187,7 +189,7 @@ fn update_lod_octree_nodes(
         let lod_octree_size = setting.get_lod_octree_size();
         let root_aabb = Aabb3d::new(Vec3A::ZERO, Vec3A::splat(lod_octree_size * 0.5));
 
-        let can_divide = can_divide_node(&root_address, &root_aabb, &observer_coords, &setting);
+        let can_divide = can_divide_node(&root_address, &root_aabb, &observer_locations, &setting);
 
         let node_type = if can_divide {
             LodOctreeNodeType::Internal
@@ -212,24 +214,28 @@ fn update_lod_octree_nodes(
                     &mut commands,
                     child_aabb,
                     child_address,
-                    &observer_coords,
+                    &observer_locations,
                     &setting,
                     &mut lod_octree_map,
                     root_entity,
+                    &mut children_node_query,
                 );
             }
         } else {
             commands.entity(root_entity).despawn_descendants();
         }
     } else {
-        let (root_entity, root_node) = root_node_query.get_single().expect("root node must one");
+        let (root_entity, mut root_node) = root_node_query
+            .get_single_mut()
+            .expect("root node must one");
 
         if can_divide_node(
             &root_node.address,
             &root_node.aabb,
-            &observer_coords,
+            &observer_locations,
             &setting,
         ) {
+            root_node.node_type = LodOctreeNodeType::Internal;
             for child_address in root_node.address.get_children_addresses() {
                 let child_aabb = OctreeUtil::get_subnode_aabb(
                     root_node.aabb,
@@ -239,14 +245,16 @@ fn update_lod_octree_nodes(
                     &mut commands,
                     child_aabb,
                     child_address,
-                    &observer_coords,
+                    &observer_locations,
                     &setting,
                     &mut lod_octree_map,
                     root_entity,
+                    &mut children_node_query,
                 );
             }
         } else {
             commands.entity(root_entity).despawn_descendants();
+            root_node.node_type = LodOctreeNodeType::Leaf;
         }
     }
 }
@@ -254,37 +262,30 @@ fn update_lod_octree_nodes(
 fn can_divide_node(
     node_address: &NodeAddress,
     node_aabb: &Aabb3d,
-    observer_coords: &ObserverCoords,
+    observer_locations: &ObserverLocations,
     setting: &Res<TerrainSetting>,
 ) -> bool {
-    let node_coord = TerrainChunkUtils::get_coord_from_location(
-        setting.chunk_setting.chunk_size,
-        node_aabb.center(),
-    );
-    let max_depth = get_node_max_depth(observer_coords, node_coord, setting);
+    let max_depth = get_node_theory_depth(observer_locations, node_aabb, setting);
     node_address.get_depth() < max_depth
         && node_address.get_depth() < setting.lod_setting.get_lod_octree_depth()
 }
 
-fn get_node_max_depth(
-    frustum_coords: &ObserverCoords,
-    node_coord: TerrainChunkCoord,
+fn get_node_theory_depth(
+    observer_locations: &ObserverLocations,
+    node_aabb: &Aabb3d,
     setting: &Res<TerrainSetting>,
 ) -> OctreeDepthType {
     let mut max_depth = 0;
-    for frustum_coord in frustum_coords.iter() {
-        let chebyshev_distance = (*frustum_coord - node_coord).chebyshev_distance();
-        let clipmap_depth = setting
-            .lod_setting
-            .get_depth(chebyshev_distance)
-            .unwrap_or_else(|| {
-                panic!(
-                    "get invalid depth by chebyshev distance: {}",
-                    chebyshev_distance
-                )
-            });
+    let center = node_aabb.center();
+    for observer_location in observer_locations.iter() {
+        let distance = (*observer_location - center).length() * 0.75;
+        let chunk_distance = distance / setting.chunk_setting.chunk_size;
+        // 更小才能细分
+        let clipmap_lod = chunk_distance.log2().floor() as OctreeDepthType;
+        let clipmap_depth = setting.lod_setting.get_lod_octree_depth() - clipmap_lod;
         max_depth = max_depth.max(clipmap_depth);
     }
+    // 更大才能细分
     max_depth
 }
 
@@ -292,34 +293,26 @@ fn log_lod_octree_nodes(
     lod_octree_map: Res<LodOctreeMap>,
     query: Query<&LodOctreeNode>,
     observer_query: Query<&GlobalTransform, With<TerrainObserver>>,
-    setting: Res<TerrainSetting>,
 ) {
-    // if observer_query.iter().len() == 0 {
-    //     return;
-    // }
+    if observer_query.iter().len() == 0 {
+        return;
+    }
 
-    // let mut observer_coords: ObserverCoords = smallvec::smallvec![];
-    // for observer_transform in observer_query.iter() {
-    //     let coord = TerrainChunkUtils::get_coord_from_location(
-    //         setting.chunk_setting.chunk_size,
-    //         observer_transform.translation_vec3a(),
-    //     );
-    //     observer_coords.push(coord);
-    // }
+    let mut leaf_num = 0;
+    let mut internal_num = 0;
+    for node in query.iter() {
+        if node.node_type == LodOctreeNodeType::Leaf {
+            leaf_num += 1;
+        } else {
+            internal_num += 1;
+        }
+    }
 
-    // error!(
-    //     "lod octree map size: {}, node size: {}",
-    //     lod_octree_map.node_map.len(),
-    //     query.iter().count()
-    // );
-
-    // for node in query.iter() {
-    //     let node_coord = TerrainChunkUtils::get_coord_from_location(64.0, node.aabb.center());
-    //     let max_depth = get_node_max_depth(&observer_coords, node_coord, &setting);
-    //     error!(
-    //         "node depth: {:?}, max_depth: {}",
-    //         node.address.get_depth(),
-    //         max_depth
-    //     );
-    // }
+    info!(
+        "lod octree map size: {}, node size: {}, leaf num: {}, internal num: {}",
+        lod_octree_map.node_map.len(),
+        query.iter().count(),
+        leaf_num,
+        internal_num,
+    );
 }

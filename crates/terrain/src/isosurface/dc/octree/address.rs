@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 use crate::chunk_mgr::chunk::chunk_lod::OctreeDepthType;
 
@@ -12,10 +12,11 @@ use bevy::{reflect::Reflect, utils::hashbrown::HashMap};
 use bitfield_struct::bitfield;
 use ndshape::{RuntimeShape, Shape};
 use strum::EnumCount;
+use tracing::info;
 
 /// store octree node address
 // some NodeAddress max bit is 48(usize) / 3 = 16. so max octree level is 16.
-#[bitfield(u64)]
+#[bitfield(u64, debug = false)]
 #[derive(PartialEq, Eq, Hash, Reflect)]
 pub struct NodeAddress {
     #[bits(48)]
@@ -25,6 +26,18 @@ pub struct NodeAddress {
 }
 
 impl Display for NodeAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "address: {:#0width$o}#{}",
+            self.raw_address(),
+            self.depth(),
+            width = self.depth() as usize,
+        )
+    }
+}
+
+impl Debug for NodeAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -187,10 +200,6 @@ impl NodeAddress {
                 neighbor_address.set_depth(neighbor_address.depth() + address.depth());
                 break;
             }
-
-            if address.raw_address() == 0 {
-                break;
-            }
         }
 
         neighbor_address
@@ -201,24 +210,26 @@ pub type CoordAddressVec = Vec<NodeAddress>;
 pub type DepthCoordMap = HashMap<OctreeDepthType, CoordAddressVec>;
 
 pub fn construct_octree_depth_coord_map(chunk_size: f32, voxel_size: f32) -> DepthCoordMap {
-    // 此处乘以2是因为考虑到缝合边缘，需要两倍尺寸的八叉树。
-    let size = (chunk_size * 2.0 / voxel_size) as u32;
+    // 此处乘以8是因为考虑到缝合边缘，衔接边缘的八个Chunk最大会相差三个lod。
+    let size = (chunk_size * 8.0 / voxel_size) as u32;
     let shape = RuntimeShape::<u32, 3>::new([size, size, size]);
 
     let size = shape.as_array();
     assert_eq!(size[0], size[1]);
     assert_eq!(size[0], size[2]);
-    let depth = (size[0] as f32).log2().ceil() as OctreeDepthType;
+    let depth = (size[0] as f32).log2() as OctreeDepthType;
+
+    info!("depth: {}, voxel: {}, size: {}", depth, voxel_size, size[0]);
 
     let mut depth_coord_map: DepthCoordMap = HashMap::default();
     let mut size = size[0];
-    for i in 0..=depth {
+    for i in (0..=depth).rev() {
         if size == 0 {
             break;
         }
         let shape = ndshape::RuntimeShape::<u32, 3>::new([size, size, size]);
         let vec = construct_octree_coord_address_vec(&shape);
-        depth_coord_map.insert(depth - i, vec);
+        depth_coord_map.insert(i, vec);
         size >>= 1;
     }
     depth_coord_map
@@ -423,6 +434,16 @@ mod tests {
         assert_eq!(
             child_child_address_1.get_face_neighbor_address(FaceIndex::Left),
             child_child_address_2
+        );
+    }
+
+    #[test]
+    fn test_neighbor_crossing_node() {
+        let address = NodeAddress::new().with_raw_address(0o7).with_depth(2);
+        let address_neighbor = address.get_face_neighbor_address(FaceIndex::Right);
+        assert_eq!(
+            address_neighbor,
+            NodeAddress::new().with_raw_address(0o16).with_depth(2)
         );
     }
 

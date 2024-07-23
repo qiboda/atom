@@ -35,7 +35,7 @@ pub struct Sphere;
 
 impl DensityFunction for Sphere {
     fn get_value(&self, x: f32, y: f32, z: f32) -> f32 {
-        (x - 8.0) * (x - 8.0) + (y - 8.0) * (y - 8.0) + (z - 8.0) * (z - 8.0) - 8.0
+        x * x + y * y + z * z - 60000.0
     }
 }
 

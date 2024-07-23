@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use crate::isosurface::dc::octree::address::NodeAddress;
 
-#[derive(Debug, Component, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, Component, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
 pub enum TerrainChunkState {
     CreateMainMesh,
     WaitToCreateSeam,

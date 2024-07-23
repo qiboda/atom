@@ -1,7 +1,6 @@
 use std::ops::Not;
 
 use bevy::{prelude::*, utils::hashbrown::HashSet};
-use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::{
     isosurface::{
@@ -26,6 +25,7 @@ use super::{
         chunk_lod::TerrainChunkLod,
         state::{SeamMeshIdGenerator, TerrainChunkAddress, TerrainChunkState},
     },
+    chunk_loader::TerrainChunkLoader,
     chunk_mapper::TerrainChunkMapper,
 };
 
@@ -51,7 +51,7 @@ pub fn update_to_wait_create_seam(
             for child in children.iter() {
                 if let Ok((visibility, mesh_state, generator)) = generator_query.get_mut(*child) {
                     if *mesh_state == MainMeshState::Done && generator.lod == chunk_lod.get_lod() {
-                        warn!(
+                        info!(
                             "update_to_wait_create_seam:{:?}, lod: {}",
                             chunk_address,
                             chunk_lod.get_lod()
@@ -65,41 +65,6 @@ pub fn update_to_wait_create_seam(
                 }
             }
             assert!(count < 2);
-        }
-    }
-}
-
-pub fn hidden_main_mesh(
-    query: Query<
-        (
-            &Children,
-            &TerrainChunkLod,
-            &TerrainChunkState,
-            &TerrainChunkAddress,
-        ),
-        With<TerrainChunk>,
-    >,
-    mut generator_query: Query<(&ViewVisibility, &mut Visibility, &TerrainChunkMainGenerator)>,
-) {
-    let all_create_over = query.iter().all(|(_, _, state, _)| {
-        if *state == TerrainChunkState::Done {
-            return true;
-        }
-        false
-    });
-
-    if all_create_over.not() {
-        return;
-    }
-
-    for (children, chunk_lod, _, chunk_address) in query.iter() {
-        debug!("main_mesh_visibility: {:?}", chunk_address);
-        for child in children.iter() {
-            if let Ok((_, mut visibility, generator)) = generator_query.get_mut(*child) {
-                if generator.lod != chunk_lod.get_lod() {
-                    *visibility = Visibility::Hidden;
-                }
-            }
         }
     }
 }
@@ -126,7 +91,6 @@ pub fn to_create_seam_mesh(
     });
 
     if exist_create_main_mesh_state {
-        error!("exist_create_main_mesh_state");
         return;
     }
 
@@ -138,7 +102,7 @@ pub fn to_create_seam_mesh(
         }
     }
 
-    let mut update_seam_chunk_address = HashSet::new();
+    let mut update_seam_chunk_addresses = HashSet::new();
     to_create_seam_chunks.iter().for_each(|x| {
         let left_face_addresses = get_face_neighbor_lod_octree_nodes(
             &lod_octree_node_query,
@@ -182,17 +146,22 @@ pub fn to_create_seam_mesh(
             ***x,
             VertexIndex::X0Y0Z0,
         );
-        update_seam_chunk_address.insert(***x);
-        update_seam_chunk_address.extend(left_face_addresses);
-        update_seam_chunk_address.extend(bottom_face_addresses);
-        update_seam_chunk_address.extend(back_face_addresses);
-        update_seam_chunk_address.extend(x_axis_edge_addresses);
-        update_seam_chunk_address.extend(y_axis_edge_addresses);
-        update_seam_chunk_address.extend(z_axis_edge_addresses);
-        update_seam_chunk_address.insert(vertex_address);
+        update_seam_chunk_addresses.insert(***x);
+        update_seam_chunk_addresses.extend(left_face_addresses);
+        update_seam_chunk_addresses.extend(bottom_face_addresses);
+        update_seam_chunk_addresses.extend(back_face_addresses);
+        update_seam_chunk_addresses.extend(x_axis_edge_addresses);
+        update_seam_chunk_addresses.extend(y_axis_edge_addresses);
+        update_seam_chunk_addresses.extend(z_axis_edge_addresses);
+        update_seam_chunk_addresses.insert(vertex_address);
     });
 
-    for chunk_address in update_seam_chunk_address {
+    info!(
+        "update_seam_chunk_address: {:#?}",
+        update_seam_chunk_addresses
+    );
+
+    for chunk_address in update_seam_chunk_addresses {
         if let Some(entity) = chunk_mapper.get_chunk_entity(chunk_address.into()) {
             if let Ok((mut state, mut seam_mesh_id_generator)) = query.p2().get_mut(*entity) {
                 let seam_mesh_id = seam_mesh_id_generator.gen();
@@ -244,6 +213,56 @@ pub fn update_create_seam_mesh_over(
                 }
             }
             assert!(count < 2);
+        }
+    }
+}
+
+pub fn hidden_main_mesh(
+    query: Query<
+        (
+            &Children,
+            &TerrainChunkLod,
+            &TerrainChunkState,
+            &TerrainChunkAddress,
+        ),
+        With<TerrainChunk>,
+    >,
+    chunk_query: Query<(), With<TerrainChunk>>,
+    mut generator_query: Query<(&ViewVisibility, &mut Visibility, &TerrainChunkMainGenerator)>,
+    chunk_mapper: Res<TerrainChunkMapper>,
+    lod_octree_node_query: Query<&LodOctreeNode>,
+    lod_octree_map: Res<LodOctreeMap>,
+    loader: Res<TerrainChunkLoader>,
+) {
+    let all_create_over = query.iter().all(|(_, _, state, _)| {
+        if *state == TerrainChunkState::Done {
+            return true;
+        }
+        false
+    });
+
+    if all_create_over.not() {
+        return;
+    }
+    warn!(
+        "all mesh create over, chunk_mapper len: {}, lod node num: {}, lod map len: {}, loaded leaf node set len: {}, pending unload leaf node set len: {}, leaf node pending load deque len: {}, chunk_num:{}",
+        chunk_mapper.data.len(),
+        lod_octree_node_query.iter().len(),
+        lod_octree_map.node_map.len(),
+        loader.loaded_leaf_node_set.len(),
+        loader.pending_unload_leaf_node_set.len(),
+        loader.leaf_node_pending_load_deque.len(),
+        chunk_query.iter().len()
+    );
+
+    for (children, chunk_lod, _, chunk_address) in query.iter() {
+        debug!("main_mesh_visibility: {:?}", chunk_address);
+        for child in children.iter() {
+            if let Ok((_, mut visibility, generator)) = generator_query.get_mut(*child) {
+                if generator.lod != chunk_lod.get_lod() {
+                    *visibility = Visibility::Hidden;
+                }
+            }
         }
     }
 }

@@ -1,7 +1,6 @@
 use bevy::{prelude::*, utils::HashMap};
 use serde::{Deserialize, Serialize};
 use settings::{Setting, SettingValidate};
-use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::chunk_mgr::chunk::chunk_lod::{LodType, OctreeDepthType};
 
@@ -51,8 +50,8 @@ impl SettingValidate for TerrainChunkSetting {
 impl Default for TerrainChunkSetting {
     fn default() -> Self {
         Self {
-            chunk_size: 64.0,
-            depth: 6,
+            chunk_size: 32.0,
+            depth: 5,
             qef_solver: true,
             qef_solver_threshold: HashMap::from([
                 (0, 0.05),
@@ -71,60 +70,28 @@ impl Default for TerrainChunkSetting {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct TerrainClipMapLod {
-    /// relative to the active camera chunk coord
-    pub chunk_chebyshev_distance: u64,
-    /// lod is octree depth
-    pub lod: LodType,
-}
-
-impl TerrainClipMapLod {
-    pub fn new(chunk_chebyshev_distance: u64, lod: LodType) -> Self {
-        Self {
-            chunk_chebyshev_distance,
-            lod,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TerrainLodOctreeSetting {
-    lod_vec: Vec<TerrainClipMapLod>,
     lod_octree_depth: OctreeDepthType,
+    pub load_node_num_per_processor_core: u8,
 }
 
 impl Default for TerrainLodOctreeSetting {
     fn default() -> Self {
         Self {
-            lod_vec: vec![
-                TerrainClipMapLod::new(2, 0),
-                TerrainClipMapLod::new(6, 1),
-                TerrainClipMapLod::new(12, 2),
-                TerrainClipMapLod::new(24, 3),
-                TerrainClipMapLod::new(48, 4),
-                TerrainClipMapLod::new(96, 6),
-                TerrainClipMapLod::new(192, 7),
-                TerrainClipMapLod::new(364, 7),
-                TerrainClipMapLod::new(2560000, 7),
-            ],
             lod_octree_depth: 8,
+            load_node_num_per_processor_core: 8,
         }
     }
 }
 
+impl SettingValidate for TerrainLodOctreeSetting {
+    fn validate(&self) -> bool {
+        true
+    }
+}
+
 impl TerrainLodOctreeSetting {
-    pub fn get_lod(&self, chebyshev_distance: u64) -> Option<&TerrainClipMapLod> {
-        self.lod_vec
-            .iter()
-            .find(|lod| chebyshev_distance <= lod.chunk_chebyshev_distance)
-    }
-
-    pub fn get_depth(&self, chebyshev_distance: u64) -> Option<OctreeDepthType> {
-        self.get_lod(chebyshev_distance)
-            .map(|x| self.lod_octree_depth - x.lod)
-    }
-
     pub fn get_lod_octree_depth(&self) -> OctreeDepthType {
         self.lod_octree_depth
     }
@@ -221,14 +188,8 @@ mod tests {
                 qef_stddev: 0.1,
             },
             lod_setting: TerrainLodOctreeSetting {
-                lod_vec: vec![
-                    TerrainClipMapLod::new(0, 0),
-                    TerrainClipMapLod::new(1, 1),
-                    TerrainClipMapLod::new(2, 2),
-                    TerrainClipMapLod::new(3, 3),
-                    TerrainClipMapLod::new(4, 4),
-                ],
                 lod_octree_depth: 8,
+                load_node_num_per_processor_core: 4,
             },
         };
         assert_eq!(setting.get_lod_octree_size(), 16384.0);

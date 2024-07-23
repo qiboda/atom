@@ -6,8 +6,6 @@ use bevy::{
         tonemapping::Tonemapping,
     },
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
-    diagnostic::FrameTimeDiagnosticsPlugin,
-    input::keyboard::Key,
     log::LogPlugin,
     pbr::{
         wireframe::{WireframeConfig, WireframePlugin},
@@ -17,7 +15,6 @@ use bevy::{
 };
 use bevy_debug_grid::{Grid, GridAxis};
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use dotenv::dotenv;
 use log_layers::LogLayersPlugin;
 use terrain::{TerrainObserver, TerrainSubsystemPlugin};
@@ -29,7 +26,7 @@ pub fn main() {
 
     app.add_plugins(AtomDefaultPlugins.set(LogPlugin {
         custom_layer: LogLayersPlugin::get_layer,
-        filter: "warn,wgpu=error,naga=warn,terrain=info".to_string(),
+        filter: "warn,wgpu=error,naga=warn,terrain=warn".to_string(),
         ..default()
     }))
     // .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(0.5)))
@@ -49,10 +46,10 @@ pub fn main() {
         },
     })
     .add_systems(Startup, startup)
-    .add_systems(Update, update_terrain_observer)
+    .add_systems(Update, (update_terrain_observer, change_camera_speed))
     // .add_plugins(WorldInspectorPlugin::new())
     .insert_resource(MovementSettings {
-        speed: 1000.0,
+        speed: 300.0,
         ..default()
     })
     .run();
@@ -133,6 +130,7 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
             ..Default::default()
         },
         FlyCam,
+        // TerrainObserver,
     ));
 }
 
@@ -149,5 +147,16 @@ pub fn update_terrain_observer(
                 commands.entity(entity).remove::<TerrainObserver>();
             }
         }
+    }
+}
+
+pub fn change_camera_speed(
+    input: Res<ButtonInput<KeyCode>>,
+    mut move_setting: ResMut<MovementSettings>,
+) {
+    if input.pressed(KeyCode::ControlLeft) {
+        move_setting.speed = 3000.0;
+    } else {
+        move_setting.speed = 300.0;
     }
 }

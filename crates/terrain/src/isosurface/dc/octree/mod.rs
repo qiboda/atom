@@ -225,7 +225,7 @@ impl Octree {
 
         let depth = Octree::get_octree_depth(&octree.node_shape);
         for i in (0..depth).rev() {
-            trace!("depth: {}", i);
+            debug!("depth: {}", i);
             let node_address_mapper = node_address.get(&i).unwrap();
             for x in 0..node_shape_size[0] {
                 for y in 0..node_shape_size[1] {
@@ -313,7 +313,7 @@ impl Octree {
                 node_shape_size[2],
             ]);
 
-            debug!(
+            info!(
                 "depth {}, node_addresses len: {}",
                 i,
                 address_node_map.len()
@@ -446,8 +446,6 @@ pub(crate) use check_octree_nodes_relation;
 use crate::{
     chunk_mgr::chunk::chunk_lod::OctreeDepthType, isosurface::surface::shape_surface::ShapeSurface,
 };
-
-use super::OctreeDepthCoordMapper;
 
 impl Octree {
     #[cfg(debug_assertions)]
@@ -582,5 +580,13 @@ mod tests {
 
         let a = 2.0f32.powi(-3);
         assert_eq!(a, 0.125);
+    }
+
+    #[test]
+    fn test_rev_iter() {
+        let depth = 3;
+        for i in (0..depth).rev() {
+            println!("i: {}", i);
+        }
     }
 }

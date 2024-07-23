@@ -75,8 +75,6 @@ impl From<&MeshInfo> for Mesh {
             mesh_cache.get_indices().clone(),
         ));
 
-        let aabb = mesh.compute_aabb().unwrap();
-        warn!("mesh aabb: {:?}", aabb);
         mesh
     }
 }

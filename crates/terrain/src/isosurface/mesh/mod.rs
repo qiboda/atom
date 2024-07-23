@@ -2,7 +2,6 @@ pub mod mesh_info;
 
 use avian3d::{collision::Collider, prelude::RigidBody};
 use bevy::{
-    math::{bounding::Aabb3d, Vec3A},
     pbr::wireframe::{Wireframe, WireframeColor},
     prelude::*,
 };
@@ -12,7 +11,7 @@ use crate::{
     chunk_mgr::chunk::{
         bundle::TerrainChunk, chunk_lod::TerrainChunkLod, state::TerrainChunkAddress,
     },
-    isosurface::{ecology::layer::Sampler, materials::terrain_mat::TerrainMaterial},
+    isosurface::materials::terrain_mat::{TerrainDebugType, TerrainMaterial},
 };
 
 use super::{
@@ -77,6 +76,30 @@ pub fn create_main_mesh(
         //     }
         //     None => {
         let material = materials.add(TerrainMaterial {
+            debug_color: match generator.lod {
+                0 => LinearRgba::RED,
+                1 => LinearRgba::GREEN,
+                2 => LinearRgba::BLUE,
+                3 => LinearRgba::BLACK,
+                4 => LinearRgba::WHITE,
+                5 => LinearRgba::RED,
+                6 => LinearRgba::GREEN,
+                7 => LinearRgba::BLUE,
+                8 => LinearRgba::BLACK,
+                9 => LinearRgba::WHITE,
+                10 => LinearRgba::RED,
+                11 => LinearRgba::GREEN,
+                12 => LinearRgba::BLUE,
+                13 => LinearRgba::BLACK,
+                14 => LinearRgba::WHITE,
+                15 => LinearRgba::RED,
+                16 => LinearRgba::BLACK,
+                17 => LinearRgba::WHITE,
+                18 => LinearRgba::BLACK,
+                19 => LinearRgba::WHITE,
+                _ => LinearRgba::BLACK,
+            },
+            debug_type: Some(TerrainDebugType::Color),
             color_texture: None,
             metallic_texture: None,
             normal_texture: None,
@@ -102,7 +125,7 @@ pub fn create_main_mesh(
         ));
 
         *state = MainMeshState::Done;
-        warn!("create main mesh end: {:?}", terrain_chunk_address);
+        info!("create main mesh end: {:?}", terrain_chunk_address);
     }
 }
 
@@ -156,7 +179,7 @@ pub fn create_seam_mesh(
             mesh_info.get_indices().len(),
         );
 
-        let material;
+        // let material;
         // let ecology_material = ecology_layer_sampler.sample(
         //     *terrain_chunk_address,
         //     Aabb3d::new(Vec3A::splat(0.0), Vec3A::splat(1.0)),
@@ -173,7 +196,31 @@ pub fn create_seam_mesh(
         //         })
         //     }
         //     None => {
-        material = materials.add(TerrainMaterial {
+        let material = materials.add(TerrainMaterial {
+            debug_color: match chunk_lod.get_lod() {
+                0 => LinearRgba::RED,
+                1 => LinearRgba::GREEN,
+                2 => LinearRgba::BLUE,
+                3 => LinearRgba::BLACK,
+                4 => LinearRgba::WHITE,
+                5 => LinearRgba::RED,
+                6 => LinearRgba::GREEN,
+                7 => LinearRgba::BLUE,
+                8 => LinearRgba::BLACK,
+                9 => LinearRgba::WHITE,
+                10 => LinearRgba::RED,
+                11 => LinearRgba::GREEN,
+                12 => LinearRgba::BLUE,
+                13 => LinearRgba::BLACK,
+                14 => LinearRgba::WHITE,
+                15 => LinearRgba::RED,
+                16 => LinearRgba::BLACK,
+                17 => LinearRgba::WHITE,
+                18 => LinearRgba::BLACK,
+                19 => LinearRgba::WHITE,
+                _ => LinearRgba::BLACK,
+            },
+            debug_type: Some(TerrainDebugType::Color),
             color_texture: None,
             metallic_texture: None,
             normal_texture: None,
@@ -207,6 +254,6 @@ pub fn create_seam_mesh(
         }
 
         *state = SeamMeshState::Done;
-        error!("create seam mesh end: {:?}", terrain_chunk_address);
+        info!("create seam mesh end: {:?}", terrain_chunk_address);
     }
 }

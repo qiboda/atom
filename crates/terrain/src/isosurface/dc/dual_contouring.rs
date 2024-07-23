@@ -5,7 +5,7 @@ use bevy::{
     utils::HashMap,
 };
 use strum::{EnumCount, IntoEnumIterator};
-use tracing::{instrument, trace, warn};
+use tracing::trace;
 
 use crate::isosurface::{
     dc::octree::tables::{EDGE_NODES_VERTICES, FACE_TO_SUB_EDGES_AXIS_TYPE},

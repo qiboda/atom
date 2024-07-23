@@ -29,12 +29,17 @@ pub struct DualContouringPlugin;
 
 impl Plugin for DualContouringPlugin {
     fn build(&self, app: &mut App) {
+        let span = info_span!("OctreeDepthCoordMapper").entered();
+        // TODO 可以只保存边缘的坐标，减少内存占用。并不行，都需要使用。
         let terrain_setting = app.world().get_resource::<TerrainSetting>().unwrap();
+        let mapper = construct_octree_depth_coord_map(
+            terrain_setting.chunk_setting.chunk_size,
+            terrain_setting.chunk_setting.get_voxel_size(0),
+        );
+        drop(span);
+
         app.insert_resource(OctreeDepthCoordMapper {
-            mapper: Arc::new(RwLock::new(construct_octree_depth_coord_map(
-                terrain_setting.chunk_setting.chunk_size * 4.0,
-                terrain_setting.chunk_setting.get_voxel_size(0),
-            ))),
+            mapper: Arc::new(RwLock::new(mapper)),
         })
         .configure_sets(
             Update,

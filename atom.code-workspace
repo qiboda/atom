@@ -19,6 +19,7 @@
             "cmds",
             "datatables",
             "delinearize",
+            "deque",
             "despawn",
             "dotenv",
             "egui",

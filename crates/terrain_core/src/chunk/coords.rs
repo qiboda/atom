@@ -42,6 +42,13 @@ impl TerrainChunkCoord {
 }
 
 impl TerrainChunkCoord {
+    pub fn euclidean_distance(&self) -> u64 {
+        let x = self.x as f64;
+        let y = self.y as f64;
+        let z = self.z as f64;
+        (x * x + y * y + z * z).sqrt() as u64
+    }
+
     /// Chebyshev distance
     pub fn chebyshev_distance(&self) -> u64 {
         self.abs().max_element() as u64

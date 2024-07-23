@@ -8,7 +8,7 @@ use dc::DualContouringPlugin;
 use ecology::EcologyPlugin;
 use materials::TerrainMaterialPlugin;
 use surface::{
-    density_function::{NoiseSurface, Panel},
+    density_function::{NoiseSurface, Panel, Sphere},
     shape_surface::ShapeSurface,
 };
 
@@ -28,8 +28,8 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(IsosurfaceContext {
             shape_surface: Arc::new(RwLock::new(ShapeSurface {
-                density_function: Box::new(Panel),
-                // density_function: Box::new(NoiseSurface::new()),
+                // density_function: Box::new(Sphere),
+                density_function: Box::new(NoiseSurface::new()),
                 iso_level: Vec3::ZERO,
             })),
         })

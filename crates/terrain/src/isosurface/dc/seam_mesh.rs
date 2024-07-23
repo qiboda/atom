@@ -1,13 +1,7 @@
 use std::sync::{Arc, RwLock};
 
-use avian3d::parry::na::coordinates::X;
-use bevy::{
-    math::{bounding::BoundingVolume, Vec3A},
-    prelude::*,
-    utils::hashbrown::HashMap,
-};
+use bevy::{prelude::*, utils::hashbrown::HashMap};
 use ndshape::{AbstractShape, RuntimeShape};
-use strum::IntoEnumIterator;
 
 use crate::{
     chunk_mgr::{
@@ -22,7 +16,6 @@ use crate::{
         comp::{SeamMeshState, TerrainChunkMainGenerator, TerrainChunkSeamGenerator},
         dc::octree::{
             check_octree_nodes_relation,
-            node::NodeType,
             tables::{EdgeIndex, FaceIndex, SubNodeIndex, VertexIndex},
         },
         mesh::mesh_info::MeshInfo,
@@ -44,7 +37,6 @@ use super::{
     OctreeDepthCoordMapper,
 };
 use bevy_async_task::AsyncTaskPool;
-use terrain_core::chunk::coords::TerrainChunkCoord;
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::type_complexity)]
@@ -53,13 +45,11 @@ async fn construct_octree_task(
     octrees: SeamNeighborOctrees,
     node_address_mapper: Arc<RwLock<HashMap<OctreeDepthType, Vec<NodeAddress>>>>,
     min_lod: LodType,
-    min_chunk_size: f32,
     min_voxel_size: f32,
     chunk_address: TerrainChunkAddress,
     chunk_aabb: TerrainChunkAabb,
-    base_depth: OctreeDepthType,
 ) -> (Entity, Octree) {
-    let _span = debug_span!("seam mesh construct octree task", ?chunk_address, min_lod).entered();
+    let _span = info_span!("seam mesh construct octree task", ?chunk_address, min_lod).entered();
 
     let new_chunk_size = (chunk_aabb.max.x - chunk_aabb.min.x) * 2.0;
     let new_chunk_voxel_num = (new_chunk_size / min_voxel_size) as u32;
@@ -86,7 +76,7 @@ async fn construct_octree_task(
 
             let leaf_nodes =
                 Octree::get_all_seam_leaf_nodes(&node_map, chunk_aabb.0, subnode_index);
-            debug!(
+            trace!(
                 "get leaf nodes: {} at {:?}",
                 leaf_nodes.len(),
                 subnode_index
@@ -105,6 +95,10 @@ async fn construct_octree_task(
                     current_chunk_voxel_num,
                     current_chunk_voxel_num,
                 ]);
+
+                trace!("current node voxel lod: {}, current_voxel size:{}, current depth: {}, current chunk shape size:{}", 
+                        current_node_voxel_lod, current_voxel_size, current_depth, current_shape.size()
+                );
 
                 let mut new_node = node.clone();
                 new_node.coord = (node.aabb.min - new_chunk_offset) / current_voxel_size;
@@ -186,12 +180,24 @@ struct SeamNeighborOctrees {
 impl SeamNeighborOctrees {
     pub fn get_num(&self) -> usize {
         let mut num = 0;
-        num += self.right.len();
-        num += self.top.len();
-        num += self.front.len();
-        num += self.x_axis_edge.len();
-        num += self.y_axis_edge.len();
-        num += self.z_axis_edge.len();
+        for i in self.right.iter() {
+            num += if i.read().unwrap().len() > 0 { 1 } else { 0 };
+        }
+        for i in self.top.iter() {
+            num += if i.read().unwrap().len() > 0 { 1 } else { 0 };
+        }
+        for i in self.front.iter() {
+            num += if i.read().unwrap().len() > 0 { 1 } else { 0 };
+        }
+        for i in self.x_axis_edge.iter() {
+            num += if i.read().unwrap().len() > 0 { 1 } else { 0 };
+        }
+        for i in self.y_axis_edge.iter() {
+            num += if i.read().unwrap().len() > 0 { 1 } else { 0 };
+        }
+        for i in self.z_axis_edge.iter() {
+            num += if i.read().unwrap().len() > 0 { 1 } else { 0 };
+        }
         if self.vertex.is_some() {
             num += 1;
         }
@@ -199,6 +205,71 @@ impl SeamNeighborOctrees {
             num += 1;
         }
         num
+    }
+
+    pub fn log(&self) {
+        if self.this.is_some() {
+            info!(
+                "this num: {}, lod: {}",
+                self.this.clone().unwrap().read().unwrap().len(),
+                self.this_lod
+            );
+        }
+        for (i, right) in self.right.iter().enumerate() {
+            info!(
+                "right[{}] num: {}, lod: {}",
+                i,
+                right.read().unwrap().len(),
+                self.right_lod
+            );
+        }
+        for (i, top) in self.top.iter().enumerate() {
+            info!(
+                "top[{}] num: {}, lod: {}",
+                i,
+                top.read().unwrap().len(),
+                self.top_lod
+            );
+        }
+        for (i, front) in self.front.iter().enumerate() {
+            info!(
+                "front[{}] num: {}, lod: {}",
+                i,
+                front.read().unwrap().len(),
+                self.front_lod
+            );
+        }
+        for (i, x_axis_edge) in self.x_axis_edge.iter().enumerate() {
+            info!(
+                "x_axis_edge[{}] num: {}, lod: {}",
+                i,
+                x_axis_edge.read().unwrap().len(),
+                self.x_axis_edge_lod
+            );
+        }
+        for (i, y_axis_edge) in self.y_axis_edge.iter().enumerate() {
+            info!(
+                "y_axis_edge[{}] num: {}, lod: {}",
+                i,
+                y_axis_edge.read().unwrap().len(),
+                self.y_axis_edge_lod
+            );
+        }
+        for (i, z_axis_edge) in self.z_axis_edge.iter().enumerate() {
+            info!(
+                "z_axis_edge[{}] num: {}, lod: {}",
+                i,
+                z_axis_edge.read().unwrap().len(),
+                self.z_axis_edge_lod
+            );
+        }
+        if self.vertex.is_some() {
+            info!(
+                "vertex num: {}, lod: {}",
+                self.vertex.clone().unwrap().read().unwrap().len(),
+                self.vertex_lod
+            );
+        }
     }
 
     pub fn get_min_lod(&self) -> LodType {
@@ -213,6 +284,7 @@ impl SeamNeighborOctrees {
     }
 }
 
+#[derive(Debug)]
 struct SeamNeighborAddresses {
     pub this: NodeAddress,
     pub right: Vec<NodeAddress>,
@@ -320,37 +392,41 @@ pub(crate) fn construct_octree(
                     vertex: vertex_address,
                 };
 
-                let get_octree =
-                    |address: &NodeAddress| -> (Option<Arc<RwLock<HashMap<NodeAddress, Node>>>>, LodType) {
-                        let Some(entity) = chunk_mapper.get_chunk_entity(address.into()) else {
-                            return (None, LodType::MAX);
-                        };
-                        if let Ok((_, _, lod, children)) = chunk_query.get(*entity) {
-                            for child in children.iter() {
-                                if let Ok((octree, generator)) = chunk_generator_query.get(*child) {
-                                    if generator.lod == lod.get_lod() {
-                                        return (Some(
-                                            octree.address_node_map.clone()),
-                                            lod.get_lod(),
-                                        );
-                                    }
+                info!("neighbor_addresses: {:#?}", neighbor_addresses);
+
+                let get_octree = |address: &NodeAddress| -> (
+                    Option<Arc<RwLock<HashMap<NodeAddress, Node>>>>,
+                    LodType,
+                ) {
+                    let Some(entity) = chunk_mapper.get_chunk_entity(address.into()) else {
+                        return (None, LodType::MAX);
+                    };
+                    if let Ok((_, _, lod, children)) = chunk_query.get(*entity) {
+                        for child in children.iter() {
+                            if let Ok((octree, generator)) = chunk_generator_query.get(*child) {
+                                if generator.lod == lod.get_lod() {
+                                    return (
+                                        Some(octree.address_node_map.clone()),
+                                        lod.get_lod(),
+                                    );
                                 }
                             }
                         }
-                        (None, LodType::MAX)
-                    };
+                    }
+                    (None, LodType::MAX)
+                };
                 let get_octrees = |addresses: &Vec<NodeAddress>| {
                     let mut min_lod = LodType::MAX;
+                    let mut max_lod = LodType::MIN;
                     let mut octrees = Vec::with_capacity(addresses.len());
                     for address in addresses.iter() {
                         if let (Some(octree), lod) = get_octree(address) {
                             octrees.push(octree);
-                            if lod < min_lod {
-                                min_lod = lod;
-                            }
+                            min_lod = min_lod.min(lod);
+                            max_lod = max_lod.max(lod);
                         }
                     }
-                    (octrees, min_lod)
+                    (octrees, min_lod, max_lod)
                 };
 
                 let this = get_octree(&neighbor_addresses.this);
@@ -380,35 +456,51 @@ pub(crate) fn construct_octree(
                     vertex_lod: vertex.1,
                 };
 
+                let max_lod = this
+                    .1
+                    .max(right.2)
+                    .max(top.2)
+                    .max(front.2)
+                    .max(x_axis_edge.2)
+                    .max(y_axis_edge.2)
+                    .max(z_axis_edge.2)
+                    .max(vertex.1);
+
                 let num = octrees.get_num();
                 info!(
                     "seam mesh construct octree: octree num:{}, chunk_address: {:?}",
                     num, chunk_address
                 );
 
+                octrees.log();
+
                 if num < 2 {
                     *state = SeamMeshState::Done;
                     info!("seam mesh construct octree: {:?} fail", chunk_address);
                     continue;
                 }
-                let min_lod = octrees.get_min_lod();
-                // TODO: assert change to debug assert
-                debug_assert_ne!(min_lod, LodType::MAX);
 
-                let min_chunk_size = setting.chunk_setting.get_chunk_size(min_lod);
+                let min_lod = octrees.get_min_lod();
+                debug!(
+                    "min lod: {}, max_lod: {}, diff max: {}",
+                    min_lod,
+                    max_lod,
+                    max_lod - min_lod
+                );
+
+                // TODO: assert change to debug assert
+                assert!(max_lod - min_lod <= 3 || max_lod - min_lod >= 240);
+
                 let min_voxel_size = setting.chunk_setting.get_voxel_size(min_lod);
-                let base_depth = setting.chunk_setting.depth;
                 let mapper = node_mapper.mapper.clone();
                 task_pool.spawn(construct_octree_task(
                     entity,
                     octrees,
                     mapper.clone(),
                     min_lod,
-                    min_chunk_size,
                     min_voxel_size,
                     *chunk_address,
                     chunk_aabb.clone(),
-                    base_depth,
                 ));
             }
         }
