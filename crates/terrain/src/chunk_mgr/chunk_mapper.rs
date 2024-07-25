@@ -11,7 +11,10 @@ use crate::{
     setting::TerrainSetting,
 };
 
-use super::chunk_loader::{TerrainChunkLoadEvent, TerrainChunkUnLoadEvent};
+use super::{
+    chunk::bundle::TerrainChunk,
+    chunk_loader::{TerrainChunkLoadEvent, TerrainChunkReloadEvent, TerrainChunkUnLoadEvent},
+};
 
 #[derive(Debug, Resource, Default, Reflect)]
 pub struct TerrainChunkMapper {
@@ -26,6 +29,27 @@ impl TerrainChunkMapper {
 
     pub fn new() -> TerrainChunkMapper {
         Self::default()
+    }
+}
+
+pub fn trigger_chunk_reload_event(
+    event_trigger: Trigger<TerrainChunkReloadEvent>,
+    terrain_chunk_mapper: Res<TerrainChunkMapper>,
+    mut query: Query<(Entity, &mut TerrainChunkState, &mut TerrainChunkLod), With<TerrainChunk>>,
+    mut commands: Commands,
+) {
+    for node_address in event_trigger.event().node_addresses.iter() {
+        let terrain_chunk_address: TerrainChunkAddress = node_address.into();
+        let Some(entity) = terrain_chunk_mapper.data.get(&terrain_chunk_address) else {
+            return;
+        };
+        if let Ok((chunk_entity, mut state, chunk_lod)) = query.get_mut(*entity) {
+            *state = TerrainChunkState::CreateMainMesh;
+            commands.trigger(TerrainChunkCreateMainMeshEvent {
+                entity: chunk_entity,
+                lod: chunk_lod.get_lod(),
+            });
+        }
     }
 }
 

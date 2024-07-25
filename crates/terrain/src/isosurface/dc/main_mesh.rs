@@ -59,7 +59,7 @@ async fn construct_octree_task(
     for i in 0..shape.size() {
         let loc =
             offset + Vec3A::from_array(shape.delinearize(i).map(|v| v as f32)) * lod_voxel_size;
-        let density = surface.get_value_from_vec(loc.into());
+        let density = surface.get_value_from_vec(&loc.into());
         samples.push(density);
     }
 

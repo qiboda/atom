@@ -15,7 +15,7 @@ pub enum TerrainDebugType {
 #[bind_group_data(TerrainMaterialKey)]
 pub struct TerrainMaterial {
     #[uniform(0)]
-    pub debug_color: LinearRgba,
+    pub lod: u32,
     pub debug_type: Option<TerrainDebugType>,
 
     #[texture(1)]

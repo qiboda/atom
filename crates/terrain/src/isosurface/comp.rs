@@ -65,23 +65,32 @@ pub struct TerrainChunkCreateSeamMeshEvent {
 pub(crate) fn trigger_create_main_mesh_event(
     event_trigger: Trigger<TerrainChunkCreateMainMeshEvent>,
     chunk_children: Query<&Children, With<TerrainChunk>>,
-    chunk_generator: Query<&TerrainChunkMainGenerator>,
+    mut chunk_generator: Query<(&TerrainChunkMainGenerator, &mut MainMeshState)>,
     mut commands: Commands,
 ) {
     let event = event_trigger.event();
+    let mut find_lod_generator = false;
     if let Ok(chunk_children) = chunk_children.get(event.entity) {
         for child in chunk_children.iter() {
-            assert!(chunk_generator.get(*child).is_err());
+            if let Ok((generator, mut state)) = chunk_generator.get_mut(*child) {
+                if generator.lod == event.lod {
+                    *state = MainMeshState::ConstructOctree;
+                    find_lod_generator = true;
+                    error!("state = MainMeshState::ConstructOctree");
+                }
+            }
         }
     }
-    info!("read_chunk_update_lod_event");
-    commands
-        .spawn((
-            TerrainChunkMainGenerator { lod: event.lod },
-            MainMeshState::ConstructOctree,
-            Name::new("terrain chunk main mesh"),
-        ))
-        .set_parent(event.entity);
+    if find_lod_generator.not() {
+        info!(": {:?}", event.lod);
+        commands
+            .spawn((
+                TerrainChunkMainGenerator { lod: event.lod },
+                MainMeshState::ConstructOctree,
+                Name::new("terrain chunk main mesh"),
+            ))
+            .set_parent(event.entity);
+    }
 }
 
 /// 获取周围的chunk，如果有两个或者以上的chunk，则创建缝隙，lod选择尽可能小的。

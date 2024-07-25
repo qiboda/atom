@@ -6,7 +6,7 @@
 #import trimap::triplanar::{calculate_triplanar_mapping, triplanar_normal_to_world, triplanar_normal_to_world_splatted}
 
 @group(2) @binding(0)
-var<uniform> debug_color: vec4<f32>;
+var<uniform> lod: u32;
 
 @group(2) @binding(1)
 var color_texture: texture_2d<f32>;
@@ -58,7 +58,14 @@ fn fragment(
     );
 
 #ifdef COLOR_DEBUG
-    out.color = debug_color;
+    let select_index = lod % 3;
+    if select_index == 0 {
+        out.color = vec4<f32>(1.0, 0.0, 0.0, 1.0);;
+    } else if select_index == 1 {
+        out.color = vec4<f32>(0.0, 1.0, 0.0, 1.0);
+    } else {
+        out.color = vec4<f32>(0.0, 0.0, 1.0, 1.0);
+    }
 #else ifdef NORMAL_DEBUG
     out.color = vec4<f32>(in.world_normal, 1.0);
 #else 

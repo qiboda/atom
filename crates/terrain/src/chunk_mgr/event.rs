@@ -161,7 +161,7 @@ pub fn to_create_seam_mesh(
             if let Ok((mut state, mut seam_mesh_id_generator)) = query.p2().get_mut(*entity) {
                 let seam_mesh_id = seam_mesh_id_generator.gen();
                 *state = TerrainChunkState::CreateSeamMesh;
-                info!(
+                error!(
                     "to create seam chunks, address: {:?}, id:{:?}, current id: {:?}",
                     chunk_address,
                     seam_mesh_id,

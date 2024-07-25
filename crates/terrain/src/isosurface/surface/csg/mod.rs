@@ -1,246 +1,84 @@
+pub mod csg_noise;
+pub mod csg_operators;
+pub mod csg_shapes;
+
+use std::fmt::Debug;
+
 use bevy::prelude::Vec3;
 
-pub trait CSGNode {
-    fn eval(&self, point: &Vec3, value: &mut f32, grad: &mut Vec3);
+pub trait CSGNode: Debug + Send + Sync {
+    fn eval(&self, point: &Vec3, value: &mut f32);
 }
 
-pub struct CSGMax {
-    pub left: Box<dyn CSGNode>,
-    pub right: Box<dyn CSGNode>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CSGOperation {
+    Union,
+    Intersection,
+    Difference,
 }
 
-impl CSGNode for CSGMax {
-    fn eval(&self, point: &Vec3, value: &mut f32, grad: &mut Vec3) {
-        let mut left_value = 0.0;
-        let mut left_grad = Vec3::ZERO;
-        self.left.eval(point, &mut left_value, &mut left_grad);
-
-        let mut right_value = 0.0;
-        let mut right_grad = Vec3::ZERO;
-        self.right.eval(point, &mut right_value, &mut right_grad);
-
-        if left_value > right_value {
-            *value = left_value;
-            *grad = left_grad;
-        } else {
-            *value = right_value;
-            *grad = right_grad;
-        }
+fn create_internal_node(
+    operation: CSGOperation,
+    left: Box<dyn CSGNode>,
+    right: Box<dyn CSGNode>,
+) -> Box<dyn CSGNode> {
+    match operation {
+        CSGOperation::Union => Box::new(csg_operators::CSGMax { left, right }),
+        CSGOperation::Intersection => Box::new(csg_operators::CSGMin { left, right }),
+        CSGOperation::Difference => Box::new(csg_operators::CSGDiff { left, right }),
     }
 }
 
-pub struct CSGMin {
-    pub left: Box<dyn CSGNode>,
-    pub right: Box<dyn CSGNode>,
-}
-
-impl CSGNode for CSGMin {
-    fn eval(&self, point: &Vec3, value: &mut f32, grad: &mut Vec3) {
-        let mut left_value = 0.0;
-        let mut left_grad = Vec3::ZERO;
-        self.left.eval(point, &mut left_value, &mut left_grad);
-
-        let mut right_value = 0.0;
-        let mut right_grad = Vec3::ZERO;
-        self.right.eval(point, &mut right_value, &mut right_grad);
-
-        if left_value < right_value {
-            *value = left_value;
-            *grad = left_grad;
-        } else {
-            *value = right_value;
-            *grad = right_grad;
-        }
-    }
-}
-
-pub struct CSGDiff {
-    pub left: Box<dyn CSGNode>,
-    pub right: Box<dyn CSGNode>,
-}
-
-impl CSGNode for CSGDiff {
-    fn eval(&self, point: &Vec3, value: &mut f32, grad: &mut Vec3) {
-        let mut left_value = 0.0;
-        let mut left_grad = Vec3::ZERO;
-        self.left.eval(point, &mut left_value, &mut left_grad);
-
-        let mut right_value = 0.0;
-        let mut right_grad = Vec3::ZERO;
-        self.right.eval(point, &mut right_value, &mut right_grad);
-
-        if left_value > right_value {
-            *value = left_value;
-            *grad = left_grad;
-        } else {
-            *value = -right_value;
-            *grad = -right_grad;
-        }
-    }
-}
-
-pub struct CSGNeg {
-    pub node: Box<dyn CSGNode>,
-}
-
-impl CSGNode for CSGNeg {
-    fn eval(&self, point: &Vec3, value: &mut f32, grad: &mut Vec3) {
-        let mut node_value = 0.0;
-        let mut node_grad = Vec3::ZERO;
-        self.node.eval(point, &mut node_value, &mut node_grad);
-
-        *value = -node_value;
-        *grad = -node_grad;
-    }
-}
-
-pub struct CSGPlane {
-    pub position: Vec3,
-    pub normal: Vec3,
-}
-
-impl CSGNode for CSGPlane {
-    fn eval(&self, point: &Vec3, value: &mut f32, grad: &mut Vec3) {
-        let diff = *point - self.position;
-        *value = diff.dot(self.normal);
-        *grad = self.normal;
-    }
-}
-
-pub struct CSGSphere {
-    pub position: Vec3,
-    pub radius: f32,
-}
-
-impl CSGNode for CSGSphere {
-    fn eval(&self, point: &Vec3, value: &mut f32, grad: &mut Vec3) {
-        let diff = *point - self.position;
-        *value = diff.length() - self.radius;
-        *grad = diff.normalize();
-    }
-}
-
-pub struct CSGCylinder {
-    pub position: Vec3,
-    pub direction: Vec3,
-    pub radius: f32,
-}
-
-impl CSGNode for CSGCylinder {
-    fn eval(&self, point: &Vec3, value: &mut f32, grad: &mut Vec3) {
-        let diff = *point - self.position;
-        let d = diff.dot(self.direction);
-        let p = self.position + self.direction * d;
-        let r = (p - *point).length() - self.radius;
-
-        *value = r;
-        *grad = (p - *point).normalize();
-    }
-}
-
-pub struct CSGTorus {
-    pub position: Vec3,
-    pub radius: f32,
-    pub thickness: f32,
-}
-
-impl CSGNode for CSGTorus {
-    fn eval(&self, point: &Vec3, value: &mut f32, grad: &mut Vec3) {
-        let diff = *point - self.position;
-        let x = diff.x;
-        let z = diff.z;
-        let y = diff.y;
-
-        let r = (x * x + z * z).sqrt() - self.radius;
-        let d = (r * r + y * y).sqrt() - self.thickness;
-
-        *value = d;
-        *grad = Vec3::new(
-            4.0 * x * d,
-            2.0 * y * d,
-            4.0 * z * d + 2.0 * r * (r - self.thickness),
-        )
-        .normalize();
-    }
-}
-
+// 添加删除类型的几何体。
+// 添加增加类型的集合体。
 #[allow(dead_code)]
-fn build_shape() -> Box<CSGMin> {
-    let shift = Vec3::new(0.062151346, 0.0725234, 0.0412);
+pub fn apply_csg_operation(
+    root: Box<dyn CSGNode>,
+    new_node: Box<dyn CSGNode>,
+    operation: CSGOperation,
+) -> Box<dyn CSGNode> {
+    create_internal_node(operation, root, new_node)
+}
 
-    let one_box = Box::new(CSGMin {
-        left: Box::new(CSGMin {
-            left: Box::new(CSGMin {
-                left: Box::new(CSGPlane {
-                    position: Vec3::new(0.3, 0.3, 0.3) + shift,
-                    normal: Vec3::new(1.0, 0.0, 0.0),
-                }),
-                right: Box::new(CSGPlane {
-                    position: Vec3::new(0.3, 0.3, 0.3) + shift,
-                    normal: Vec3::new(0.0, 1.0, 0.0),
-                }),
-            }),
-            right: Box::new(CSGMin {
-                left: Box::new(CSGPlane {
-                    position: Vec3::new(0.3, 0.3, 0.3) + shift,
-                    normal: Vec3::new(0.0, 0.0, 1.0),
-                }),
-                right: Box::new(CSGPlane {
-                    position: Vec3::new(0.7, 0.7, 0.7) + shift,
-                    normal: Vec3::new(-1.0, 0.0, 0.0),
-                }),
-            }),
-        }),
-        right: Box::new(CSGMin {
-            left: Box::new(CSGPlane {
-                position: Vec3::new(0.7, 0.7, 0.7) + shift,
-                normal: Vec3::new(0.0, -1.0, 0.0),
-            }),
-            right: Box::new(CSGPlane {
-                position: Vec3::new(0.7, 0.7, 0.7) + shift,
-                normal: Vec3::new(0.0, 0.0, -1.0),
-            }),
-        }),
-    });
+#[cfg(test)]
+mod tests {
+    use bevy::math::Vec3;
 
-    let n = Box::new(CSGMin {
-        left: Box::new(CSGNeg {
-            node: Box::new(CSGCylinder {
-                position: Vec3::new(0.5, 0.5, 0.5) + shift,
-                direction: Vec3::new(1.0, 0.0, 0.0),
-                radius: 0.15,
-            }),
-        }),
-        right: Box::new(CSGMin {
-            left: Box::new(CSGNeg {
-                node: Box::new(CSGCylinder {
-                    position: Vec3::new(0.5, 0.5, 0.5) + shift,
-                    direction: Vec3::new(0.0, 1.0, 0.0),
-                    radius: 0.15,
-                }),
-            }),
-            right: Box::new(CSGMax {
-                left: one_box,
-                right: Box::new(CSGCylinder {
-                    position: Vec3::new(0.5, 0.5, 0.5) + shift,
-                    direction: Vec3::new(0.0, 0.0, 1.0),
-                    radius: 0.15,
-                }),
-            }),
-        }),
-    });
+    use crate::isosurface::surface::shape_surface::ShapeSurface;
 
-    Box::new(CSGMin {
-        left: n,
-        right: Box::new(CSGMin {
-            left: Box::new(CSGPlane {
-                position: Vec3::new(0.0, 0.0, 0.9) + shift,
-                normal: Vec3::new(0.0, 0.0, -1.0),
+    use super::{
+        csg_shapes::{CSGCube, CSGPanel},
+        CSGOperation,
+    };
+
+    #[test]
+    fn test_csg() {
+        let mut shape_surface = ShapeSurface::new(Box::new(CSGPanel {
+            location: Vec3::ZERO,
+            normal: Vec3::Y,
+            height: 0.0,
+        }));
+
+        assert_eq!(0.0, shape_surface.get_value(5.0, 0.0, 5.0));
+        assert_eq!(-2.0, shape_surface.get_value(5.0, -2.0, 5.0));
+        assert_eq!(-2.0, shape_surface.get_value(3.0, -2.0, 7.0));
+        assert_eq!(0.0, shape_surface.get_value(0.0, -0.0, 0.0));
+        assert_eq!(1.0, shape_surface.get_value(0.0, 1.0, 0.0));
+        assert_eq!(1.0, shape_surface.get_value(0.0, -1.0, 0.0));
+
+        shape_surface.apply_csg_operation(
+            Box::new(CSGCube {
+                location: Vec3::new(5.0, 0.0, 5.0),
+                half_size: Vec3::splat(3.0),
             }),
-            right: Box::new(CSGPlane {
-                position: Vec3::new(0.0, 0.0, 0.1) + shift,
-                normal: Vec3::new(0.0, 0.0, 1.0),
-            }),
-        }),
-    })
+            CSGOperation::Difference,
+        );
+
+        assert_eq!(3.0, shape_surface.get_value(5.0, 0.0, 5.0));
+        assert_eq!(1.0, shape_surface.get_value(5.0, -2.0, 5.0));
+        assert_eq!(1.0, shape_surface.get_value(3.0, -2.0, 7.0));
+        assert_eq!(-0.0, shape_surface.get_value(0.0, -0.0, 0.0));
+        assert_eq!(-1.0, shape_surface.get_value(0.0, 1.0, 0.0));
+        assert_eq!(1.0, shape_surface.get_value(0.0, -1.0, 0.0));
+    }
 }

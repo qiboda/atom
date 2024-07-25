@@ -8,7 +8,10 @@ use crate::{
     TerrainObserver,
 };
 use bevy::{
-    math::{bounding::BoundingVolume, Affine3A},
+    math::{
+        bounding::{Aabb3d, BoundingVolume, IntersectsVolume},
+        Affine3A,
+    },
     prelude::*,
     render::{
         camera::CameraProjection,
@@ -37,7 +40,12 @@ impl Plugin for TerrainChunkLoaderPlugin {
             .add_systems(PreUpdate, update_terrain_create_state)
             .add_systems(
                 Update,
-                (update_loading_data, to_unload_chunk, to_load_chunk)
+                (
+                    update_loading_data,
+                    to_unload_chunk,
+                    to_load_chunk,
+                    reload_terrain_chunk,
+                )
                     .chain()
                     .in_set(TerrainChunkSystemSet::UpdateLoader),
             );
@@ -94,6 +102,7 @@ pub struct TerrainChunkLoader {
     pub leaf_node_pending_load_deque: BinaryHeap<LeafNodeKey>,
     pub loaded_leaf_node_set: HashSet<NodeAddress>,
     pub pending_unload_leaf_node_set: HashSet<NodeAddress>,
+    pub pending_reload_aabb_vec: Vec<Aabb3d>,
 }
 
 impl TerrainChunkLoader {
@@ -103,6 +112,12 @@ impl TerrainChunkLoader {
 
     pub fn is_pending_unload(&self, node_address: &NodeAddress) -> bool {
         self.pending_unload_leaf_node_set.contains(node_address)
+    }
+}
+
+impl TerrainChunkLoader {
+    pub fn add_reload_aabb(&mut self, aabb: Aabb3d) {
+        self.pending_reload_aabb_vec.push(aabb);
     }
 }
 
@@ -268,6 +283,11 @@ pub struct TerrainChunkUnLoadEvent {
     pub node_addresses: Vec<NodeAddress>,
 }
 
+#[derive(Event, Debug)]
+pub struct TerrainChunkReloadEvent {
+    pub node_addresses: Vec<NodeAddress>,
+}
+
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TerrainCreateState {
     #[default]
@@ -302,5 +322,24 @@ pub fn update_terrain_create_state(
         }
         TerrainChunkState::Done => terrain_create_state.set(TerrainCreateState::Done),
     }
-    error!("terrain_create_state: {:?}", *terrain_create_state);
+}
+
+pub fn reload_terrain_chunk(
+    query: Query<&LodOctreeNode>,
+    mut terrain_chunk_loader: ResMut<TerrainChunkLoader>,
+    mut commands: Commands,
+) {
+    let mut intersects_nodes = vec![];
+    for node in query.iter() {
+        for aabb in terrain_chunk_loader.pending_reload_aabb_vec.iter() {
+            if node.aabb.intersects(aabb) {
+                intersects_nodes.push(node.address);
+            }
+        }
+    }
+    terrain_chunk_loader.pending_reload_aabb_vec.clear();
+
+    commands.trigger(TerrainChunkReloadEvent {
+        node_addresses: intersects_nodes,
+    });
 }

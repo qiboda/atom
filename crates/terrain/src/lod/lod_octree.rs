@@ -1,10 +1,4 @@
-/// TODO 进入节点，创建子节点，修改当前节点到中间节点，这立即删除了旧的叶子节点，并创建了新的。
-/// TODO 离开节点，不立即删除，检测离开范围超过一半时再删除，
-/// TODO 也就是新增叶子节点就立即执行，
-/// TODO 删除叶子节点延迟执行。
-///
 /// TODO visibility range 范围就设置在chunk的创建和删除距离上。误差可以配置。（之后再做，chunk的加载和卸载可能有问题）
-/// TODO 需要标记那些chunk要删除，把他们从缝隙创建中排除出去。
 use bevy::{
     math::{
         bounding::{Aabb3d, BoundingVolume},

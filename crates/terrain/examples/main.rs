@@ -7,6 +7,7 @@ use bevy::{
     },
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     log::LogPlugin,
+    math::{bounding::Aabb3d, Vec3A},
     pbr::{
         wireframe::{WireframeConfig, WireframePlugin},
         ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
@@ -17,7 +18,15 @@ use bevy_debug_grid::{Grid, GridAxis};
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
 use dotenv::dotenv;
 use log_layers::LogLayersPlugin;
-use terrain::{TerrainObserver, TerrainSubsystemPlugin};
+use terrain::{
+    chunk_mgr::chunk_loader::{TerrainChunkLoadEvent, TerrainChunkLoader},
+    isosurface::surface::{
+        csg::{csg_shapes::CSGCube, CSGOperation},
+        event::CSGOperationEndEvent,
+        shape_surface::IsosurfaceContext,
+    },
+    TerrainObserver, TerrainSubsystemPlugin,
+};
 
 pub fn main() {
     dotenv().ok();
@@ -46,7 +55,14 @@ pub fn main() {
         },
     })
     .add_systems(Startup, startup)
-    .add_systems(Update, (update_terrain_observer, change_camera_speed))
+    .add_systems(
+        Update,
+        (
+            update_terrain_observer,
+            change_camera_speed,
+            apply_csg_operation,
+        ),
+    )
     // .add_plugins(WorldInspectorPlugin::new())
     .insert_resource(MovementSettings {
         speed: 300.0,
@@ -157,6 +173,34 @@ pub fn change_camera_speed(
     if input.pressed(KeyCode::ControlLeft) {
         move_setting.speed = 3000.0;
     } else {
-        move_setting.speed = 300.0;
+        move_setting.speed = 3.0;
+    }
+}
+
+pub fn apply_csg_operation(
+    input: Res<ButtonInput<KeyCode>>,
+    context: ResMut<IsosurfaceContext>,
+    mut commands: Commands,
+    mut loader: ResMut<TerrainChunkLoader>,
+) {
+    if input.just_pressed(KeyCode::KeyJ) {
+        let mut shape_surface = context.shape_surface.write().unwrap();
+        shape_surface.apply_csg_operation(
+            Box::new(CSGCube {
+                location: Vec3::new(5.0, 0.0, 5.0),
+                half_size: Vec3::splat(3.0),
+            }),
+            CSGOperation::Difference,
+        );
+        commands.trigger(CSGOperationEndEvent {
+            aabb: Aabb3d {
+                min: Vec3A::new(5.0, 0.0, 5.0) - Vec3A::splat(3.0),
+                max: Vec3A::new(5.0, 0.0, 5.0) + Vec3A::splat(3.0),
+            },
+        });
+        loader.add_reload_aabb(Aabb3d {
+            min: Vec3A::new(5.0, 0.0, 5.0) - Vec3A::splat(3.0),
+            max: Vec3A::new(5.0, 0.0, 5.0) + Vec3A::splat(3.0),
+        });
     }
 }

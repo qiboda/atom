@@ -399,10 +399,10 @@ fn visit_leaf_edge(
             let corners = Node::get_node_vertex_locations(edge_nodes.nodes[min_node_index].aabb);
             let value_0 = octree
                 .surface
-                .get_value_from_vec(corners[node_vertex_indices[0] as usize]);
+                .get_value_from_vec(&corners[node_vertex_indices[0] as usize]);
             let value_1 = octree
                 .surface
-                .get_value_from_vec(corners[node_vertex_indices[1] as usize]);
+                .get_value_from_vec(&corners[node_vertex_indices[1] as usize]);
 
             if value_0 >= 0.0 && value_1 < 0.0 {
                 true
@@ -493,7 +493,7 @@ mod tests {
             tables::SubNodeIndex,
             OctreeProxy,
         },
-        surface::{density_function::Panel, shape_surface::ShapeSurface},
+        surface::{csg::csg_shapes::CSGPanel, shape_surface::ShapeSurface},
     };
 
     use super::{dual_contouring, DefaultDualContouringVisiter};
@@ -663,10 +663,11 @@ mod tests {
             },
         );
 
-        let surface = Arc::new(RwLock::new(ShapeSurface {
-            density_function: Box::new(Panel),
-            iso_level: Vec3::ZERO,
-        }));
+        let surface = Arc::new(RwLock::new(ShapeSurface::new(Box::new(CSGPanel {
+            location: Vec3::splat(0.0),
+            normal: Vec3::Y,
+            height: 0.0,
+        }))));
         let node_addresses = RwLock::new(node_addresses);
         let octree = OctreeProxy {
             node_addresses: node_addresses.read().unwrap(),
