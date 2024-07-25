@@ -298,8 +298,8 @@ fn can_divide_node(
     setting: &Res<TerrainSetting>,
     update_type: LodOctreeNodeUpdateType,
 ) -> bool {
-    let max_depth = get_node_theory_depth(observer_locations, node_aabb, setting, update_type);
-    node_address.get_depth() < max_depth
+    let theory_depth = get_node_theory_depth(observer_locations, node_aabb, setting, update_type);
+    node_address.get_depth() < theory_depth
         && node_address.get_depth() < setting.lod_setting.get_lod_octree_depth()
 }
 
@@ -327,6 +327,7 @@ fn get_node_theory_depth(
         //     clipmap_lod - old_clipmap_lod
         // );
         let clipmap_depth = setting.lod_setting.get_lod_octree_depth() - clipmap_lod;
+        let clipmap_depth = clipmap_depth.max(2);
         max_depth = max_depth.max(clipmap_depth);
     }
     // 更大才能细分

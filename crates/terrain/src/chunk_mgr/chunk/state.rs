@@ -10,6 +10,7 @@ pub enum TerrainChunkState {
     CreateMainMesh,
     WaitToCreateSeam,
     CreateSeamMesh,
+    HiddenOldMesh,
     Done,
 }
 

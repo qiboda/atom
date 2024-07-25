@@ -29,17 +29,16 @@ impl TerrainChunkMapper {
     }
 }
 
-pub fn read_chunk_load_event(
-    mut event_reader: EventReader<TerrainChunkLoadEvent>,
+pub fn trigger_chunk_load_event(
+    event_trigger: Trigger<TerrainChunkLoadEvent>,
     mut commands: Commands,
     mut terrain_chunk_mapper: ResMut<TerrainChunkMapper>,
-    mut event_writer: EventWriter<TerrainChunkCreateMainMeshEvent>,
     query: Query<&LodOctreeNode>,
     lod_octree_map: Res<LodOctreeMap>,
     terrain_settings: Res<TerrainSetting>,
 ) {
-    for event in event_reader.read() {
-        let Some(node_entity) = lod_octree_map.get_node_entity(event.node_address) else {
+    for node_address in event_trigger.event().node_addresses.iter() {
+        let Some(node_entity) = lod_octree_map.get_node_entity(*node_address) else {
             continue;
         };
 
@@ -52,7 +51,7 @@ pub fn read_chunk_load_event(
             .data
             .contains_key(&terrain_chunk_address)
         {
-            return;
+            panic!("repeat load chunk: {:?}", terrain_chunk_address);
         }
 
         let mut bundle = TerrainChunkBundle::new(TerrainChunkState::CreateMainMesh);
@@ -73,23 +72,27 @@ pub fn read_chunk_load_event(
             .insert(terrain_chunk_address, chunk_entity);
         assert!(value.is_none());
 
-        event_writer.send(TerrainChunkCreateMainMeshEvent {
+        commands.trigger(TerrainChunkCreateMainMeshEvent {
             entity: chunk_entity,
             lod: chunk_lod,
         });
     }
 }
 
-pub fn read_chunk_unload_event(
-    mut event_reader: EventReader<TerrainChunkUnLoadEvent>,
+pub fn trigger_chunk_unload_event(
+    event_trigger: Trigger<TerrainChunkUnLoadEvent>,
     mut terrain_chunk_mapper: ResMut<TerrainChunkMapper>,
     mut commands: Commands,
 ) {
-    for event in event_reader.read() {
-        let terrain_chunk_address = event.node_address.into();
+    for node_address in event_trigger.event().node_addresses.iter() {
+        let terrain_chunk_address = node_address.into();
         if let Some(chunk_entity) = terrain_chunk_mapper.get_chunk_entity(terrain_chunk_address) {
             commands.get_entity(*chunk_entity).map(|x| {
                 x.despawn_recursive();
+                // info!(
+                //     "trigger_chunk_unload_event despawn: {:?}",
+                //     terrain_chunk_address
+                // );
                 terrain_chunk_mapper.data.remove(&terrain_chunk_address)
             });
         }

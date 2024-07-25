@@ -62,65 +62,55 @@ pub struct TerrainChunkCreateSeamMeshEvent {
     pub seam_mesh_id: SeamMeshId,
 }
 
-pub(crate) fn read_chunk_update_lod_event(
-    mut event_reader: EventReader<TerrainChunkCreateMainMeshEvent>,
+pub(crate) fn trigger_create_main_mesh_event(
+    event_trigger: Trigger<TerrainChunkCreateMainMeshEvent>,
     chunk_children: Query<&Children, With<TerrainChunk>>,
     chunk_generator: Query<&TerrainChunkMainGenerator>,
     mut commands: Commands,
 ) {
-    for event in event_reader.read() {
-        info!("read_chunk_update_lod_event");
-        let mut find_lod_generator = false;
-        if let Ok(chunk_children) = chunk_children.get(event.entity) {
-            for child in chunk_children.iter() {
-                if let Ok(generator) = chunk_generator.get(*child) {
-                    if generator.lod == event.lod {
-                        find_lod_generator = true;
-                    }
-                }
-            }
-        }
-        if find_lod_generator.not() {
-            info!(": {:?}", event.lod);
-            commands
-                .spawn((
-                    TerrainChunkMainGenerator { lod: event.lod },
-                    MainMeshState::ConstructOctree,
-                    Name::new("terrain chunk main mesh"),
-                ))
-                .set_parent(event.entity);
+    let event = event_trigger.event();
+    if let Ok(chunk_children) = chunk_children.get(event.entity) {
+        for child in chunk_children.iter() {
+            assert!(chunk_generator.get(*child).is_err());
         }
     }
+    info!("read_chunk_update_lod_event");
+    commands
+        .spawn((
+            TerrainChunkMainGenerator { lod: event.lod },
+            MainMeshState::ConstructOctree,
+            Name::new("terrain chunk main mesh"),
+        ))
+        .set_parent(event.entity);
 }
 
 /// 获取周围的chunk，如果有两个或者以上的chunk，则创建缝隙，lod选择尽可能小的。
-pub(crate) fn read_chunk_update_seam_event(
-    mut event_reader: EventReader<TerrainChunkCreateSeamMeshEvent>,
+pub(crate) fn trigger_chunk_update_seam_event(
+    event_trigger: Trigger<TerrainChunkCreateSeamMeshEvent>,
     chunk_query: Query<&Children, With<TerrainChunk>>,
     mut seam_query: Query<(&mut TerrainChunkSeamGenerator, &mut SeamMeshState)>,
     mut commands: Commands,
 ) {
-    for event in event_reader.read() {
-        if let Ok(children) = chunk_query.get(event.chunk_entity) {
-            let mut find_seam_generator = false;
-            for child in children {
-                if let Ok((mut generator, mut state)) = seam_query.get_mut(*child) {
-                    generator.seam_mesh_id = event.seam_mesh_id;
-                    *state = SeamMeshState::ConstructOctree;
-                    find_seam_generator = true;
-                }
+    let event = event_trigger.event();
+    if let Ok(children) = chunk_query.get(event.chunk_entity) {
+        let mut find_seam_generator = false;
+        for child in children {
+            if let Ok((mut generator, mut state)) = seam_query.get_mut(*child) {
+                generator.seam_mesh_id = event.seam_mesh_id;
+                *state = SeamMeshState::ConstructOctree;
+                find_seam_generator = true;
             }
-            if find_seam_generator.not() {
-                commands
-                    .spawn((
-                        TerrainChunkSeamGenerator {
-                            seam_mesh_id: event.seam_mesh_id,
-                        },
-                        SeamMeshState::ConstructOctree,
-                        Name::new("terrain chunk seam mesh"),
-                    ))
-                    .set_parent(event.chunk_entity);
-            }
+        }
+        if find_seam_generator.not() {
+            commands
+                .spawn((
+                    TerrainChunkSeamGenerator {
+                        seam_mesh_id: event.seam_mesh_id,
+                    },
+                    SeamMeshState::ConstructOctree,
+                    Name::new("terrain chunk seam mesh"),
+                ))
+                .set_parent(event.chunk_entity);
         }
     }
 }

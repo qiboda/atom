@@ -18,8 +18,8 @@ use octree::address::{construct_octree_depth_coord_map, NodeAddress};
 
 use super::{
     comp::{
-        read_chunk_update_lod_event, read_chunk_update_seam_event, TerrainChunkCreateMainMeshEvent,
-        TerrainChunkCreateSeamMeshEvent,
+        trigger_chunk_update_seam_event, trigger_create_main_mesh_event,
+        TerrainChunkCreateMainMeshEvent, TerrainChunkCreateSeamMeshEvent,
     },
     mesh::{create_main_mesh, create_seam_mesh},
     IsosurfaceSystemSet,
@@ -41,12 +41,12 @@ impl Plugin for DualContouringPlugin {
                     .in_set(TerrainSystemSet::GenerateTerrain),
             )
             .add_plugins(DcGizmosPlugin)
+            .observe(trigger_create_main_mesh_event)
             .add_event::<TerrainChunkCreateMainMeshEvent>()
             .add_event::<TerrainChunkCreateSeamMeshEvent>()
             .add_systems(
                 Update,
                 (
-                    read_chunk_update_lod_event,
                     main_mesh::construct_octree,
                     main_mesh::simplify_octree,
                     main_mesh::dual_contouring,
@@ -55,10 +55,10 @@ impl Plugin for DualContouringPlugin {
                     .chain()
                     .in_set(IsosurfaceSystemSet::GenerateMainMesh),
             )
+            .observe(trigger_chunk_update_seam_event)
             .add_systems(
                 Update,
                 (
-                    read_chunk_update_seam_event,
                     seam_mesh::construct_octree,
                     // seam_mesh::simplify_octree,
                     seam_mesh::dual_contouring,

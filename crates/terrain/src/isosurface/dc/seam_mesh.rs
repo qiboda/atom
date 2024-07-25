@@ -10,6 +10,7 @@ use crate::{
             chunk_lod::{LodType, OctreeDepthType, TerrainChunkAabb, TerrainChunkLod},
             state::TerrainChunkAddress,
         },
+        chunk_loader::{self, TerrainChunkLoader},
         chunk_mapper::TerrainChunkMapper,
     },
     isosurface::{
@@ -326,6 +327,7 @@ pub(crate) fn construct_octree(
     chunk_mapper: Res<TerrainChunkMapper>,
     lod_octree_node_query: Query<&LodOctreeNode>,
     lod_octree_map: Res<LodOctreeMap>,
+    loader: Res<TerrainChunkLoader>,
 ) {
     if task_pool.is_idle() {
         for (entity, parent, mut state, mut _seam_generator) in seam_generator_query.p0().iter_mut()
@@ -401,15 +403,17 @@ pub(crate) fn construct_octree(
                     let Some(entity) = chunk_mapper.get_chunk_entity(address.into()) else {
                         return (None, LodType::MAX);
                     };
-                    if let Ok((_, _, lod, children)) = chunk_query.get(*entity) {
+                    if let Ok((chunk_address, _, lod, children)) = chunk_query.get(*entity) {
+                        if loader.is_pending_unload(&chunk_address) {
+                            return (None, LodType::MAX);
+                        }
                         for child in children.iter() {
                             if let Ok((octree, generator)) = chunk_generator_query.get(*child) {
-                                if generator.lod == lod.get_lod() {
-                                    return (
-                                        Some(octree.address_node_map.clone()),
-                                        lod.get_lod(),
-                                    );
-                                }
+                                assert!(generator.lod == lod.get_lod());
+                                return (
+                                    Some(octree.address_node_map.clone()),
+                                    lod.get_lod(),
+                                );
                             }
                         }
                     }

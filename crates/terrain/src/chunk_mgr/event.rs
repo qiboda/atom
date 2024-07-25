@@ -25,7 +25,7 @@ use super::{
         chunk_lod::TerrainChunkLod,
         state::{SeamMeshIdGenerator, TerrainChunkAddress, TerrainChunkState},
     },
-    chunk_loader::TerrainChunkLoader,
+    chunk_loader::{TerrainChunkLoader, TerrainCreateState},
     chunk_mapper::TerrainChunkMapper,
 };
 
@@ -39,27 +39,21 @@ pub fn update_to_wait_create_seam(
         ),
         With<TerrainChunk>,
     >,
-    mut generator_query: Query<(
-        Option<&mut Visibility>,
-        &MainMeshState,
-        &TerrainChunkMainGenerator,
-    )>,
+    mut generator_query: Query<(&MainMeshState, &TerrainChunkMainGenerator)>,
 ) {
     for (children, mut chunk_state, chunk_lod, chunk_address) in query.iter_mut() {
         if TerrainChunkState::CreateMainMesh == *chunk_state {
             let mut count = 0;
             for child in children.iter() {
-                if let Ok((visibility, mesh_state, generator)) = generator_query.get_mut(*child) {
-                    if *mesh_state == MainMeshState::Done && generator.lod == chunk_lod.get_lod() {
+                if let Ok((mesh_state, generator)) = generator_query.get_mut(*child) {
+                    if *mesh_state == MainMeshState::Done {
+                        assert_eq!(generator.lod, chunk_lod.get_lod());
                         info!(
                             "update_to_wait_create_seam:{:?}, lod: {}",
                             chunk_address,
                             chunk_lod.get_lod()
                         );
                         *chunk_state = TerrainChunkState::WaitToCreateSeam;
-                        if let Some(mut visibility) = visibility {
-                            *visibility = Visibility::Visible;
-                        }
                         count += 1;
                     }
                 }
@@ -78,19 +72,13 @@ pub fn to_create_seam_mesh(
         Query<(&mut TerrainChunkState, &mut SeamMeshIdGenerator), With<TerrainChunk>>,
     )>,
     chunk_mapper: Res<TerrainChunkMapper>,
-    mut event_writer: EventWriter<TerrainChunkCreateSeamMeshEvent>,
+    mut commands: Commands,
     lod_octree_node_query: Query<&LodOctreeNode>,
     lod_octree_map: Res<LodOctreeMap>,
+    loader: Res<TerrainChunkLoader>,
+    state: Res<State<TerrainCreateState>>,
 ) {
-    let exist_create_main_mesh_state = query.p0().iter().any(|state| {
-        if *state == TerrainChunkState::CreateMainMesh {
-            // debug!("state is create main mesh, state: {:?}", state);
-            return true;
-        }
-        false
-    });
-
-    if exist_create_main_mesh_state {
+    if *state == TerrainCreateState::ExistMainMeshCreating {
         return;
     }
 
@@ -161,6 +149,13 @@ pub fn to_create_seam_mesh(
         update_seam_chunk_addresses
     );
 
+    update_seam_chunk_addresses.retain(|x| {
+        !(to_create_seam_chunks
+            .contains(&&TerrainChunkAddress::from(x))
+            .not()
+            && loader.is_pending_unload(x))
+    });
+
     for chunk_address in update_seam_chunk_addresses {
         if let Some(entity) = chunk_mapper.get_chunk_entity(chunk_address.into()) {
             if let Ok((mut state, mut seam_mesh_id_generator)) = query.p2().get_mut(*entity) {
@@ -172,7 +167,7 @@ pub fn to_create_seam_mesh(
                     seam_mesh_id,
                     seam_mesh_id_generator.current(),
                 );
-                event_writer.send(TerrainChunkCreateSeamMeshEvent {
+                commands.trigger(TerrainChunkCreateSeamMeshEvent {
                     chunk_entity: *entity,
                     seam_mesh_id,
                 });
@@ -217,33 +212,18 @@ pub fn update_create_seam_mesh_over(
     }
 }
 
-pub fn hidden_main_mesh(
-    query: Query<
-        (
-            &Children,
-            &TerrainChunkLod,
-            &TerrainChunkState,
-            &TerrainChunkAddress,
-        ),
-        With<TerrainChunk>,
-    >,
+fn log_terrain_chunk_num(
     chunk_query: Query<(), With<TerrainChunk>>,
-    mut generator_query: Query<(&ViewVisibility, &mut Visibility, &TerrainChunkMainGenerator)>,
     chunk_mapper: Res<TerrainChunkMapper>,
     lod_octree_node_query: Query<&LodOctreeNode>,
     lod_octree_map: Res<LodOctreeMap>,
     loader: Res<TerrainChunkLoader>,
+    state: Res<State<TerrainCreateState>>,
 ) {
-    let all_create_over = query.iter().all(|(_, _, state, _)| {
-        if *state == TerrainChunkState::Done {
-            return true;
-        }
-        false
-    });
-
-    if all_create_over.not() {
+    if *state == TerrainCreateState::Done {
         return;
     }
+
     info!(
         "all mesh create over, chunk_mapper len: {}, lod node num: {}, lod map len: {}, loaded leaf node set len: {}, pending unload leaf node set len: {}, leaf node pending load deque len: {}, chunk_num:{}",
         chunk_mapper.data.len(),
@@ -254,15 +234,4 @@ pub fn hidden_main_mesh(
         loader.leaf_node_pending_load_deque.len(),
         chunk_query.iter().len()
     );
-
-    for (children, chunk_lod, _, chunk_address) in query.iter() {
-        debug!("main_mesh_visibility: {:?}", chunk_address);
-        for child in children.iter() {
-            if let Ok((_, mut visibility, generator)) = generator_query.get_mut(*child) {
-                if generator.lod != chunk_lod.get_lod() {
-                    *visibility = Visibility::Hidden;
-                }
-            }
-        }
-    }
 }

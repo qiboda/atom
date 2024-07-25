@@ -4,11 +4,8 @@ use crate::TerrainSystemSet;
 
 use super::{
     chunk_loader::TerrainChunkLoaderPlugin,
-    chunk_mapper::{read_chunk_load_event, read_chunk_unload_event, TerrainChunkMapper},
-    event::{
-        hidden_main_mesh, to_create_seam_mesh, update_create_seam_mesh_over,
-        update_to_wait_create_seam,
-    },
+    chunk_mapper::{trigger_chunk_load_event, trigger_chunk_unload_event, TerrainChunkMapper},
+    event::{to_create_seam_mesh, update_create_seam_mesh_over, update_to_wait_create_seam},
     TerrainChunkSystemSet,
 };
 
@@ -28,13 +25,11 @@ impl Plugin for TerrainChunkPlugin {
                     .in_set(TerrainSystemSet::UpdateChunk),
             )
             .add_plugins(TerrainChunkLoaderPlugin)
-            .add_systems(Last, hidden_main_mesh)
+            .observe(trigger_chunk_unload_event)
+            .observe(trigger_chunk_load_event)
             .add_systems(
                 Update,
                 (
-                    // 按照事件发送的顺序执行
-                    read_chunk_unload_event,
-                    read_chunk_load_event,
                     update_to_wait_create_seam,
                     to_create_seam_mesh,
                     update_create_seam_mesh_over,

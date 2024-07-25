@@ -6,7 +6,6 @@ use bevy::{
     reflect::Reflect,
     render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
 };
-use tracing::warn;
 
 #[derive(Debug, Clone, Component, Default, Reflect)]
 pub struct MeshInfo {
