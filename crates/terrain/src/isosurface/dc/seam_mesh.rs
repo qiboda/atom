@@ -480,8 +480,9 @@ pub(crate) fn construct_octree(
                     continue;
                 }
 
+                // TODO: 加载过快，导致需要删除的mesh没有删除，找到了错误的mesh，导致lod误差变大。
                 let min_lod = octrees.get_min_lod();
-                debug!(
+                error!(
                     "min lod: {}, max_lod: {}, diff max: {}",
                     min_lod,
                     max_lod,

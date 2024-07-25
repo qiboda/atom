@@ -244,7 +244,7 @@ pub fn hidden_main_mesh(
     if all_create_over.not() {
         return;
     }
-    warn!(
+    info!(
         "all mesh create over, chunk_mapper len: {}, lod node num: {}, lod map len: {}, loaded leaf node set len: {}, pending unload leaf node set len: {}, leaf node pending load deque len: {}, chunk_num:{}",
         chunk_mapper.data.len(),
         lod_octree_node_query.iter().len(),

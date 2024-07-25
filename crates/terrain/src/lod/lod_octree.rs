@@ -1,3 +1,10 @@
+/// TODO 进入节点，创建子节点，修改当前节点到中间节点，这立即删除了旧的叶子节点，并创建了新的。
+/// TODO 离开节点，不立即删除，检测离开范围超过一半时再删除，
+/// TODO 也就是新增叶子节点就立即执行，
+/// TODO 删除叶子节点延迟执行。
+///
+/// TODO visibility range 范围就设置在chunk的创建和删除距离上。误差可以配置。（之后再做，chunk的加载和卸载可能有问题）
+/// TODO 需要标记那些chunk要删除，把他们从缝隙创建中排除出去。
 use bevy::{
     math::{
         bounding::{Aabb3d, BoundingVolume},
@@ -104,34 +111,48 @@ fn update_lod_octree_node_top_to_bottom(
     parent_entity: Entity,
     children_node_query: &mut Query<&mut LodOctreeNode, With<Parent>>,
 ) {
-    let can_divide = can_divide_node(&address, &aabb, observer_locations, setting);
-
     let node_entity = lod_octree_map.node_map.get(&address);
-    let new_node_entity = match node_entity {
+    let (parent_node_entity, can_divide) = match node_entity {
         None => {
+            let can_divide = can_divide_node(
+                &address,
+                &aabb,
+                observer_locations,
+                setting,
+                LodOctreeNodeUpdateType::Add,
+            );
             let node_type = if can_divide {
                 LodOctreeNodeType::Internal
             } else {
                 LodOctreeNodeType::Leaf
             };
-            commands
+            let node_entity = commands
                 .spawn(LodOctreeNode {
                     address,
                     aabb,
                     node_type,
                 })
                 .set_parent(parent_entity)
-                .id()
+                .id();
+            (node_entity, can_divide)
         }
         Some(node_entity) => {
+            let can_divide = can_divide_node(
+                &address,
+                &aabb,
+                observer_locations,
+                setting,
+                LodOctreeNodeUpdateType::Remove,
+            );
             if let Ok(mut node) = children_node_query.get_mut(*node_entity) {
                 if can_divide {
                     node.node_type = LodOctreeNodeType::Internal;
                 } else {
                     node.node_type = LodOctreeNodeType::Leaf;
+                    commands.entity(*node_entity).despawn_descendants();
                 }
             }
-            *node_entity
+            (*node_entity, can_divide)
         }
     };
 
@@ -146,12 +167,10 @@ fn update_lod_octree_node_top_to_bottom(
                 observer_locations,
                 setting,
                 lod_octree_map,
-                new_node_entity,
+                parent_node_entity,
                 children_node_query,
             );
         }
-    } else {
-        commands.entity(new_node_entity).despawn_descendants();
     }
 }
 
@@ -189,7 +208,13 @@ fn update_lod_octree_nodes(
         let lod_octree_size = setting.get_lod_octree_size();
         let root_aabb = Aabb3d::new(Vec3A::ZERO, Vec3A::splat(lod_octree_size * 0.5));
 
-        let can_divide = can_divide_node(&root_address, &root_aabb, &observer_locations, &setting);
+        let can_divide = can_divide_node(
+            &root_address,
+            &root_aabb,
+            &observer_locations,
+            &setting,
+            LodOctreeNodeUpdateType::Add,
+        );
 
         let node_type = if can_divide {
             LodOctreeNodeType::Internal
@@ -234,6 +259,7 @@ fn update_lod_octree_nodes(
             &root_node.aabb,
             &observer_locations,
             &setting,
+            LodOctreeNodeUpdateType::Remove,
         ) {
             root_node.node_type = LodOctreeNodeType::Internal;
             for child_address in root_node.address.get_children_addresses() {
@@ -259,13 +285,20 @@ fn update_lod_octree_nodes(
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum LodOctreeNodeUpdateType {
+    Add,
+    Remove,
+}
+
 fn can_divide_node(
     node_address: &NodeAddress,
     node_aabb: &Aabb3d,
     observer_locations: &ObserverLocations,
     setting: &Res<TerrainSetting>,
+    update_type: LodOctreeNodeUpdateType,
 ) -> bool {
-    let max_depth = get_node_theory_depth(observer_locations, node_aabb, setting);
+    let max_depth = get_node_theory_depth(observer_locations, node_aabb, setting, update_type);
     node_address.get_depth() < max_depth
         && node_address.get_depth() < setting.lod_setting.get_lod_octree_depth()
 }
@@ -274,14 +307,25 @@ fn get_node_theory_depth(
     observer_locations: &ObserverLocations,
     node_aabb: &Aabb3d,
     setting: &Res<TerrainSetting>,
+    update_type: LodOctreeNodeUpdateType,
 ) -> OctreeDepthType {
     let mut max_depth = 0;
     let center = node_aabb.center();
     for observer_location in observer_locations.iter() {
         let distance = (*observer_location - center).length() * 0.75;
-        let chunk_distance = distance / setting.chunk_setting.chunk_size;
+        let mut chunk_distance = distance / setting.chunk_setting.chunk_size;
+        // let old_clipmap_lod = chunk_distance.log2().floor() as OctreeDepthType;
+        if update_type == LodOctreeNodeUpdateType::Remove {
+            chunk_distance -= 0.5;
+        }
         // 更小才能细分
         let clipmap_lod = chunk_distance.log2().floor() as OctreeDepthType;
+        // error!(
+        //     "old_clipmap_lod: {}, clipmap_lod: {}, diff: {}",
+        //     old_clipmap_lod,
+        //     clipmap_lod,
+        //     clipmap_lod - old_clipmap_lod
+        // );
         let clipmap_depth = setting.lod_setting.get_lod_octree_depth() - clipmap_lod;
         max_depth = max_depth.max(clipmap_depth);
     }

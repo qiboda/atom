@@ -6,7 +6,8 @@ pub mod seam_mesh;
 
 use std::sync::{Arc, RwLock};
 
-use bevy::{prelude::*, utils::HashMap};
+use atom_internal::app_state::AppState;
+use bevy::{prelude::*, transform::commands, utils::HashMap};
 use dc_gizmos::DcGizmosPlugin;
 
 use crate::{
@@ -29,54 +30,43 @@ pub struct DualContouringPlugin;
 
 impl Plugin for DualContouringPlugin {
     fn build(&self, app: &mut App) {
-        let span = info_span!("OctreeDepthCoordMapper").entered();
-        // TODO 可以只保存边缘的坐标，减少内存占用。并不行，都需要使用。
-        let terrain_setting = app.world().get_resource::<TerrainSetting>().unwrap();
-        let mapper = construct_octree_depth_coord_map(
-            terrain_setting.chunk_setting.chunk_size,
-            terrain_setting.chunk_setting.get_voxel_size(0),
-        );
-        drop(span);
-
-        app.insert_resource(OctreeDepthCoordMapper {
-            mapper: Arc::new(RwLock::new(mapper)),
-        })
-        .configure_sets(
-            Update,
-            (
-                IsosurfaceSystemSet::GenerateMainMesh,
-                IsosurfaceSystemSet::GenerateSeamMesh,
+        app.add_systems(OnEnter(AppState::AppRunning), dual_contouring_init)
+            .configure_sets(
+                Update,
+                (
+                    IsosurfaceSystemSet::GenerateMainMesh,
+                    IsosurfaceSystemSet::GenerateSeamMesh,
+                )
+                    .chain()
+                    .in_set(TerrainSystemSet::GenerateTerrain),
             )
-                .chain()
-                .in_set(TerrainSystemSet::GenerateTerrain),
-        )
-        .add_plugins(DcGizmosPlugin)
-        .add_event::<TerrainChunkCreateMainMeshEvent>()
-        .add_event::<TerrainChunkCreateSeamMeshEvent>()
-        .add_systems(
-            Update,
-            (
-                read_chunk_update_lod_event,
-                main_mesh::construct_octree,
-                main_mesh::simplify_octree,
-                main_mesh::dual_contouring,
-                create_main_mesh,
+            .add_plugins(DcGizmosPlugin)
+            .add_event::<TerrainChunkCreateMainMeshEvent>()
+            .add_event::<TerrainChunkCreateSeamMeshEvent>()
+            .add_systems(
+                Update,
+                (
+                    read_chunk_update_lod_event,
+                    main_mesh::construct_octree,
+                    main_mesh::simplify_octree,
+                    main_mesh::dual_contouring,
+                    create_main_mesh,
+                )
+                    .chain()
+                    .in_set(IsosurfaceSystemSet::GenerateMainMesh),
             )
-                .chain()
-                .in_set(IsosurfaceSystemSet::GenerateMainMesh),
-        )
-        .add_systems(
-            Update,
-            (
-                read_chunk_update_seam_event,
-                seam_mesh::construct_octree,
-                // seam_mesh::simplify_octree,
-                seam_mesh::dual_contouring,
-                create_seam_mesh,
-            )
-                .chain()
-                .in_set(IsosurfaceSystemSet::GenerateSeamMesh),
-        );
+            .add_systems(
+                Update,
+                (
+                    read_chunk_update_seam_event,
+                    seam_mesh::construct_octree,
+                    // seam_mesh::simplify_octree,
+                    seam_mesh::dual_contouring,
+                    create_seam_mesh,
+                )
+                    .chain()
+                    .in_set(IsosurfaceSystemSet::GenerateSeamMesh),
+            );
     }
 }
 
@@ -84,4 +74,21 @@ impl Plugin for DualContouringPlugin {
 pub struct OctreeDepthCoordMapper {
     /// depth is from 1 to n
     mapper: Arc<RwLock<HashMap<OctreeDepthType, Vec<NodeAddress>>>>,
+}
+
+pub fn dual_contouring_init(world: &mut World) {
+    let span = info_span!("OctreeDepthCoordMapper").entered();
+
+    // TODO 在只有缝隙需要的更低的层次下，可以只保存边缘的坐标，减少内存占用。
+    let terrain_setting = world.get_resource::<TerrainSetting>().unwrap();
+    let mapper = construct_octree_depth_coord_map(
+        terrain_setting.chunk_setting.chunk_size,
+        terrain_setting.chunk_setting.get_voxel_size(0),
+    );
+
+    world.insert_resource(OctreeDepthCoordMapper {
+        mapper: Arc::new(RwLock::new(mapper)),
+    });
+
+    drop(span);
 }
