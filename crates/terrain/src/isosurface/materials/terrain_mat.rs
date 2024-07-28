@@ -43,7 +43,7 @@ pub struct TerrainMaterialKey {
 impl From<&TerrainMaterial> for TerrainMaterialKey {
     fn from(value: &TerrainMaterial) -> Self {
         TerrainMaterialKey {
-            debug_type: value.debug_type.clone(),
+            debug_type: value.debug_type,
         }
     }
 }

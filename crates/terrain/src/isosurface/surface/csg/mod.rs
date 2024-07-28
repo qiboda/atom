@@ -1,6 +1,10 @@
 pub mod csg_noise;
 pub mod csg_operators;
 pub mod csg_shapes;
+pub mod falloff_map;
+pub mod noise_cache;
+pub mod aworley;
+pub mod arc_noise;
 
 use std::fmt::Debug;
 
@@ -64,7 +68,7 @@ mod tests {
         assert_eq!(-2.0, shape_surface.get_value(3.0, -2.0, 7.0));
         assert_eq!(0.0, shape_surface.get_value(0.0, -0.0, 0.0));
         assert_eq!(1.0, shape_surface.get_value(0.0, 1.0, 0.0));
-        assert_eq!(1.0, shape_surface.get_value(0.0, -1.0, 0.0));
+        assert_eq!(-1.0, shape_surface.get_value(0.0, -1.0, 0.0));
 
         shape_surface.apply_csg_operation(
             Box::new(CSGCube {

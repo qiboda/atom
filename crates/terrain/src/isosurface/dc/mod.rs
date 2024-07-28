@@ -7,7 +7,7 @@ pub mod seam_mesh;
 use std::sync::{Arc, RwLock};
 
 use atom_internal::app_state::AppState;
-use bevy::{prelude::*, transform::commands, utils::HashMap};
+use bevy::{prelude::*, utils::HashMap};
 use dc_gizmos::DcGizmosPlugin;
 
 use crate::{

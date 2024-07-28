@@ -149,6 +149,7 @@ pub fn to_create_seam_mesh(
         update_seam_chunk_addresses
     );
 
+    // 删除之前需要创建所有的mesh和缝隙。
     update_seam_chunk_addresses.retain(|x| {
         !(to_create_seam_chunks
             .contains(&&TerrainChunkAddress::from(x))
@@ -161,7 +162,7 @@ pub fn to_create_seam_mesh(
             if let Ok((mut state, mut seam_mesh_id_generator)) = query.p2().get_mut(*entity) {
                 let seam_mesh_id = seam_mesh_id_generator.gen();
                 *state = TerrainChunkState::CreateSeamMesh;
-                error!(
+                info!(
                     "to create seam chunks, address: {:?}, id:{:?}, current id: {:?}",
                     chunk_address,
                     seam_mesh_id,
@@ -212,6 +213,7 @@ pub fn update_create_seam_mesh_over(
     }
 }
 
+#[allow(dead_code)]
 fn log_terrain_chunk_num(
     chunk_query: Query<(), With<TerrainChunk>>,
     chunk_mapper: Res<TerrainChunkMapper>,

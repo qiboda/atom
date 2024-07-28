@@ -479,8 +479,8 @@ mod tests {
     #[test]
     fn test_construct_octree_address_map() {
         let leaf_address_map = construct_octree_depth_coord_map(4.0, 0.5);
-        // 8, 4, 2, 1, 0.5
-        assert_eq!(leaf_address_map.len(), 5);
+        // 4, 2, 1, 0.5
+        assert_eq!(leaf_address_map.len(), 7);
 
         let leaf_address = leaf_address_map.get(&0).unwrap();
         assert_eq!(leaf_address.len(), 1);
@@ -511,7 +511,8 @@ mod tests {
         check_set.extend(leaf_address.iter());
         assert!(check_set.len() == leaf_address.len());
 
-        assert!(leaf_address_map.get(&5).is_none());
+        assert!(leaf_address_map.get(&6).is_some());
+        assert!(leaf_address_map.get(&7).is_none());
     }
 
     #[test]

@@ -1,11 +1,12 @@
 use std::ops::Not;
 
-use avian3d::collision::Collider;
+// use avian3d::collision::Collider;
 use bevy::{
     prelude::{debug, Component, Mesh, Vec3},
     reflect::Reflect,
     render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
 };
+use bevy_xpbd_3d::prelude::Collider;
 
 #[derive(Debug, Clone, Component, Default, Reflect)]
 pub struct MeshInfo {

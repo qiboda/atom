@@ -87,7 +87,7 @@ impl Octree {
     ) where
         S: ndshape::Shape<3, Coord = u32>,
     {
-        let _span = debug_span!("octree build",);
+        let _span = info_span!("octree build",);
 
         debug!(
             "octree_offset: {}, voxel size: {}, shape size: {}",

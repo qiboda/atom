@@ -8,7 +8,7 @@ use dc::DualContouringPlugin;
 use ecology::EcologyPlugin;
 use materials::TerrainMaterialPlugin;
 use surface::{
-    csg::{csg_noise::NoiseSurface, csg_shapes::CSGPanel},
+    csg::{csg_noise::WorldGenerator, csg_shapes::CSGPanel},
     shape_surface::ShapeSurface,
 };
 
@@ -28,12 +28,12 @@ impl Plugin for IsosurfaceExtractionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(IsosurfaceContext {
             shape_surface: Arc::new(RwLock::new(ShapeSurface::new(
-                // csg_root: Box::new(NoiseSurface::new()),
-                Box::new(CSGPanel {
-                    location: Vec3::ZERO,
-                    normal: Vec3::Y,
-                    height: 0.0,
-                }),
+                Box::new(WorldGenerator::new(0.0)),
+                // Box::new(CSGPanel {
+                //     location: Vec3::ZERO,
+                //     normal: Vec3::Y,
+                //     height: 0.0,
+                // }),
             ))),
         })
         .add_plugins(EcologyPlugin)

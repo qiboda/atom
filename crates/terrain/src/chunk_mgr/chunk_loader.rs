@@ -27,6 +27,11 @@ use super::{
     TerrainChunkSystemSet,
 };
 
+// 1. 创建所有的主mesh，这样填充缝隙的时候才能正确处理。之后处理缝隙
+// 2. 处理主mesh的过程中有了新的主mesh，正常继续推进。
+// 3. 如果处理缝隙的过程中有了新的主mesh，需要暂停处理缝隙。重新开始处理主mesh。
+// 4. 这种必须最后再删除，避免闪烁。在性能不足时，可能缓存过多的chunk，导致内存占用过高。
+// 不这样做的话，最好是单帧处理完毕，就没有缓存队列的问题了。
 #[derive(Debug, Default)]
 pub struct TerrainChunkLoaderPlugin;
 
@@ -89,9 +94,11 @@ impl PartialOrd for LeafNodeKey {
         }
         match self.distance.partial_cmp(&other.distance) {
             Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord,
+            ord => return ord.map(|ord| ord.reverse()),
         }
-        self.angle.partial_cmp(&other.angle)
+        self.angle
+            .partial_cmp(&other.angle)
+            .map(|ord| ord.reverse())
     }
 }
 
@@ -186,9 +193,20 @@ pub fn update_loading_data(
             continue;
         }
 
+        // let mut to_update = false;
+        // for transform in global_transforms.iter() {
+        //     if (node.aabb.center() - transform.translation_vec3a()).length_squared()
+        //         < 1000.0 * 1000.0
+        //     {
+        //         to_update = true;
+        //     }
+        // }
+
+        // if to_update {
         let mut leaf_node_key = LeafNodeKey::new(entity);
         update_leaf_node_data(&mut leaf_node_key, node, &frustums, &global_transforms);
         loader.leaf_node_pending_load_deque.push(leaf_node_key);
+        // }
     }
     info!(
         "loader.leaf_node_pending_load_deque :{}",
@@ -229,7 +247,7 @@ pub fn to_load_chunk(
             for _ in 0..num {
                 if let Some(key) = terrain_chunk_loader.leaf_node_pending_load_deque.pop() {
                     if let Ok(lod_octree_node) = query.get(key.entity) {
-                        info!("to load lod octree node: {:?}", lod_octree_node.address);
+                        debug!("to load lod octree node: {:?}", lod_octree_node.address);
                         load_event.node_addresses.push(lod_octree_node.address);
                         terrain_chunk_loader
                             .loaded_leaf_node_set
@@ -240,7 +258,7 @@ pub fn to_load_chunk(
                 }
             }
 
-            info!("to load chunk: {:?}", load_event);
+            debug!("to load chunk: {:?}", load_event);
             commands.trigger(load_event);
         }
     }

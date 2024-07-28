@@ -10,7 +10,7 @@ use crate::{
             chunk_lod::{LodType, OctreeDepthType, TerrainChunkAabb, TerrainChunkLod},
             state::TerrainChunkAddress,
         },
-        chunk_loader::{self, TerrainChunkLoader},
+        chunk_loader::TerrainChunkLoader,
         chunk_mapper::TerrainChunkMapper,
     },
     isosurface::{
@@ -404,16 +404,18 @@ pub(crate) fn construct_octree(
                         return (None, LodType::MAX);
                     };
                     if let Ok((chunk_address, _, lod, children)) = chunk_query.get(*entity) {
-                        if loader.is_pending_unload(&chunk_address) {
+                        if loader.is_pending_unload(chunk_address) {
                             return (None, LodType::MAX);
                         }
                         for child in children.iter() {
                             if let Ok((octree, generator)) = chunk_generator_query.get(*child) {
                                 assert!(generator.lod == lod.get_lod());
-                                return (
-                                    Some(octree.address_node_map.clone()),
-                                    lod.get_lod(),
-                                );
+                                if octree.address_node_map.read().unwrap().len() > 0 {
+                                    return (
+                                        Some(octree.address_node_map.clone()),
+                                        lod.get_lod(),
+                                    );
+                                }
                             }
                         }
                     }
@@ -485,6 +487,7 @@ pub(crate) fn construct_octree(
                 }
 
                 // TODO: 加载过快，导致需要删除的mesh没有删除，找到了错误的mesh，导致lod误差变大。
+                // TODO: 有待定加载的chunk，但是还没有加载，因此找到了更高lod的chunk，导致出现问题。
                 let min_lod = octrees.get_min_lod();
                 info!(
                     "min lod: {}, max_lod: {}, diff max: {}",
@@ -536,7 +539,7 @@ async fn dual_contouring_run_task(
     chunk_address: TerrainChunkAddress,
     lod: LodType,
 ) -> (Entity, MeshInfo) {
-    let _span = debug_span!("seam mesh dual contouring", ?chunk_address, lod).entered();
+    let _span = info_span!("seam mesh dual contouring", ?chunk_address, lod).entered();
 
     let surface_guard: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 

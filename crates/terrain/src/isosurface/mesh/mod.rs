@@ -1,11 +1,13 @@
 pub mod mesh_info;
 
-use avian3d::{collision::Collider, prelude::RigidBody};
+// use avian3d::{collision::Collider, prelude::RigidBody};
 use bevy::{
     pbr::wireframe::{Wireframe, WireframeColor},
     prelude::*,
 };
+use bevy_xpbd_3d::prelude::{Collider, RigidBody};
 use mesh_info::MeshInfo;
+use oxidized_navigation::NavMeshAffector;
 
 use crate::{
     chunk_mgr::chunk::{
@@ -44,7 +46,7 @@ pub fn create_main_mesh(
             continue;
         }
 
-        let Ok((terrain_chunk_address, ecology_layer_sampler)) = chunk_query.get(parent.get())
+        let Ok((terrain_chunk_address, _ecology_layer_sampler)) = chunk_query.get(parent.get())
         else {
             *state = MainMeshState::Done;
             continue;
@@ -102,6 +104,12 @@ pub fn create_main_mesh(
             },
         ));
 
+        if mesh_info.get_vertex_positions().get(0).unwrap().length() < 300.0 {
+            commands
+                .entity(chunk_generator_entity)
+                .insert(NavMeshAffector);
+        }
+
         *state = MainMeshState::Done;
         info!("create main mesh end: {:?}", terrain_chunk_address);
     }
@@ -137,7 +145,7 @@ pub fn create_seam_mesh(
             continue;
         }
 
-        let Ok((terrain_chunk_address, chunk_lod, ecology_layer_sampler)) =
+        let Ok((terrain_chunk_address, chunk_lod, _ecology_layer_sampler)) =
             chunk_query.get(parent.get())
         else {
             *state = SeamMeshState::Done;
@@ -206,6 +214,12 @@ pub fn create_seam_mesh(
                         color: LinearRgba::RED.into(),
                     },
                 ));
+
+                if mesh_info.get_vertex_positions().get(0).unwrap().length() < 300.0 {
+                    commands
+                        .entity(seam_generator_entity)
+                        .insert(NavMeshAffector);
+                }
             }
         }
 

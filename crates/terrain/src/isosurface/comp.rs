@@ -76,13 +76,12 @@ pub(crate) fn trigger_create_main_mesh_event(
                 if generator.lod == event.lod {
                     *state = MainMeshState::ConstructOctree;
                     find_lod_generator = true;
-                    error!("state = MainMeshState::ConstructOctree");
                 }
             }
         }
     }
     if find_lod_generator.not() {
-        info!(": {:?}", event.lod);
+        debug!(": {:?}", event.lod);
         commands
             .spawn((
                 TerrainChunkMainGenerator { lod: event.lod },

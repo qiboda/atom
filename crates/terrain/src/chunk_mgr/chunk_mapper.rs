@@ -85,7 +85,7 @@ pub fn trigger_chunk_load_event(
         bundle.terrain_chunk_lod = TerrainChunkLod::new(chunk_lod);
         bundle.terrain_chunk_aabb = TerrainChunkAabb(lod_octree_node.aabb);
 
-        info!(
+        debug!(
             "spawn_terrain_chunks: {:?}, lod: {}",
             bundle.terrain_chunk_address, chunk_lod
         );

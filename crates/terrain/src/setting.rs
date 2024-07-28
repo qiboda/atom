@@ -23,10 +23,15 @@ impl TerrainChunkSetting {
         self.chunk_size * 2.0f32.powi(lod as i32)
     }
 
+    pub fn get_default_voxel_size(&self) -> f32 {
+        self.chunk_size / 2.0f32.powi(self.depth as i32)
+    }
+
     pub fn get_voxel_size(&self, lod: LodType) -> f32 {
-        // debug_assert!(lod <= self.depth);
+        // error!("lod: {}, depth: {}", lod, self.depth);
+        // assert!(lod <= self.depth);
         // 根节点深度为0.
-        self.chunk_size / 2.0f32.powi(self.depth as i32 - lod as i32)
+        self.get_default_voxel_size() * 2.0f32.powi(lod as i32)
     }
 }
 

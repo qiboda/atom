@@ -44,7 +44,7 @@ async fn construct_octree_task(
     qef_stddev: f32,
     offset: Vec3A,
 ) -> (Entity, Octree) {
-    let _span = debug_span!("main mesh construct octree", ?chunk_address, lod).entered();
+    let _span = info_span!("main mesh construct octree", ?chunk_address, lod).entered();
 
     let size = (lod_chunk_size / lod_voxel_size) as u32 + 1;
     let shape = RuntimeShape::<u32, 3>::new([size, size, size]);
@@ -56,12 +56,14 @@ async fn construct_octree_task(
     let mut samples = Vec::with_capacity(shape.usize());
     let surface: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 
+    let sample_span = info_span!("octree get sample data").entered();
     for i in 0..shape.size() {
         let loc =
             offset + Vec3A::from_array(shape.delinearize(i).map(|v| v as f32)) * lod_voxel_size;
         let density = surface.get_value_from_vec(&loc.into());
         samples.push(density);
     }
+    drop(sample_span);
 
     let mut octree = Octree::new(RuntimeShape::<u32, 3>::new([size - 1, size - 1, size - 1]));
     Octree::build_bottom_up(
@@ -145,7 +147,7 @@ async fn simplify_octree_task(
     chunk_address: TerrainChunkAddress,
     lod: LodType,
 ) -> Entity {
-    let _span = debug_span!("main mesh simplify octree task", ?chunk_address, lod).entered();
+    let _span = info_span!("main mesh simplify octree task", ?chunk_address, lod).entered();
 
     Octree::simplify_octree(
         address_node_map.clone(),
@@ -227,7 +229,7 @@ async fn dual_contouring_run_task(
     chunk_address: TerrainChunkAddress,
     lod: LodType,
 ) -> (Entity, MeshInfo) {
-    let _span = debug_span!("main mesh dual contouring", ?chunk_address, lod).entered();
+    let _span = info_span!("main mesh dual contouring", ?chunk_address, lod).entered();
 
     let surface_guard: std::sync::RwLockReadGuard<ShapeSurface> = surface.read().unwrap();
 

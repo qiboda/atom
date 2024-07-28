@@ -1,6 +1,6 @@
 (
     chunk_setting: (
-        chunk_size: 32.0,
+        chunk_size: 16.0,
         depth: 5,
         qef_solver: true,
         qef_solver_threshold: {
@@ -18,7 +18,7 @@
         qef_stddev: 0.1,
     ),
     lod_setting: (
-        lod_octree_depth: 16,
+        lod_octree_depth: 12,
         load_node_num_per_processor_core: 8,
     ),
 )

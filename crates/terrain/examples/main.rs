@@ -16,10 +16,15 @@ use bevy::{
 };
 use bevy_debug_grid::{Grid, GridAxis};
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
+use bevy_xpbd_3d::prelude::Collider;
 use dotenv::dotenv;
 use log_layers::LogLayersPlugin;
+use oxidized_navigation::{
+    debug_draw::{DrawNavMesh, OxidizedNavigationDebugDrawPlugin},
+    NavMeshSettings, OxidizedNavigationPlugin,
+};
 use terrain::{
-    chunk_mgr::chunk_loader::{TerrainChunkLoadEvent, TerrainChunkLoader},
+    chunk_mgr::chunk_loader::TerrainChunkLoader,
     isosurface::surface::{
         csg::{csg_shapes::CSGCube, CSGOperation},
         event::CSGOperationEndEvent,
@@ -27,18 +32,36 @@ use terrain::{
     },
     TerrainObserver, TerrainSubsystemPlugin,
 };
+use vleue_navigator::prelude::NavMeshBundle;
 
 pub fn main() {
     dotenv().ok();
 
     let mut app = App::new();
 
-    app.add_plugins(AtomDefaultPlugins.set(LogPlugin {
-        custom_layer: LogLayersPlugin::get_layer,
-        filter: "warn,wgpu=error,naga=warn,terrain=warn".to_string(),
-        ..default()
-    }))
+    app.add_plugins(
+        AtomDefaultPlugins
+            .set(LogPlugin {
+                custom_layer: LogLayersPlugin::get_layer,
+                filter: "info,wgpu=error,naga=warn,terrain=info".to_string(),
+                ..default()
+            })
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    // uncomment for unthrottled FPS
+                    present_mode: bevy::window::PresentMode::AutoNoVsync,
+                    ..default()
+                }),
+                ..default()
+            }),
+    )
     // .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(0.5)))
+    .add_plugins((
+        OxidizedNavigationPlugin::<Collider>::new(NavMeshSettings::from_agent_and_bounds(
+            1.0, 2.0, 300.0, -100.0,
+        )),
+        OxidizedNavigationDebugDrawPlugin,
+    ))
     .add_plugins(WireframePlugin)
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(NoCameraPlayerPlugin)
@@ -71,7 +94,14 @@ pub fn main() {
     .run();
 }
 
-fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>) {
+fn startup(
+    mut commands: Commands,
+    mut wireframe_config: ResMut<WireframeConfig>,
+    mut nav_mesh: ResMut<DrawNavMesh>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    nav_mesh.0 = true;
     wireframe_config.global = true;
 
     // fn startup(mut commands: Commands) {
@@ -124,6 +154,19 @@ fn startup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>
         },
         transform: Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
+    });
+
+    commands.spawn(MaterialMeshBundle {
+        mesh: meshes.add(Mesh::from(Plane3d {
+            normal: Dir3::Y,
+            half_size: Vec2::splat(65536.0 * 0.5),
+        })),
+        material: materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            unlit: true,
+            ..default()
+        }),
+        ..default()
     });
 
     commands.spawn((
