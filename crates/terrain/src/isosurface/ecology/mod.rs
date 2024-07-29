@@ -38,17 +38,17 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     info!("startup ecology");
 
     let albedo_image_handle = asset_server
-        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_ALBEDO_4K.png");
+        .load("textures/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_ALBEDO_4K.png");
     let ao_image_handle =
-        asset_server.load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_AO_4K.png");
+        asset_server.load("textures/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_AO_4K.png");
     let height_image_handle = asset_server
-        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_HEIGHT_4K.png");
+        .load("textures/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_HEIGHT_4K.png");
     let metallic_image_handle = asset_server
-        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_METALLIC_4K.png");
+        .load("textures/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_METALLIC_4K.png");
     let normal_image_handle = asset_server
-        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_NORMAL_4K.png");
+        .load("textures/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_NORMAL_4K.png");
     let rough_image_handle = asset_server
-        .load("texture/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_ROUGH_4K.png");
+        .load("textures/terrain/M3D_RockyAridGround01_4K/RockyAridGround01_ROUGH_4K.png");
 
     commands.insert_resource(EcologyMaterials {
         forest_material: Arc::new(ForestEcologyMaterial {

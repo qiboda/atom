@@ -12,10 +12,11 @@ pub mod chunk_mgr;
 pub mod isosurface;
 pub mod lod;
 pub mod setting;
+pub mod tables;
 pub mod utils;
 
 use atom_internal::app_state::AppState;
-use bevy::prelude::*;
+use bevy::{prelude::*, render::extract_resource::ExtractResourcePlugin};
 use chunk_mgr::plugin::TerrainChunkPlugin;
 use isosurface::IsosurfaceExtractionPlugin;
 use lod::lod_octree::TerrainLodOctreePlugin;
@@ -38,6 +39,7 @@ impl Plugin for TerrainSubsystemPlugin {
                     .chain()
                     .run_if(in_state(AppState::AppRunning)),
             )
+            .add_plugins(ExtractResourcePlugin::<TerrainSetting>::default())
             .add_plugins(TerrainLodOctreePlugin)
             .add_plugins(TerrainChunkPlugin)
             .add_plugins(IsosurfaceExtractionPlugin);

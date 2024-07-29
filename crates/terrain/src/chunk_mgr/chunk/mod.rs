@@ -1,3 +1,3 @@
 pub mod bundle;
-pub mod chunk_lod;
+pub mod chunk_aabb;
 pub mod state;

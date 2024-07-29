@@ -4,36 +4,36 @@
 //! 还有根据自定义纹理进行混合的。纹理内存储的是数组纹理的索引，而不是纹理本身。
 use bevy::{
     app::Plugin,
-    asset::{load_internal_asset, Handle},
+    asset::{DirectAssetAccessExt, Handle},
     pbr::MaterialPlugin,
-    render::render_resource::Shader,
+    prelude::Resource,
+    render::{render_resource::Shader, RenderApp},
 };
 use terrain_mat::TerrainMaterial;
+use tracing::error;
 
 pub mod terrain_mat;
 
 #[derive(Debug, Default)]
 pub struct TerrainMaterialPlugin;
 
-pub const TRIPLANAR_HANDLE: Handle<Shader> =
-    Handle::weak_from_u128(206437786527492349469145395852868245199);
-pub const BIPLANAR_HANDLE: Handle<Shader> =
-    Handle::weak_from_u128(32249701768478216984066711652293638536);
+#[derive(Resource, Default)]
+pub struct TerrainMaterialShader {
+    pub triplanar: Handle<Shader>,
+    pub biplanar: Handle<Shader>,
+    pub terrain_material: Handle<Shader>,
+}
 
 impl Plugin for TerrainMaterialPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        load_internal_asset!(
-            app,
-            TRIPLANAR_HANDLE,
-            "shaders/triplanar.wgsl",
-            Shader::from_wgsl
-        );
-        load_internal_asset!(
-            app,
-            BIPLANAR_HANDLE,
-            "shaders/biplanar.wgsl",
-            Shader::from_wgsl
-        );
+        // let world = app.world();
+        let render_app = app.get_sub_app(RenderApp).unwrap();
+        let render_world = render_app.world();
+        app.insert_resource(TerrainMaterialShader {
+            triplanar: render_world.load_asset("shaders/terrain/triplanar.wgsl"),
+            biplanar: render_world.load_asset("shaders/terrain/biplanar.wgsl"),
+            terrain_material: render_world.load_asset("shaders/terrain/terrain_material.wgsl"),
+        });
 
         app.add_plugins(MaterialPlugin::<TerrainMaterial>::default());
     }

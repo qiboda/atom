@@ -1,0 +1,97 @@
+digraph "" {
+	"compound"="true";
+	"splines"="spline";
+	"rankdir"="LR";
+	"bgcolor"="#0d1117";
+	"fontname"="Helvetica";
+	"nodesep"="0.15";
+	edge ["penwidth"="2"];
+	node ["shape"="box", "style"="filled"];
+	subgraph "clusternode_Set(1)" {
+		"style"="rounded,filled";
+		"label"="InputSystem";
+		"tooltip"="InputSystem";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(1)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(0)" ["label"="keyboard_input_system", "tooltip"="bevy_input::keyboard::keyboard_input_system", "fillcolor"="#d36aaf", "fontname"="Helvetica", "fontcolor"="#270b1d", "color"="#a5317d", "penwidth"="1"]
+		"node_System(1)" ["label"="mouse_button_input_system", "tooltip"="bevy_input::mouse::mouse_button_input_system", "fillcolor"="#d36aaf", "fontname"="Helvetica", "fontcolor"="#270b1d", "color"="#a5317d", "penwidth"="1"]
+		"node_System(2)" ["label"="gamepad_event_system", "tooltip"="bevy_input::gamepad::gamepad_event_system", "fillcolor"="#d36aaf", "fontname"="Helvetica", "fontcolor"="#270b1d", "color"="#a5317d", "penwidth"="1"]
+		"node_System(3)" ["label"="gamepad_connection_system", "tooltip"="bevy_input::gamepad::gamepad_connection_system", "fillcolor"="#d36aaf", "fontname"="Helvetica", "fontcolor"="#270b1d", "color"="#a5317d", "penwidth"="1"]
+		"node_System(4)" ["label"="gamepad_button_event_system", "tooltip"="bevy_input::gamepad::gamepad_button_event_system", "fillcolor"="#d36aaf", "fontname"="Helvetica", "fontcolor"="#270b1d", "color"="#a5317d", "penwidth"="1"]
+		"node_System(5)" ["label"="gamepad_axis_event_system", "tooltip"="bevy_input::gamepad::gamepad_axis_event_system", "fillcolor"="#d36aaf", "fontname"="Helvetica", "fontcolor"="#270b1d", "color"="#a5317d", "penwidth"="1"]
+		"node_System(6)" ["label"="touch_screen_input_system", "tooltip"="bevy_input::touch::touch_screen_input_system", "fillcolor"="#d36aaf", "fontname"="Helvetica", "fontcolor"="#270b1d", "color"="#a5317d", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(9)" {
+		"style"="rounded,filled";
+		"label"="Focus";
+		"tooltip"="Focus";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(9)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(7)" ["label"="ui_focus_system", "tooltip"="bevy_ui::focus::ui_focus_system", "fillcolor"="#ffb1e5", "fontname"="Helvetica", "fontcolor"="#320021", "color"="#ff4bc2", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(14)" {
+		"style"="rounded,filled";
+		"label"="InitContexts";
+		"tooltip"="InitContexts";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(14)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(11)" ["label"="setup_new_windows_system", "tooltip"="bevy_egui::setup_new_windows_system", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(12)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred", "fillcolor"="#b0d34a", "fontname"="Helvetica", "fontcolor"="#edf5d5", "color"="#d3e69c", "penwidth"="1"]
+		"node_System(13)" ["label"="update_window_contexts_system", "tooltip"="bevy_egui::systems::update_window_contexts_system", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(18)" {
+		"style"="rounded,filled";
+		"label"="ProcessInput";
+		"tooltip"="ProcessInput";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(18)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(14)" ["label"="process_input_system", "tooltip"="bevy_egui::systems::process_input_system", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(20)" {
+		"style"="rounded,filled";
+		"label"="BeginFrame";
+		"tooltip"="BeginFrame";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(20)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(15)" ["label"="begin_frame_system", "tooltip"="bevy_egui::systems::begin_frame_system", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	"node_System(8)" ["label"="update_mesh_previous_global_transforms", "tooltip"="bevy_pbr::prepass::update_mesh_previous_global_transforms"]
+	"node_System(9)" ["label"="update_previous_view_projections", "tooltip"="bevy_pbr::prepass::update_previous_view_projections"]
+	"node_System(10)" ["label"="gilrs_event_system", "tooltip"="bevy_gilrs::gilrs_system::gilrs_event_system"]
+	"node_System(16)" ["label"="refresh_final_settings<TerrainSettings>", "tooltip"="config::load::refresh_final_settings<terrain::terrain::settings::TerrainSettings>"]
+	"node_System(17)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred"]
+	"node_System(2)" -> "node_System(3)" ["lhead"="", "ltail"="", "tooltip"="SystemTypeSet(FunctionSystem<fn(EventReader<GamepadEvent>, EventWriter<GamepadConnectionEvent>, EventWriter<GamepadButtonChangedEvent>, EventWriter<GamepadAxisChangedEvent>, ResMut<ButtonInput<GamepadButton>>), gamepad_event_system>()) → gamepad_connection_system", "color"="#eede00"]
+	"node_System(2)" -> "node_System(4)" ["lhead"="", "ltail"="", "tooltip"="SystemTypeSet(FunctionSystem<fn(EventReader<GamepadEvent>, EventWriter<GamepadConnectionEvent>, EventWriter<GamepadButtonChangedEvent>, EventWriter<GamepadAxisChangedEvent>, ResMut<ButtonInput<GamepadButton>>), gamepad_event_system>()) → gamepad_button_event_system", "color"="#881877"]
+	"node_System(3)" -> "node_System(4)" ["lhead"="", "ltail"="", "tooltip"="SystemTypeSet(FunctionSystem<fn(ResMut<Gamepads>, EventReader<GamepadConnectionEvent>, ResMut<Axis<GamepadAxis>>, ResMut<Axis<GamepadButton>>, ResMut<ButtonInput<GamepadButton>>), gamepad_connection_system>()) → gamepad_button_event_system", "color"="#00b0cc"]
+	"node_System(2)" -> "node_System(5)" ["lhead"="", "ltail"="", "tooltip"="SystemTypeSet(FunctionSystem<fn(EventReader<GamepadEvent>, EventWriter<GamepadConnectionEvent>, EventWriter<GamepadButtonChangedEvent>, EventWriter<GamepadAxisChangedEvent>, ResMut<ButtonInput<GamepadButton>>), gamepad_event_system>()) → gamepad_axis_event_system", "color"="#aa3a55"]
+	"node_System(3)" -> "node_System(5)" ["lhead"="", "ltail"="", "tooltip"="SystemTypeSet(FunctionSystem<fn(ResMut<Gamepads>, EventReader<GamepadConnectionEvent>, ResMut<Axis<GamepadAxis>>, ResMut<Axis<GamepadButton>>, ResMut<ButtonInput<GamepadButton>>), gamepad_connection_system>()) → gamepad_axis_event_system", "color"="#44d488"]
+	"set_marker_node_Set(1)" -> "node_System(7)" ["lhead"="", "ltail"="clusternode_Set(1)", "tooltip"="InputSystem → ui_focus_system", "color"="#0090cc"]
+	"node_System(10)" -> "set_marker_node_Set(1)" ["lhead"="clusternode_Set(1)", "ltail"="", "tooltip"="gilrs_event_system → InputSystem", "color"="#ee9e44"]
+	"node_System(11)" -> "node_System(12)" ["lhead"="", "ltail"="", "tooltip"="setup_new_windows_system → apply_deferred", "color"="#663699"]
+	"node_System(12)" -> "node_System(13)" ["lhead"="", "ltail"="", "tooltip"="apply_deferred → update_window_contexts_system", "color"="#3363bb"]
+	"set_marker_node_Set(1)" -> "node_System(14)" ["lhead"="", "ltail"="clusternode_Set(1)", "tooltip"="InputSystem → process_input_system", "color"="#22c2bb"]
+	"set_marker_node_Set(14)" -> "node_System(14)" ["lhead"="", "ltail"="clusternode_Set(14)", "tooltip"="InitContexts → process_input_system", "color"="#99d955"]
+	"set_marker_node_Set(18)" -> "node_System(15)" ["lhead"="", "ltail"="clusternode_Set(18)", "tooltip"="ProcessInput → begin_frame_system", "color"="#eede00"]
+	"node_System(13)" -> "node_System(7)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Window</td></tr></table>>, "labeltooltip"="update_window_contexts_system — ui_focus_system"]
+	"node_System(14)" -> "node_System(7)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Window</td></tr></table>>, "labeltooltip"="process_input_system — ui_focus_system"]
+}

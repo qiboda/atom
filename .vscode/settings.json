@@ -1,9 +1,30 @@
 {
     "cSpell.language": "en,en-GB,en-US,lorem",
     "cSpell.words": [
+        "aabb",
+        "bytemuck",
+        "chebyshev",
+        "clipmap",
+        "datatables",
+        "deque",
+        "despawn",
+        "ilog",
+        "isosurface",
         "lacunarity",
+        "leafwing",
+        "lifetimeless",
+        "mortun",
+        "nalgebra",
+        "Octree",
         "Perlin",
         "powi",
-        "voxel"
+        "repr",
+        "smallvec",
+        "stddev",
+        "unmap",
+        "voxel",
+        "wgpu",
+        "wgsl",
+        "Zeroable"
     ]
 }

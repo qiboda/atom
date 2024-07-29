@@ -14,7 +14,7 @@ use log_layers::{file_layer, LogLayersPlugin};
 use seldom_state::StateMachinePlugin;
 use settings::{SettingSourceConfig, SettingsPlugin};
 
-use crate::app_state::AppStatePlugin;
+use crate::{app_state::AppStatePlugin, shaders::AtomShadersPlugin};
 
 #[derive(Debug, Default)]
 pub struct AtomDefaultPlugins;
@@ -65,6 +65,7 @@ impl PluginGroup for AtomDefaultPlugins {
                         ..default()
                     }),
             )
+            .add(AtomShadersPlugin)
             .add(InputManagerSubsystemPlugin)
             .add(ConsolePlugin)
             .add(StateMachinePlugin)

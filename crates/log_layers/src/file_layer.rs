@@ -1,13 +1,11 @@
 use bevy::{log::BoxedLayer, prelude::*};
 use project::project_saved_root_path;
-use tracing_subscriber::{EnvFilter, Layer};
+use tracing_subscriber::{filter::LevelFilter, Layer};
 
 use crate::LogLayerRes;
 
 pub fn file_layer(app: &mut App) -> Option<BoxedLayer> {
     let saved_path = project_saved_root_path();
-
-    let file_filter = EnvFilter::new("trace");
 
     let file_appender = tracing_appender::rolling::daily(saved_path.join("logs"), "log"); // This should be user configurable
     let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);
@@ -15,7 +13,7 @@ pub fn file_layer(app: &mut App) -> Option<BoxedLayer> {
         .with_ansi(false) // disable terminal color escape sequences
         .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
         .with_writer(non_blocking)
-        .with_filter(file_filter);
+        .with_filter(LevelFilter::TRACE);
 
     let mut log_layer_res = app
         .world_mut()

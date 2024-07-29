@@ -1,0 +1,18 @@
+digraph "" {
+	"compound"="true";
+	"splines"="spline";
+	"rankdir"="LR";
+	"bgcolor"="#0d1117";
+	"fontname"="Helvetica";
+	"nodesep"="0.15";
+	edge ["penwidth"="2"];
+	node ["shape"="box", "style"="filled"];
+	"node_System(0)" ["label"="log_system_info", "tooltip"="bevy_diagnostic::system_information_diagnostics_plugin::internal::log_system_info"]
+	"node_System(1)" ["label"="setup_global_wireframe_material", "tooltip"="bevy_pbr::wireframe::setup_global_wireframe_material"]
+	"node_System(2)" ["label"="startup_load_settings<TerrainSettings>", "tooltip"="config::load::startup_load_settings<terrain::terrain::settings::TerrainSettings>"]
+	"node_System(3)" ["label"="setup_terrain", "tooltip"="terrain::terrain::terrain_data::setup_terrain"]
+	"node_System(4)" ["label"="startup", "tooltip"="terrain::terrain::ecology::startup"]
+	"node_System(5)" ["label"="add_frame_ui", "tooltip"="terrain::ui::add_frame_ui"]
+	"node_System(6)" ["label"="startup", "tooltip"="terrain::startup"]
+	"node_System(6)" -> "node_System(1)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">WireframeConfig</td></tr></table>>, "labeltooltip"="startup — setup_global_wireframe_material"]
+}

@@ -50,11 +50,15 @@ leafwing-input-manager = { path = "../../leafwing-input-manager" }
 # bevy_enum_filter
 bevy_common_assets = { version = "0.11.0", features = ["toml"] }
 autoincrement = { version = "1.0" }
+crossbeam-channel = { version = "0.5.13" }
 
 noise = { version = "0.9.0", features = ["images"] }
 image = { version = "0.25", features = ["jpeg", "png"] }
+bytemuck = { version = "1.16" }
 
 tracing = { version = "0.1.40", features = [] }
+wgpu-types = { version = "0.20" }
+wgpu = { version = "0.20" }
 
 avian3d = { version = "0.1.0" }
 bevy_xpbd_3d = { version = "0.5.0" }

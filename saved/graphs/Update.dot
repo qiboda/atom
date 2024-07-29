@@ -1,0 +1,77 @@
+digraph "" {
+	"compound"="true";
+	"splines"="spline";
+	"rankdir"="LR";
+	"bgcolor"="#0d1117";
+	"fontname"="Helvetica";
+	"nodesep"="0.15";
+	edge ["penwidth"="2"];
+	node ["shape"="box", "style"="filled"];
+	subgraph "clusternode_Set(9)" {
+		"style"="rounded,filled";
+		"label"="VisibleAreas";
+		"tooltip"="VisibleAreas";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(9)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(9)" ["label"="add_terrain_visible_areas", "tooltip"="terrain::visible::visible_areas::add_terrain_visible_areas", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(10)" ["label"="update_terrain_visible_areas", "tooltip"="terrain::visible::visible_areas::update_terrain_visible_areas", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(11)" ["label"="remove_terrain_visible_areas", "tooltip"="terrain::visible::visible_areas::remove_terrain_visible_areas", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(10)" {
+		"style"="rounded,filled";
+		"label"="TerrainData";
+		"tooltip"="TerrainData";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(10)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(12)" ["label"="update_visible_chunks", "tooltip"="terrain::terrain::terrain_data::update_visible_chunks", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(13)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred", "fillcolor"="#b0d34a", "fontname"="Helvetica", "fontcolor"="#edf5d5", "color"="#d3e69c", "penwidth"="1"]
+		"node_System(14)" ["label"="update_visible_chunks_lod", "tooltip"="terrain::terrain::terrain_data::update_visible_chunks_lod", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(11)" {
+		"style"="rounded,filled";
+		"label"="GenerateTerrain";
+		"tooltip"="GenerateTerrain";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(11)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(15)" ["label"="dual_contour_build_octree", "tooltip"="terrain::terrain::isosurface::dc::dual_contour_build_octree", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(16)" ["label"="dual_contour_meshing", "tooltip"="terrain::terrain::isosurface::dc::dual_contour_meshing", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(17)" ["label"="dual_contouring_create_mesh", "tooltip"="terrain::terrain::isosurface::dc::dual_contouring_create_mesh", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(18)" ["label"="dual_contouring_update_lod", "tooltip"="terrain::terrain::isosurface::dc::dual_contouring_update_lod", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	"node_System(0)" ["label"="close_when_requested", "tooltip"="bevy_window::system::close_when_requested"]
+	"node_System(1)" ["label"="global_color_changed", "tooltip"="bevy_pbr::wireframe::global_color_changed"]
+	"node_System(2)" ["label"="wireframe_color_changed", "tooltip"="bevy_pbr::wireframe::wireframe_color_changed"]
+	"node_System(3)" ["label"="apply_wireframe_material", "tooltip"="bevy_pbr::wireframe::apply_wireframe_material"]
+	"node_System(4)" ["label"="apply_global_wireframe_material", "tooltip"="bevy_pbr::wireframe::apply_global_wireframe_material"]
+	"node_System(5)" ["label"="world_inspector_ui", "tooltip"="bevy_inspector_egui::quick::world_inspector_ui"]
+	"node_System(6)" ["label"="init_async_colliders", "tooltip"="bevy_xpbd_3d::plugins::collision::collider_backend::init_async_colliders"]
+	"node_System(7)" ["label"="init_async_scene_colliders", "tooltip"="bevy_xpbd_3d::plugins::collision::collider_backend::init_async_scene_colliders"]
+	"node_System(8)" ["label"="camera_movement", "tooltip"="terrain::camera::camera_movement"]
+	"node_System(19)" ["label"="diagnostic_system", "tooltip"="bevy_diagnostic::frame_time_diagnostics_plugin::FrameTimeDiagnosticsPlugin::diagnostic_system"]
+	"node_System(20)" ["label"="update_fps", "tooltip"="terrain::ui::update_fps"]
+	"node_System(21)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred"]
+	"node_System(22)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred"]
+	"node_System(23)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred"]
+	"node_System(3)" -> "node_System(4)" ["lhead"="", "ltail"="", "tooltip"="apply_wireframe_material → apply_global_wireframe_material", "color"="#eede00"]
+	"set_marker_node_Set(9)" -> "set_marker_node_Set(10)" ["lhead"="clusternode_Set(10)", "ltail"="clusternode_Set(9)", "tooltip"="VisibleAreas → TerrainData", "color"="#881877"]
+	"set_marker_node_Set(10)" -> "set_marker_node_Set(11)" ["lhead"="clusternode_Set(11)", "ltail"="clusternode_Set(10)", "tooltip"="TerrainData → GenerateTerrain", "color"="#00b0cc"]
+	"node_System(9)" -> "node_System(10)" ["lhead"="", "ltail"="", "tooltip"="add_terrain_visible_areas → update_terrain_visible_areas", "color"="#aa3a55"]
+	"node_System(10)" -> "node_System(11)" ["lhead"="", "ltail"="", "tooltip"="update_terrain_visible_areas → remove_terrain_visible_areas", "color"="#44d488"]
+	"node_System(12)" -> "node_System(13)" ["lhead"="", "ltail"="", "tooltip"="update_visible_chunks → apply_deferred", "color"="#0090cc"]
+	"node_System(13)" -> "node_System(14)" ["lhead"="", "ltail"="", "tooltip"="apply_deferred → update_visible_chunks_lod", "color"="#ee9e44"]
+	"node_System(15)" -> "node_System(16)" ["lhead"="", "ltail"="", "tooltip"="dual_contour_build_octree → dual_contour_meshing", "color"="#663699"]
+	"node_System(16)" -> "node_System(17)" ["lhead"="", "ltail"="", "tooltip"="dual_contour_meshing → dual_contouring_create_mesh", "color"="#3363bb"]
+	"node_System(17)" -> "node_System(18)" ["lhead"="", "ltail"="", "tooltip"="dual_contouring_create_mesh → dual_contouring_update_lod", "color"="#22c2bb"]
+}

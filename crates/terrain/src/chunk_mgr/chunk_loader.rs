@@ -1,10 +1,8 @@
-use std::{collections::BinaryHeap, ops::Not};
+use std::collections::BinaryHeap;
 
 // FIXME 有时候没有删除chunk内容。
 use crate::{
-    isosurface::dc::octree::address::NodeAddress,
-    lod::lod_octree::{LodOctreeNode, LodOctreeNodeType},
-    setting::TerrainSetting,
+    lod::{lod_octree::TerrainLodOctree, morton_code::MortonCode},
     TerrainObserver,
 };
 use bevy::{
@@ -17,15 +15,11 @@ use bevy::{
         camera::CameraProjection,
         primitives::{Aabb, Frustum},
     },
-    tasks::AsyncComputeTaskPool,
     utils::HashSet,
 };
 use smallvec::SmallVec;
 
-use super::{
-    chunk::{bundle::TerrainChunk, state::TerrainChunkState},
-    TerrainChunkSystemSet,
-};
+use super::TerrainChunkSystemSet;
 
 // 1. 创建所有的主mesh，这样填充缝隙的时候才能正确处理。之后处理缝隙
 // 2. 处理主mesh的过程中有了新的主mesh，正常继续推进。
@@ -39,16 +33,13 @@ impl Plugin for TerrainChunkLoaderPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<TerrainChunkLoadEvent>()
             .add_event::<TerrainChunkUnLoadEvent>()
-            .init_state::<TerrainCreateState>()
             .init_resource::<TerrainChunkLoader>()
-            .observe(trigger_lod_node_remove)
-            .add_systems(PreUpdate, update_terrain_create_state)
             .add_systems(
                 Update,
                 (
-                    update_loading_data,
-                    to_unload_chunk,
+                    update_loader_state,
                     to_load_chunk,
+                    to_unload_chunk,
                     reload_terrain_chunk,
                 )
                     .chain()
@@ -57,26 +48,14 @@ impl Plugin for TerrainChunkLoaderPlugin {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Default, Eq, Clone, Copy)]
 pub struct LeafNodeKey {
-    pub address: NodeAddress,
-    pub entity: Entity,
+    pub address: MortonCode,
 
     pub is_in_frustums: bool,
-    pub distance: u64,
+    pub distance_squared: u64,
     // unit is degree
     pub angle: u32,
-}
-impl LeafNodeKey {
-    fn new(leaf_node_entity: Entity) -> Self {
-        Self {
-            address: NodeAddress::root(),
-            entity: leaf_node_entity,
-            is_in_frustums: false,
-            distance: 0,
-            angle: 0,
-        }
-    }
 }
 
 impl Ord for LeafNodeKey {
@@ -92,7 +71,7 @@ impl PartialOrd for LeafNodeKey {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
         }
-        match self.distance.partial_cmp(&other.distance) {
+        match self.distance_squared.partial_cmp(&other.distance_squared) {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord.map(|ord| ord.reverse()),
         }
@@ -107,19 +86,8 @@ impl PartialOrd for LeafNodeKey {
 #[derive(Resource, Debug, Default)]
 pub struct TerrainChunkLoader {
     pub leaf_node_pending_load_deque: BinaryHeap<LeafNodeKey>,
-    pub loaded_leaf_node_set: HashSet<NodeAddress>,
-    pub pending_unload_leaf_node_set: HashSet<NodeAddress>,
+    pub pending_unload_leaf_node_set: HashSet<MortonCode>,
     pub pending_reload_aabb_vec: Vec<Aabb3d>,
-}
-
-impl TerrainChunkLoader {
-    pub fn is_loaded(&self, node_address: &NodeAddress) -> bool {
-        self.loaded_leaf_node_set.contains(node_address)
-    }
-
-    pub fn is_pending_unload(&self, node_address: &NodeAddress) -> bool {
-        self.pending_unload_leaf_node_set.contains(node_address)
-    }
 }
 
 impl TerrainChunkLoader {
@@ -133,44 +101,41 @@ type GlobalTransformsType = SmallVec<[GlobalTransform; 1]>;
 
 fn update_leaf_node_data(
     leaf_node_key: &mut LeafNodeKey,
-    leaf_node: &LodOctreeNode,
     frustums: &FrustumsType,
     global_transforms: &GlobalTransformsType,
+    node_aabb: &Aabb,
 ) {
-    let aabb = Aabb::from_min_max(leaf_node.aabb.min.into(), leaf_node.aabb.max.into());
-
     let mut is_in_frustums = false;
     for frustum in frustums.iter() {
-        if frustum.intersects_obb(&aabb, &Affine3A::IDENTITY, true, true) {
+        if frustum.intersects_obb(node_aabb, &Affine3A::IDENTITY, true, true) {
             is_in_frustums = true;
             break;
         }
     }
-    let mut min_distance = u64::MAX;
+    let mut min_distance_squared = u64::MAX;
     let mut min_angle = u32::MAX;
     for global_transform in global_transforms.iter() {
         let (_, rotation, translation) = global_transform.to_scale_rotation_translation();
-        let leaf_node_location: Vec3 = leaf_node.aabb.center().into();
+        let leaf_node_location: Vec3 = node_aabb.center.into();
         let relative_translation = leaf_node_location - translation;
-        min_distance = min_distance.min(relative_translation.length_squared() as u64);
+        min_distance_squared =
+            min_distance_squared.min(relative_translation.length_squared() as u64);
 
         let (axis, _angle) = rotation.to_axis_angle();
         min_angle = min_angle.min(relative_translation.angle_between(axis).to_degrees() as u32);
     }
 
     leaf_node_key.is_in_frustums = is_in_frustums;
-    leaf_node_key.distance = min_distance;
+    leaf_node_key.distance_squared = min_distance_squared;
     leaf_node_key.angle = min_angle;
 }
 
 #[allow(clippy::type_complexity)]
-pub fn update_loading_data(
-    observer_query: Query<(&GlobalTransform, &Projection), With<TerrainObserver>>,
+pub fn update_loader_state(
     mut loader: ResMut<TerrainChunkLoader>,
-    node_query: Query<(Entity, &LodOctreeNode)>,
+    observer_query: Query<(&GlobalTransform, &Projection), With<TerrainObserver>>,
+    lod_octree: Res<TerrainLodOctree>,
 ) {
-    let _span = info_span!("update_loading_data").entered();
-
     let mut frustums = FrustumsType::new();
     let mut global_transforms = GlobalTransformsType::new();
     for (global_transform, projection) in observer_query.iter() {
@@ -180,182 +145,112 @@ pub fn update_loading_data(
     }
 
     loader.leaf_node_pending_load_deque.clear();
-    for (entity, node) in node_query.iter() {
-        if node.node_type == LodOctreeNodeType::Internal {
-            if loader.is_loaded(&node.address) {
-                loader.pending_unload_leaf_node_set.insert(node.address);
-            }
-            continue;
+
+    for level in lod_octree.octree_levels.iter() {
+        // to add nodes
+        for node in level.get_added_nodes() {
+            let mut leaf_node_key = LeafNodeKey {
+                address: node.code,
+                ..Default::default()
+            };
+            let node_aabb = Aabb {
+                center: node.aabb.center(),
+                half_extents: node.aabb.half_size(),
+            };
+            update_leaf_node_data(
+                &mut leaf_node_key,
+                &frustums,
+                &global_transforms,
+                &node_aabb,
+            );
+            // if leaf_node_key.distance_squared < 1000000 {
+            loader.leaf_node_pending_load_deque.push(leaf_node_key);
+            // }
+            // loader.leaf_node_pending_load_deque.push(leaf_node_key);
         }
 
-        loader.pending_unload_leaf_node_set.remove(&node.address);
-        if loader.is_loaded(&node.address) {
-            continue;
+        // to remove nodes
+        for node in level.get_removed_nodes() {
+            loader.pending_unload_leaf_node_set.insert(node.code);
         }
-
-        // let mut to_update = false;
-        // for transform in global_transforms.iter() {
-        //     if (node.aabb.center() - transform.translation_vec3a()).length_squared()
-        //         < 1000.0 * 1000.0
-        //     {
-        //         to_update = true;
-        //     }
-        // }
-
-        // if to_update {
-        let mut leaf_node_key = LeafNodeKey::new(entity);
-        update_leaf_node_data(&mut leaf_node_key, node, &frustums, &global_transforms);
-        loader.leaf_node_pending_load_deque.push(leaf_node_key);
-        // }
     }
-    info!(
-        "loader.leaf_node_pending_load_deque :{}",
-        loader.leaf_node_pending_load_deque.len()
+
+    debug!(
+        "loader.leaf_node_pending_load_deque :{}, loader.pending_unload_leaf_node_set: {}",
+        loader.leaf_node_pending_load_deque.len(),
+        loader.pending_unload_leaf_node_set.len()
     );
 }
 
-pub fn trigger_lod_node_remove(
-    trigger: Trigger<OnRemove, LodOctreeNode>,
-    query: Query<&LodOctreeNode>,
-    mut loader: ResMut<TerrainChunkLoader>,
-) {
-    let node_entity = trigger.entity();
-    if let Ok(node) = query.get(node_entity) {
-        if node.node_type == LodOctreeNodeType::Internal {
-            return;
-        }
-        loader.pending_unload_leaf_node_set.insert(node.address);
+pub fn to_load_chunk(mut loader: ResMut<TerrainChunkLoader>, mut commands: Commands) {
+    let num = loader.leaf_node_pending_load_deque.len();
+    if num == 0 {
+        return;
+    }
+
+    let mut load_event = TerrainChunkLoadEvent {
+        node_addresses: Vec::with_capacity(num),
     };
-}
 
-pub fn to_load_chunk(
-    query: Query<&LodOctreeNode>,
-    mut terrain_chunk_loader: ResMut<TerrainChunkLoader>,
-    mut commands: Commands,
-    setting: Res<TerrainSetting>,
-    state: Res<State<TerrainCreateState>>,
-) {
-    if *state == TerrainCreateState::Done {
-        let num_per_core = setting.lod_setting.load_node_num_per_processor_core as usize;
-        let num = num_per_core * AsyncComputeTaskPool::get().thread_num();
-        let num = num.min(terrain_chunk_loader.leaf_node_pending_load_deque.len());
+    while let Some(key) = loader.leaf_node_pending_load_deque.pop() {
+        debug!("to load lod octree node: {:?}", key.address);
+        load_event.node_addresses.push(key.address);
+    }
 
-        if num > 0 {
-            let mut load_event = TerrainChunkLoadEvent {
-                node_addresses: Vec::with_capacity(num),
-            };
-            for _ in 0..num {
-                if let Some(key) = terrain_chunk_loader.leaf_node_pending_load_deque.pop() {
-                    if let Ok(lod_octree_node) = query.get(key.entity) {
-                        debug!("to load lod octree node: {:?}", lod_octree_node.address);
-                        load_event.node_addresses.push(lod_octree_node.address);
-                        terrain_chunk_loader
-                            .loaded_leaf_node_set
-                            .insert(lod_octree_node.address);
-                    }
-                } else {
-                    break;
-                }
-            }
-
-            debug!("to load chunk: {:?}", load_event);
-            commands.trigger(load_event);
-        }
+    debug!("to load chunk: {:?}", load_event.node_addresses.len());
+    if load_event.node_addresses.len() < 1500 {
+        commands.trigger(load_event);
     }
 }
 
-pub fn to_unload_chunk(
-    mut terrain_chunk_loader: ResMut<TerrainChunkLoader>,
-    mut commands: Commands,
-    state: Res<State<TerrainCreateState>>,
-) {
-    if *state == TerrainCreateState::Done
-        && terrain_chunk_loader.leaf_node_pending_load_deque.is_empty()
-        && terrain_chunk_loader
-            .pending_unload_leaf_node_set
-            .is_empty()
-            .not()
-    {
-        let leaf_node_set = std::mem::take(&mut terrain_chunk_loader.pending_unload_leaf_node_set);
-        let unload_event = TerrainChunkUnLoadEvent {
-            node_addresses: leaf_node_set.into_iter().collect(),
-        };
-        for node_address in unload_event.node_addresses.iter() {
-            terrain_chunk_loader
-                .loaded_leaf_node_set
-                .remove(node_address);
-        }
-
-        info!("un unload chunk: {:?}", unload_event);
-        commands.trigger(unload_event);
+pub fn to_unload_chunk(mut loader: ResMut<TerrainChunkLoader>, mut commands: Commands) {
+    if loader.pending_unload_leaf_node_set.is_empty() {
+        return;
     }
+
+    let unload_nodes = std::mem::take(&mut loader.pending_unload_leaf_node_set);
+    let unload_event = TerrainChunkUnLoadEvent {
+        node_addresses: unload_nodes.into_iter().collect(),
+    };
+    debug!("to unload chunk: {:?}", unload_event.node_addresses.len());
+    commands.trigger(unload_event);
 }
 
 #[derive(Event, Debug)]
 pub struct TerrainChunkLoadEvent {
-    pub node_addresses: Vec<NodeAddress>,
+    pub node_addresses: Vec<MortonCode>,
 }
 
 #[derive(Event, Debug)]
 pub struct TerrainChunkUnLoadEvent {
-    pub node_addresses: Vec<NodeAddress>,
+    pub node_addresses: Vec<MortonCode>,
 }
 
 #[derive(Event, Debug)]
 pub struct TerrainChunkReloadEvent {
-    pub node_addresses: Vec<NodeAddress>,
-}
-
-#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum TerrainCreateState {
-    #[default]
-    ExistMainMeshCreating,
-    AllMainMeshCreateEnd,
-    ExistSeamMeshCreating,
-    AllSeamMeshCreateEnd,
-    Done,
-}
-
-pub fn update_terrain_create_state(
-    query: Query<&TerrainChunkState, With<TerrainChunk>>,
-    mut terrain_create_state: ResMut<NextState<TerrainCreateState>>,
-) {
-    let mut terrain_chunk_state = TerrainChunkState::Done;
-    for chunk_state in query.iter() {
-        terrain_chunk_state = terrain_chunk_state.min(*chunk_state);
-    }
-
-    match terrain_chunk_state {
-        TerrainChunkState::CreateMainMesh => {
-            terrain_create_state.set(TerrainCreateState::ExistMainMeshCreating)
-        }
-        TerrainChunkState::WaitToCreateSeam => {
-            terrain_create_state.set(TerrainCreateState::AllMainMeshCreateEnd)
-        }
-        TerrainChunkState::CreateSeamMesh => {
-            terrain_create_state.set(TerrainCreateState::ExistSeamMeshCreating)
-        }
-        TerrainChunkState::HiddenOldMesh => {
-            terrain_create_state.set(TerrainCreateState::AllSeamMeshCreateEnd)
-        }
-        TerrainChunkState::Done => terrain_create_state.set(TerrainCreateState::Done),
-    }
+    pub node_addresses: Vec<MortonCode>,
 }
 
 pub fn reload_terrain_chunk(
-    query: Query<&LodOctreeNode>,
-    mut terrain_chunk_loader: ResMut<TerrainChunkLoader>,
+    mut loader: ResMut<TerrainChunkLoader>,
+    lod_octree: Res<TerrainLodOctree>,
     mut commands: Commands,
 ) {
+    if loader.pending_reload_aabb_vec.is_empty() {
+        return;
+    }
+
     let mut intersects_nodes = vec![];
-    for node in query.iter() {
-        for aabb in terrain_chunk_loader.pending_reload_aabb_vec.iter() {
-            if node.aabb.intersects(aabb) {
-                intersects_nodes.push(node.address);
+    for level in lod_octree.octree_levels.iter() {
+        for node in level.get_current() {
+            for aabb in loader.pending_reload_aabb_vec.iter() {
+                if node.aabb.intersects(aabb) {
+                    intersects_nodes.push(node.code);
+                }
             }
         }
     }
-    terrain_chunk_loader.pending_reload_aabb_vec.clear();
+    loader.pending_reload_aabb_vec.clear();
 
     commands.trigger(TerrainChunkReloadEvent {
         node_addresses: intersects_nodes,

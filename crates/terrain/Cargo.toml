@@ -23,6 +23,7 @@ strum_macros = "0.26.4"
 pqef = { path = "../pqef" }
 project = { path = "../project" }
 atom_internal = { path = "../atom_internal" }
+atom_utils = { path = "../atom_utils" }
 terrain_player_client = { path = "../terrain_player_client" }
 terrain_core = { path = "../terrain_core" }
 settings = { path = "../settings" }
@@ -43,7 +44,9 @@ serde_json = "1.0.120"
 # bevy-inspector-egui = "0.23.4"
 bitflags = { workspace = true }
 bitfield-struct = "0.8.0"
+bytemuck = { workspace = true }
 
+crossbeam-channel = { workspace = true }
 
 bevy_async_task = { version = "0.2.0" }
 autoincrement = { workspace = true }
@@ -51,9 +54,15 @@ oxidized_navigation = { workspace = true }
 vleue_navigator = { workspace = true }
 image = { workspace = true }
 num-traits = { workspace = true }
+wgpu-types = { workspace = true }
+wgpu = { workspace = true }
+thiserror = { workspace = true }
+bevy_console = { workspace = true }
+clap = { version = "4.5" }
 
 [dev-dependencies]
 bevy_flycam = { version = "0.14.0" }
 bevy_debug_grid = { workspace = true }
 bevy-inspector-egui = { version = "0.25" }
 dotenv = { workspace = true }
+atom_renderdoc = { path = "../atom_renderdoc" }

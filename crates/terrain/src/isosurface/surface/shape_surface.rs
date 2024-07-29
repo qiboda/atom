@@ -2,9 +2,9 @@ use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
 
-use crate::isosurface::{dc::octree::OctreeSampler, surface::csg::csg_shapes::CSGNone};
+// use crate::isosurface::{dc::octree::OctreeSampler, surface::csg::csg_shapes::CSGNone};
 
-use super::csg::{apply_csg_operation, CSGNode, CSGOperation};
+use super::csg::{apply_csg_operation, csg_shapes::CSGNone, CSGNode, CSGOperation};
 
 #[derive(Resource, Debug)]
 pub struct IsosurfaceContext {
@@ -43,12 +43,12 @@ impl ShapeSurface {
     }
 }
 
-impl<'a> OctreeSampler for std::sync::RwLockReadGuard<'a, ShapeSurface> {
-    fn sampler(&self, loc: Vec3) -> f32 {
-        self.get_value_from_vec(&loc)
-    }
+// impl<'a> OctreeSampler for std::sync::RwLockReadGuard<'a, ShapeSurface> {
+//     fn sampler(&self, loc: Vec3) -> f32 {
+//         self.get_value_from_vec(&loc)
+//     }
 
-    fn sampler_split(&self, x: f32, y: f32, z: f32) -> f32 {
-        self.get_value(x, y, z)
-    }
-}
+//     fn sampler_split(&self, x: f32, y: f32, z: f32) -> f32 {
+//         self.get_value(x, y, z)
+//     }
+// }

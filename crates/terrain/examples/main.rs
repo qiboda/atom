@@ -1,4 +1,5 @@
 use atom_internal::plugins::AtomDefaultPlugins;
+use atom_renderdoc::RenderDocPlugin;
 use bevy::{
     color::palettes::css,
     core_pipeline::{
@@ -13,6 +14,7 @@ use bevy::{
         ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
     },
     prelude::*,
+    render::diagnostic::RenderDiagnosticsPlugin,
 };
 use bevy_debug_grid::{Grid, GridAxis};
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
@@ -43,7 +45,7 @@ pub fn main() {
         AtomDefaultPlugins
             .set(LogPlugin {
                 custom_layer: LogLayersPlugin::get_layer,
-                filter: "info,wgpu=error,naga=warn,terrain=info".to_string(),
+                filter: "wgpu=error,naga=warn,terrain=info".to_string(),
                 ..default()
             })
             .set(WindowPlugin {
@@ -62,6 +64,8 @@ pub fn main() {
         )),
         OxidizedNavigationDebugDrawPlugin,
     ))
+    .add_plugins(RenderDocPlugin)
+    .add_plugins(RenderDiagnosticsPlugin)
     .add_plugins(WireframePlugin)
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(NoCameraPlayerPlugin)
@@ -83,12 +87,12 @@ pub fn main() {
         (
             update_terrain_observer,
             change_camera_speed,
-            apply_csg_operation,
+            // apply_csg_operation,
         ),
     )
     // .add_plugins(WorldInspectorPlugin::new())
     .insert_resource(MovementSettings {
-        speed: 300.0,
+        speed: 30.0,
         ..default()
     })
     .run();
@@ -108,7 +112,7 @@ fn startup(
     commands.spawn((
         Grid {
             // Space between each line
-            spacing: 64.0,
+            spacing: 16.0,
             // Line count along a single axis
             count: 256,
             // Color of the lines
@@ -156,18 +160,19 @@ fn startup(
         ..Default::default()
     });
 
-    commands.spawn(MaterialMeshBundle {
-        mesh: meshes.add(Mesh::from(Plane3d {
-            normal: Dir3::Y,
-            half_size: Vec2::splat(65536.0 * 0.5),
-        })),
-        material: materials.add(StandardMaterial {
-            base_color: Color::WHITE,
-            unlit: true,
-            ..default()
-        }),
-        ..default()
-    });
+    // commands.spawn(MaterialMeshBundle {
+    //     mesh: meshes.add(Mesh::from(Plane3d {
+    //         normal: Dir3::Y,
+    //         half_size: Vec2::splat(32.0 * 0.5),
+    //     })),
+    //     material: materials.add(StandardMaterial {
+    //         base_color: Color::WHITE,
+    //         unlit: true,
+    //         ..default()
+    //     }),
+    //     transform: Transform::from_xyz(0.0, -8.3, 0.0),
+    //     ..default()
+    // });
 
     commands.spawn((
         Camera3dBundle {
@@ -214,9 +219,9 @@ pub fn change_camera_speed(
     mut move_setting: ResMut<MovementSettings>,
 ) {
     if input.pressed(KeyCode::ControlLeft) {
-        move_setting.speed = 3000.0;
+        move_setting.speed = 1000.0;
     } else {
-        move_setting.speed = 3.0;
+        move_setting.speed = 10.0;
     }
 }
 
