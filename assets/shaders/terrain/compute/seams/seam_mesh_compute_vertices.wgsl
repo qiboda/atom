@@ -1,7 +1,7 @@
 /// x 方向，
 #import noisy::simplex_noise_2d
 #import quadric::{Quadric, quadric_default, probabilistic_plane_quadric, quadric_minimizer, quadric_add_quadric, quadric_residual_l2_error}
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR, VOXEL_MATERIAL_AIR_INDEX, U32_MAX}
+#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR, VOXEL_MATERIAL_AIR_INDEX, U32_MAX}
 #import terrain::voxel_utils::{get_voxel_edge_index, get_voxel_index, get_voxel_material_type_index, central_gradient}
 #import terrain::seam_utils::{axis_base_offset, coord_convert_fns, get_voxel_internal_vertex_index, EDGE_VERTEX_PAIRS, VOXEL_VERTEX_OFFSETS}
 #import terrain::density_field::get_terrain_noise
@@ -14,18 +14,12 @@ var<uniform> terrain_chunk_info: TerrainChunkInfo;
 var<uniform> terrain_chunks_lod: array<vec4<u32>, 16>;
 
 @group(0) @binding(2)
-var<storage, read_write> mesh_vertex_locations: array<vec4f>;
+var<storage, read_write> mesh_vertices: array<TerrainChunkVertexInfo>;
 
 @group(0) @binding(3)
-var<storage, read_write> mesh_vertex_normals: array<vec4f>;
-
-@group(0) @binding(4)
-var<storage, read_write> mesh_vertex_materials: array<u32>;
-
-@group(0) @binding(5)
 var<storage, read_write> mesh_vertex_map: array<u32>;
 
-@group(0) @binding(6)
+@group(0) @binding(4)
 var<storage, read_write> mesh_vertex_num: atomic<u32>;
 
 fn estimate_edge_cross_point(
@@ -179,9 +173,9 @@ fn compute_voxel_internal_vertices(
 
     let vertex_index = atomicAdd(&mesh_vertex_num, 1u);
 
-    mesh_vertex_locations[vertex_index] = avg_location;
-    mesh_vertex_normals[vertex_index] = avg_normal;
-    mesh_vertex_materials[vertex_index] = material;
+    mesh_vertices[vertex_index].location = avg_location;
+    mesh_vertices[vertex_index].normal_materials = avg_normal;
+    mesh_vertices[vertex_index].normal_materials.w = f32(material);
     for (var i = 0u; i < index; i++) {
         let x = i / stride[0];
         let y = (i - x * stride[0]) / stride[1];

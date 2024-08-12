@@ -10,7 +10,6 @@ use bevy::{
     render::{render_resource::Shader, RenderApp},
 };
 use terrain_mat::TerrainMaterial;
-use tracing::error;
 
 pub mod terrain_mat;
 

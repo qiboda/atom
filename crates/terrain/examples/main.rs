@@ -32,9 +32,9 @@ use terrain::{
         event::CSGOperationEndEvent,
         shape_surface::IsosurfaceContext,
     },
+    lod::lod_gizmos::TerrainLodGizmosPlugin,
     TerrainObserver, TerrainSubsystemPlugin,
 };
-use vleue_navigator::prelude::NavMeshBundle;
 
 pub fn main() {
     dotenv().ok();
@@ -68,6 +68,7 @@ pub fn main() {
     .add_plugins(RenderDiagnosticsPlugin)
     .add_plugins(WireframePlugin)
     .add_plugins(TerrainSubsystemPlugin)
+    .add_plugins(TerrainLodGizmosPlugin)
     .add_plugins(NoCameraPlayerPlugin)
     .add_plugins(FpsOverlayPlugin {
         config: FpsOverlayConfig {
@@ -102,8 +103,8 @@ fn startup(
     mut commands: Commands,
     mut wireframe_config: ResMut<WireframeConfig>,
     mut nav_mesh: ResMut<DrawNavMesh>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut _meshes: ResMut<Assets<Mesh>>,
+    mut _materials: ResMut<Assets<StandardMaterial>>,
 ) {
     nav_mesh.0 = true;
     wireframe_config.global = true;

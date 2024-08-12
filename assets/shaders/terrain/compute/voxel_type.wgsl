@@ -1,6 +1,6 @@
 #define_import_path terrain::voxel_type
 
-const U32_MAX: u32 = 0xFFFFFFFAu;
+const U32_MAX: u32 = 0xFFFFFFFFu;
 const VOXEL_MATERIAL_AIR: u32 = 0x0u;
 const VOXEL_MATERIAL_BLOCK: u32 = 0x1u;
 
@@ -30,4 +30,15 @@ struct VoxelEdgeCrossPoint {
     cross_location: vec4<f32>,
     // w is material_index
     normal_material_index: vec4<f32>,
+}
+
+
+struct TerrainChunkVertexInfo {
+    location: vec4<f32>,
+    normal_materials: vec4<f32>,
+}
+
+struct TerrainChunkVertexInfo {
+    location: vec4<f32>,
+    normal_materials: vec4<f32>,
 }

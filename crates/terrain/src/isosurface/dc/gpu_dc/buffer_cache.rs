@@ -7,11 +7,11 @@ use bevy::{
     },
     utils::HashMap,
 };
+use bytemuck::{Pod, Zeroable};
 use wgpu_types::BufferUsages;
 
 use crate::{
     chunk_mgr::chunk::state::{TerrainChunkAddress, TerrainChunkSeamLod},
-    lod::lod_octree::LodOctreeLevelType,
     setting::TerrainSetting,
     tables::SubNodeIndex,
 };
@@ -39,15 +39,21 @@ pub struct TerrainChunkInfo {
     pub qef_stddev: f32,
 }
 
+#[repr(C)]
+#[derive(ShaderType, Default, Clone, Copy, Debug, Pod, Zeroable)]
+pub struct TerrainChunkVertexInfo {
+    pub vertex_location: Vec4,
+    pub vertex_normal_materials: Vec4,
+}
+
 pub struct TerrainChunkMainBuffers {
     pub terrain_chunk_info_buffer: UniformBuffer<TerrainChunkInfo>,
     pub voxel_vertex_values_buffer: BufferVec<f32>,
     pub voxel_cross_points_buffer: BufferVec<VoxelEdgeCrossPoint>,
 
     pub mesh_vertex_map_buffer: BufferVec<u32>,
-    pub mesh_vertex_location_buffer: staged_buffer::StagedBufferVec<Vec4>,
-    pub mesh_vertex_normal_buffer: staged_buffer::StagedBufferVec<Vec4>,
-    pub mesh_vertex_materials_buffer: staged_buffer::StagedBufferVec<u32>,
+
+    pub mesh_vertices_buffer: staged_buffer::StagedBufferVec<TerrainChunkVertexInfo>,
     pub mesh_indices_buffer: staged_buffer::StagedBufferVec<u32>,
 
     pub mesh_vertices_num_buffer: staged_buffer::StagedBuffer<u32>,
@@ -141,26 +147,13 @@ impl TerrainChunkMainBuffers {
             vertex_buffer
         };
 
-        let mesh_vertex_location_buffer = staged_buffer::StagedBufferVec::<Vec4>::create_buffer(
-            context.render_device,
-            &format!("terrain chunk vertex location buffer {:?}", chunk_min),
-            BufferUsages::STORAGE,
-            vertex_num,
-        );
-
-        let mesh_vertex_normal_buffer = staged_buffer::StagedBufferVec::<Vec4>::create_buffer(
-            context.render_device,
-            &format!("terrain chunk vertex normal buffer {:?}", chunk_min),
-            BufferUsages::STORAGE,
-            vertex_num,
-        );
-
-        let mesh_vertex_materials_buffer = staged_buffer::StagedBufferVec::<u32>::create_buffer(
-            context.render_device,
-            &format!("terrain chunk vertex material buffer {:?}", chunk_min),
-            BufferUsages::STORAGE,
-            vertex_num,
-        );
+        let mesh_vertices_buffer =
+            staged_buffer::StagedBufferVec::<TerrainChunkVertexInfo>::create_buffer(
+                context.render_device,
+                &format!("terrain chunk vertices buffer {:?}", chunk_min),
+                BufferUsages::STORAGE,
+                vertex_num,
+            );
 
         let mesh_indices_buffer = staged_buffer::StagedBufferVec::<u32>::create_buffer(
             context.render_device,
@@ -190,9 +183,7 @@ impl TerrainChunkMainBuffers {
             voxel_vertex_values_buffer,
             voxel_cross_points_buffer,
             mesh_vertex_map_buffer,
-            mesh_vertex_location_buffer,
-            mesh_vertex_normal_buffer,
-            mesh_vertex_materials_buffer,
+            mesh_vertices_buffer,
             mesh_indices_buffer,
             mesh_vertices_num_buffer,
             mesh_indices_num_buffer,
@@ -200,20 +191,14 @@ impl TerrainChunkMainBuffers {
     }
 
     pub fn stage_buffers(&self, command_encoder: &mut CommandEncoder) {
-        self.mesh_vertex_location_buffer
-            .stage_buffer(command_encoder);
-        self.mesh_vertex_normal_buffer.stage_buffer(command_encoder);
-        self.mesh_vertex_materials_buffer
-            .stage_buffer(command_encoder);
+        self.mesh_vertices_buffer.stage_buffer(command_encoder);
         self.mesh_indices_buffer.stage_buffer(command_encoder);
         self.mesh_vertices_num_buffer.stage_buffer(command_encoder);
         self.mesh_indices_num_buffer.stage_buffer(command_encoder);
     }
 
     pub fn unmap(&self) {
-        self.mesh_vertex_location_buffer.unmap();
-        self.mesh_vertex_normal_buffer.unmap();
-        self.mesh_vertex_materials_buffer.unmap();
+        self.mesh_vertices_buffer.unmap();
         self.mesh_indices_buffer.unmap();
         self.mesh_vertices_num_buffer.unmap();
         self.mesh_indices_num_buffer.unmap();
@@ -266,9 +251,8 @@ pub struct TerrainChunkSeamBuffers {
     pub terrain_chunks_lod_buffer: UniformBuffer<[UVec4; 16]>,
 
     pub seam_mesh_vertex_map_buffer: BufferVec<u32>,
-    pub seam_mesh_vertex_location_buffer: staged_buffer::StagedBufferVec<Vec4>,
-    pub seam_mesh_vertex_normal_buffer: staged_buffer::StagedBufferVec<Vec4>,
-    pub seam_mesh_vertex_materials_buffer: staged_buffer::StagedBufferVec<u32>,
+
+    pub seam_mesh_vertices_buffer: staged_buffer::StagedBufferVec<TerrainChunkVertexInfo>,
     pub seam_mesh_indices_buffer: staged_buffer::StagedBufferVec<u32>,
 
     pub seam_mesh_vertices_num_buffer: staged_buffer::StagedBuffer<u32>,
@@ -369,30 +353,15 @@ impl TerrainChunkSeamBuffers {
 
         let seam_mesh_vertex_map_buffer = {
             let mut vertex_buffer = BufferVec::<u32>::new(BufferUsages::STORAGE);
-            vertex_buffer.set_label(Some("terrain chunk mesh vertex map buffer"));
+            vertex_buffer.set_label(Some("terrain chunk seam mesh vertex map buffer"));
             vertex_buffer.reserve(total_voxel_num, context.render_device);
             vertex_buffer
         };
 
-        let seam_mesh_vertex_location_buffer =
-            staged_buffer::StagedBufferVec::<Vec4>::create_buffer(
+        let seam_mesh_vertices_buffer =
+            staged_buffer::StagedBufferVec::<TerrainChunkVertexInfo>::create_buffer(
                 context.render_device,
-                &format!("terrain chunk vertex location buffer {:?}", chunk_min),
-                BufferUsages::STORAGE,
-                total_voxel_num,
-            );
-
-        let seam_mesh_vertex_normal_buffer = staged_buffer::StagedBufferVec::<Vec4>::create_buffer(
-            context.render_device,
-            &format!("terrain chunk vertex normal buffer {:?}", chunk_min),
-            BufferUsages::STORAGE,
-            total_voxel_num,
-        );
-
-        let seam_mesh_vertex_materials_buffer =
-            staged_buffer::StagedBufferVec::<u32>::create_buffer(
-                context.render_device,
-                &format!("terrain chunk vertex material buffer {:?}", chunk_min),
+                &format!("terrain chunk seam mesh vertices buffer {:?}", chunk_min),
                 BufferUsages::STORAGE,
                 total_voxel_num,
             );
@@ -424,9 +393,7 @@ impl TerrainChunkSeamBuffers {
             terrain_chunk_info_buffer,
             terrain_chunks_lod_buffer,
             seam_mesh_vertex_map_buffer,
-            seam_mesh_vertex_location_buffer,
-            seam_mesh_vertex_normal_buffer,
-            seam_mesh_vertex_materials_buffer,
+            seam_mesh_vertices_buffer,
             seam_mesh_indices_buffer,
             seam_mesh_vertices_num_buffer,
             seam_mesh_indices_num_buffer,
@@ -434,12 +401,7 @@ impl TerrainChunkSeamBuffers {
     }
 
     pub fn stage_buffers(&self, command_encoder: &mut CommandEncoder) {
-        self.seam_mesh_vertex_location_buffer
-            .stage_buffer(command_encoder);
-        self.seam_mesh_vertex_normal_buffer
-            .stage_buffer(command_encoder);
-        self.seam_mesh_vertex_materials_buffer
-            .stage_buffer(command_encoder);
+        self.seam_mesh_vertices_buffer.stage_buffer(command_encoder);
         self.seam_mesh_indices_buffer.stage_buffer(command_encoder);
         self.seam_mesh_vertices_num_buffer
             .stage_buffer(command_encoder);
@@ -448,9 +410,7 @@ impl TerrainChunkSeamBuffers {
     }
 
     pub fn unmap(&self) {
-        self.seam_mesh_vertex_location_buffer.unmap();
-        self.seam_mesh_vertex_normal_buffer.unmap();
-        self.seam_mesh_vertex_materials_buffer.unmap();
+        self.seam_mesh_vertices_buffer.unmap();
         self.seam_mesh_indices_buffer.unmap();
         self.seam_mesh_vertices_num_buffer.unmap();
         self.seam_mesh_indices_num_buffer.unmap();

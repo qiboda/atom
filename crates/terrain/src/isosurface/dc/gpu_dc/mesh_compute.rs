@@ -381,6 +381,7 @@ fn prepare_seam_bind_group(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn map_and_read_main_buffer(
     render_device: Res<RenderDevice>,
     query: Query<(
@@ -402,33 +403,12 @@ fn map_and_read_main_buffer(
 
             let buffers = main_buffers_cache.get_buffers(*main_buffers_id).unwrap();
 
-            let location_buffer_slice = buffers
-                .mesh_vertex_location_buffer
-                .get_staged_buffer()
-                .slice(..);
+            let vertices_buffer_slice = buffers.mesh_vertices_buffer.get_staged_buffer().slice(..);
             // Maps the buffer so it can be read on the cpu
-            location_buffer_slice.map_async(MapMode::Read, move |r| match r {
+            vertices_buffer_slice.map_async(MapMode::Read, move |r| match r {
                 // This will execute once the gpu is ready, so after the call to poll()
                 Ok(_) => {}
                 Err(err) => panic!("Failed to map vertex location buffer {err}"),
-            });
-
-            let normal_buffer_slice = buffers
-                .mesh_vertex_normal_buffer
-                .get_staged_buffer()
-                .slice(..);
-            normal_buffer_slice.map_async(MapMode::Read, move |r| match r {
-                Ok(_) => {}
-                Err(err) => panic!("Failed to map vertex normal buffer {err}"),
-            });
-
-            let materials_buffer_slice = buffers
-                .mesh_vertex_materials_buffer
-                .get_staged_buffer()
-                .slice(..);
-            materials_buffer_slice.map_async(MapMode::Read, move |r| match r {
-                Ok(_) => {}
-                Err(err) => panic!("Failed to map vertex materials buffer {err}"),
             });
 
             let indices_buffer_slice = buffers.mesh_indices_buffer.get_staged_buffer().slice(..);
@@ -464,33 +444,15 @@ fn map_and_read_main_buffer(
                     .get_buffers(terrain_chunk_seam_key, seam_buffers_id[i])
                     .unwrap();
 
-                let location_buffer_slice = buffers
-                    .seam_mesh_vertex_location_buffer
+                let vertices_buffer_slice = buffers
+                    .seam_mesh_vertices_buffer
                     .get_staged_buffer()
                     .slice(..);
                 // Maps the buffer so it can be read on the cpu
-                location_buffer_slice.map_async(MapMode::Read, move |r| match r {
+                vertices_buffer_slice.map_async(MapMode::Read, move |r| match r {
                     // This will execute once the gpu is ready, so after the call to poll()
                     Ok(_) => {}
-                    Err(err) => panic!("Failed to map vertex location buffer {err}"),
-                });
-
-                let normal_buffer_slice = buffers
-                    .seam_mesh_vertex_normal_buffer
-                    .get_staged_buffer()
-                    .slice(..);
-                normal_buffer_slice.map_async(MapMode::Read, move |r| match r {
-                    Ok(_) => {}
-                    Err(err) => panic!("Failed to map vertex normal buffer {err}"),
-                });
-
-                let materials_buffer_slice = buffers
-                    .seam_mesh_vertex_materials_buffer
-                    .get_staged_buffer()
-                    .slice(..);
-                materials_buffer_slice.map_async(MapMode::Read, move |r| match r {
-                    Ok(_) => {}
-                    Err(err) => panic!("Failed to map vertex materials buffer {err}"),
+                    Err(err) => panic!("Failed to map seam vertices buffer {err}"),
                 });
 
                 let indices_buffer_slice = buffers
@@ -499,7 +461,7 @@ fn map_and_read_main_buffer(
                     .slice(..);
                 indices_buffer_slice.map_async(MapMode::Read, move |r| match r {
                     Ok(_) => {}
-                    Err(err) => panic!("Failed to map indices buffer {err}"),
+                    Err(err) => panic!("Failed to map seam indices buffer {err}"),
                 });
 
                 let mesh_vertices_num_buffer_slice = buffers
@@ -559,32 +521,30 @@ fn map_and_read_main_buffer(
                     RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
                 );
 
-                let vertex_locations = buffers
-                    .mesh_vertex_location_buffer
-                    .read_size(mesh_vertices_num);
-                let vertex_normals = buffers
-                    .mesh_vertex_normal_buffer
-                    .read_size(mesh_vertices_num);
-                let vertex_materials = buffers
-                    .mesh_vertex_materials_buffer
-                    .read_size(mesh_vertices_num);
+                let vertices = buffers.mesh_vertices_buffer.read_size(mesh_vertices_num);
                 let indices = buffers.mesh_indices_buffer.read_size(mesh_indices_num);
 
                 mesh.insert_attribute(
                     Mesh::ATTRIBUTE_POSITION,
-                    vertex_locations
+                    vertices
                         .iter()
-                        .map(|x| x.xyz())
+                        .map(|x| x.vertex_location.xyz())
                         .collect::<Vec<Vec3>>(),
                 );
                 mesh.insert_attribute(
                     Mesh::ATTRIBUTE_NORMAL,
-                    vertex_normals
+                    vertices
                         .iter()
-                        .map(|x| x.xyz())
+                        .map(|x| x.vertex_normal_materials.xyz())
                         .collect::<Vec<Vec3>>(),
                 );
-                mesh.insert_attribute(MATERIAL_VERTEX_ATTRIBUTE, vertex_materials);
+                mesh.insert_attribute(
+                    MATERIAL_VERTEX_ATTRIBUTE,
+                    vertices
+                        .iter()
+                        .map(|x| x.vertex_normal_materials.w as u32)
+                        .collect::<Vec<u32>>(),
+                );
                 mesh.insert_indices(Indices::U32(indices));
 
                 match sender.send(TerrainChunkMeshData {
@@ -623,32 +583,32 @@ fn map_and_read_main_buffer(
 
                     debug!("seam map and read buffer: address: {:?}", address,);
 
-                    let vertex_locations = buffers
-                        .seam_mesh_vertex_location_buffer
-                        .read_size(mesh_vertices_num);
-                    let vertex_normals = buffers
-                        .seam_mesh_vertex_normal_buffer
-                        .read_size(mesh_vertices_num);
-                    let vertex_materials = buffers
-                        .seam_mesh_vertex_materials_buffer
+                    let vertices = buffers
+                        .seam_mesh_vertices_buffer
                         .read_size(mesh_vertices_num);
                     let indices = buffers.seam_mesh_indices_buffer.read_size(mesh_indices_num);
 
                     mesh.insert_attribute(
                         Mesh::ATTRIBUTE_POSITION,
-                        vertex_locations
+                        vertices
                             .iter()
-                            .map(|x| x.xyz())
+                            .map(|x| x.vertex_location.xyz())
                             .collect::<Vec<Vec3>>(),
                     );
                     mesh.insert_attribute(
                         Mesh::ATTRIBUTE_NORMAL,
-                        vertex_normals
+                        vertices
                             .iter()
-                            .map(|x| x.xyz())
+                            .map(|x| x.vertex_normal_materials.xyz())
                             .collect::<Vec<Vec3>>(),
                     );
-                    mesh.insert_attribute(MATERIAL_VERTEX_ATTRIBUTE, vertex_materials);
+                    mesh.insert_attribute(
+                        MATERIAL_VERTEX_ATTRIBUTE,
+                        vertices
+                            .iter()
+                            .map(|x| x.vertex_normal_materials.w as u32)
+                            .collect::<Vec<u32>>(),
+                    );
                     mesh.insert_indices(Indices::U32(indices));
 
                     match sender.send(TerrainChunkMeshData {
@@ -671,6 +631,7 @@ fn map_and_read_main_buffer(
     drop(all_main_chunk_read_span);
 }
 
+#[allow(dead_code)]
 fn create_seam_mesh(
     query: Query<(
         Entity,

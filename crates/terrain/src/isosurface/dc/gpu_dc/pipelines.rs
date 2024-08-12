@@ -13,7 +13,7 @@ use bevy::{
 };
 use wgpu_types::ShaderStages;
 
-use super::buffer_cache::{TerrainChunkInfo, VoxelEdgeCrossPoint};
+use super::buffer_cache::{TerrainChunkInfo, TerrainChunkVertexInfo, VoxelEdgeCrossPoint};
 
 const MAIN_COMPUTE_VERTICES_SHADER_ASSET_PATH: &str =
     "shaders/terrain/compute/main_mesh_compute_vertices.wgsl";
@@ -123,11 +123,7 @@ impl FromWorld for TerrainChunkPipelines {
                     uniform_buffer::<TerrainChunkInfo>(false),
                     storage_buffer_read_only::<Vec<VoxelEdgeCrossPoint>>(false),
                     // vertex locations
-                    storage_buffer::<Vec<Vec4>>(false),
-                    // vertex normals
-                    storage_buffer::<Vec<Vec4>>(false),
-                    // vertex materials
-                    storage_buffer::<Vec<u32>>(false),
+                    storage_buffer::<Vec<TerrainChunkVertexInfo>>(false),
                     // vertex map
                     storage_buffer::<Vec<u32>>(false),
                     // vertices num
@@ -188,11 +184,7 @@ impl FromWorld for TerrainChunkPipelines {
                     uniform_buffer::<TerrainChunkInfo>(false),
                     uniform_buffer::<[UVec4; 16]>(false),
                     // vertex locations
-                    storage_buffer::<Vec<Vec4>>(false),
-                    // vertex normals
-                    storage_buffer::<Vec<Vec4>>(false),
-                    // vertex materials
-                    storage_buffer::<Vec<u32>>(false),
+                    storage_buffer::<Vec<TerrainChunkVertexInfo>>(false),
                     // vertex map
                     storage_buffer::<Vec<u32>>(false),
                     // vertices num

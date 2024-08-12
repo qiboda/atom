@@ -7,7 +7,6 @@ pub struct TerrainLodGizmosPlugin;
 
 impl Plugin for TerrainLodGizmosPlugin {
     fn build(&self, app: &mut App) {
-        return;
         app.init_gizmo_group::<WorldCoordinateGizmos>()
             .init_gizmo_group::<VoxelGizmos>()
             .add_systems(Update, update_config)
@@ -60,10 +59,7 @@ fn draw_lod_octree_voxel(
     terrain_lod_octree: Res<TerrainLodOctree>,
     mut octree_node_gizmos: Gizmos<VoxelGizmos>,
 ) {
-    let mut len = 0;
     for level in terrain_lod_octree.octree_levels.iter() {
-        len += level.get_current().len();
-
         for node in level.get_current().iter() {
             octree_node_gizmos.cuboid(
                 Transform {

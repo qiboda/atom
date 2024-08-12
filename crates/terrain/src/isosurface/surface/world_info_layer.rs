@@ -16,7 +16,7 @@ pub struct WorldHumidity {
 }
 
 impl WorldHumidity {
-    fn new(seed: u32) -> Self {
+    pub fn new(seed: u32) -> Self {
         let simplex = Simplex::new(seed);
 
         Self {
@@ -24,7 +24,7 @@ impl WorldHumidity {
         }
     }
 
-    fn get_humidity(&self, location: Vec3) -> f32 {
+    pub fn get_humidity(&self, location: Vec3) -> f32 {
         self.humidity
             .get([location.x as f64, location.y as f64, location.z as f64]) as f32
     }

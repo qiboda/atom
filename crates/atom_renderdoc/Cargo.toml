@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 bevy = { workspace = true }
-renderdoc = { path = "E:/renderdoc-rs" }
+renderdoc = { version = "0.12.1" }
 sysinfo = { version = "0.30.3" }

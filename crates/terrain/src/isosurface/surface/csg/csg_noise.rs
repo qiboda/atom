@@ -1,14 +1,9 @@
-use std::{fmt::Debug, path::Path};
+use std::fmt::Debug;
 
 use bevy::math::Vec3;
-use noise::{
-    utils::PlaneMapBuilder, Add, Curve, Fbm, MultiFractal, NoiseFn, Perlin, Seedable, Turbulence,
-};
-use strum::EnumCount;
+use noise::{Add, Curve, Fbm, MultiFractal, NoiseFn, Perlin, Seedable, Turbulence};
 
-use crate::isosurface::surface::csg::{
-    arc_noise::ArcNoise, aworley::AWorley, falloff_map::MapEdge, noise_cache::ACache,
-};
+use crate::isosurface::surface::csg::{arc_noise::ArcNoise, falloff_map::MapEdge};
 
 use super::CSGNode;
 
@@ -36,7 +31,7 @@ impl CSGNode for WorldGenerator {
 pub mod reference;
 
 impl WorldGenerator {
-    pub fn new(x: f32) -> Self {
+    pub fn new(_x: f32) -> Self {
         // Frequency-周期性过程的特征等于每单位时间重复或事件（操作）发生的次数。
         // Lacunarity-控制频率的变化。
         // Persistence-控制振幅的变化。
@@ -100,8 +95,6 @@ impl WorldGenerator {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
-
     #[test]
     fn test_falloff_map() {
         // let mut pixels: Vec<u8> = Vec::with_capacity(SIZE * SIZE);

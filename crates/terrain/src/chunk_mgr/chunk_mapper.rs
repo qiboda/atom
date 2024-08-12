@@ -51,7 +51,7 @@ pub fn trigger_chunk_reload_event(
         let Some(entity) = terrain_chunk_mapper.data.get(&terrain_chunk_address) else {
             return;
         };
-        if let Ok((_chunk_entity, mut state)) = query.get_mut(*entity) {
+        if let Ok((_chunk_entity, mut _state)) = query.get_mut(*entity) {
             // *state = TerrainChunkState::CREATE_SEAM_MESH;
             // commands.trigger(TerrainChunkCreateMainMeshEvent {
             //     entity: chunk_entity,

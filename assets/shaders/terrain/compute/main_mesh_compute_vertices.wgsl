@@ -1,6 +1,7 @@
 #import noisy::simplex_noise_2d
 #import quadric::{Quadric, quadric_default, probabilistic_plane_quadric, quadric_minimizer, quadric_add_quadric, quadric_residual_l2_error}
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR}
+#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR}
+
 #import terrain::voxel_utils::{get_voxel_edge_index, get_voxel_index}
 
 @group(0) @binding(0)
@@ -10,20 +11,13 @@ var<uniform> terrain_chunk_info: TerrainChunkInfo;
 var<storage, read> voxel_cross_point_data: array<VoxelEdgeCrossPoint>;
 
 @group(0) @binding(2)
-var<storage, read_write> mesh_vertex_locations: array<vec4f>;
+var<storage, read_write> mesh_vertices: array<TerrainChunkVertexInfo>;
 
 @group(0) @binding(3)
-var<storage, read_write> mesh_vertex_normals: array<vec4f>;
-
-@group(0) @binding(4)
-var<storage, read_write> mesh_vertex_materials: array<u32>;
-
-@group(0) @binding(5)
 var<storage, read_write> mesh_vertex_map: array<u32>;
 
-@group(0) @binding(6)
+@group(0) @binding(4)
 var<storage, read_write> mesh_vertex_num: atomic<u32>;
-
 
 fn compute_cross_point_data(edge_index: u32, qef: ptr<function, Quadric>, location: ptr<function, vec4f>, normal: ptr<function, vec4f>, materials_count: ptr<function, array<vec2u, VOXEL_MATERIAL_NUM>>) {
     let cross_point = voxel_cross_point_data[edge_index];
@@ -122,9 +116,9 @@ fn compute_vertices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
 
     let vertex_index = atomicAdd(&mesh_vertex_num, 1u);
 
-    mesh_vertex_locations[vertex_index] = avg_location;
-    mesh_vertex_normals[vertex_index] = avg_normal;
-    mesh_vertex_materials[vertex_index] = material;
+    mesh_vertices[vertex_index].location = avg_location;
+    mesh_vertices[vertex_index].normal_materials = avg_normal;
+    mesh_vertices[vertex_index].normal_materials.w = f32(material);
     let voxel_index = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z);
     mesh_vertex_map[voxel_index] = vertex_index;
 }

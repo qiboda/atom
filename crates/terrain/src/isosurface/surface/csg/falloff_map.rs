@@ -46,6 +46,16 @@ where
     }
 }
 
+impl<T, const DIM: usize> Default for MapEdge<T, DIM>
+where
+    T: Float,
+    f64: Into<T>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T, const DIM: usize> MapEdge<T, DIM>
 where
     T: Float,

@@ -1,5 +1,5 @@
 use bevy::{
-    math::{UVec2, UVec3, UVec4, Vec2, Vec3, Vec4, Vec4Swizzles},
+    math::{UVec2, UVec3, UVec4, Vec3, Vec4, Vec4Swizzles},
     prelude::Mesh,
     render::{mesh::Indices, render_asset::RenderAssetUsages},
 };
@@ -7,38 +7,39 @@ use pqef::quadric::Quadric;
 use tracing::{error, info};
 use wgpu::PrimitiveTopology;
 
-use crate::{
-    isosurface::{
-        dc::gpu_dc::buffer_cache::{TerrainChunkInfo, VoxelEdgeCrossPoint},
-        materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
-    },
-    tables::EDGE_NODES_VERTICES,
+use crate::isosurface::{
+    dc::gpu_dc::buffer_cache::{TerrainChunkInfo, VoxelEdgeCrossPoint},
+    materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
 };
 
 const U32_MAX: u32 = 0xFFFFFFFF;
 const VOXEL_MATERIAL_AIR: u32 = 0x0;
+#[allow(dead_code)]
 const VOXEL_MATERIAL_BLOCK: u32 = 0x1;
 
 const VOXEL_MATERIAL_NUM: usize = 2;
 // 不包括air
+#[allow(dead_code)]
 const VOXEL_MATERIAL_BLOCK_NUM: usize = 1;
 
 const VOXEL_MATERIAL_AIR_INDEX: usize = 0;
 
+#[allow(dead_code)]
 const VOXEL_MATERIAL_TABLE: [u32; VOXEL_MATERIAL_NUM] = [VOXEL_MATERIAL_AIR, VOXEL_MATERIAL_BLOCK];
 
+#[allow(dead_code)]
 fn get_voxel_material_type(value: f32) -> u32 {
     if value >= 0.0 {
         return VOXEL_MATERIAL_AIR;
     }
-    return VOXEL_MATERIAL_BLOCK;
+    VOXEL_MATERIAL_BLOCK
 }
 
 fn get_voxel_material_type_index(value: f32) -> u32 {
     if value >= 0.0 {
         return 0;
     }
-    return 1;
+    1
 }
 
 // size: terrain_chunk_info.voxel_size;
@@ -50,26 +51,27 @@ fn central_gradient(p: Vec3, size: f32) -> Vec3 {
         - get_terrain_noise(p - Vec3::new(0.0, h, 0.0));
     let z = get_terrain_noise(p + Vec3::new(0.0, 0.0, h))
         - get_terrain_noise(p - Vec3::new(0.0, 0.0, h));
-    return Vec3::new(x, y, z).normalize();
+    Vec3::new(x, y, z).normalize()
 }
 
 // voxel_num is chunk voxel num and is not lod voxel num
 fn get_voxel_internal_vertex_index(voxel_num: UVec3, x: u32, y: u32, z: u32) -> usize {
-    return (x + y * voxel_num.x + z * voxel_num.x * voxel_num.y) as usize;
+    (x + y * voxel_num.x + z * voxel_num.x * voxel_num.y) as usize
 }
 
 fn plane(location: Vec3, normal: Vec3, height: f32) -> f32 {
     // n must be normalized
-    return location.dot(normal) + height;
+    location.dot(normal) + height
 }
 
+#[allow(dead_code)]
 fn cube(position: Vec3, half_size: Vec3) -> f32 {
     let q = position.abs() - half_size;
-    return q.max(Vec3::new(0.0, 0.0, 0.0)).length() + q.x.max(q.y).max(q.z).min(0.0);
+    q.max(Vec3::new(0.0, 0.0, 0.0)).length() + q.x.max(q.y).max(q.z).min(0.0)
 }
 
 fn get_terrain_noise(location: Vec3) -> f32 {
-    return plane(location, Vec3::new(0.0, 1.0, 0.0), 2.0);
+    plane(location, Vec3::new(0.0, 1.0, 0.0), 2.0)
     // let loc = location + Vec3::new(6.0, 6.0, 6.0);
     // return cube(loc, Vec3::new(14.0, 14.0, 14.0));
 }
@@ -723,21 +725,22 @@ fn set_value(index_array: &mut UVec4, value: usize) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compute_indices_on_axis(
     context: &mut ComputeIndicesContext,
-    terrain_chunk_info: &TerrainChunkInfo,
+    _terrain_chunk_info: &TerrainChunkInfo,
     vertex_value_0: f32,
     vertex_value_1: f32,
     voxel_index_0: usize,
     voxel_index_1: usize,
     voxel_index_2: usize,
     voxel_index_3: usize,
-    invocation_0: UVec3,
-    invocation_1: UVec3,
-    invocation_2: UVec3,
-    invocation_3: UVec3,
-    voxel_num: u32,
-    axis: usize,
+    _invocation_0: UVec3,
+    _invocation_1: UVec3,
+    _invocation_2: UVec3,
+    _invocation_3: UVec3,
+    _voxel_num: u32,
+    _axis: usize,
 ) {
     if (vertex_value_0 >= 0.0 && vertex_value_1 >= 0.0)
         || (vertex_value_0 < 0.0 && vertex_value_1 < 0.0)
@@ -851,26 +854,16 @@ fn estimate_edge_cross_point(
     let location_1 = (*voxel_vertex_locations)[left_vertex_index];
     let location_2 = (*voxel_vertex_locations)[right_vertex_index];
     if (s1 < 0.0 && s2 >= 0.0) || (s1 >= 0.0 && s2 < 0.0) {
-        let mut dir = 1.0;
-        if s2 > s1 {
-            dir = 1.0;
-        } else {
-            dir = -1.0;
-        }
+        let dir = if s2 > s1 { 1.0 } else { -1.0 };
 
         let mut cross_pos = location_1 + (location_2 - location_1) * 0.5;
         let mut step = (location_2 - location_1) / 4.0;
         let mut cross_value = get_terrain_noise(cross_pos);
-        for j in 0..8 {
+        for _ in 0..8 {
             if cross_value == 0.0 {
                 break;
             } else {
-                let mut offset_dir = dir;
-                if cross_value < 0.0 {
-                    offset_dir = dir;
-                } else {
-                    offset_dir = -dir;
-                };
+                let offset_dir = if cross_value < 0.0 { dir } else { -dir };
                 cross_pos += offset_dir * step;
                 cross_value = get_terrain_noise(cross_pos);
                 step /= 2.0;
@@ -901,7 +894,7 @@ fn compute_voxel_cross_points(
     voxel_vertex_values: &[f32; 8],
     voxel_size: f32,
 ) {
-    for i in 0..12 {
+    (0..12).for_each(|i| {
         let vertices_pairs = EDGE_VERTEX_PAIRS[i];
         estimate_edge_cross_point(
             voxel_cross_point_data,
@@ -912,7 +905,7 @@ fn compute_voxel_cross_points(
             i,
             voxel_size,
         );
-    }
+    });
 }
 
 fn compute_voxel_vertices(
@@ -953,10 +946,10 @@ fn compute_cross_point_data(
         terrain_chunk_info.qef_stddev * terrain_chunk_info.voxel_size,
         terrain_chunk_info.qef_stddev,
     );
-    *qef = *qef + quadric;
+    *qef += quadric;
 
     let material_index = cross_point.normal_material_index.w as usize;
-    materials_count[material_index] = materials_count[material_index] + 1;
+    materials_count[material_index] += 1;
 }
 
 fn compute_voxel_internal_vertices(
@@ -966,7 +959,7 @@ fn compute_voxel_internal_vertices(
     invocation_id: UVec3,
     coord_stride: UVec3,
     seam_chunk_size: UVec3,
-    axis: u32,
+    _axis: u32,
 ) {
     let mut qef = Quadric::default();
     let mut avg_location = Vec4::ZERO;
@@ -1016,7 +1009,7 @@ fn compute_voxel_internal_vertices(
     if qef.residual_l2_error(qef_location) < terrain_chunk_info.qef_threshold {
         avg_location = Vec4::new(qef_location.x, qef_location.y, qef_location.z, 1.0);
     } else {
-        avg_location = avg_location / count;
+        avg_location /= count;
     }
 
     avg_normal.w = 0.0;
@@ -1024,12 +1017,12 @@ fn compute_voxel_internal_vertices(
 
     let mut max_count = 0;
     let mut material = VOXEL_MATERIAL_AIR;
-    for i in 0..VOXEL_MATERIAL_NUM {
+    (0..VOXEL_MATERIAL_NUM).for_each(|i| {
         if materials_count[i].y > max_count {
             max_count = materials_count[i].y;
             material = materials_count[i].x;
         }
-    }
+    });
 
     let vertex_index = context.mesh_vertex_num;
     context.mesh_vertex_num += 1;
@@ -1163,12 +1156,11 @@ fn compute_vertices_x_axis(
             chunk_coord.z as f32,
         ) * terrain_chunk_info.voxel_size;
 
-    let mut seam_voxel_min_location = Vec3::new(0.0, 0.0, 0.0);
-    if invocation_id.x == 0 {
-        seam_voxel_min_location = chunk_voxel_edge_location - Vec3::new(voxel_size, 0.0, 0.0);
+    let seam_voxel_min_location = if invocation_id.x == 0 {
+        chunk_voxel_edge_location - Vec3::new(voxel_size, 0.0, 0.0)
     } else {
-        seam_voxel_min_location = chunk_voxel_edge_location;
-    }
+        chunk_voxel_edge_location
+    };
 
     let mut voxel_vertex_locations = [Vec3::ZERO; 8];
     let mut voxel_vertex_values = [0.0; 8];
@@ -1252,12 +1244,11 @@ fn compute_vertices_y_axis(
             chunk_coord.z as f32,
         ) * terrain_chunk_info.voxel_size;
 
-    let mut seam_voxel_min_location = Vec3::new(0.0, 0.0, 0.0);
-    if invocation_id.y == 0 {
-        seam_voxel_min_location = chunk_voxel_edge_location - Vec3::new(0.0, voxel_size, 0.0);
+    let seam_voxel_min_location = if invocation_id.y == 0 {
+        chunk_voxel_edge_location - Vec3::new(0.0, voxel_size, 0.0)
     } else {
-        seam_voxel_min_location = chunk_voxel_edge_location;
-    }
+        chunk_voxel_edge_location
+    };
 
     let mut voxel_vertex_locations = [Vec3::ZERO; 8];
     let mut voxel_vertex_values = [0.0; 8];
@@ -1277,7 +1268,7 @@ fn compute_vertices_y_axis(
     );
     compute_voxel_internal_vertices(
         context,
-        &terrain_chunk_info,
+        terrain_chunk_info,
         &voxel_cross_point_data,
         invocation_id,
         coord_stride,
@@ -1341,12 +1332,11 @@ fn compute_vertices_z_axis(
             chunk_coord.z as f32,
         ) * terrain_chunk_info.voxel_size;
 
-    let mut seam_voxel_min_location = Vec3::new(0.0, 0.0, 0.0);
-    if invocation_id.z == 0 {
-        seam_voxel_min_location = chunk_voxel_edge_location - Vec3::new(0.0, 0.0, voxel_size);
+    let seam_voxel_min_location = if invocation_id.z == 0 {
+        chunk_voxel_edge_location - Vec3::new(0.0, 0.0, voxel_size)
     } else {
-        seam_voxel_min_location = chunk_voxel_edge_location;
-    }
+        chunk_voxel_edge_location
+    };
 
     let mut voxel_vertex_locations = [Vec3::ZERO; 8];
     let mut voxel_vertex_values = [0.0; 8];

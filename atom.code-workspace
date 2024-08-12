@@ -15,6 +15,7 @@
             "Aabb",
             "biplanar",
             "bitfield",
+            "bytemuck",
             "chebyshev",
             "clipmap",
             "clippy",
@@ -51,19 +52,25 @@
             "sysinfo",
             "thiserror",
             "tnua",
+            "tonemapping",
             "Tonemapping",
             "trimesh",
             "triplanar",
+            "unmap",
+            "unthrottled",
             "uvec",
             "voxel",
+            "Vsync",
             "wgpu",
             "wgsl",
-            "wireframe"
+            "wireframe",
+            "xpbd",
+            "Zeroable"
         ],
         "cSpell.enableFiletypes": [
             "rust",
             "wgsl"
         ],
-        "cSpell.language": "en,en-GB,en-US,lorem",
+        "cSpell.language": "en,en-GB,en-US",
     }
 }

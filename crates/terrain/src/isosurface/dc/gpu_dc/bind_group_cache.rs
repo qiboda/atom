@@ -70,19 +70,7 @@ impl TerrainChunkMainBindGroups {
                 context.buffers.voxel_cross_points_buffer.binding().unwrap(),
                 context
                     .buffers
-                    .mesh_vertex_location_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
-                    .mesh_vertex_normal_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
-                    .mesh_vertex_materials_buffer
+                    .mesh_vertices_buffer
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),
@@ -188,19 +176,7 @@ impl TerrainChunkSeamBindGroups {
                 context.buffers.terrain_chunks_lod_buffer.binding().unwrap(),
                 context
                     .buffers
-                    .seam_mesh_vertex_location_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
-                    .seam_mesh_vertex_normal_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
-                    .seam_mesh_vertex_materials_buffer
+                    .seam_mesh_vertices_buffer
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),

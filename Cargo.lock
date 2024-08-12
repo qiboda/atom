@@ -5216,19 +5216,17 @@ checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
 [[package]]
 name = "renderdoc"
 version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac633a08f39bf3268714799bd8c4a1a19c19c203d817d3448bb8b91c97817cf0"
 dependencies = [
  "bitflags 2.6.0",
  "float-cmp",
  "libloading 0.8.5",
  "once_cell",
- "renderdoc-sys 1.1.0",
+ "renderdoc-sys",
  "winapi",
  "wio",
 ]
-
-[[package]]
-name = "renderdoc-sys"
-version = "1.1.0"
 
 [[package]]
 name = "renderdoc-sys"
@@ -6677,7 +6675,7 @@ dependencies = [
  "profiling",
  "range-alloc",
  "raw-window-handle",
- "renderdoc-sys 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "renderdoc-sys",
  "rustc-hash",
  "smallvec",
  "thiserror",

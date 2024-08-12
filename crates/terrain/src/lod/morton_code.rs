@@ -55,7 +55,7 @@ impl MortonCode {
 
     // Function to decode a 64-bit 3D Morton code into x, y, z coordinates
     pub fn decode(&self) -> UVec3 {
-        let x = MortonCode::separate_bits(self.code >> 0) as u32;
+        let x = MortonCode::separate_bits(self.code) as u32;
         let y = MortonCode::separate_bits(self.code >> 1) as u32;
         let z = MortonCode::separate_bits(self.code >> 2) as u32;
         UVec3::new(x, y, z)
