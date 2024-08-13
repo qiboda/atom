@@ -31,15 +31,21 @@ pub struct TerrainChunkMeshComputeLabel;
 
 pub(crate) struct TerrainChunkMeshComputeNode {
     #[allow(clippy::type_complexity)]
-    pub(crate) query: QueryState<(
-        Entity,
-        Read<TerrainChunkAddress>,
-        Option<Read<TerrainChunkMainBufferCachedId>>,
-        Option<Read<TerrainChunkMainBindGroupCachedId>>,
-        Read<TerrainChunkSeamLod>,
-        Option<Read<TerrainChunkSeamBufferCachedId>>,
-        Option<Read<TerrainChunkSeamBindGroupCachedId>>,
-    )>,
+    pub(crate) query: QueryState<
+        (
+            Entity,
+            Read<TerrainChunkAddress>,
+            Option<Read<TerrainChunkMainBufferCachedId>>,
+            Option<Read<TerrainChunkMainBindGroupCachedId>>,
+            Read<TerrainChunkSeamLod>,
+            Option<Read<TerrainChunkSeamBufferCachedId>>,
+            Option<Read<TerrainChunkSeamBindGroupCachedId>>,
+        ),
+        Or<(
+            With<TerrainChunkMainBindGroupCachedId>,
+            With<TerrainChunkSeamBindGroupCachedId>,
+        )>,
+    >,
     pub(crate) entities: Vec<Entity>,
 }
 

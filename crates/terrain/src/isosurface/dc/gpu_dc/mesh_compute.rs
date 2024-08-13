@@ -121,12 +121,11 @@ impl Plugin for TerrainChunkMeshComputePlugin {
             .add_systems(
                 Render,
                 (
-                    map_and_read_main_buffer,
-                    // map_and_read_seam_buffer,
+                    map_and_read_buffer,
                     // create_seam_mesh,
                 )
-                    .in_set(RenderSet::Cleanup)
-                    .before(World::clear_entities),
+                    .after(RenderSet::Render)
+                    .before(RenderSet::Cleanup),
             );
 
         let render_world = render_app.world_mut();
@@ -382,15 +381,21 @@ fn prepare_seam_bind_group(
 }
 
 #[allow(clippy::type_complexity)]
-fn map_and_read_main_buffer(
+fn map_and_read_buffer(
     render_device: Res<RenderDevice>,
-    query: Query<(
-        Entity,
-        &TerrainChunkAddress,
-        &TerrainChunkSeamLod,
-        Option<&TerrainChunkMainBufferCachedId>,
-        Option<&TerrainChunkSeamBufferCachedId>,
-    )>,
+    query: Query<
+        (
+            Entity,
+            &TerrainChunkAddress,
+            &TerrainChunkSeamLod,
+            Option<&TerrainChunkMainBufferCachedId>,
+            Option<&TerrainChunkSeamBufferCachedId>,
+        ),
+        Or<(
+            With<TerrainChunkMainBufferCachedId>,
+            With<TerrainChunkSeamBufferCachedId>,
+        )>,
+    >,
     main_buffers_cache: Res<TerrainChunkMainBuffersCache>,
     seam_buffers_cache: Res<TerrainChunkSeamBuffersCache>,
     sender: Res<TerrainChunkMeshDataRenderWorldSender>,
