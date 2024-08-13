@@ -1,10 +1,13 @@
 use autoincrement::{AutoIncrement, Incremental};
+use bevy::math::bounding::Aabb3d;
 use bevy::{prelude::*, render::extract_component::ExtractComponent};
 use bitflags::bitflags;
+use strum::EnumCount;
 
-use crate::lod::lod_octree::LodOctreeLevelType;
+use crate::isosurface::dc::gpu_dc::buffer_cache::TerrainChunkVertexInfo;
+use crate::lod::lod_octree::{LodOctreeLevelType, TerrainLodOctreeNode};
 use crate::lod::morton_code::MortonCode;
-use crate::tables::SubNodeIndex;
+use crate::tables::{AxisType, SubNodeIndex};
 
 #[derive(Debug, Component, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord, ExtractComponent)]
 pub struct TerrainChunkState(u8);
@@ -75,6 +78,17 @@ impl From<MortonCode> for TerrainChunkAddress {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Component, Default, ExtractComponent)]
+pub struct TerrainChunkNeighborLodNodes {
+    pub nodes: [Vec<TerrainLodOctreeNode>; SubNodeIndex::COUNT],
+}
+
+#[derive(Debug, Clone, Component, Default, ExtractComponent)]
+pub struct TerrainChunkBorderVertices {
+    pub vertices: Vec<TerrainChunkVertexInfo>,
+    pub vertices_aabb: Vec<Aabb3d>,
+}
+
 // 相对lod，0，1, 2, 3, 4
 // 值越大，表示深度越浅。
 #[derive(
@@ -98,17 +112,95 @@ impl TerrainChunkSeamLod {
         array
     }
 
-    pub(crate) fn get_max_lod(&self) -> u8 {
+    pub fn get_max_lod(&self) -> u8 {
         *self.iter().flatten().max().unwrap()
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Component, Default)]
-pub struct TerrainChunkMeshEntities {
-    pub main_mesh: Option<Entity>,
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerrainChunkGPUSeamMeshEntities {
     pub right_seam_mesh: Option<Entity>,
     pub top_seam_mesh: Option<Entity>,
     pub front_seam_mesh: Option<Entity>,
+}
+
+impl TerrainChunkGPUSeamMeshEntities {
+    pub fn despawn_recursive(&self, commands: &mut Commands) {
+        if let Some(entity) = self.right_seam_mesh {
+            commands.entity(entity).despawn_recursive();
+        }
+        if let Some(entity) = self.top_seam_mesh {
+            commands.entity(entity).despawn_recursive();
+        }
+        if let Some(entity) = self.front_seam_mesh {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerrainChunkCPUSeamMeshEntities {
+    pub seam_mesh: Option<Entity>,
+}
+
+impl TerrainChunkCPUSeamMeshEntities {
+    pub fn despawn_recursive(&self, commands: &mut Commands) {
+        if let Some(entity) = self.seam_mesh {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TerrainChunkSeamMeshEntities {
+    GPU(TerrainChunkGPUSeamMeshEntities),
+    CPU(TerrainChunkCPUSeamMeshEntities),
+}
+
+impl TerrainChunkSeamMeshEntities {
+    pub fn despawn_recursive(&self, commands: &mut Commands) {
+        match self {
+            TerrainChunkSeamMeshEntities::GPU(seam_mesh_entities) => {
+                seam_mesh_entities.despawn_recursive(commands);
+            }
+            TerrainChunkSeamMeshEntities::CPU(seam_mesh_entities) => {
+                seam_mesh_entities.despawn_recursive(commands);
+            }
+        }
+    }
+
+    pub fn set_cpu_seam_mesh(&mut self, mesh: Entity) {
+        if let TerrainChunkSeamMeshEntities::CPU(seam_mesh_entities) = self {
+            seam_mesh_entities.seam_mesh = Some(mesh);
+        }
+    }
+
+    pub fn set_gpu_seam_mesh(&mut self, mesh: Entity, axis: AxisType) {
+        if let TerrainChunkSeamMeshEntities::GPU(seam_mesh_entities) = self {
+            match axis {
+                AxisType::XAxis => seam_mesh_entities.right_seam_mesh = Some(mesh),
+                AxisType::YAxis => seam_mesh_entities.top_seam_mesh = Some(mesh),
+                AxisType::ZAxis => seam_mesh_entities.front_seam_mesh = Some(mesh),
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Component)]
+pub struct TerrainChunkMeshEntities {
+    pub main_mesh: Option<Entity>,
+    pub seam_mesh: TerrainChunkSeamMeshEntities,
+}
+
+impl Default for TerrainChunkMeshEntities {
+    fn default() -> Self {
+        Self {
+            main_mesh: Default::default(),
+            seam_mesh: TerrainChunkSeamMeshEntities::CPU(TerrainChunkCPUSeamMeshEntities {
+                seam_mesh: Default::default(),
+            }),
+        }
+    }
 }
 
 #[cfg(test)]

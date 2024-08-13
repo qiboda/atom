@@ -2,12 +2,14 @@ use avian3d::prelude::{Collider, RigidBody};
 use bevy::{
     pbr::wireframe::{Wireframe, WireframeColor},
     prelude::*,
-    render::extract_component::ExtractComponentPlugin,
+    render::{extract_component::ExtractComponentPlugin, extract_resource::ExtractResourcePlugin},
 };
 
 use crate::{
     isosurface::{
-        dc::gpu_dc::mesh_compute::TerrainChunkMeshDataMainWorldReceiver,
+        dc::gpu_dc::mesh_compute::{
+            TerrainChunkMeshDataMainWorldReceiver, TerrainChunkSeamMeshData,
+        },
         materials::terrain_mat::{TerrainDebugType, TerrainMaterial},
     },
     TerrainSystemSet,
@@ -17,7 +19,8 @@ use super::{
     chunk::{
         chunk_aabb::TerrainChunkAabb,
         state::{
-            TerrainChunkAddress, TerrainChunkMeshEntities, TerrainChunkSeamLod, TerrainChunkState,
+            TerrainChunkAddress, TerrainChunkBorderVertices, TerrainChunkMeshEntities,
+            TerrainChunkNeighborLodNodes, TerrainChunkSeamLod, TerrainChunkState,
         },
     },
     chunk_loader::TerrainChunkLoaderPlugin,
@@ -48,21 +51,14 @@ impl Plugin for TerrainChunkPlugin {
             .add_plugins(ExtractComponentPlugin::<TerrainChunkAddress>::default())
             .add_plugins(ExtractComponentPlugin::<TerrainChunkAabb>::default())
             .add_plugins(ExtractComponentPlugin::<TerrainChunkSeamLod>::default())
+            .add_plugins(ExtractComponentPlugin::<TerrainChunkNeighborLodNodes>::default())
+            .add_plugins(ExtractComponentPlugin::<TerrainChunkBorderVertices>::default())
+            .add_plugins(ExtractResourcePlugin::<TerrainChunkMapper>::default())
             .add_systems(PreUpdate, receive_terrain_chunk_mesh_data)
             .add_systems(PreUpdate, update_terrain_chunk_state)
             .observe(trigger_chunk_unload_event)
             .observe(trigger_chunk_reload_event)
             .observe(trigger_chunk_load_event);
-        // .add_systems(
-        //     Update,
-        //     (
-        //         update_to_wait_create_seam,
-        //         to_create_seam_mesh,
-        //         update_create_seam_mesh_over,
-        //     )
-        //         .chain()
-        //         .in_set(TerrainChunkSystemSet::UpdateChunk),
-        // );
     }
 }
 
@@ -93,12 +89,12 @@ pub fn receive_terrain_chunk_mesh_data(
 
                     debug!("receive_terrain_chunk_mesh_data");
 
-                    if let Some(main_mesh) = data.main_mesh {
+                    if let Some(main_mesh) = data.main_mesh_data {
                         if let Some(main_mesh_entity) = mesh_entities.main_mesh {
                             commands.entity(main_mesh_entity).despawn_recursive();
                         }
 
-                        if main_mesh.attribute(Mesh::ATTRIBUTE_POSITION).is_none() {
+                        if main_mesh.mesh.attribute(Mesh::ATTRIBUTE_POSITION).is_none() {
                             debug!("receive_terrain_chunk_mesh_data main mesh is none");
                             continue;
                         }
@@ -116,9 +112,9 @@ pub fn receive_terrain_chunk_mesh_data(
 
                         let main_mesh_id = commands
                             .spawn((
-                                Collider::trimesh_from_mesh(&main_mesh).unwrap(),
+                                Collider::trimesh_from_mesh(&main_mesh.mesh).unwrap(),
                                 MaterialMeshBundle {
-                                    mesh: meshes.add(main_mesh),
+                                    mesh: meshes.add(main_mesh.mesh),
                                     material,
                                     transform: Transform::from_translation(Vec3::splat(0.0)),
                                     visibility: Visibility::Visible,
@@ -135,77 +131,104 @@ pub fn receive_terrain_chunk_mesh_data(
                         mesh_entities.main_mesh = Some(main_mesh_id);
                     }
 
-                    if let Some(seam_mesh) = data.seam_mesh {
-                        match seam_mesh.axis {
-                            0 => {
-                                if let Some(mesh_entity) = mesh_entities.right_seam_mesh {
-                                    commands.entity(mesh_entity).despawn_recursive();
+                    if let Some(seam_mesh) = data.seam_mesh_data {
+                        match seam_mesh {
+                            TerrainChunkSeamMeshData::GPUMesh(gpu_mesh) => {
+                                mesh_entities.seam_mesh.despawn_recursive(&mut commands);
+
+                                if gpu_mesh
+                                    .seam_mesh
+                                    .attribute(Mesh::ATTRIBUTE_POSITION)
+                                    .is_none()
+                                {
+                                    debug!("receive_terrain_chunk_mesh_data seam mesh is none");
+                                    continue;
                                 }
+
+                                debug!("receive_terrain_chunk_mesh_data seam mesh ok");
+                                let material = materials.add(TerrainMaterial {
+                                    lod: address.0.level() as u32,
+                                    debug_type: Some(TerrainDebugType::Color),
+                                    color_texture: None,
+                                    metallic_texture: None,
+                                    normal_texture: None,
+                                    roughness_texture: None,
+                                    cull_mode: Some(wgpu::Face::Back),
+                                    // cull_mode: None,
+                                });
+
+                                let seam_mesh_id = commands
+                                    .spawn((
+                                        Collider::trimesh_from_mesh(&gpu_mesh.seam_mesh).unwrap(),
+                                        MaterialMeshBundle {
+                                            mesh: meshes.add(gpu_mesh.seam_mesh),
+                                            material,
+                                            transform: Transform::from_translation(Vec3::splat(
+                                                0.0,
+                                            )),
+                                            visibility: Visibility::Visible,
+                                            ..Default::default()
+                                        },
+                                        RigidBody::Static,
+                                        Wireframe,
+                                        WireframeColor {
+                                            color: LinearRgba::WHITE.into(),
+                                        },
+                                    ))
+                                    .set_parent(data.entity)
+                                    .id();
+
+                                mesh_entities
+                                    .seam_mesh
+                                    .set_gpu_seam_mesh(seam_mesh_id, gpu_mesh.axis);
                             }
-                            1 => {
-                                if let Some(mesh_entity) = mesh_entities.top_seam_mesh {
-                                    commands.entity(mesh_entity).despawn_recursive();
+                            TerrainChunkSeamMeshData::CPUMesh(cpu_mesh) => {
+                                mesh_entities.seam_mesh.despawn_recursive(&mut commands);
+
+                                if cpu_mesh
+                                    .seam_mesh
+                                    .attribute(Mesh::ATTRIBUTE_POSITION)
+                                    .is_none()
+                                {
+                                    debug!("receive_terrain_chunk_mesh_data seam mesh is none");
+                                    continue;
                                 }
-                            }
-                            2 => {
-                                if let Some(mesh_entity) = mesh_entities.front_seam_mesh {
-                                    commands.entity(mesh_entity).despawn_recursive();
-                                }
-                            }
-                            _ => {}
-                        }
 
-                        if seam_mesh
-                            .seam_mesh
-                            .attribute(Mesh::ATTRIBUTE_POSITION)
-                            .is_none()
-                        {
-                            debug!("receive_terrain_chunk_mesh_data seam mesh is none");
-                            continue;
-                        }
+                                debug!("receive_terrain_chunk_mesh_data seam mesh ok");
+                                let material = materials.add(TerrainMaterial {
+                                    lod: address.0.level() as u32,
+                                    debug_type: Some(TerrainDebugType::Color),
+                                    color_texture: None,
+                                    metallic_texture: None,
+                                    normal_texture: None,
+                                    roughness_texture: None,
+                                    cull_mode: Some(wgpu::Face::Back),
+                                    // cull_mode: None,
+                                });
 
-                        debug!("receive_terrain_chunk_mesh_data seam mesh ok");
-                        let material = materials.add(TerrainMaterial {
-                            lod: address.0.level() as u32,
-                            debug_type: Some(TerrainDebugType::Color),
-                            color_texture: None,
-                            metallic_texture: None,
-                            normal_texture: None,
-                            roughness_texture: None,
-                            cull_mode: Some(wgpu::Face::Back),
-                            // cull_mode: None,
-                        });
+                                let seam_mesh_id = commands
+                                    .spawn((
+                                        Collider::trimesh_from_mesh(&cpu_mesh.seam_mesh).unwrap(),
+                                        MaterialMeshBundle {
+                                            mesh: meshes.add(cpu_mesh.seam_mesh),
+                                            material,
+                                            transform: Transform::from_translation(Vec3::splat(
+                                                0.0,
+                                            )),
+                                            visibility: Visibility::Visible,
+                                            ..Default::default()
+                                        },
+                                        RigidBody::Static,
+                                        Wireframe,
+                                        WireframeColor {
+                                            color: LinearRgba::WHITE.into(),
+                                        },
+                                    ))
+                                    .set_parent(data.entity)
+                                    .id();
 
-                        let seam_mesh_id = commands
-                            .spawn((
-                                Collider::trimesh_from_mesh(&seam_mesh.seam_mesh).unwrap(),
-                                MaterialMeshBundle {
-                                    mesh: meshes.add(seam_mesh.seam_mesh),
-                                    material,
-                                    transform: Transform::from_translation(Vec3::splat(0.0)),
-                                    visibility: Visibility::Visible,
-                                    ..Default::default()
-                                },
-                                RigidBody::Static,
-                                Wireframe,
-                                WireframeColor {
-                                    color: LinearRgba::WHITE.into(),
-                                },
-                            ))
-                            .set_parent(data.entity)
-                            .id();
-
-                        match seam_mesh.axis {
-                            0 => {
-                                mesh_entities.right_seam_mesh = Some(seam_mesh_id);
+                                mesh_entities.seam_mesh.set_cpu_seam_mesh(seam_mesh_id);
                             }
-                            1 => {
-                                mesh_entities.top_seam_mesh = Some(seam_mesh_id);
-                            }
-                            2 => {
-                                mesh_entities.front_seam_mesh = Some(seam_mesh_id);
-                            }
-                            _ => {}
                         }
                     }
                 }

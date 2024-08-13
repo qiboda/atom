@@ -9,21 +9,26 @@ use bevy::{
 
 use crate::{
     chunk_mgr::chunk::state::{TerrainChunkAddress, TerrainChunkSeamLod},
-    isosurface::dc::gpu_dc::buffer_cache::TerrainChunkSeamKey,
     setting::TerrainSetting,
-    tables::SubNodeIndex,
 };
+
+#[cfg(feature = "gpu_seam")]
+use crate::{isosurface::dc::gpu_dc::buffer_cache::TerrainChunkSeamKey, tables::SubNodeIndex};
 
 use super::bind_group_cache::TerrainChunkMainBindGroupCachedId;
 use super::buffer_cache::TerrainChunkMainBuffersCache;
 use super::pipelines::TerrainChunkPipelines;
 use super::{
+    bind_group_cache::TerrainChunkMainBindGroupsCache, buffer_cache::TerrainChunkSeamBufferCachedId,
+};
+use super::{
     bind_group_cache::TerrainChunkSeamBindGroupCachedId,
     buffer_cache::TerrainChunkMainBufferCachedId,
 };
+
+#[cfg(feature = "gpu_seam")]
 use super::{
-    bind_group_cache::{TerrainChunkMainBindGroupsCache, TerrainChunkSeamBindGroupsCache},
-    buffer_cache::{TerrainChunkSeamBufferCachedId, TerrainChunkSeamBuffersCache},
+    bind_group_cache::TerrainChunkSeamBindGroupsCache, buffer_cache::TerrainChunkSeamBuffersCache,
 };
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
@@ -84,7 +89,9 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
         let pipelines = world.resource::<TerrainChunkPipelines>();
         let main_buffers_cache = world.resource::<TerrainChunkMainBuffersCache>();
         let main_bind_groups_cache = world.resource::<TerrainChunkMainBindGroupsCache>();
+        #[cfg(feature = "gpu_seam")]
         let seam_buffers_cache = world.resource::<TerrainChunkSeamBuffersCache>();
+        #[cfg(feature = "gpu_seam")]
         let seam_bind_groups_cache = world.resource::<TerrainChunkSeamBindGroupsCache>();
         let terrain_setting = world.resource::<TerrainSetting>();
 
@@ -104,6 +111,8 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
             for entity in self.entities.iter() {
                 let _span = info_span!("TerrainChunkMeshComputeNode::run one").entered();
 
+                #[allow(unused_variables)]
+                #[allow(clippy::collapsible_match)]
                 if let Ok((_, address, _, main_bind_groups_id, seam_lod, _, seam_bind_group_id)) =
                     self.query.get_manual(world, *entity)
                 {
@@ -193,6 +202,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                         }
                     }
 
+                    #[cfg(feature = "gpu_seam")]
                     if let Some(seam_bind_groups_id) = seam_bind_group_id {
                         let _span =
                             info_span!("TerrainChunkMeshComputeNode::run one seam").entered();
@@ -363,6 +373,8 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                 let _span =
                     info_span!("TerrainChunkMeshComputeNode::run one stage buffers").entered();
 
+                #[allow(unused_variables)]
+                #[allow(clippy::collapsible_match)]
                 if let Ok((_, _, main_buffers_id, _, seam_lod, seam_buffers_id, _)) =
                     self.query.get_manual(world, *entity)
                 {
@@ -374,6 +386,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                         buffers.stage_buffers(command_encoder);
                     }
 
+                    #[cfg(feature = "gpu_seam")]
                     if let Some(seam_buffers_id) = seam_buffers_id {
                         let _span =
                             info_span!("TerrainChunkMeshComputeNode::run one seam stage buffers")

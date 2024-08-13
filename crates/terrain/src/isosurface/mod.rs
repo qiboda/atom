@@ -1,17 +1,14 @@
-/// 层级划分：
-/// 划分为一个个TerrainChunk
-/// mesh, mesh cache, octree，作为TerrainChunk的子实体存在。
 use bevy::prelude::*;
 use dc::gpu_dc::mesh_compute::TerrainChunkMeshComputePlugin;
 use ecology::EcologyPlugin;
 use materials::TerrainMaterialPlugin;
 use pqef::QuadricPlugin;
 
-pub mod comp;
 pub mod dc;
 pub mod ecology;
 pub mod materials;
 pub mod surface;
+pub mod voxel;
 
 #[derive(Default, Debug)]
 pub struct IsosurfaceExtractionPlugin;

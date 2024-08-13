@@ -26,6 +26,7 @@
             "despawn",
             "dotenv",
             "egui",
+            "eular",
             "flycam",
             "fract",
             "hashbrown",

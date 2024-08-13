@@ -1,7 +1,7 @@
 /// x 方向，
 #import noisy::simplex_noise_2d
 #import quadric::{Quadric, quadric_default, probabilistic_plane_quadric, quadric_minimizer, quadric_add_quadric, quadric_residual_l2_error}
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR, VOXEL_MATERIAL_AIR_INDEX, U32_MAX}
+#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR, VOXEL_MATERIAL_AIR_INDEX, U32_MAX, VOXEL_MATERIAL_TABLE}
 #import terrain::voxel_utils::{get_voxel_edge_index, get_voxel_index, get_voxel_material_type_index, central_gradient}
 #import terrain::seam_utils::{axis_base_offset, coord_convert_fns, get_voxel_internal_vertex_index, EDGE_VERTEX_PAIRS, VOXEL_VERTEX_OFFSETS}
 #import terrain::density_field::get_terrain_noise
@@ -155,15 +155,16 @@ fn compute_voxel_internal_vertices(
     avg_normal = normalize(avg_normal);
 
     var max_count = 0u;
-    var material = VOXEL_MATERIAL_AIR;
+    var material_index = 0u;
     for (var i = 0u; i < VOXEL_MATERIAL_NUM; i++) {
         if materials_count[i].y > max_count {
             max_count = materials_count[i].y;
-            material = materials_count[i].x;
+            material_index = materials_count[i].x;
         }
     }
 
     let vertex_index = atomicAdd(&mesh_vertices_indices_count.vertices_count, 1u);
+    let material = VOXEL_MATERIAL_TABLE[material_index];
 
     mesh_vertices[vertex_index].location = avg_location;
     mesh_vertices[vertex_index].normal_materials = avg_normal;

@@ -3,7 +3,8 @@ use bevy::prelude::*;
 use super::{
     chunk_aabb::TerrainChunkAabb,
     state::{
-        TerrainChunkAddress, TerrainChunkMeshEntities, TerrainChunkSeamLod, TerrainChunkState,
+        TerrainChunkAddress, TerrainChunkMeshEntities, TerrainChunkNeighborLodNodes,
+        TerrainChunkSeamLod, TerrainChunkState,
     },
 };
 
@@ -16,6 +17,7 @@ pub struct TerrainChunkBundle {
     pub terrain_chunk_address: TerrainChunkAddress,
     pub terrain_chunk_seam_lod: TerrainChunkSeamLod,
     pub terrain_chunk_mesh_entities: TerrainChunkMeshEntities,
+    pub terrain_chunk_neighbor_lod_nodes: TerrainChunkNeighborLodNodes,
     pub transform_bundle: TransformBundle,
     pub visibility_bundle: VisibilityBundle,
 }
@@ -31,6 +33,7 @@ impl TerrainChunkBundle {
             visibility_bundle: default(),
             terrain_chunk_seam_lod: TerrainChunkSeamLod([[0; 8]; 8]),
             terrain_chunk_mesh_entities: TerrainChunkMeshEntities::default(),
+            terrain_chunk_neighbor_lod_nodes: TerrainChunkNeighborLodNodes::default(),
             name: "terrain chunk".into(),
         }
     }

@@ -12,6 +12,7 @@ use bevy::{
         renderer::{RenderDevice, RenderQueue},
         Render, RenderApp, RenderSet,
     },
+    utils::HashMap,
 };
 use wgpu_types::{MaintainResult, PrimitiveTopology};
 
@@ -24,31 +25,39 @@ use wgpu_types::{MaintainResult, PrimitiveTopology};
 
 use crossbeam_channel::{Receiver, Sender};
 
+#[cfg(feature = "gpu_seam")]
+use strum::IntoEnumIterator;
+
+#[cfg(feature = "gpu_seam")]
+use crate::isosurface::dc::gpu_dc::{
+    bind_group_cache::{
+        TerrainChunkSeamBindGroupCachedId, TerrainChunkSeamBindGroups,
+        TerrainChunkSeamBindGroupsCreateContext,
+    },
+    buffer_cache::{
+        TerrainChunkSeamBufferCreateContext, TerrainChunkSeamBuffers, TerrainChunkSeamKey,
+    },
+};
+
 use crate::{
     chunk_mgr::chunk::{
         chunk_aabb::TerrainChunkAabb,
-        state::{TerrainChunkAddress, TerrainChunkSeamLod, TerrainChunkState},
+        state::{
+            TerrainChunkAddress, TerrainChunkBorderVertices, TerrainChunkSeamLod, TerrainChunkState,
+        },
     },
     isosurface::{
-        dc::{
-            cpu_dc::cpu_seam::compute_seam_mesh,
-            gpu_dc::{
-                bind_group_cache::{
-                    TerrainChunkSeamBindGroupCachedId, TerrainChunkSeamBindGroups,
-                    TerrainChunkSeamBindGroupsCreateContext,
-                },
-                buffer_cache::{
-                    TerrainChunkMainBufferCreateContext, TerrainChunkMainBuffers,
-                    TerrainChunkSeamBufferCreateContext, TerrainChunkSeamBuffers,
-                    TerrainChunkSeamKey,
-                },
-            },
-        },
+        dc::gpu_dc::buffer_cache::{TerrainChunkMainBufferCreateContext, TerrainChunkMainBuffers},
         materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
     },
     setting::TerrainSetting,
-    tables::SubNodeIndex,
+    tables::AxisType,
 };
+
+#[cfg(feature = "cpu_seam")]
+use crate::isosurface::dc::gpu_dc::buffer_cache::TerrainChunkVertexInfo;
+#[cfg(feature = "cpu_seam")]
+use bevy::math::{bounding::Aabb3d, Vec3A};
 
 use super::{
     bind_group_cache::{
@@ -57,22 +66,40 @@ use super::{
         TerrainChunkSeamBindGroupsCache,
     },
     buffer_cache::{
-        TerrainChunkInfo, TerrainChunkMainBufferCachedId, TerrainChunkMainBuffersCache,
+        TerrainChunkMainBufferCachedId, TerrainChunkMainBuffersCache,
         TerrainChunkSeamBufferCachedId, TerrainChunkSeamBuffersCache,
     },
     node::{TerrainChunkMeshComputeLabel, TerrainChunkMeshComputeNode},
     pipelines::{TerrainChunkPipelines, TerrainChunkShadersPlugin},
 };
 
-pub struct TerrainChunkSeamMeshData {
+pub struct TerrainChunkGPUSeamMeshData {
     pub seam_mesh: Mesh,
-    pub axis: usize,
+    pub axis: AxisType,
+}
+
+pub struct TerrainChunkCPUSeamMeshData {
+    pub seam_mesh: Mesh,
+}
+
+pub enum TerrainChunkSeamMeshData {
+    GPUMesh(TerrainChunkGPUSeamMeshData),
+    CPUMesh(TerrainChunkCPUSeamMeshData),
+}
+
+pub struct TerrainChunkMainMeshData {
+    pub mesh: Mesh,
 }
 
 pub struct TerrainChunkMeshData {
-    pub main_mesh: Option<Mesh>,
-    pub seam_mesh: Option<TerrainChunkSeamMeshData>,
+    pub main_mesh_data: Option<TerrainChunkMainMeshData>,
+    pub seam_mesh_data: Option<TerrainChunkSeamMeshData>,
     pub entity: Entity,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct TerrainChunkRenderBorderVertices {
+    pub map: HashMap<Entity, TerrainChunkBorderVertices>,
 }
 
 /// This will receive asynchronously any data sent from the render world
@@ -107,23 +134,37 @@ impl Plugin for TerrainChunkMeshComputePlugin {
         render_app.init_resource::<TerrainChunkMainBuffersCache>();
         render_app.init_resource::<TerrainChunkSeamBindGroupsCache>();
         render_app.init_resource::<TerrainChunkSeamBuffersCache>();
+        render_app.init_resource::<TerrainChunkRenderBorderVertices>();
 
         render_app
             .add_systems(
                 Render,
-                (prepare_main_buffers, prepare_seam_buffers).in_set(RenderSet::PrepareResources),
+                (
+                    prepare_main_buffers,
+                    #[cfg(feature = "gpu_seam")]
+                    prepare_seam_buffers,
+                )
+                    .in_set(RenderSet::PrepareResources),
             )
             .add_systems(
                 Render,
-                (prepare_main_bind_group, prepare_seam_bind_group)
+                (
+                    prepare_main_bind_group,
+                    #[cfg(feature = "gpu_seam")]
+                    prepare_seam_bind_group,
+                )
                     .in_set(RenderSet::PrepareBindGroups),
             )
             .add_systems(
                 Render,
                 (
                     map_and_read_buffer,
-                    // create_seam_mesh,
+                    #[cfg(feature = "cpu_seam")]
+                    crate::isosurface::dc::cpu_dc::seam_mesh::create_seam_mesh,
+                    #[cfg(feature = "simulate_gpu_seam")]
+                    super::simulate_gpu_seam::create_seam_mesh,
                 )
+                    .chain()
                     .after(RenderSet::Render)
                     .before(RenderSet::Cleanup),
             );
@@ -185,6 +226,7 @@ fn prepare_main_buffers(
     }
 }
 
+#[cfg(feature = "gpu_seam")]
 fn prepare_seam_buffers(
     mut commands: Commands,
     query: Query<(
@@ -199,8 +241,6 @@ fn prepare_seam_buffers(
     render_queue: Res<RenderQueue>,
     terrain_setting: Res<TerrainSetting>,
 ) {
-    // return;
-
     buffers_cache.reset_used_count();
     for (entity, address, aabb, state, seam_lod) in query.iter() {
         if state.contains(TerrainChunkState::CREATE_SEAM_MESH).not() {
@@ -303,6 +343,7 @@ fn prepare_main_bind_group(
     }
 }
 
+#[cfg(feature = "gpu_seam")]
 #[allow(clippy::too_many_arguments)]
 fn prepare_seam_bind_group(
     mut commands: Commands,
@@ -321,8 +362,6 @@ fn prepare_seam_bind_group(
     mut bind_groups_cache: ResMut<TerrainChunkSeamBindGroupsCache>,
     terrain_setting: Res<TerrainSetting>,
 ) {
-    // return;
-
     bind_groups_cache.reset_used_count();
     for (entity, state, aabb, address, seam_lod, buffer_cached_id) in query.iter() {
         if state.contains(TerrainChunkState::CREATE_SEAM_MESH).not() {
@@ -383,11 +422,12 @@ fn prepare_seam_bind_group(
 #[allow(clippy::type_complexity)]
 fn map_and_read_buffer(
     render_device: Res<RenderDevice>,
-    query: Query<
+    mut query: Query<
         (
             Entity,
             &TerrainChunkAddress,
             &TerrainChunkSeamLod,
+            &TerrainChunkAabb,
             Option<&TerrainChunkMainBufferCachedId>,
             Option<&TerrainChunkSeamBufferCachedId>,
         ),
@@ -397,12 +437,20 @@ fn map_and_read_buffer(
         )>,
     >,
     main_buffers_cache: Res<TerrainChunkMainBuffersCache>,
-    seam_buffers_cache: Res<TerrainChunkSeamBuffersCache>,
+    #[cfg(feature = "gpu_seam")] seam_buffers_cache: Res<TerrainChunkSeamBuffersCache>,
     sender: Res<TerrainChunkMeshDataRenderWorldSender>,
+    terrain_setting: Res<TerrainSetting>,
+    #[cfg(feature = "cpu_seam")] mut render_border_vertices: ResMut<
+        TerrainChunkRenderBorderVertices,
+    >,
 ) {
     let all_main_chunk_span = info_span!("all_main_chunk_map_async").entered();
 
-    for (_, _, lod, main_buffers_id, seam_buffers_id) in query.iter() {
+    #[allow(unused_variables)]
+    let voxel_num_in_chunk = terrain_setting.get_voxel_num_in_chunk();
+
+    #[allow(unused_variables)]
+    for (_, _, lod, _, main_buffers_id, seam_buffers_id) in query.iter() {
         if let Some(main_buffers_id) = main_buffers_id {
             let _one_main_chunk_span = info_span!("one_main_chunk_map_async").entered();
 
@@ -432,6 +480,7 @@ fn map_and_read_buffer(
             });
         }
 
+        #[cfg(feature = "gpu_seam")]
         if let Some(seam_buffers_id) = seam_buffers_id {
             let terrain_chunk_seam_key = TerrainChunkSeamKey { lod: *lod };
             for i in 0..3 {
@@ -487,7 +536,8 @@ fn map_and_read_buffer(
 
     let all_main_chunk_read_span = info_span!("all_main_chunk_read").entered();
 
-    for (entity, address, lod, main_buffers_id, seam_buffers_id) in query.iter() {
+    #[allow(unused_variables)]
+    for (entity, address, lod, aabb, main_buffers_id, seam_buffers_id) in query.iter_mut() {
         if let Some(main_buffers_id) = main_buffers_id {
             let _one_main_chunk_read = info_span!("one_main_chunk_read").entered();
             let buffers = main_buffers_cache.get_buffers(*main_buffers_id).unwrap();
@@ -539,31 +589,65 @@ fn map_and_read_buffer(
                 );
                 mesh.insert_indices(Indices::U32(indices));
 
+                let main_mesh_data = TerrainChunkMainMeshData { mesh };
                 match sender.send(TerrainChunkMeshData {
-                    main_mesh: Some(mesh),
+                    main_mesh_data: Some(main_mesh_data),
                     entity,
-                    seam_mesh: None,
+                    seam_mesh_data: None,
                 }) {
                     Ok(_) => {}
                     Err(e) => error!("{}", e),
+                }
+
+                #[cfg(feature = "cpu_seam")]
+                {
+                    let chunk_min = aabb.0.min;
+                    let level = address.0.level();
+                    let voxel_size = terrain_setting.get_voxel_size(level);
+                    let mut border_vertices = TerrainChunkBorderVertices {
+                        vertices: vertices
+                            .into_iter()
+                            .filter(|x| x.is_on_border(voxel_num_in_chunk as u32))
+                            .collect::<Vec<TerrainChunkVertexInfo>>(),
+                        ..Default::default()
+                    };
+                    border_vertices.vertices_aabb = border_vertices
+                        .vertices
+                        .iter()
+                        .map(|x| {
+                            let min = chunk_min
+                                + Vec3A::new(
+                                    x.vertex_local_coord.x as f32,
+                                    x.vertex_local_coord.y as f32,
+                                    x.vertex_local_coord.z as f32,
+                                ) * voxel_size;
+                            Aabb3d {
+                                min,
+                                max: min + Vec3A::splat(voxel_size),
+                            }
+                        })
+                        .collect::<Vec<Aabb3d>>();
+
+                    render_border_vertices.map.insert(entity, border_vertices);
                 }
             }
             buffers.unmap();
         }
 
+        #[cfg(feature = "gpu_seam")]
         if let Some(seam_buffers_id) = seam_buffers_id {
             let terrain_chunk_seam_key = TerrainChunkSeamKey { lod: *lod };
-            for i in 0..3 {
+            for i in AxisType::iter() {
                 let _one_seam_axis_lod_span = info_span!("one_seam_axis_lod_read").entered();
                 let buffers = seam_buffers_cache
-                    .get_buffers(terrain_chunk_seam_key, seam_buffers_id[i])
+                    .get_buffers(terrain_chunk_seam_key, seam_buffers_id[i.to_index()])
                     .unwrap();
 
                 let mesh_vertices_indices_count =
                     buffers.seam_mesh_vertices_indices_count_buffer.read();
 
                 debug!(
-                    "{} -> address: {:?}, seam mesh vertices indices num: {:?}",
+                    "{:?} -> address: {:?}, seam mesh vertices indices num: {:?}",
                     i, address, mesh_vertices_indices_count,
                 );
 
@@ -607,13 +691,14 @@ fn map_and_read_buffer(
                     );
                     mesh.insert_indices(Indices::U32(indices));
 
+                    let mesh_data = TerrainChunkGPUSeamMeshData {
+                        seam_mesh: mesh,
+                        axis: i,
+                    };
                     match sender.send(TerrainChunkMeshData {
-                        main_mesh: None,
+                        main_mesh_data: None,
                         entity,
-                        seam_mesh: Some(TerrainChunkSeamMeshData {
-                            seam_mesh: mesh,
-                            axis: i,
-                        }),
+                        seam_mesh_data: Some(TerrainChunkSeamMeshData::GPUMesh(mesh_data)),
                     }) {
                         Ok(_) => {}
                         Err(e) => error!("{}", e),
@@ -625,77 +710,4 @@ fn map_and_read_buffer(
     }
 
     drop(all_main_chunk_read_span);
-}
-
-#[allow(dead_code)]
-fn create_seam_mesh(
-    query: Query<(
-        Entity,
-        &TerrainChunkState,
-        &TerrainChunkAabb,
-        &TerrainChunkAddress,
-        &TerrainChunkSeamLod,
-    )>,
-    terrain_setting: Res<TerrainSetting>,
-    sender: Res<TerrainChunkMeshDataRenderWorldSender>,
-) {
-    for (entity, state, aabb, address, seam_lod) in query.iter() {
-        if state.contains(TerrainChunkState::CREATE_SEAM_MESH).not() {
-            continue;
-        }
-
-        let chunk_min = aabb.min;
-        let add_lod = seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
-        let level = address.0.level() + add_lod[0];
-        let voxel_size = terrain_setting.get_voxel_size(level);
-        let chunk_size = terrain_setting.get_chunk_size(level - add_lod[0]);
-        let voxel_num = (chunk_size / voxel_size).round() as usize;
-
-        let terrain_chunk_info = TerrainChunkInfo {
-            chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, chunk_size),
-            voxel_size,
-            voxel_num: voxel_num as u32,
-            qef_threshold: terrain_setting.qef_solver_threshold,
-            qef_stddev: terrain_setting.qef_stddev,
-        };
-
-        let lod = seam_lod.to_uniform_buffer_array();
-        let (mesh_x, mesh_y, mesh_z) = compute_seam_mesh(&terrain_chunk_info, lod);
-
-        match sender.send(TerrainChunkMeshData {
-            entity,
-            main_mesh: None,
-            seam_mesh: Some(TerrainChunkSeamMeshData {
-                seam_mesh: mesh_x,
-                axis: 0,
-            }),
-        }) {
-            Ok(_) => {}
-            Err(e) => error!("{}", e),
-        }
-
-        match sender.send(TerrainChunkMeshData {
-            entity,
-            main_mesh: None,
-            seam_mesh: Some(TerrainChunkSeamMeshData {
-                seam_mesh: mesh_y,
-                axis: 1,
-            }),
-        }) {
-            Ok(_) => {}
-            Err(e) => error!("{}", e),
-        }
-
-        match sender.send(TerrainChunkMeshData {
-            entity,
-            main_mesh: None,
-            seam_mesh: Some(TerrainChunkSeamMeshData {
-                seam_mesh: mesh_z,
-                axis: 2,
-            }),
-        }) {
-            Ok(_) => {}
-            Err(e) => error!("{}", e),
-        }
-    }
 }

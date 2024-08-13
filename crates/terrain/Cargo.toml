@@ -66,3 +66,13 @@ bevy_debug_grid = { workspace = true }
 bevy-inspector-egui = { version = "0.25" }
 dotenv = { workspace = true }
 atom_renderdoc = { path = "../atom_renderdoc" }
+
+
+[features]
+# 默认是 cpu seam
+default = ["cpu_seam"]
+
+gpu_seam = []
+cpu_seam = []
+# cpu模拟gpu的代码运行，用于调试
+simulate_gpu_seam = []

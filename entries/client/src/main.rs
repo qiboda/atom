@@ -5,7 +5,7 @@ use game::GamePlugin;
 use {
     bevy::app::RunFixedMainLoop,
     bevy::prelude::*,
-    bevy::render::{pipelined_rendering::RenderExtractApp, ExtractSchedule, Render, RenderApp},
+    // bevy::render::{pipelined_rendering::RenderExtractApp, ExtractSchedule, Render, RenderApp},
     bevy_mod_debugdump::render_graph,
     bevy_mod_debugdump::{render_graph_dot, schedule_graph, schedule_graph_dot},
 };
@@ -60,8 +60,8 @@ fn debug_dump(app: &mut App) {
     // );
     // output_dot_file("Extract", &extract_schedule_dot);
 
-    let render_dot = schedule_graph_dot(app.sub_app_mut(RenderApp), Render, &schedule_settings);
-    output_dot_file("Render", &render_dot);
+    // let render_dot = schedule_graph_dot(app.sub_app_mut(RenderApp), Render, &schedule_settings);
+    // output_dot_file("Render", &render_dot);
 
     let render_settings = render_graph::settings::Settings {
         ..Default::default()

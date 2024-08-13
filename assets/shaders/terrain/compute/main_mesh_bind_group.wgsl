@@ -1,6 +1,6 @@
 #define_import_path terrain::main_mesh_bind_group
 
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount}
+#import terrain::voxel_type::{TerrainChunkInfo, VoxelVertexValue, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount}
 
 @group(0) @binding(0)
 var<uniform> terrain_chunk_info: TerrainChunkInfo;

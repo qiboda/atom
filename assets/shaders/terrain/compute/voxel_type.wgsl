@@ -10,7 +10,7 @@ const VOXEL_MATERIAL_BLOCK_NUM: u32 = 1u;
 
 const VOXEL_MATERIAL_AIR_INDEX: u32 = 0u;
 
-const VOXEL_MATERIAL_TABLE: array<u32, VOXEL_MATERIAL_NUM> = array<u32, VOXEL_MATERIAL_NUM>(
+var<private> VOXEL_MATERIAL_TABLE: array<u32, VOXEL_MATERIAL_NUM> = array<u32, VOXEL_MATERIAL_NUM>(
     VOXEL_MATERIAL_AIR,
     VOXEL_MATERIAL_BLOCK,
 );
@@ -25,6 +25,14 @@ struct TerrainChunkInfo {
     qef_stddev: f32,
 }
 
+struct VoxelVertexValue {
+    // w is exist or not
+    value: f32,
+    // w is material_index
+    material: u32,
+}
+
+
 struct VoxelEdgeCrossPoint {
     // w is exist or not
     cross_location: vec4<f32>,
@@ -35,6 +43,9 @@ struct VoxelEdgeCrossPoint {
 struct TerrainChunkVertexInfo {
     location: vec4<f32>,
     normal_materials: vec4<f32>,
+    local_coord: vec4u,
+    voxel_materials_back: vec4u,
+    voxel_materials_front: vec4u,
 }
 
 struct TerrainChunkVerticesIndicesCount {

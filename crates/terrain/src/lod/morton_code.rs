@@ -13,6 +13,10 @@ impl MortonCode {
 }
 
 impl MortonCode {
+    pub fn root() -> MortonCode {
+        MortonCode::from_raw(0, 0)
+    }
+
     pub fn from_raw(code: u64, level: u8) -> MortonCode {
         Self { code, level }
     }
@@ -116,6 +120,22 @@ impl MortonCode {
         } else {
             None
         }
+    }
+
+    pub fn morton_code_on_level(&self, level: u8) -> Option<MortonCode> {
+        if level <= self.level {
+            let grid = self.decode();
+            let grid = grid >> (self.level - level);
+            Some(MortonCode::encode(grid, level))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_subnode_index(&self) -> SubNodeIndex {
+        let grid = self.decode();
+        let grid = grid & UVec3::new(1, 1, 1);
+        SubNodeIndex::from_array([grid.x as usize, grid.y as usize, grid.z as usize]).unwrap()
     }
 }
 
@@ -283,6 +303,29 @@ mod tests {
         assert_eq!(
             morton_code.parent(),
             Some(MortonCode::encode(UVec3::new(50, 50, 49), 20))
+        );
+    }
+
+    #[test]
+    fn test_morton_code_on_level() {
+        let morton_code = MortonCode::encode(UVec3::new(0, 0, 0), 0);
+        assert_eq!(morton_code.morton_code_on_level(0), Some(morton_code));
+        assert_eq!(morton_code.morton_code_on_level(1), None);
+
+        let morton_code = MortonCode::encode(UVec3::new(0, 0, 0), 21);
+        assert_eq!(morton_code.morton_code_on_level(21), Some(morton_code));
+        assert_eq!(morton_code.morton_code_on_level(22), None);
+
+        let morton_code = MortonCode::encode(UVec3::new(1023, 1023, 1023), 10);
+        assert_eq!(
+            morton_code.morton_code_on_level(1),
+            Some(MortonCode::encode(UVec3::new(1, 1, 1), 1))
+        );
+
+        let morton_code = MortonCode::encode(UVec3::new(823, 323, 23), 10);
+        assert_eq!(
+            morton_code.morton_code_on_level(1),
+            Some(MortonCode::encode(UVec3::new(1, 0, 0), 1))
         );
     }
 }

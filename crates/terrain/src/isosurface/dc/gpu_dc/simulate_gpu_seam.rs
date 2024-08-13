@@ -1,15 +1,30 @@
+use std::ops::Not;
+
 use bevy::{
     math::{UVec2, UVec3, UVec4, Vec3, Vec4, Vec4Swizzles},
-    prelude::Mesh,
+    prelude::*,
     render::{mesh::Indices, render_asset::RenderAssetUsages},
 };
 use pqef::quadric::Quadric;
 use tracing::{error, info};
 use wgpu::PrimitiveTopology;
 
-use crate::isosurface::{
-    dc::gpu_dc::buffer_cache::{TerrainChunkInfo, VoxelEdgeCrossPoint},
-    materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
+use crate::{
+    chunk_mgr::chunk::{
+        chunk_aabb::TerrainChunkAabb,
+        state::{TerrainChunkAddress, TerrainChunkSeamLod, TerrainChunkState},
+    },
+    isosurface::{
+        dc::gpu_dc::buffer_cache::{TerrainChunkInfo, VoxelEdgeCrossPoint},
+        materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
+    },
+    setting::TerrainSetting,
+    tables::{AxisType, SubNodeIndex},
+};
+
+use super::mesh_compute::{
+    TerrainChunkGPUSeamMeshData, TerrainChunkMeshData, TerrainChunkMeshDataRenderWorldSender,
+    TerrainChunkSeamMeshData,
 };
 
 const U32_MAX: u32 = 0xFFFFFFFF;
@@ -1617,4 +1632,83 @@ pub fn compute_seam_mesh(
     ));
 
     (x_axis_mesh, y_axis_mesh, z_axis_mesh)
+}
+
+#[allow(dead_code)]
+pub fn create_seam_mesh(
+    query: Query<(
+        Entity,
+        &TerrainChunkState,
+        &TerrainChunkAabb,
+        &TerrainChunkAddress,
+        &TerrainChunkSeamLod,
+    )>,
+    terrain_setting: Res<TerrainSetting>,
+    sender: Res<TerrainChunkMeshDataRenderWorldSender>,
+) {
+    for (entity, state, aabb, address, seam_lod) in query.iter() {
+        if state.contains(TerrainChunkState::CREATE_SEAM_MESH).not() {
+            continue;
+        }
+
+        let chunk_min = aabb.min;
+        let add_lod = seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
+        let level = address.0.level() + add_lod[0];
+        let voxel_size = terrain_setting.get_voxel_size(level);
+        let chunk_size = terrain_setting.get_chunk_size(level - add_lod[0]);
+        let voxel_num = (chunk_size / voxel_size).round() as usize;
+
+        let terrain_chunk_info = TerrainChunkInfo {
+            chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, chunk_size),
+            voxel_size,
+            voxel_num: voxel_num as u32,
+            qef_threshold: terrain_setting.qef_solver_threshold,
+            qef_stddev: terrain_setting.qef_stddev,
+        };
+
+        let lod = seam_lod.to_uniform_buffer_array();
+        let (mesh_x, mesh_y, mesh_z) = compute_seam_mesh(&terrain_chunk_info, lod);
+
+        match sender.send(TerrainChunkMeshData {
+            entity,
+            main_mesh_data: None,
+            seam_mesh_data: Some(TerrainChunkSeamMeshData::GPUMesh(
+                TerrainChunkGPUSeamMeshData {
+                    seam_mesh: mesh_x,
+                    axis: AxisType::XAxis,
+                },
+            )),
+        }) {
+            Ok(_) => {}
+            Err(e) => error!("{}", e),
+        }
+
+        match sender.send(TerrainChunkMeshData {
+            entity,
+            main_mesh_data: None,
+            seam_mesh_data: Some(TerrainChunkSeamMeshData::GPUMesh(
+                TerrainChunkGPUSeamMeshData {
+                    seam_mesh: mesh_y,
+                    axis: AxisType::YAxis,
+                },
+            )),
+        }) {
+            Ok(_) => {}
+            Err(e) => error!("{}", e),
+        }
+
+        match sender.send(TerrainChunkMeshData {
+            entity,
+            main_mesh_data: None,
+            seam_mesh_data: Some(TerrainChunkSeamMeshData::GPUMesh(
+                TerrainChunkGPUSeamMeshData {
+                    seam_mesh: mesh_z,
+                    axis: AxisType::ZAxis,
+                },
+            )),
+        }) {
+            Ok(_) => {}
+            Err(e) => error!("{}", e),
+        }
+    }
 }

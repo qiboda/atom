@@ -8,10 +8,12 @@ use bevy::{
     utils::HashMap,
 };
 use bytemuck::{Pod, Zeroable};
+use strum::EnumCount;
 use wgpu_types::BufferUsages;
 
 use crate::{
     chunk_mgr::chunk::state::{TerrainChunkAddress, TerrainChunkSeamLod},
+    isosurface::voxel::VoxelMaterialType,
     setting::TerrainSetting,
     tables::SubNodeIndex,
 };
@@ -40,10 +42,41 @@ pub struct TerrainChunkInfo {
 }
 
 #[repr(C)]
-#[derive(ShaderType, Default, Clone, Copy, Debug, Pod, Zeroable)]
+#[derive(ShaderType, Default, Clone, PartialEq, Copy, Debug, Pod, Zeroable)]
 pub struct TerrainChunkVertexInfo {
     pub vertex_location: Vec4,
     pub vertex_normal_materials: Vec4,
+    pub vertex_local_coord: UVec4,
+    pub voxel_materials_0: UVec4,
+    pub voxel_materials_1: UVec4,
+}
+
+impl TerrainChunkVertexInfo {
+    pub fn is_on_border(&self, voxel_num: u32) -> bool {
+        self.vertex_local_coord.x == 0
+            || self.vertex_local_coord.y == 0
+            || self.vertex_local_coord.z == 0
+            || self.vertex_local_coord.x == voxel_num - 1
+            || self.vertex_local_coord.y == voxel_num - 1
+            || self.vertex_local_coord.z == voxel_num - 1
+    }
+
+    pub fn get_material(&self) -> VoxelMaterialType {
+        VoxelMaterialType::from(self.vertex_normal_materials.w as u32)
+    }
+
+    pub fn get_voxel_materials(&self) -> [VoxelMaterialType; SubNodeIndex::COUNT] {
+        [
+            VoxelMaterialType::from(self.voxel_materials_0.x),
+            VoxelMaterialType::from(self.voxel_materials_0.y),
+            VoxelMaterialType::from(self.voxel_materials_0.z),
+            VoxelMaterialType::from(self.voxel_materials_0.w),
+            VoxelMaterialType::from(self.voxel_materials_1.x),
+            VoxelMaterialType::from(self.voxel_materials_1.y),
+            VoxelMaterialType::from(self.voxel_materials_1.z),
+            VoxelMaterialType::from(self.voxel_materials_1.w),
+        ]
+    }
 }
 
 #[repr(C)]
@@ -321,6 +354,7 @@ impl TerrainChunkSeamBuffers {
         // context.terrain_setting.get_voxel_num_in_chunk() * 2usize.pow(max as u32);
         let voxel_num = (chunk_size / voxel_size).round() as usize;
         let total_voxel_num = (voxel_num + 1) * (voxel_num + 1) * 2;
+        let vertices_num = (voxel_num + 1) * (voxel_num + 1) * 2;
 
         let terrain_chunk_info_buffer = {
             let mut chunk_info_uniform = UniformBuffer::from(TerrainChunkInfo {
@@ -364,14 +398,14 @@ impl TerrainChunkSeamBuffers {
                 context.render_device,
                 &format!("terrain chunk seam mesh vertices buffer {:?}", chunk_min),
                 BufferUsages::STORAGE,
-                total_voxel_num,
+                vertices_num,
             );
 
         let seam_mesh_indices_buffer = staged_buffer::StagedBufferVec::<u32>::create_buffer(
             context.render_device,
             &format!("terrain chunk indices buffer {:?}", chunk_min),
             BufferUsages::STORAGE,
-            total_voxel_num * 18,
+            vertices_num * 18,
         );
 
         let seam_mesh_vertices_indices_count_buffer =

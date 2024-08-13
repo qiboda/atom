@@ -94,17 +94,17 @@ pub fn update_follow(
                             }
 
                             match &locked_freedom.locked_rotation {
-                                Some(locked_ratation) => {
+                                Some(locked_rotation) => {
                                     let following_eular =
                                         following_transform.rotation.to_euler(EulerRot::XYZ);
                                     // println!("{:?}", following_eular);
-                                    if locked_ratation.locked_pitch.not() {
+                                    if locked_rotation.locked_pitch.not() {
                                         transform.rotate_z(following_eular.2);
                                     }
-                                    if locked_ratation.locked_yaw.not() {
+                                    if locked_rotation.locked_yaw.not() {
                                         transform.rotate_y(following_eular.1);
                                     }
-                                    if locked_ratation.locked_roll.not() {
+                                    if locked_rotation.locked_roll.not() {
                                         transform.rotate_x(following_eular.0);
                                     }
                                 }

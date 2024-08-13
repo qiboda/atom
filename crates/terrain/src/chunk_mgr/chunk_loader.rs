@@ -164,9 +164,9 @@ pub fn update_loader_state(
                 &node_aabb,
             );
             // if leaf_node_key.distance_squared < 1000000 {
-            loader.leaf_node_pending_load_deque.push(leaf_node_key);
-            // }
             // loader.leaf_node_pending_load_deque.push(leaf_node_key);
+            // }
+            loader.leaf_node_pending_load_deque.push(leaf_node_key);
         }
 
         // to remove nodes
@@ -198,6 +198,7 @@ pub fn to_load_chunk(mut loader: ResMut<TerrainChunkLoader>, mut commands: Comma
     }
 
     debug!("to load chunk: {:?}", load_event.node_addresses.len());
+    // 防止显存占用过多，卡死。
     if load_event.node_addresses.len() < 1500 {
         commands.trigger(load_event);
     }

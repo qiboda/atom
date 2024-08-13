@@ -1,9 +1,9 @@
 #import noisy::simplex_noise_2d
 #import quadric::{Quadric, quadric_default, probabilistic_plane_quadric, quadric_minimizer, quadric_add_quadric, quadric_residual_l2_error}
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR}
+#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR, VOXEL_MATERIAL_TABLE}
 
-#import terrain::voxel_utils::{get_voxel_edge_index, get_voxel_index}
-#import terrain::main_mesh_bind_group::{terrain_chunk_info, voxel_cross_points, mesh_vertices, mesh_vertex_map, mesh_vertices_indices_count}
+#import terrain::voxel_utils::{get_voxel_edge_index, get_voxel_index, get_voxel_vertex_index, get_voxel_material_type}
+#import terrain::main_mesh_bind_group::{terrain_chunk_info, voxel_cross_points, mesh_vertices, mesh_vertex_map, mesh_vertices_indices_count, voxel_vertex_values}
 
 fn compute_cross_point_data(edge_index: u32, qef: ptr<function, Quadric>, location: ptr<function, vec4f>, normal: ptr<function, vec4f>, materials_count: ptr<function, array<vec2u, VOXEL_MATERIAL_NUM>>) {
     let cross_point = voxel_cross_points[edge_index];
@@ -92,19 +92,41 @@ fn compute_vertices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
     avg_normal = normalize(avg_normal);
 
     var max_count = 0u;
-    var material = VOXEL_MATERIAL_AIR;
+    var material_index = 0u;
     for (var i = 0u; i < VOXEL_MATERIAL_NUM; i++) {
         if materials_count[i].y > max_count {
             max_count = materials_count[i].y;
-            material = materials_count[i].x;
+            material_index = materials_count[i].x;
         }
     }
 
     let vertex_index = atomicAdd(&mesh_vertices_indices_count.vertices_count, 1u);
+    let material = VOXEL_MATERIAL_TABLE[material_index];
 
     mesh_vertices[vertex_index].location = avg_location;
     mesh_vertices[vertex_index].normal_materials = avg_normal;
     mesh_vertices[vertex_index].normal_materials.w = f32(material);
+    mesh_vertices[vertex_index].local_coord = vec4u(invocation_id, 0u);
+
+    let value_index_0 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z);
+    let value_index_1 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y, invocation_id.z);
+    let value_index_2 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1u, invocation_id.z);
+    let value_index_3 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y + 1u, invocation_id.z);
+    let value_index_4 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z + 1u);
+    let value_index_5 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y, invocation_id.z + 1u);
+    let value_index_6 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1u, invocation_id.z + 1u);
+    let value_index_7 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y + 1u, invocation_id.z + 1u);
+    let voxel_material_0 = get_voxel_material_type(voxel_vertex_values[value_index_0]);
+    let voxel_material_1 = get_voxel_material_type(voxel_vertex_values[value_index_1]);
+    let voxel_material_2 = get_voxel_material_type(voxel_vertex_values[value_index_2]);
+    let voxel_material_3 = get_voxel_material_type(voxel_vertex_values[value_index_3]);
+    let voxel_material_4 = get_voxel_material_type(voxel_vertex_values[value_index_4]);
+    let voxel_material_5 = get_voxel_material_type(voxel_vertex_values[value_index_5]);
+    let voxel_material_6 = get_voxel_material_type(voxel_vertex_values[value_index_6]);
+    let voxel_material_7 = get_voxel_material_type(voxel_vertex_values[value_index_7]);
+    mesh_vertices[vertex_index].voxel_materials_back = vec4u(voxel_material_0, voxel_material_1, voxel_material_2, voxel_material_3);
+    mesh_vertices[vertex_index].voxel_materials_front = vec4u(voxel_material_4, voxel_material_5, voxel_material_6, voxel_material_7);
+
     let voxel_index = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z);
     mesh_vertex_map[voxel_index] = vertex_index;
 }

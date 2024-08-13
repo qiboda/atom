@@ -49,6 +49,16 @@ pub enum AxisType {
     ZAxis = 2,
 }
 
+impl AxisType {
+    pub fn to_index(&self) -> usize {
+        match self {
+            AxisType::XAxis => 0,
+            AxisType::YAxis => 1,
+            AxisType::ZAxis => 2,
+        }
+    }
+}
+
 const fn get_axis_value(
     x_axis_value: XAxisValue,
     y_axis_value: YAxisValue,
@@ -264,6 +274,11 @@ impl VertexIndex {
             7 => Some(VertexIndex::X1Y1Z1),
             _ => None,
         }
+    }
+
+    pub fn from_array(array: [usize; 3]) -> Option<Self> {
+        let repr = array[0] + array[1] * 2 + array[2] * 4;
+        VertexIndex::from_repr(repr)
     }
 }
 

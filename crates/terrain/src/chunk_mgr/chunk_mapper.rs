@@ -1,14 +1,11 @@
-use bevy::{
-    math::{bounding::BoundingVolume, Vec3A},
-    prelude::*,
-    utils::HashMap,
-};
-
 use crate::{
     chunk_mgr::chunk::{
         bundle::TerrainChunkBundle,
         chunk_aabb::TerrainChunkAabb,
-        state::{TerrainChunkAddress, TerrainChunkSeamLod, TerrainChunkState},
+        state::{
+            TerrainChunkAddress, TerrainChunkNeighborLodNodes, TerrainChunkSeamLod,
+            TerrainChunkState,
+        },
     },
     lod::{
         lod_octree::{TerrainLodOctree, TerrainLodOctreeNode},
@@ -19,13 +16,19 @@ use crate::{
     },
     tables::{EdgeIndex, FaceIndex, SubNodeIndex, VertexIndex},
 };
+use bevy::{
+    math::{bounding::BoundingVolume, Vec3A},
+    prelude::*,
+    render::extract_resource::ExtractResource,
+    utils::HashMap,
+};
 
 use super::{
     chunk::bundle::TerrainChunk,
     chunk_loader::{TerrainChunkLoadEvent, TerrainChunkReloadEvent, TerrainChunkUnLoadEvent},
 };
 
-#[derive(Debug, Resource, Default)]
+#[derive(Debug, Resource, Default, ExtractResource, Clone)]
 pub struct TerrainChunkMapper {
     /// entity is TerrainChunk
     pub data: HashMap<TerrainChunkAddress, Entity>,
@@ -66,7 +69,14 @@ pub fn trigger_chunk_load_event(
     mut commands: Commands,
     mut terrain_chunk_mapper: ResMut<TerrainChunkMapper>,
     lod_octree: Res<TerrainLodOctree>,
-    mut query: Query<(&mut TerrainChunkState, &mut TerrainChunkSeamLod), With<TerrainChunk>>,
+    mut query: Query<
+        (
+            &mut TerrainChunkState,
+            &mut TerrainChunkSeamLod,
+            &mut TerrainChunkNeighborLodNodes,
+        ),
+        With<TerrainChunk>,
+    >,
 ) {
     for node_address in event_trigger.event().node_addresses.iter() {
         let current_node = lod_octree.get_node(node_address).unwrap();
@@ -75,9 +85,12 @@ pub fn trigger_chunk_load_event(
             for node in x {
                 if let Some(chunk_entity) = terrain_chunk_mapper.get_chunk_entity(node.code.into())
                 {
-                    if let Ok((mut chunk_state, mut seam_lod)) = query.get_mut(*chunk_entity) {
+                    if let Ok((mut chunk_state, mut seam_lod, mut neighbor_lod_nodes)) =
+                        query.get_mut(*chunk_entity)
+                    {
                         *chunk_state |= TerrainChunkState::CREATE_SEAM_MESH;
-                        let lod = get_node_seam_lod(node, &lod_octree);
+                        let (nodes, lod) = get_node_seam_lod(node, &lod_octree);
+                        *neighbor_lod_nodes = nodes;
                         seam_lod.0 = lod;
                     }
                 }
@@ -165,7 +178,6 @@ pub fn trigger_chunk_load_event(
         //     continue;
         // }
 
-        // TerrainChunkState::CREATE_MAIN_MESH |
         let mut bundle = TerrainChunkBundle::new(
             TerrainChunkState::CREATE_SEAM_MESH | TerrainChunkState::CREATE_MAIN_MESH,
         );
@@ -177,7 +189,8 @@ pub fn trigger_chunk_load_event(
             bundle.terrain_chunk_aabb.min, bundle.terrain_chunk_address,
         );
 
-        let lod = get_node_seam_lod(current_node, &lod_octree);
+        let (neighbor_lod_nodes, lod) = get_node_seam_lod(current_node, &lod_octree);
+        bundle.terrain_chunk_neighbor_lod_nodes = neighbor_lod_nodes;
         bundle.terrain_chunk_seam_lod = TerrainChunkSeamLod(lod);
         let chunk_entity = commands.spawn(bundle).id();
         let value = terrain_chunk_mapper
@@ -190,7 +203,7 @@ pub fn trigger_chunk_load_event(
 fn get_node_seam_lod(
     current_node: &TerrainLodOctreeNode,
     lod_octree: &Res<TerrainLodOctree>,
-) -> [[u8; 8]; 8] {
+) -> (TerrainChunkNeighborLodNodes, [[u8; 8]; 8]) {
     // lod
     let set_lod = |x: &Vec<&TerrainLodOctreeNode>,
                    lod: &mut [[u8; 8]; 8],
@@ -235,6 +248,9 @@ fn get_node_seam_lod(
             }
         }
     };
+
+    let mut neighbor_lod_nodes = TerrainChunkNeighborLodNodes::default();
+
     // 每个sub node的两个lod
     let mut lod = [[0; 8]; 8];
     lod[0][0] = current_node.code.level();
@@ -245,6 +261,8 @@ fn get_node_seam_lod(
     lod[0][5] = current_node.code.level();
     lod[0][6] = current_node.code.level();
     lod[0][7] = current_node.code.level();
+
+    neighbor_lod_nodes.nodes[SubNodeIndex::X0Y0Z0.to_index()] = vec![current_node.clone()];
 
     let min_location = current_node.aabb.min;
     let half_size = current_node.aabb.half_size();
@@ -259,6 +277,8 @@ fn get_node_seam_lod(
             node.aabb.center()
         );
     }
+    neighbor_lod_nodes.nodes[SubNodeIndex::X1Y0Z0.to_index()] =
+        right_face_nodes.iter().map(|x| (*x).clone()).collect();
     set_lod(
         &right_face_nodes,
         &mut lod,
@@ -275,6 +295,8 @@ fn get_node_seam_lod(
             node.aabb.center()
         );
     }
+    neighbor_lod_nodes.nodes[SubNodeIndex::X0Y0Z1.to_index()] =
+        front_face_nodes.iter().map(|x| (*x).clone()).collect();
     set_lod(
         &front_face_nodes,
         &mut lod,
@@ -291,6 +313,8 @@ fn get_node_seam_lod(
             node.aabb.center()
         );
     }
+    neighbor_lod_nodes.nodes[SubNodeIndex::X0Y1Z0.to_index()] =
+        top_face_nodes.iter().map(|x| (*x).clone()).collect();
     set_lod(
         &top_face_nodes,
         &mut lod,
@@ -308,6 +332,8 @@ fn get_node_seam_lod(
         half_size,
         SubNodeIndex::X0Y1Z1,
     );
+    neighbor_lod_nodes.nodes[SubNodeIndex::X0Y1Z1.to_index()] =
+        x11_axis_edge_nodes.iter().map(|x| (*x).clone()).collect();
     for node in x11_axis_edge_nodes.iter() {
         debug!(
             "set lod x11 edge node: address: {:?}, center: {:?}",
@@ -317,6 +343,8 @@ fn get_node_seam_lod(
     }
     let y11_axis_edge_nodes =
         get_edge_neighbor_lod_octree_nodes(lod_octree, current_node, EdgeIndex::YAxisX1Z1, depth);
+    neighbor_lod_nodes.nodes[SubNodeIndex::X1Y0Z1.to_index()] =
+        y11_axis_edge_nodes.iter().map(|x| (*x).clone()).collect();
     set_lod(
         &y11_axis_edge_nodes,
         &mut lod,
@@ -333,6 +361,8 @@ fn get_node_seam_lod(
     }
     let z11_axis_edge_nodes =
         get_edge_neighbor_lod_octree_nodes(lod_octree, current_node, EdgeIndex::ZAxisX1Y1, depth);
+    neighbor_lod_nodes.nodes[SubNodeIndex::X1Y1Z0.to_index()] =
+        z11_axis_edge_nodes.iter().map(|x| (*x).clone()).collect();
     set_lod(
         &z11_axis_edge_nodes,
         &mut lod,
@@ -350,6 +380,8 @@ fn get_node_seam_lod(
 
     let vertex_111_nodes =
         get_vertex_neighbor_lod_octree_nodes(lod_octree, current_node, VertexIndex::X1Y1Z1, depth);
+    neighbor_lod_nodes.nodes[SubNodeIndex::X1Y1Z1.to_index()] =
+        vertex_111_nodes.iter().map(|x| (*x).clone()).collect();
     set_lod(
         &vertex_111_nodes,
         &mut lod,
@@ -385,7 +417,7 @@ fn get_node_seam_lod(
         current_node.aabb.center()
     );
     assert!(lod.iter().flatten().all(|x| *x <= 2));
-    lod
+    (neighbor_lod_nodes, lod)
 }
 
 pub fn trigger_chunk_unload_event(
