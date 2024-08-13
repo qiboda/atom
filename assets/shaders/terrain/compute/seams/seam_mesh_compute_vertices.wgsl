@@ -6,21 +6,13 @@
 #import terrain::seam_utils::{axis_base_offset, coord_convert_fns, get_voxel_internal_vertex_index, EDGE_VERTEX_PAIRS, VOXEL_VERTEX_OFFSETS}
 #import terrain::density_field::get_terrain_noise
 
-
-@group(0) @binding(0)
-var<uniform> terrain_chunk_info: TerrainChunkInfo;
-
-@group(0) @binding(1)
-var<uniform> terrain_chunks_lod: array<vec4<u32>, 16>;
-
-@group(0) @binding(2)
-var<storage, read_write> mesh_vertices: array<TerrainChunkVertexInfo>;
-
-@group(0) @binding(3)
-var<storage, read_write> mesh_vertex_map: array<u32>;
-
-@group(0) @binding(4)
-var<storage, read_write> mesh_vertex_num: TerrainChunkVerticesIndicesCount;
+#import terrain::seam_mesh_bind_group::{
+    terrain_chunk_info,
+    mesh_vertices,
+    mesh_vertex_map,
+    mesh_vertices_indices_count,
+    terrain_chunks_lod,
+}
 
 fn estimate_edge_cross_point(
     voxel_cross_point_data: ptr<function, array<VoxelEdgeCrossPoint, 12>>,
@@ -171,7 +163,7 @@ fn compute_voxel_internal_vertices(
         }
     }
 
-    let vertex_index = atomicAdd(&mesh_vertex_num.vertices_count, 1u);
+    let vertex_index = atomicAdd(&mesh_vertices_indices_count.vertices_count, 1u);
 
     mesh_vertices[vertex_index].location = avg_location;
     mesh_vertices[vertex_index].normal_materials = avg_normal;

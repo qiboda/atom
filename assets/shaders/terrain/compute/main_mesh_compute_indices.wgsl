@@ -1,20 +1,12 @@
-#import terrain::voxel_type::{TerrainChunkInfo, TerrainChunkVerticesIndicesCount}
 #import terrain::voxel_utils::{get_voxel_vertex_index, get_voxel_index}
 
-@group(0) @binding(0)
-var<uniform> terrain_chunk_info: TerrainChunkInfo;
-
-@group(0) @binding(1)
-var<storage, read> voxel_vertex_values: array<f32>;
-
-@group(0) @binding(2)
-var<storage, read> mesh_vertex_map: array<u32>;
-
-@group(0) @binding(3)
-var<storage, read_write> mesh_indices_data: array<u32>;
-
-@group(0) @binding(4)
-var<storage, read_write> mesh_indices_num: TerrainChunkVerticesIndicesCount;
+#import terrain::main_mesh_bind_group::{
+    terrain_chunk_info,
+    voxel_vertex_values,
+    mesh_vertex_map,
+    mesh_vertices_indices_count,
+    mesh_indices
+}
 
 // Vertex and Edge Index Map
 //
@@ -95,23 +87,23 @@ fn compute_indices_on_axis(
     let mesh_vertex_index_2 = mesh_vertex_map[voxel_index_2];
     let mesh_vertex_index_3 = mesh_vertex_map[voxel_index_3];
 
-    let mesh_indices_index = atomicAdd(&mesh_indices_num.indices_count, 6u);
+    let mesh_indices_index = atomicAdd(&mesh_vertices_indices_count.indices_count, 6u);
 
     if vertex_value_0 >= 0.0 {
-        mesh_indices_data[mesh_indices_index] = mesh_vertex_index_0;
-        mesh_indices_data[mesh_indices_index + 1] = mesh_vertex_index_1;
-        mesh_indices_data[mesh_indices_index + 2] = mesh_vertex_index_2;
+        mesh_indices[mesh_indices_index] = mesh_vertex_index_0;
+        mesh_indices[mesh_indices_index + 1] = mesh_vertex_index_1;
+        mesh_indices[mesh_indices_index + 2] = mesh_vertex_index_2;
 
-        mesh_indices_data[mesh_indices_index + 3] = mesh_vertex_index_1;
-        mesh_indices_data[mesh_indices_index + 4] = mesh_vertex_index_3;
-        mesh_indices_data[mesh_indices_index + 5] = mesh_vertex_index_2;
+        mesh_indices[mesh_indices_index + 3] = mesh_vertex_index_1;
+        mesh_indices[mesh_indices_index + 4] = mesh_vertex_index_3;
+        mesh_indices[mesh_indices_index + 5] = mesh_vertex_index_2;
     } else {
-        mesh_indices_data[mesh_indices_index] = mesh_vertex_index_0;
-        mesh_indices_data[mesh_indices_index + 1] = mesh_vertex_index_2;
-        mesh_indices_data[mesh_indices_index + 2] = mesh_vertex_index_1;
+        mesh_indices[mesh_indices_index] = mesh_vertex_index_0;
+        mesh_indices[mesh_indices_index + 1] = mesh_vertex_index_2;
+        mesh_indices[mesh_indices_index + 2] = mesh_vertex_index_1;
 
-        mesh_indices_data[mesh_indices_index + 3] = mesh_vertex_index_1;
-        mesh_indices_data[mesh_indices_index + 4] = mesh_vertex_index_2;
-        mesh_indices_data[mesh_indices_index + 5] = mesh_vertex_index_3;
+        mesh_indices[mesh_indices_index + 3] = mesh_vertex_index_1;
+        mesh_indices[mesh_indices_index + 4] = mesh_vertex_index_2;
+        mesh_indices[mesh_indices_index + 5] = mesh_vertex_index_3;
     }
 }

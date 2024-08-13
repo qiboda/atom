@@ -15,11 +15,7 @@ use super::{
 };
 
 pub struct TerrainChunkMainBindGroups {
-    pub voxel_vertex_values_bind_group: BindGroup,
-    pub voxel_cross_points_bind_group: BindGroup,
-
-    pub mesh_vertices_bind_group: BindGroup,
-    pub mesh_indices_bind_group: BindGroup,
+    pub main_mesh_bind_group: BindGroup,
 }
 
 pub struct TerrainChunkMainBindGroupsCreateContext<'a> {
@@ -31,42 +27,16 @@ pub struct TerrainChunkMainBindGroupsCreateContext<'a> {
 
 impl TerrainChunkMainBindGroups {
     pub fn create_bind_groups(context: TerrainChunkMainBindGroupsCreateContext) -> Self {
-        let voxel_vertex_values_bind_group: BindGroup = context.render_device.create_bind_group(
-            "terrain chunk voxel vertex values bind group",
-            &context
-                .pipelines
-                .compute_voxel_vertex_values_bind_group_layout,
-            &BindGroupEntries::sequential((
-                context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
-                context
-                    .buffers
-                    .voxel_vertex_values_buffer
-                    .binding()
-                    .unwrap(),
-            )),
-        );
-
-        let voxel_cross_points_bind_group: BindGroup = context.render_device.create_bind_group(
-            "terrain chunk voxel cross points bind group",
-            &context
-                .pipelines
-                .compute_voxel_cross_points_bind_group_layout,
-            &BindGroupEntries::sequential((
-                context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
-                context
-                    .buffers
-                    .voxel_vertex_values_buffer
-                    .binding()
-                    .unwrap(),
-                context.buffers.voxel_cross_points_buffer.binding().unwrap(),
-            )),
-        );
-
         let mesh_vertices_bind_group: BindGroup = context.render_device.create_bind_group(
             "terrain chunk mesh vertices bind group",
-            &context.pipelines.main_compute_vertices_bind_group_layout,
+            &context.pipelines.main_compute_bind_group_layout,
             &BindGroupEntries::sequential((
                 context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
+                context
+                    .buffers
+                    .voxel_vertex_values_buffer
+                    .binding()
+                    .unwrap(),
                 context.buffers.voxel_cross_points_buffer.binding().unwrap(),
                 context
                     .buffers
@@ -74,33 +44,13 @@ impl TerrainChunkMainBindGroups {
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),
-                context.buffers.mesh_vertex_map_buffer.binding().unwrap(),
-                context
-                    .buffers
-                    .mesh_vertices_indices_count_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-            )),
-        );
-
-        let mesh_indices_bind_group: BindGroup = context.render_device.create_bind_group(
-            "terrain chunk mesh indices bind group",
-            &context.pipelines.main_compute_indices_bind_group_layout,
-            &BindGroupEntries::sequential((
-                context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
-                context
-                    .buffers
-                    .voxel_vertex_values_buffer
-                    .binding()
-                    .unwrap(),
-                context.buffers.mesh_vertex_map_buffer.binding().unwrap(),
                 context
                     .buffers
                     .mesh_indices_buffer
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),
+                context.buffers.mesh_vertex_map_buffer.binding().unwrap(),
                 context
                     .buffers
                     .mesh_vertices_indices_count_buffer
@@ -111,10 +61,7 @@ impl TerrainChunkMainBindGroups {
         );
 
         Self {
-            voxel_vertex_values_bind_group,
-            voxel_cross_points_bind_group,
-            mesh_vertices_bind_group,
-            mesh_indices_bind_group,
+            main_mesh_bind_group: mesh_vertices_bind_group,
         }
     }
 }
@@ -154,9 +101,7 @@ impl TerrainChunkMainBindGroupsCache {
 pub struct TerrainChunkMainBindGroupCachedId(pub usize);
 
 pub struct TerrainChunkSeamBindGroups {
-    pub seam_mesh_vertices_bind_group: BindGroup,
-    pub seam_mesh_indices_bind_group: BindGroup,
-    // pub seam_clear_reused_buffers_bind_group: BindGroup,
+    pub seam_mesh_bind_group: BindGroup,
 }
 
 pub struct TerrainChunkSeamBindGroupsCreateContext<'a> {
@@ -168,9 +113,9 @@ pub struct TerrainChunkSeamBindGroupsCreateContext<'a> {
 
 impl TerrainChunkSeamBindGroups {
     pub fn create_bind_groups(context: TerrainChunkSeamBindGroupsCreateContext) -> Self {
-        let seam_mesh_vertices_bind_group: BindGroup = context.render_device.create_bind_group(
+        let seam_mesh_bind_group: BindGroup = context.render_device.create_bind_group(
             "terrain chunk seam mesh vertices bind group",
-            &context.pipelines.seam_compute_vertices_bind_group_layout,
+            &context.pipelines.seam_compute_bind_group_layout,
             &BindGroupEntries::sequential((
                 context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
                 context.buffers.terrain_chunks_lod_buffer.binding().unwrap(),
@@ -182,36 +127,17 @@ impl TerrainChunkSeamBindGroups {
                     .unwrap(),
                 context
                     .buffers
-                    .seam_mesh_vertex_map_buffer
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
-                    .seam_mesh_vertices_indices_count_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-            )),
-        );
-
-        let seam_mesh_indices_bind_group: BindGroup = context.render_device.create_bind_group(
-            "terrain chunk seam mesh indices bind group",
-            &context.pipelines.seam_compute_indices_bind_group_layout,
-            &BindGroupEntries::sequential((
-                context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
-                context
-                    .buffers
-                    .seam_mesh_vertex_map_buffer
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
                     .seam_mesh_indices_buffer
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),
                 context
                     .buffers
+                    .seam_mesh_vertex_map_buffer
+                    .binding()
+                    .unwrap(),
+                context
+                    .buffers
                     .seam_mesh_vertices_indices_count_buffer
                     .get_gpu_buffer()
                     .binding()
@@ -219,26 +145,8 @@ impl TerrainChunkSeamBindGroups {
             )),
         );
 
-        // let seam_clear_reused_buffers_bind_group: BindGroup =
-        //     context.render_device.create_bind_group(
-        //         "terrain chunk seam mesh indices bind group",
-        //         &context
-        //             .pipelines
-        //             .seam_clear_reused_buffers_bind_group_layout,
-        //         &BindGroupEntries::sequential((
-        //             context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
-        //             context
-        //                 .buffers
-        //                 .seam_mesh_vertex_map_buffer
-        //                 .binding()
-        //                 .unwrap(),
-        //         )),
-        //     );
-
         Self {
-            seam_mesh_vertices_bind_group,
-            seam_mesh_indices_bind_group,
-            // seam_clear_reused_buffers_bind_group,
+            seam_mesh_bind_group,
         }
     }
 }

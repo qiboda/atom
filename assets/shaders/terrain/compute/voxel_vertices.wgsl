@@ -2,12 +2,10 @@
 #import terrain::voxel_type::{TerrainChunkInfo}
 #import terrain::density_field::get_terrain_noise
 #import terrain::voxel_utils::get_voxel_vertex_index
-
-@group(0) @binding(0)
-var<uniform> terrain_chunk_info: TerrainChunkInfo;
-
-@group(0) @binding(1)
-var<storage, read_write> voxel_vertex_values: array<f32>;
+#import terrain::main_mesh_bind_group:: {
+    terrain_chunk_info,
+    voxel_vertex_values
+}
 
 @compute @workgroup_size(4, 4, 4)
 fn compute_voxel_vertices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {

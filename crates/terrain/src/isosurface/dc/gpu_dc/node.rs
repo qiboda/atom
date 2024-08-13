@@ -124,11 +124,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                     pipelines.compute_voxel_vertex_values_pipeline,
                                 )
                                 .unwrap();
-                            pass.set_bind_group(
-                                0,
-                                &main_bind_groups.voxel_vertex_values_bind_group,
-                                &[],
-                            );
+                            pass.set_bind_group(0, &main_bind_groups.main_mesh_bind_group, &[]);
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size + 1,
@@ -145,11 +141,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             let pipeline = pipeline_cache
                                 .get_compute_pipeline(pipelines.compute_voxel_cross_points_pipeline)
                                 .unwrap();
-                            pass.set_bind_group(
-                                0,
-                                &main_bind_groups.voxel_cross_points_bind_group,
-                                &[],
-                            );
+                            pass.set_bind_group(0, &main_bind_groups.main_mesh_bind_group, &[]);
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size + 1,
@@ -167,7 +159,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             let pipeline = pipeline_cache
                                 .get_compute_pipeline(pipelines.main_compute_vertices_pipeline)
                                 .unwrap();
-                            pass.set_bind_group(0, &main_bind_groups.mesh_vertices_bind_group, &[]);
+                            pass.set_bind_group(0, &main_bind_groups.main_mesh_bind_group, &[]);
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size,
@@ -185,7 +177,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             let pipeline = pipeline_cache
                                 .get_compute_pipeline(pipelines.main_compute_indices_pipeline)
                                 .unwrap();
-                            pass.set_bind_group(0, &main_bind_groups.mesh_indices_bind_group, &[]);
+                            pass.set_bind_group(0, &main_bind_groups.main_mesh_bind_group, &[]);
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size,
@@ -219,20 +211,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             .get_bind_groups(terrain_chunk_seam_key, seam_bind_groups_id[0])
                             .unwrap();
 
-                        // {
-
-                        //     let pipeline = pipeline_cache
-                        //         .get_compute_pipeline(pipelines.seam_clear_reused_buffers_pipeline)
-                        //         .unwrap();
-                        //     pass.set_bind_group(
-                        //         0,
-                        //         &x_axis_bind_groups.seam_clear_reused_buffers_bind_group,
-                        //         &[],
-                        //     );
-                        //     pass.set_pipeline(pipeline);
-                        //     pass.dispatch_workgroups(workgroup_size + 2, workgroup_size + 2, 1);
-                        // }
-
                         // x axis
                         {
                             {
@@ -247,7 +225,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                     .unwrap();
                                 pass.set_bind_group(
                                     0,
-                                    &x_axis_bind_groups.seam_mesh_vertices_bind_group,
+                                    &x_axis_bind_groups.seam_mesh_bind_group,
                                     &[],
                                 );
                                 pass.set_pipeline(pipeline);
@@ -266,7 +244,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                     .unwrap();
                                 pass.set_bind_group(
                                     0,
-                                    &x_axis_bind_groups.seam_mesh_indices_bind_group,
+                                    &x_axis_bind_groups.seam_mesh_bind_group,
                                     &[],
                                 );
                                 pass.set_pipeline(pipeline);
@@ -278,19 +256,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             .get_bind_groups(terrain_chunk_seam_key, seam_bind_groups_id[1])
                             .unwrap();
 
-                        // {
-
-                        //     let pipeline = pipeline_cache
-                        //         .get_compute_pipeline(pipelines.seam_clear_reused_buffers_pipeline)
-                        //         .unwrap();
-                        //     pass.set_bind_group(
-                        //         0,
-                        //         &y_axis_bind_groups.seam_clear_reused_buffers_bind_group,
-                        //         &[],
-                        //     );
-                        //     pass.set_pipeline(pipeline);
-                        //     pass.dispatch_workgroups(workgroup_size + 2, workgroup_size + 2, 1);
-                        // }
                         // y axis
                         {
                             {
@@ -305,7 +270,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                     .unwrap();
                                 pass.set_bind_group(
                                     0,
-                                    &y_axis_bind_groups.seam_mesh_vertices_bind_group,
+                                    &y_axis_bind_groups.seam_mesh_bind_group,
                                     &[],
                                 );
                                 pass.set_pipeline(pipeline);
@@ -323,7 +288,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                     .unwrap();
                                 pass.set_bind_group(
                                     0,
-                                    &y_axis_bind_groups.seam_mesh_indices_bind_group,
+                                    &y_axis_bind_groups.seam_mesh_bind_group,
                                     &[],
                                 );
                                 pass.set_pipeline(pipeline);
@@ -335,19 +300,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             .get_bind_groups(terrain_chunk_seam_key, seam_bind_groups_id[2])
                             .unwrap();
 
-                        // {
-
-                        //     let pipeline = pipeline_cache
-                        //         .get_compute_pipeline(pipelines.seam_clear_reused_buffers_pipeline)
-                        //         .unwrap();
-                        //     pass.set_bind_group(
-                        //         0,
-                        //         &z_axis_bind_groups.seam_clear_reused_buffers_bind_group,
-                        //         &[],
-                        //     );
-                        //     pass.set_pipeline(pipeline);
-                        //     pass.dispatch_workgroups(workgroup_size + 2, workgroup_size + 2, 1);
-                        // }
                         // z axis
                         {
                             {
@@ -362,7 +314,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                     .unwrap();
                                 pass.set_bind_group(
                                     0,
-                                    &z_axis_bind_groups.seam_mesh_vertices_bind_group,
+                                    &z_axis_bind_groups.seam_mesh_bind_group,
                                     &[],
                                 );
                                 pass.set_pipeline(pipeline);
@@ -381,7 +333,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                     .unwrap();
                                 pass.set_bind_group(
                                     0,
-                                    &z_axis_bind_groups.seam_mesh_indices_bind_group,
+                                    &z_axis_bind_groups.seam_mesh_bind_group,
                                     &[],
                                 );
                                 pass.set_pipeline(pipeline);

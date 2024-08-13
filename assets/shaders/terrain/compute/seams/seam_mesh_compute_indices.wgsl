@@ -1,20 +1,9 @@
-/// x 方向，
 #import terrain::voxel_type::{TerrainChunkInfo, TerrainChunkVerticesIndicesCount}
 #import terrain::seam_utils::{get_voxel_internal_vertex_index, VOXEL_VERTEX_OFFSETS}
 #import terrain::density_field::get_terrain_noise 
 #import terrain::voxel_type::{U32_MAX}
 
-@group(0) @binding(0)
-var<uniform> terrain_chunk_info: TerrainChunkInfo;
-
-@group(0) @binding(1)
-var<storage, read> mesh_vertex_map: array<u32>;
-
-@group(0) @binding(2)
-var<storage, read_write> mesh_indices_data: array<u32>;
-
-@group(0) @binding(3)
-var<storage, read_write> mesh_indices_num: TerrainChunkVerticesIndicesCount;
+#import terrain::seam_mesh_bind_group::{terrain_chunk_info, mesh_vertex_map, mesh_indices, mesh_vertices_indices_count}
 
 // 存储了mesh顶点的索引, 该结构体在array中，array的索引是体素的索引。
 //
@@ -200,36 +189,36 @@ fn compute_indices_on_axis(
     let index_3 = set_vertex_index_array(&mesh_vertex_index_array, mesh_vertex_index_2, index_2);
 
     if index_3 == 3 {
-        let mesh_indices_index = atomicAdd(&mesh_indices_num.indices_count, 3u);
+        let mesh_indices_index = atomicAdd(&mesh_vertices_indices_count.indices_count, 3u);
 
         if vertex_value_0 >= 0.0 {
-            mesh_indices_data[mesh_indices_index] = mesh_vertex_index_array[0];
-            mesh_indices_data[mesh_indices_index + 1] = mesh_vertex_index_array[1];
-            mesh_indices_data[mesh_indices_index + 2] = mesh_vertex_index_array[2];
+            mesh_indices[mesh_indices_index] = mesh_vertex_index_array[0];
+            mesh_indices[mesh_indices_index + 1] = mesh_vertex_index_array[1];
+            mesh_indices[mesh_indices_index + 2] = mesh_vertex_index_array[2];
         } else {
-            mesh_indices_data[mesh_indices_index] = mesh_vertex_index_array[0] ;
-            mesh_indices_data[mesh_indices_index + 1] = mesh_vertex_index_array[2] ;
-            mesh_indices_data[mesh_indices_index + 2] = mesh_vertex_index_array[1] ;
+            mesh_indices[mesh_indices_index] = mesh_vertex_index_array[0] ;
+            mesh_indices[mesh_indices_index + 1] = mesh_vertex_index_array[2] ;
+            mesh_indices[mesh_indices_index + 2] = mesh_vertex_index_array[1] ;
         }
     } else if index_3 == 4 {
-        let mesh_indices_index = atomicAdd(&mesh_indices_num.indices_count, 6u);
+        let mesh_indices_index = atomicAdd(&mesh_vertices_indices_count.indices_count, 6u);
 
         if vertex_value_0 >= 0.0 {
-            mesh_indices_data[mesh_indices_index] = mesh_vertex_index_array[0];
-            mesh_indices_data[mesh_indices_index + 1] = mesh_vertex_index_array[1];
-            mesh_indices_data[mesh_indices_index + 2] = mesh_vertex_index_array[2];
+            mesh_indices[mesh_indices_index] = mesh_vertex_index_array[0];
+            mesh_indices[mesh_indices_index + 1] = mesh_vertex_index_array[1];
+            mesh_indices[mesh_indices_index + 2] = mesh_vertex_index_array[2];
 
-            mesh_indices_data[mesh_indices_index + 3] = mesh_vertex_index_array[0];
-            mesh_indices_data[mesh_indices_index + 4] = mesh_vertex_index_array[2];
-            mesh_indices_data[mesh_indices_index + 5] = mesh_vertex_index_array[3];
+            mesh_indices[mesh_indices_index + 3] = mesh_vertex_index_array[0];
+            mesh_indices[mesh_indices_index + 4] = mesh_vertex_index_array[2];
+            mesh_indices[mesh_indices_index + 5] = mesh_vertex_index_array[3];
         } else {
-            mesh_indices_data[mesh_indices_index] = mesh_vertex_index_array[0];
-            mesh_indices_data[mesh_indices_index + 1] = mesh_vertex_index_array[2];
-            mesh_indices_data[mesh_indices_index + 2] = mesh_vertex_index_array[1];
+            mesh_indices[mesh_indices_index] = mesh_vertex_index_array[0];
+            mesh_indices[mesh_indices_index + 1] = mesh_vertex_index_array[2];
+            mesh_indices[mesh_indices_index + 2] = mesh_vertex_index_array[1];
 
-            mesh_indices_data[mesh_indices_index + 3] = mesh_vertex_index_array[0];
-            mesh_indices_data[mesh_indices_index + 4] = mesh_vertex_index_array[3];
-            mesh_indices_data[mesh_indices_index + 5] = mesh_vertex_index_array[2];
+            mesh_indices[mesh_indices_index + 3] = mesh_vertex_index_array[0];
+            mesh_indices[mesh_indices_index + 4] = mesh_vertex_index_array[3];
+            mesh_indices[mesh_indices_index + 5] = mesh_vertex_index_array[2];
         }
     }
 }

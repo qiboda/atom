@@ -2,15 +2,11 @@
 #import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, VOXEL_MATERIAL_AIR_INDEX}
 #import terrain::voxel_utils::{get_voxel_vertex_index, get_voxel_edge_index, get_voxel_material_type_index, central_gradient}
 #import terrain::density_field::get_terrain_noise
-
-@group(0) @binding(0)
-var<uniform> terrain_chunk_info: TerrainChunkInfo;
-
-@group(0) @binding(1)
-var<storage, read> voxel_vertex_values: array<f32>;
-
-@group(0) @binding(2)
-var<storage, read_write> voxel_cross_points: array<VoxelEdgeCrossPoint>;
+#import terrain::main_mesh_bind_group:: {
+    terrain_chunk_info,
+    voxel_vertex_values,
+    voxel_cross_points
+}
 
 fn estimate_edge_cross_point(
     left_vertex_index: u32,
