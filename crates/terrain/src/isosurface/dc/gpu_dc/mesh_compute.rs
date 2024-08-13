@@ -418,21 +418,12 @@ fn map_and_read_main_buffer(
             });
 
             let mesh_vertices_num_buffer_slice = buffers
-                .mesh_vertices_num_buffer
+                .mesh_vertices_indices_count_buffer
                 .get_staged_buffer()
                 .slice(..);
             mesh_vertices_num_buffer_slice.map_async(MapMode::Read, move |r| match r {
                 Ok(_) => {}
                 Err(err) => panic!("Failed to map vertices num buffer {err}"),
-            });
-
-            let mesh_indices_num_buffer_slice = buffers
-                .mesh_indices_num_buffer
-                .get_staged_buffer()
-                .slice(..);
-            mesh_indices_num_buffer_slice.map_async(MapMode::Read, move |r| match r {
-                Ok(_) => {}
-                Err(err) => panic!("Failed to map indices num buffer {err}"),
             });
         }
 
@@ -465,21 +456,12 @@ fn map_and_read_main_buffer(
                 });
 
                 let mesh_vertices_num_buffer_slice = buffers
-                    .seam_mesh_vertices_num_buffer
+                    .seam_mesh_vertices_indices_count_buffer
                     .get_staged_buffer()
                     .slice(..);
                 mesh_vertices_num_buffer_slice.map_async(MapMode::Read, move |r| match r {
                     Ok(_) => {}
                     Err(err) => panic!("Failed to map vertices num buffer {err}"),
-                });
-
-                let mesh_indices_num_buffer_slice = buffers
-                    .seam_mesh_indices_num_buffer
-                    .get_staged_buffer()
-                    .slice(..);
-                mesh_indices_num_buffer_slice.map_async(MapMode::Read, move |r| match r {
-                    Ok(_) => {}
-                    Err(err) => panic!("Failed to map indices num buffer {err}"),
                 });
             }
         }
@@ -505,15 +487,16 @@ fn map_and_read_main_buffer(
             let _one_main_chunk_read = info_span!("one_main_chunk_read").entered();
             let buffers = main_buffers_cache.get_buffers(*main_buffers_id).unwrap();
 
-            let mesh_vertices_num = buffers.mesh_vertices_num_buffer.read() as usize;
-            let mesh_indices_num = buffers.mesh_indices_num_buffer.read() as usize;
+            let mesh_vertices_indices_count = buffers.mesh_vertices_indices_count_buffer.read();
 
             debug!(
-                "main mesh_vertices_num: {}, mesh_indices_num: {}",
-                mesh_vertices_num, mesh_indices_num
+                "main mesh vertices indices num: {:?}",
+                mesh_vertices_indices_count
             );
 
-            if mesh_vertices_num > 0 && mesh_indices_num > 0 {
+            if mesh_vertices_indices_count.vertices_count > 0
+                && mesh_vertices_indices_count.indices_count > 0
+            {
                 debug!("main map and read buffer: address: {:?}", address);
 
                 let mut mesh = Mesh::new(
@@ -521,8 +504,12 @@ fn map_and_read_main_buffer(
                     RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
                 );
 
-                let vertices = buffers.mesh_vertices_buffer.read_size(mesh_vertices_num);
-                let indices = buffers.mesh_indices_buffer.read_size(mesh_indices_num);
+                let vertices = buffers
+                    .mesh_vertices_buffer
+                    .read_size(mesh_vertices_indices_count.vertices_count as usize);
+                let indices = buffers
+                    .mesh_indices_buffer
+                    .read_size(mesh_vertices_indices_count.indices_count as usize);
 
                 mesh.insert_attribute(
                     Mesh::ATTRIBUTE_POSITION,
@@ -567,15 +554,17 @@ fn map_and_read_main_buffer(
                     .get_buffers(terrain_chunk_seam_key, seam_buffers_id[i])
                     .unwrap();
 
-                let mesh_vertices_num = buffers.seam_mesh_vertices_num_buffer.read() as usize;
-                let mesh_indices_num = buffers.seam_mesh_indices_num_buffer.read() as usize;
+                let mesh_vertices_indices_count =
+                    buffers.seam_mesh_vertices_indices_count_buffer.read();
 
                 debug!(
-                    "{} -> address: {:?}, seam mesh_vertices_num: {}, mesh_indices_num: {}",
-                    i, address, mesh_vertices_num, mesh_indices_num
+                    "{} -> address: {:?}, seam mesh vertices indices num: {:?}",
+                    i, address, mesh_vertices_indices_count,
                 );
 
-                if mesh_vertices_num > 0 && mesh_indices_num > 0 {
+                if mesh_vertices_indices_count.vertices_count > 0
+                    && mesh_vertices_indices_count.indices_count > 0
+                {
                     let mut mesh = Mesh::new(
                         PrimitiveTopology::TriangleList,
                         RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
@@ -585,8 +574,10 @@ fn map_and_read_main_buffer(
 
                     let vertices = buffers
                         .seam_mesh_vertices_buffer
-                        .read_size(mesh_vertices_num);
-                    let indices = buffers.seam_mesh_indices_buffer.read_size(mesh_indices_num);
+                        .read_size(mesh_vertices_indices_count.vertices_count as usize);
+                    let indices = buffers
+                        .seam_mesh_indices_buffer
+                        .read_size(mesh_vertices_indices_count.indices_count as usize);
 
                     mesh.insert_attribute(
                         Mesh::ATTRIBUTE_POSITION,

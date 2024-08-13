@@ -1,6 +1,6 @@
 #import noisy::simplex_noise_2d
 #import quadric::{Quadric, quadric_default, probabilistic_plane_quadric, quadric_minimizer, quadric_add_quadric, quadric_residual_l2_error}
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR}
+#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR}
 
 #import terrain::voxel_utils::{get_voxel_edge_index, get_voxel_index}
 
@@ -17,7 +17,7 @@ var<storage, read_write> mesh_vertices: array<TerrainChunkVertexInfo>;
 var<storage, read_write> mesh_vertex_map: array<u32>;
 
 @group(0) @binding(4)
-var<storage, read_write> mesh_vertex_num: atomic<u32>;
+var<storage, read_write> mesh_vertex_num: TerrainChunkVerticesIndicesCount;
 
 fn compute_cross_point_data(edge_index: u32, qef: ptr<function, Quadric>, location: ptr<function, vec4f>, normal: ptr<function, vec4f>, materials_count: ptr<function, array<vec2u, VOXEL_MATERIAL_NUM>>) {
     let cross_point = voxel_cross_point_data[edge_index];
@@ -114,7 +114,7 @@ fn compute_vertices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
         }
     }
 
-    let vertex_index = atomicAdd(&mesh_vertex_num, 1u);
+    let vertex_index = atomicAdd(&mesh_vertex_num.vertices_count, 1u);
 
     mesh_vertices[vertex_index].location = avg_location;
     mesh_vertices[vertex_index].normal_materials = avg_normal;

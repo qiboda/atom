@@ -13,7 +13,9 @@ use bevy::{
 };
 use wgpu_types::ShaderStages;
 
-use super::buffer_cache::{TerrainChunkInfo, TerrainChunkVertexInfo, VoxelEdgeCrossPoint};
+use super::buffer_cache::{
+    TerrainChunkInfo, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VoxelEdgeCrossPoint,
+};
 
 const MAIN_COMPUTE_VERTICES_SHADER_ASSET_PATH: &str =
     "shaders/terrain/compute/main_mesh_compute_vertices.wgsl";
@@ -127,7 +129,7 @@ impl FromWorld for TerrainChunkPipelines {
                     // vertex map
                     storage_buffer::<Vec<u32>>(false),
                     // vertices num
-                    storage_buffer::<u32>(false),
+                    storage_buffer::<TerrainChunkVerticesIndicesCount>(false),
                 ),
             ),
         );
@@ -145,7 +147,7 @@ impl FromWorld for TerrainChunkPipelines {
                     // mesh indices
                     storage_buffer::<Vec<u32>>(false),
                     // indices num
-                    storage_buffer::<u32>(false),
+                    storage_buffer::<TerrainChunkVerticesIndicesCount>(false),
                 ),
             ),
         );
@@ -188,7 +190,7 @@ impl FromWorld for TerrainChunkPipelines {
                     // vertex map
                     storage_buffer::<Vec<u32>>(false),
                     // vertices num
-                    storage_buffer::<u32>(false),
+                    storage_buffer::<TerrainChunkVerticesIndicesCount>(false),
                 ),
             ),
         );
@@ -204,7 +206,7 @@ impl FromWorld for TerrainChunkPipelines {
                     // mesh indices
                     storage_buffer::<Vec<u32>>(false),
                     // indices num
-                    storage_buffer::<u32>(false),
+                    storage_buffer::<TerrainChunkVerticesIndicesCount>(false),
                 ),
             ),
         );

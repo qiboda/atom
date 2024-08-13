@@ -1,8 +1,6 @@
 /// x 方向，
-#import quadric::{Quadric, quadric_default, probabilistic_plane_quadric, quadric_minimizer, quadric_add_quadric, quadric_residual_l2_error}
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR}
-#import terrain::voxel_utils::{get_voxel_edge_index, get_voxel_index, }
-#import terrain::seam_utils::{axis_base_offset, coord_convert_fns, get_voxel_internal_vertex_index, VOXEL_VERTEX_OFFSETS}
+#import terrain::voxel_type::{TerrainChunkInfo, TerrainChunkVerticesIndicesCount}
+#import terrain::seam_utils::{get_voxel_internal_vertex_index, VOXEL_VERTEX_OFFSETS}
 #import terrain::density_field::get_terrain_noise 
 #import terrain::voxel_type::{U32_MAX}
 
@@ -16,7 +14,7 @@ var<storage, read> mesh_vertex_map: array<u32>;
 var<storage, read_write> mesh_indices_data: array<u32>;
 
 @group(0) @binding(3)
-var<storage, read_write> mesh_indices_num: atomic<u32>;
+var<storage, read_write> mesh_indices_num: TerrainChunkVerticesIndicesCount;
 
 // 存储了mesh顶点的索引, 该结构体在array中，array的索引是体素的索引。
 //
@@ -202,7 +200,7 @@ fn compute_indices_on_axis(
     let index_3 = set_vertex_index_array(&mesh_vertex_index_array, mesh_vertex_index_2, index_2);
 
     if index_3 == 3 {
-        let mesh_indices_index = atomicAdd(&mesh_indices_num, 3u);
+        let mesh_indices_index = atomicAdd(&mesh_indices_num.indices_count, 3u);
 
         if vertex_value_0 >= 0.0 {
             mesh_indices_data[mesh_indices_index] = mesh_vertex_index_array[0];
@@ -214,7 +212,7 @@ fn compute_indices_on_axis(
             mesh_indices_data[mesh_indices_index + 2] = mesh_vertex_index_array[1] ;
         }
     } else if index_3 == 4 {
-        let mesh_indices_index = atomicAdd(&mesh_indices_num, 6u);
+        let mesh_indices_index = atomicAdd(&mesh_indices_num.indices_count, 6u);
 
         if vertex_value_0 >= 0.0 {
             mesh_indices_data[mesh_indices_index] = mesh_vertex_index_array[0];

@@ -46,6 +46,13 @@ pub struct TerrainChunkVertexInfo {
     pub vertex_normal_materials: Vec4,
 }
 
+#[repr(C)]
+#[derive(ShaderType, Default, Clone, Copy, Debug, Pod, Zeroable)]
+pub struct TerrainChunkVerticesIndicesCount {
+    pub vertices_count: u32,
+    pub indices_count: u32,
+}
+
 pub struct TerrainChunkMainBuffers {
     pub terrain_chunk_info_buffer: UniformBuffer<TerrainChunkInfo>,
     pub voxel_vertex_values_buffer: BufferVec<f32>,
@@ -56,8 +63,8 @@ pub struct TerrainChunkMainBuffers {
     pub mesh_vertices_buffer: staged_buffer::StagedBufferVec<TerrainChunkVertexInfo>,
     pub mesh_indices_buffer: staged_buffer::StagedBufferVec<u32>,
 
-    pub mesh_vertices_num_buffer: staged_buffer::StagedBuffer<u32>,
-    pub mesh_indices_num_buffer: staged_buffer::StagedBuffer<u32>,
+    pub mesh_vertices_indices_count_buffer:
+        staged_buffer::StagedBuffer<TerrainChunkVerticesIndicesCount>,
 }
 
 pub struct TerrainChunkMainBufferCreateContext<'a> {
@@ -87,12 +94,12 @@ impl TerrainChunkMainBuffers {
         self.terrain_chunk_info_buffer
             .write_buffer(context.render_device, context.render_queue);
 
-        self.mesh_vertices_num_buffer.set_value(0);
-        self.mesh_vertices_num_buffer
-            .write_buffer(context.render_device, context.render_queue);
-
-        self.mesh_indices_num_buffer.set_value(0);
-        self.mesh_indices_num_buffer
+        self.mesh_vertices_indices_count_buffer
+            .set_value(TerrainChunkVerticesIndicesCount {
+                vertices_count: 0,
+                indices_count: 0,
+            });
+        self.mesh_vertices_indices_count_buffer
             .write_buffer(context.render_device, context.render_queue);
     }
 
@@ -162,21 +169,17 @@ impl TerrainChunkMainBuffers {
             vertex_num * 18,
         );
 
-        let mesh_vertices_num_buffer = staged_buffer::StagedBuffer::<u32>::create_buffer(
-            context.render_device,
-            context.render_queue,
-            &format!("terrain chunk vertices num buffer {:?}", chunk_min),
-            BufferUsages::STORAGE,
-            0,
-        );
-
-        let mesh_indices_num_buffer = staged_buffer::StagedBuffer::<u32>::create_buffer(
-            context.render_device,
-            context.render_queue,
-            &format!("terrain chunk indices num buffer {:?}", chunk_min),
-            BufferUsages::STORAGE,
-            0,
-        );
+        let mesh_vertices_indices_count_buffer =
+            staged_buffer::StagedBuffer::<TerrainChunkVerticesIndicesCount>::create_buffer(
+                context.render_device,
+                context.render_queue,
+                &format!("terrain chunk vertices num buffer {:?}", chunk_min),
+                BufferUsages::STORAGE,
+                TerrainChunkVerticesIndicesCount {
+                    vertices_count: 0,
+                    indices_count: 0,
+                },
+            );
 
         Self {
             terrain_chunk_info_buffer,
@@ -185,23 +188,21 @@ impl TerrainChunkMainBuffers {
             mesh_vertex_map_buffer,
             mesh_vertices_buffer,
             mesh_indices_buffer,
-            mesh_vertices_num_buffer,
-            mesh_indices_num_buffer,
+            mesh_vertices_indices_count_buffer,
         }
     }
 
     pub fn stage_buffers(&self, command_encoder: &mut CommandEncoder) {
         self.mesh_vertices_buffer.stage_buffer(command_encoder);
         self.mesh_indices_buffer.stage_buffer(command_encoder);
-        self.mesh_vertices_num_buffer.stage_buffer(command_encoder);
-        self.mesh_indices_num_buffer.stage_buffer(command_encoder);
+        self.mesh_vertices_indices_count_buffer
+            .stage_buffer(command_encoder);
     }
 
     pub fn unmap(&self) {
         self.mesh_vertices_buffer.unmap();
         self.mesh_indices_buffer.unmap();
-        self.mesh_vertices_num_buffer.unmap();
-        self.mesh_indices_num_buffer.unmap();
+        self.mesh_vertices_indices_count_buffer.unmap();
     }
 }
 
@@ -255,8 +256,8 @@ pub struct TerrainChunkSeamBuffers {
     pub seam_mesh_vertices_buffer: staged_buffer::StagedBufferVec<TerrainChunkVertexInfo>,
     pub seam_mesh_indices_buffer: staged_buffer::StagedBufferVec<u32>,
 
-    pub seam_mesh_vertices_num_buffer: staged_buffer::StagedBuffer<u32>,
-    pub seam_mesh_indices_num_buffer: staged_buffer::StagedBuffer<u32>,
+    pub seam_mesh_vertices_indices_count_buffer:
+        staged_buffer::StagedBuffer<TerrainChunkVerticesIndicesCount>,
 }
 
 pub struct TerrainChunkSeamBufferCreateContext<'a> {
@@ -300,12 +301,12 @@ impl TerrainChunkSeamBuffers {
             context.terrain_chunk_address, voxel_size, voxel_num, add_lod
         );
 
-        self.seam_mesh_vertices_num_buffer.set_value(0);
-        self.seam_mesh_vertices_num_buffer
-            .write_buffer(context.render_device, context.render_queue);
-
-        self.seam_mesh_indices_num_buffer.set_value(0);
-        self.seam_mesh_indices_num_buffer
+        self.seam_mesh_vertices_indices_count_buffer
+            .set_value(TerrainChunkVerticesIndicesCount {
+                vertices_count: 0,
+                indices_count: 0,
+            });
+        self.seam_mesh_vertices_indices_count_buffer
             .write_buffer(context.render_device, context.render_queue);
     }
 
@@ -373,21 +374,17 @@ impl TerrainChunkSeamBuffers {
             total_voxel_num * 18,
         );
 
-        let seam_mesh_vertices_num_buffer = staged_buffer::StagedBuffer::<u32>::create_buffer(
-            context.render_device,
-            context.render_queue,
-            &format!("terrain chunk vertices num buffer {:?}", chunk_min),
-            BufferUsages::STORAGE,
-            0,
-        );
-
-        let seam_mesh_indices_num_buffer = staged_buffer::StagedBuffer::<u32>::create_buffer(
-            context.render_device,
-            context.render_queue,
-            &format!("terrain chunk indices num buffer {:?}", chunk_min),
-            BufferUsages::STORAGE,
-            0,
-        );
+        let seam_mesh_vertices_indices_count_buffer =
+            staged_buffer::StagedBuffer::<TerrainChunkVerticesIndicesCount>::create_buffer(
+                context.render_device,
+                context.render_queue,
+                &format!("terrain chunk vertices num buffer {:?}", chunk_min),
+                BufferUsages::STORAGE,
+                TerrainChunkVerticesIndicesCount {
+                    vertices_count: 0,
+                    indices_count: 0,
+                },
+            );
 
         Self {
             terrain_chunk_info_buffer,
@@ -395,25 +392,21 @@ impl TerrainChunkSeamBuffers {
             seam_mesh_vertex_map_buffer,
             seam_mesh_vertices_buffer,
             seam_mesh_indices_buffer,
-            seam_mesh_vertices_num_buffer,
-            seam_mesh_indices_num_buffer,
+            seam_mesh_vertices_indices_count_buffer,
         }
     }
 
     pub fn stage_buffers(&self, command_encoder: &mut CommandEncoder) {
         self.seam_mesh_vertices_buffer.stage_buffer(command_encoder);
         self.seam_mesh_indices_buffer.stage_buffer(command_encoder);
-        self.seam_mesh_vertices_num_buffer
-            .stage_buffer(command_encoder);
-        self.seam_mesh_indices_num_buffer
+        self.seam_mesh_vertices_indices_count_buffer
             .stage_buffer(command_encoder);
     }
 
     pub fn unmap(&self) {
         self.seam_mesh_vertices_buffer.unmap();
         self.seam_mesh_indices_buffer.unmap();
-        self.seam_mesh_vertices_num_buffer.unmap();
-        self.seam_mesh_indices_num_buffer.unmap();
+        self.seam_mesh_vertices_indices_count_buffer.unmap();
     }
 }
 

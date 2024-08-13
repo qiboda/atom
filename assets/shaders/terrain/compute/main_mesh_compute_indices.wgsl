@@ -1,4 +1,4 @@
-#import terrain::voxel_type::{TerrainChunkInfo}
+#import terrain::voxel_type::{TerrainChunkInfo, TerrainChunkVerticesIndicesCount}
 #import terrain::voxel_utils::{get_voxel_vertex_index, get_voxel_index}
 
 @group(0) @binding(0)
@@ -14,7 +14,7 @@ var<storage, read> mesh_vertex_map: array<u32>;
 var<storage, read_write> mesh_indices_data: array<u32>;
 
 @group(0) @binding(4)
-var<storage, read_write> mesh_indices_num: atomic<u32>;
+var<storage, read_write> mesh_indices_num: TerrainChunkVerticesIndicesCount;
 
 // Vertex and Edge Index Map
 //
@@ -95,7 +95,7 @@ fn compute_indices_on_axis(
     let mesh_vertex_index_2 = mesh_vertex_map[voxel_index_2];
     let mesh_vertex_index_3 = mesh_vertex_map[voxel_index_3];
 
-    let mesh_indices_index = atomicAdd(&mesh_indices_num, 6u);
+    let mesh_indices_index = atomicAdd(&mesh_indices_num.indices_count, 6u);
 
     if vertex_value_0 >= 0.0 {
         mesh_indices_data[mesh_indices_index] = mesh_vertex_index_0;

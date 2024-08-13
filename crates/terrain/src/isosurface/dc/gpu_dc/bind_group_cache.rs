@@ -77,7 +77,7 @@ impl TerrainChunkMainBindGroups {
                 context.buffers.mesh_vertex_map_buffer.binding().unwrap(),
                 context
                     .buffers
-                    .mesh_vertices_num_buffer
+                    .mesh_vertices_indices_count_buffer
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),
@@ -103,7 +103,7 @@ impl TerrainChunkMainBindGroups {
                     .unwrap(),
                 context
                     .buffers
-                    .mesh_indices_num_buffer
+                    .mesh_vertices_indices_count_buffer
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),
@@ -187,7 +187,7 @@ impl TerrainChunkSeamBindGroups {
                     .unwrap(),
                 context
                     .buffers
-                    .seam_mesh_vertices_num_buffer
+                    .seam_mesh_vertices_indices_count_buffer
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),
@@ -212,7 +212,7 @@ impl TerrainChunkSeamBindGroups {
                     .unwrap(),
                 context
                     .buffers
-                    .seam_mesh_indices_num_buffer
+                    .seam_mesh_vertices_indices_count_buffer
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),

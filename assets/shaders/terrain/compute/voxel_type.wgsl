@@ -32,13 +32,12 @@ struct VoxelEdgeCrossPoint {
     normal_material_index: vec4<f32>,
 }
 
-
 struct TerrainChunkVertexInfo {
     location: vec4<f32>,
     normal_materials: vec4<f32>,
 }
 
-struct TerrainChunkVertexInfo {
-    location: vec4<f32>,
-    normal_materials: vec4<f32>,
+struct TerrainChunkVerticesIndicesCount {
+    vertices_count: atomic<u32>,
+    indices_count: atomic<u32>
 }
