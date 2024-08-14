@@ -23,11 +23,11 @@ use super::{
             TerrainChunkNeighborLodNodes, TerrainChunkSeamLod, TerrainChunkState,
         },
     },
-    chunk_loader::TerrainChunkLoaderPlugin,
-    chunk_mapper::{
+    chunk_event::{
         trigger_chunk_load_event, trigger_chunk_reload_event, trigger_chunk_unload_event,
-        TerrainChunkMapper,
     },
+    chunk_loader::TerrainChunkLoaderPlugin,
+    chunk_mapper::TerrainChunkMapper,
     TerrainChunkSystemSet,
 };
 

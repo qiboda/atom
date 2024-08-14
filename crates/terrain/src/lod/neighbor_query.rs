@@ -153,9 +153,9 @@ pub fn get_vertex_neighbor_lod_octree_nodes<'a>(
         }
     }
     if nodes.is_empty().not() {
-        let mut lods = HashSet::new();
-        nodes.iter().all(|node| lods.insert(node.code.level()));
-        assert!(lods.len() <= 2);
+        let mut lod_set = HashSet::new();
+        nodes.iter().all(|node| lod_set.insert(node.code.level()));
+        assert!(lod_set.len() <= 2);
     }
     nodes
 }
@@ -191,9 +191,9 @@ pub fn get_edge_neighbor_lod_octree_nodes<'a>(
         }
     }
     if nodes.is_empty().not() {
-        let mut lods = HashSet::new();
-        nodes.iter().all(|node| lods.insert(node.code.level()));
-        assert!(lods.len() <= 2);
+        let mut lod_set = HashSet::new();
+        nodes.iter().all(|node| lod_set.insert(node.code.level()));
+        assert!(lod_set.len() <= 2);
     }
     nodes
 }
@@ -229,9 +229,9 @@ pub fn get_face_neighbor_lod_octree_nodes<'a>(
     }
 
     if nodes.is_empty().not() {
-        let mut lods = HashSet::new();
-        nodes.iter().all(|node| lods.insert(node.code.level()));
-        assert!(lods.len() <= 2);
+        let mut lod_set = HashSet::new();
+        nodes.iter().all(|node| lod_set.insert(node.code.level()));
+        assert!(lod_set.len() <= 2);
     }
     nodes
 }

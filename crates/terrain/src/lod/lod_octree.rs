@@ -5,6 +5,7 @@ use atom_utils::swap_data::{SwapData, SwapDataTakeTrait, SwapDataTrait};
 use bevy::{
     math::{bounding::Aabb3d, Vec3A},
     prelude::*,
+    render::primitives::Frustum,
     utils::HashSet,
 };
 use bevy_console::{clap::Parser, AddConsoleCommand, ConsoleCommand};
@@ -19,6 +20,8 @@ use super::morton_code::MortonCode;
 
 pub type ObserverLocations = smallvec::SmallVec<[Vec3A; 1]>;
 pub type LodOctreeLevelType = u8;
+pub type ObserverFrustums = smallvec::SmallVec<[Frustum; 1]>;
+pub type ObserverGlobalTransforms = smallvec::SmallVec<[GlobalTransform; 1]>;
 
 #[derive(Debug, Default)]
 pub struct TerrainLodOctreePlugin;
@@ -161,8 +164,6 @@ pub fn update_terrain_lod_octree(
     terrain_setting: Res<TerrainSetting>,
     observer_query: Query<&GlobalTransform, With<TerrainObserver>>,
 ) {
-    // let _span = info_span!("update_terrain_lod_octree").entered();
-
     // 可能扩大，但不会缩小，为了支持热更新。避免没有删除chunk。
     let lod_octree_depth = terrain_setting.get_lod_octree_depth();
     let max_level = lod_octree_depth;
