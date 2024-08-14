@@ -10,9 +10,8 @@ use tracing::{error, info};
 use wgpu::PrimitiveTopology;
 
 use crate::{
-    chunk_mgr::chunk::{
-        chunk_aabb::TerrainChunkAabb,
-        state::{TerrainChunkAddress, TerrainChunkSeamLod, TerrainChunkState},
+    chunk_mgr::chunk::comp::{
+        TerrainChunkAabb, TerrainChunkAddress, TerrainChunkSeamLod, TerrainChunkState,
     },
     isosurface::{
         dc::gpu_dc::buffer_cache::{TerrainChunkInfo, VoxelEdgeCrossPoint},
@@ -1653,9 +1652,9 @@ pub fn create_seam_mesh(
 
         let chunk_min = aabb.min;
         let add_lod = seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
-        let level = address.0.level() + add_lod[0];
-        let voxel_size = terrain_setting.get_voxel_size(level);
-        let chunk_size = terrain_setting.get_chunk_size(level - add_lod[0]);
+        let depth = address.0.depth() + add_lod[0];
+        let voxel_size = terrain_setting.get_voxel_size(depth);
+        let chunk_size = terrain_setting.get_chunk_size(depth - add_lod[0]);
         let voxel_num = (chunk_size / voxel_size).round() as usize;
 
         let terrain_chunk_info = TerrainChunkInfo {

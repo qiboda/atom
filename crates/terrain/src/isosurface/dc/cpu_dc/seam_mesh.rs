@@ -6,12 +6,9 @@ use strum::IntoEnumIterator;
 
 use crate::{
     chunk_mgr::{
-        chunk::{
-            chunk_aabb::TerrainChunkAabb,
-            state::{
-                TerrainChunkAddress, TerrainChunkBorderVertices, TerrainChunkNeighborLodNodes,
-                TerrainChunkSeamLod, TerrainChunkState,
-            },
+        chunk::comp::{
+            TerrainChunkAabb, TerrainChunkAddress, TerrainChunkBorderVertices,
+            TerrainChunkNeighborLodNodes, TerrainChunkSeamLod, TerrainChunkState,
         },
         chunk_mapper::TerrainChunkMapper,
     },
@@ -104,7 +101,7 @@ pub(crate) fn create_seam_mesh(
 
         let seam_chunk_min = current_chunk_aabb.min;
         let add_lod = seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
-        let seam_chunk_lod_depth = address.0.level() + add_lod[0];
+        let seam_chunk_lod_depth = address.0.depth() + add_lod[0];
         let seam_voxel_size = terrain_setting.get_voxel_size(seam_chunk_lod_depth);
         let seam_chunk_size =
             terrain_setting.get_chunk_size(seam_chunk_lod_depth - add_lod[0]) * 2.0;

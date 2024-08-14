@@ -2,7 +2,7 @@ use bevy::{prelude::*, render::extract_resource::ExtractResource};
 use serde::{Deserialize, Serialize};
 use settings::{Setting, SettingValidate};
 
-use crate::lod::{lod_octree::LodOctreeLevelType, morton_code::MortonCode};
+use crate::lod::{lod_octree::LodOctreeDepthType, morton_code::MortonCode};
 
 #[derive(
     Setting, Resource, Debug, Clone, Serialize, Deserialize, TypePath, Asset, ExtractResource,
@@ -19,7 +19,7 @@ pub struct TerrainSetting {
     /// qef solver的单位标准差
     pub qef_stddev: f32,
     /// lod octree depth
-    lod_octree_depth: LodOctreeLevelType,
+    lod_octree_depth: LodOctreeDepthType,
 }
 
 impl SettingValidate for TerrainSetting {
@@ -62,11 +62,11 @@ impl TerrainSetting {
         self.get_chunk_size(0)
     }
 
-    pub fn get_lod_octree_depth(&self) -> LodOctreeLevelType {
+    pub fn get_lod_octree_depth(&self) -> LodOctreeDepthType {
         self.lod_octree_depth
     }
 
-    pub fn get_chunk_size(&self, level: LodOctreeLevelType) -> f32 {
+    pub fn get_chunk_size(&self, level: LodOctreeDepthType) -> f32 {
         assert!(self.lod_octree_depth >= level);
         let lod = self.lod_octree_depth - level;
         self.chunk_size * 2.0f32.powi(lod as i32)
@@ -80,7 +80,7 @@ impl TerrainSetting {
         self.chunk_size / self.get_voxel_num_in_chunk() as f32
     }
 
-    pub fn get_voxel_size(&self, level: LodOctreeLevelType) -> f32 {
+    pub fn get_voxel_size(&self, level: LodOctreeDepthType) -> f32 {
         assert!(self.lod_octree_depth >= level);
         let lod = self.lod_octree_depth - level;
         self.get_default_voxel_size() * 2.0f32.powi(lod as i32)

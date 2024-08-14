@@ -2,13 +2,13 @@ use bevy::math::bounding::BoundingVolume;
 use bevy::math::Vec3A;
 use bevy::prelude::*;
 
-use crate::chunk_mgr::chunk::chunk_aabb::TerrainChunkAabb;
+use crate::chunk_mgr::chunk::comp::TerrainChunkAabb;
 
 use crate::chunk_mgr::chunk::bundle::TerrainChunkBundle;
 
 use crate::lod::lod_octree::{TerrainLodOctree, TerrainLodOctreeNode};
 
-use crate::chunk_mgr::chunk::state::{TerrainChunkSeamLod, TerrainChunkState};
+use crate::chunk_mgr::chunk::comp::{TerrainChunkSeamLod, TerrainChunkState};
 use crate::lod::neighbor_query::{
     get_edge_neighbor_lod_octree_nodes, get_face_neighbor_lod_octree_nodes,
     get_vertex_neighbor_lod_octree_nodes,
@@ -16,7 +16,7 @@ use crate::lod::neighbor_query::{
 use crate::tables::{EdgeIndex, FaceIndex, SubNodeIndex, VertexIndex};
 
 use super::chunk::bundle::TerrainChunk;
-use super::chunk::state::{TerrainChunkAddress, TerrainChunkNeighborLodNodes};
+use super::chunk::comp::{TerrainChunkAddress, TerrainChunkNeighborLodNodes};
 use super::chunk_loader::{
     TerrainChunkLoadEvent, TerrainChunkReloadEvent, TerrainChunkUnLoadEvent,
 };
@@ -198,14 +198,14 @@ pub(crate) fn get_node_seam_lod(
             lod[index.to_index()][6] = lod[0][6];
             lod[index.to_index()][7] = lod[0][7];
         } else {
-            lod[index.to_index()][0] = x[0].code.level();
-            lod[index.to_index()][1] = x[0].code.level();
-            lod[index.to_index()][2] = x[0].code.level();
-            lod[index.to_index()][3] = x[0].code.level();
-            lod[index.to_index()][4] = x[0].code.level();
-            lod[index.to_index()][5] = x[0].code.level();
-            lod[index.to_index()][6] = x[0].code.level();
-            lod[index.to_index()][7] = x[0].code.level();
+            lod[index.to_index()][0] = x[0].code.depth();
+            lod[index.to_index()][1] = x[0].code.depth();
+            lod[index.to_index()][2] = x[0].code.depth();
+            lod[index.to_index()][3] = x[0].code.depth();
+            lod[index.to_index()][4] = x[0].code.depth();
+            lod[index.to_index()][5] = x[0].code.depth();
+            lod[index.to_index()][6] = x[0].code.depth();
+            lod[index.to_index()][7] = x[0].code.depth();
             if x.len() > 1 {
                 let offset = index.to_array().map(|x| x as f32);
                 let offset = Vec3A::new(offset[0], offset[1], offset[2]);
@@ -220,7 +220,7 @@ pub(crate) fn get_node_seam_lod(
                         sub_index, min_location, half_size, offset
                     );
                     if sub_index < 8 {
-                        lod[index.to_index()][sub_index] = node.code.level();
+                        lod[index.to_index()][sub_index] = node.code.depth();
                     }
                 }
             }
@@ -231,14 +231,14 @@ pub(crate) fn get_node_seam_lod(
 
     // 每个sub node的两个lod
     let mut lod = [[0; 8]; 8];
-    lod[0][0] = current_node.code.level();
-    lod[0][1] = current_node.code.level();
-    lod[0][2] = current_node.code.level();
-    lod[0][3] = current_node.code.level();
-    lod[0][4] = current_node.code.level();
-    lod[0][5] = current_node.code.level();
-    lod[0][6] = current_node.code.level();
-    lod[0][7] = current_node.code.level();
+    lod[0][0] = current_node.code.depth();
+    lod[0][1] = current_node.code.depth();
+    lod[0][2] = current_node.code.depth();
+    lod[0][3] = current_node.code.depth();
+    lod[0][4] = current_node.code.depth();
+    lod[0][5] = current_node.code.depth();
+    lod[0][6] = current_node.code.depth();
+    lod[0][7] = current_node.code.depth();
 
     neighbor_lod_nodes.nodes[SubNodeIndex::X0Y0Z0.to_index()] = vec![current_node.clone()];
 

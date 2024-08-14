@@ -40,11 +40,9 @@ use crate::isosurface::dc::gpu_dc::{
 };
 
 use crate::{
-    chunk_mgr::chunk::{
-        chunk_aabb::TerrainChunkAabb,
-        state::{
-            TerrainChunkAddress, TerrainChunkBorderVertices, TerrainChunkSeamLod, TerrainChunkState,
-        },
+    chunk_mgr::chunk::comp::{
+        TerrainChunkAabb, TerrainChunkAddress, TerrainChunkBorderVertices, TerrainChunkSeamLod,
+        TerrainChunkState,
     },
     isosurface::{
         dc::gpu_dc::buffer_cache::{TerrainChunkMainBufferCreateContext, TerrainChunkMainBuffers},
@@ -602,7 +600,7 @@ fn map_and_read_buffer(
                 #[cfg(feature = "cpu_seam")]
                 {
                     let chunk_min = aabb.0.min;
-                    let level = address.0.level();
+                    let level = address.0.depth();
                     let voxel_size = terrain_setting.get_voxel_size(level);
                     let mut border_vertices = TerrainChunkBorderVertices {
                         vertices: vertices

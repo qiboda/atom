@@ -7,7 +7,7 @@ use bevy::{
     utils::HashMap,
 };
 
-use crate::chunk_mgr::chunk::chunk_aabb::TerrainChunkAabb;
+use crate::chunk_mgr::chunk::comp::TerrainChunkAabb;
 
 use super::{
     buffer_cache::{TerrainChunkMainBuffers, TerrainChunkSeamBuffers, TerrainChunkSeamKey},

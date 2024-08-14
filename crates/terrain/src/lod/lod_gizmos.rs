@@ -67,7 +67,7 @@ fn draw_lod_octree_voxel(
                     rotation: Quat::IDENTITY,
                     scale: (node.aabb.half_size() * 2.0).into(),
                 },
-                match node.code.level() {
+                match node.code.depth() {
                     0 => LinearRgba::BLACK,
                     1 => LinearRgba::RED,
                     2 => LinearRgba::GREEN,

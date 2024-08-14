@@ -1,4 +1,4 @@
-use crate::chunk_mgr::chunk::state::TerrainChunkAddress;
+use crate::chunk_mgr::chunk::comp::TerrainChunkAddress;
 use bevy::{prelude::*, render::extract_resource::ExtractResource, utils::HashMap};
 
 #[derive(Debug, Resource, Default, ExtractResource, Clone)]

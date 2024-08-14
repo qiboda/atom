@@ -1,13 +1,23 @@
 use autoincrement::{AutoIncrement, Incremental};
 use bevy::math::bounding::Aabb3d;
+use bevy::math::Vec3A;
 use bevy::{prelude::*, render::extract_component::ExtractComponent};
 use bitflags::bitflags;
 use strum::EnumCount;
 
 use crate::isosurface::dc::gpu_dc::buffer_cache::TerrainChunkVertexInfo;
-use crate::lod::lod_octree::{LodOctreeLevelType, TerrainLodOctreeNode};
+use crate::lod::lod_octree::{LodOctreeDepthType, TerrainLodOctreeNode};
 use crate::lod::morton_code::MortonCode;
 use crate::tables::{AxisType, SubNodeIndex};
+
+#[derive(Debug, Component, Reflect, Clone, ExtractComponent, Copy, Deref, DerefMut)]
+pub struct TerrainChunkAabb(pub Aabb3d);
+
+impl Default for TerrainChunkAabb {
+    fn default() -> Self {
+        Self(Aabb3d::new(Vec3A::ZERO, Vec3A::ZERO))
+    }
+}
 
 #[derive(Debug, Component, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord, ExtractComponent)]
 pub struct TerrainChunkState(u8);
@@ -94,10 +104,10 @@ pub struct TerrainChunkBorderVertices {
 #[derive(
     Debug, PartialEq, Eq, Hash, Clone, Copy, Component, Default, Deref, DerefMut, ExtractComponent,
 )]
-pub struct TerrainChunkSeamLod(pub [[LodOctreeLevelType; 8]; 8]);
+pub struct TerrainChunkSeamLod(pub [[LodOctreeDepthType; 8]; 8]);
 
 impl TerrainChunkSeamLod {
-    pub fn get_lod(&self, subnode_index: SubNodeIndex) -> &[LodOctreeLevelType; 8] {
+    pub fn get_lod(&self, subnode_index: SubNodeIndex) -> &[LodOctreeDepthType; 8] {
         &self.0[subnode_index.to_index()]
     }
 

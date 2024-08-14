@@ -64,15 +64,15 @@ impl MortonCodeNeighbor for MortonCode {
         let current_xyz = self.decode();
         let neighbor_xyz = MortonCode::get_neighbor_face_grid_index(current_xyz, face_index);
         if neighbor_xyz.x == u32::MAX
-            || neighbor_xyz.x >= (1 << self.level())
+            || neighbor_xyz.x >= (1 << self.depth())
             || neighbor_xyz.y == u32::MAX
-            || neighbor_xyz.y >= (1 << self.level())
+            || neighbor_xyz.y >= (1 << self.depth())
             || neighbor_xyz.z == u32::MAX
-            || neighbor_xyz.z >= (1 << self.level())
+            || neighbor_xyz.z >= (1 << self.depth())
         {
             return Err(MortonCodeError::CellIndexOutOfRange);
         }
-        Ok(MortonCode::encode(neighbor_xyz, self.level()))
+        Ok(MortonCode::encode(neighbor_xyz, self.depth()))
     }
 
     fn get_neighbor_edge_morton_code(
@@ -83,16 +83,16 @@ impl MortonCodeNeighbor for MortonCode {
         for face_index in NEIGHBOR_NODE_IN_EDGE[edge_index.to_index()] {
             current_xyz = MortonCode::get_neighbor_face_grid_index(current_xyz, face_index);
             if current_xyz.x == u32::MAX
-                || current_xyz.x >= (1 << self.level())
+                || current_xyz.x >= (1 << self.depth())
                 || current_xyz.y == u32::MAX
-                || current_xyz.y >= (1 << self.level())
+                || current_xyz.y >= (1 << self.depth())
                 || current_xyz.z == u32::MAX
-                || current_xyz.z >= (1 << self.level())
+                || current_xyz.z >= (1 << self.depth())
             {
                 return Err(MortonCodeError::CellIndexOutOfRange);
             }
         }
-        Ok(MortonCode::encode(current_xyz, self.level()))
+        Ok(MortonCode::encode(current_xyz, self.depth()))
     }
 
     fn get_neighbor_vertex_morton_code(
@@ -103,16 +103,16 @@ impl MortonCodeNeighbor for MortonCode {
         for face_index in NEIGHBOR_NODE_IN_VERTEX[vertex_index.to_index()] {
             current_xyz = MortonCode::get_neighbor_face_grid_index(current_xyz, face_index);
             if current_xyz.x == u32::MAX
-                || current_xyz.x >= (1 << self.level())
+                || current_xyz.x >= (1 << self.depth())
                 || current_xyz.y == u32::MAX
-                || current_xyz.y >= (1 << self.level())
+                || current_xyz.y >= (1 << self.depth())
                 || current_xyz.z == u32::MAX
-                || current_xyz.z >= (1 << self.level())
+                || current_xyz.z >= (1 << self.depth())
             {
                 return Err(MortonCodeError::CellIndexOutOfRange);
             }
         }
-        Ok(MortonCode::encode(current_xyz, self.level()))
+        Ok(MortonCode::encode(current_xyz, self.depth()))
     }
 
     fn get_children_morton_code_by_face(&self, face_index: FaceIndex) -> Vec<MortonCode> {
@@ -162,7 +162,7 @@ mod tests {
         let morton_code = MortonCode::encode([0, 0, 0].into(), 0);
         let children = morton_code.get_children_morton_code_by_vertex(VertexIndex::X0Y0Z0);
         assert_eq!(children.len(), 1);
-        assert_eq!(children[0].level(), 1);
+        assert_eq!(children[0].depth(), 1);
         assert_eq!(children[0].decode(), UVec3::new(0, 0, 0));
     }
 
@@ -171,8 +171,8 @@ mod tests {
         let morton_code = MortonCode::encode([0, 0, 0].into(), 0);
         let children = morton_code.get_children_morton_code_by_edge(EdgeIndex::XAxisY0Z0);
         assert_eq!(children.len(), 2);
-        assert_eq!(children[0].level(), 1);
-        assert_eq!(children[1].level(), 1);
+        assert_eq!(children[0].depth(), 1);
+        assert_eq!(children[1].depth(), 1);
         assert_eq!(children[0].decode(), UVec3::new(0, 0, 0));
         assert_eq!(children[1].decode(), UVec3::new(1, 0, 0));
     }
@@ -197,10 +197,10 @@ mod tests {
         let morton_code = MortonCode::encode([0, 0, 0].into(), 0);
         let children = morton_code.get_children_morton_code_by_face(FaceIndex::Left);
         assert_eq!(children.len(), 4);
-        assert_eq!(children[0].level(), 1);
-        assert_eq!(children[1].level(), 1);
-        assert_eq!(children[2].level(), 1);
-        assert_eq!(children[3].level(), 1);
+        assert_eq!(children[0].depth(), 1);
+        assert_eq!(children[1].depth(), 1);
+        assert_eq!(children[2].depth(), 1);
+        assert_eq!(children[3].depth(), 1);
         assert_eq!(children[0].decode(), UVec3::new(0, 0, 0));
         assert_eq!(children[1].decode(), UVec3::new(0, 1, 0));
         assert_eq!(children[2].decode(), UVec3::new(0, 0, 1));
@@ -268,14 +268,14 @@ mod tests {
         let children = morton_code
             .get_neighbor_edge_morton_code(EdgeIndex::YAxisX1Z0)
             .unwrap();
-        assert_eq!(children.level(), 4);
+        assert_eq!(children.depth(), 4);
         assert_eq!(children.decode(), UVec3::new(4, 4, 5));
 
         let morton_code = MortonCode::encode([3, 4, 6].into(), 4);
         let nei = morton_code
             .get_neighbor_edge_morton_code(EdgeIndex::YAxisX0Z0)
             .unwrap();
-        assert_eq!(nei.level(), 4);
+        assert_eq!(nei.depth(), 4);
         assert_eq!(nei.decode(), UVec3::new(2, 4, 5));
 
         let children = nei.get_children_morton_code_by_edge(EdgeIndex::YAxisX0Z0);
@@ -297,7 +297,7 @@ mod tests {
         let children = morton_code
             .get_neighbor_vertex_morton_code(VertexIndex::X1Y0Z0)
             .unwrap();
-        assert_eq!(children.level(), 4);
+        assert_eq!(children.depth(), 4);
         assert_eq!(children.decode(), UVec3::new(4, 3, 5));
     }
 

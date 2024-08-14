@@ -19,7 +19,7 @@ use crate::{
 use super::morton_code::MortonCode;
 
 pub type ObserverLocations = smallvec::SmallVec<[Vec3A; 1]>;
-pub type LodOctreeLevelType = u8;
+pub type LodOctreeDepthType = u8;
 pub type ObserverFrustums = smallvec::SmallVec<[Frustum; 1]>;
 pub type ObserverGlobalTransforms = smallvec::SmallVec<[GlobalTransform; 1]>;
 
@@ -151,7 +151,7 @@ pub struct TerrainLodOctree {
 
 impl TerrainLodOctree {
     pub fn get_node(&self, code: &MortonCode) -> Option<&TerrainLodOctreeNode> {
-        let level = code.level() as usize;
+        let level = code.depth() as usize;
         if level >= self.octree_levels.len() {
             return None;
         }
@@ -214,7 +214,7 @@ pub fn update_terrain_lod_octree(
         for node in can_divide_nodes_data.take_last().iter() {
             for subnode_index in SubNodeIndex::iter() {
                 let child_node = node.get_child_node(subnode_index);
-                assert_eq!(level, child_node.code.level());
+                assert_eq!(level, child_node.code.depth());
                 let can_divide = can_divide_node(
                     &child_node,
                     level,
@@ -240,7 +240,7 @@ pub fn update_terrain_lod_octree(
 
 fn can_divide_node(
     node: &TerrainLodOctreeNode,
-    current_level: LodOctreeLevelType,
+    current_level: LodOctreeDepthType,
     node_aabb: Aabb3d,
     observer_locations: &ObserverLocations,
     setting: &Res<TerrainSetting>,
@@ -270,14 +270,14 @@ fn can_divide(
         let distance = (closest_point - *observer_location).length().max(1.0);
         let distance = distance / setting.chunk_size;
         // 更小才能细分
-        let clipmap_lod = distance.log(2.0) as LodOctreeLevelType;
+        let clipmap_lod = distance.log(2.0) as LodOctreeDepthType;
         // 避免过大，导致overflow，出bug。
         let clipmap_lod = clipmap_lod.min(setting.get_lod_octree_depth());
         let clipmap_depth = setting.get_lod_octree_depth() - clipmap_lod;
         max_depth = max_depth.max(clipmap_depth);
     }
     // 更大才能细分
-    node.code.level < max_depth
+    node.code.depth < max_depth
 }
 
 #[derive(Parser, ConsoleCommand)]

@@ -8,7 +8,7 @@ use bevy::{
 };
 
 use crate::{
-    chunk_mgr::chunk::state::{TerrainChunkAddress, TerrainChunkSeamLod},
+    chunk_mgr::chunk::comp::{TerrainChunkAddress, TerrainChunkSeamLod},
     setting::TerrainSetting,
 };
 
@@ -212,9 +212,9 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                         // let voxel_num =
                         //     terrain_setting.get_voxel_num_in_chunk() * 2usize.pow(max_lod as u32);
                         let add_lod = seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
-                        let level = address.0.level();
-                        let voxel_size = terrain_setting.get_voxel_size(level + add_lod[0]);
-                        let chunk_size = terrain_setting.get_chunk_size(level);
+                        let depth = address.0.depth();
+                        let voxel_size = terrain_setting.get_voxel_size(depth + add_lod[0]);
+                        let chunk_size = terrain_setting.get_chunk_size(depth);
 
                         let voxel_num = (chunk_size / voxel_size).round();
                         let workgroup_size = voxel_num as u32;

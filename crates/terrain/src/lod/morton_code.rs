@@ -5,7 +5,7 @@ use crate::tables::SubNodeIndex;
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Copy, Default)]
 pub struct MortonCode {
     pub code: u64,
-    pub level: u8,
+    pub depth: u8,
 }
 
 impl MortonCode {
@@ -18,7 +18,7 @@ impl MortonCode {
     }
 
     pub fn from_raw(code: u64, level: u8) -> MortonCode {
-        Self { code, level }
+        Self { code, depth: level }
     }
 
     pub fn encode(grid: UVec3, level: u8) -> MortonCode {
@@ -42,7 +42,7 @@ impl MortonCode {
 
         Self {
             code: answer,
-            level,
+            depth: level,
         }
     }
 
@@ -65,12 +65,12 @@ impl MortonCode {
         UVec3::new(x, y, z)
     }
 
-    pub fn level(&self) -> u8 {
-        self.level
+    pub fn depth(&self) -> u8 {
+        self.depth
     }
 
     pub fn child(&self, index: SubNodeIndex) -> Option<MortonCode> {
-        if self.level >= MortonCode::MAX_LEVEL {
+        if self.depth >= MortonCode::MAX_LEVEL {
             return None;
         }
         let grid = self.decode();
@@ -81,11 +81,11 @@ impl MortonCode {
                 index_array[1] as u32,
                 index_array[2] as u32,
             );
-        Some(MortonCode::encode(grid, self.level() + 1))
+        Some(MortonCode::encode(grid, self.depth() + 1))
     }
 
     pub fn children(&self) -> Option<[MortonCode; 8]> {
-        if self.level >= MortonCode::MAX_LEVEL {
+        if self.depth >= MortonCode::MAX_LEVEL {
             return None;
         }
 
@@ -101,31 +101,31 @@ impl MortonCode {
         let grid_111: UVec3 = grid + UVec3::new(1, 1, 1);
 
         Some([
-            MortonCode::encode(grid_000, self.level() + 1),
-            MortonCode::encode(grid_001, self.level() + 1),
-            MortonCode::encode(grid_010, self.level() + 1),
-            MortonCode::encode(grid_011, self.level() + 1),
-            MortonCode::encode(grid_100, self.level() + 1),
-            MortonCode::encode(grid_101, self.level() + 1),
-            MortonCode::encode(grid_110, self.level() + 1),
-            MortonCode::encode(grid_111, self.level() + 1),
+            MortonCode::encode(grid_000, self.depth() + 1),
+            MortonCode::encode(grid_001, self.depth() + 1),
+            MortonCode::encode(grid_010, self.depth() + 1),
+            MortonCode::encode(grid_011, self.depth() + 1),
+            MortonCode::encode(grid_100, self.depth() + 1),
+            MortonCode::encode(grid_101, self.depth() + 1),
+            MortonCode::encode(grid_110, self.depth() + 1),
+            MortonCode::encode(grid_111, self.depth() + 1),
         ])
     }
 
     pub fn parent(&self) -> Option<MortonCode> {
-        if self.level() >= 1 {
+        if self.depth() >= 1 {
             let grid = self.decode();
             let grid = grid >> 1;
-            Some(MortonCode::encode(grid, self.level() - 1))
+            Some(MortonCode::encode(grid, self.depth() - 1))
         } else {
             None
         }
     }
 
     pub fn morton_code_on_level(&self, level: u8) -> Option<MortonCode> {
-        if level <= self.level {
+        if level <= self.depth {
             let grid = self.decode();
-            let grid = grid >> (self.level - level);
+            let grid = grid >> (self.depth - level);
             Some(MortonCode::encode(grid, level))
         } else {
             None

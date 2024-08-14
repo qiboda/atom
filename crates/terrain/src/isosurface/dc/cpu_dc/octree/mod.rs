@@ -10,7 +10,7 @@ use bevy::{
 use ndshape::Shape;
 
 use crate::{
-    chunk_mgr::chunk::state::TerrainChunkBorderVertices,
+    chunk_mgr::chunk::comp::TerrainChunkBorderVertices,
     lod::morton_code::MortonCode,
     tables::{SubNodeIndex, VertexIndex},
     utils::OctreeUtil,
@@ -74,7 +74,7 @@ impl Octree {
     }
 
     pub fn get_node(&self, address: &MortonCode) -> Option<&Node> {
-        let level = address.level() as usize;
+        let level = address.depth() as usize;
         if self.levels.len() <= level {
             return None;
         }
@@ -82,7 +82,7 @@ impl Octree {
     }
 
     pub fn insert_leaf_node(&mut self, node: Node) {
-        let level = node.address.level() as usize;
+        let level = node.address.depth() as usize;
         if self.levels.len() <= level {
             return;
         }

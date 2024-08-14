@@ -1,11 +1,8 @@
 use bevy::prelude::*;
 
-use super::{
-    chunk_aabb::TerrainChunkAabb,
-    state::{
-        TerrainChunkAddress, TerrainChunkMeshEntities, TerrainChunkNeighborLodNodes,
-        TerrainChunkSeamLod, TerrainChunkState,
-    },
+use super::comp::{
+    TerrainChunkAabb, TerrainChunkAddress, TerrainChunkMeshEntities, TerrainChunkNeighborLodNodes,
+    TerrainChunkSeamLod, TerrainChunkState,
 };
 
 #[derive(Bundle)]

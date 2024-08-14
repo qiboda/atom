@@ -12,7 +12,7 @@ use strum::EnumCount;
 use wgpu_types::BufferUsages;
 
 use crate::{
-    chunk_mgr::chunk::state::{TerrainChunkAddress, TerrainChunkSeamLod},
+    chunk_mgr::chunk::comp::{TerrainChunkAddress, TerrainChunkSeamLod},
     isosurface::voxel::VoxelMaterialType,
     setting::TerrainSetting,
     tables::SubNodeIndex,
@@ -110,7 +110,7 @@ pub struct TerrainChunkMainBufferCreateContext<'a> {
 
 impl TerrainChunkMainBuffers {
     pub fn update_buffers_reuse_info(&mut self, context: TerrainChunkMainBufferCreateContext) {
-        let level = context.terrain_chunk_address.0.level();
+        let level = context.terrain_chunk_address.0.depth();
         let chunk_size = context.terrain_setting.get_chunk_size(level);
         let voxel_size = context.terrain_setting.get_voxel_size(level);
         let voxel_num = context.terrain_setting.get_voxel_num_in_chunk();
@@ -146,7 +146,7 @@ impl TerrainChunkMainBuffers {
         let chunk_min = context.terrain_chunk_aabb.min;
 
         let terrain_chunk_info_buffer = {
-            let level = context.terrain_chunk_address.0.level();
+            let level = context.terrain_chunk_address.0.depth();
             let chunk_size = context.terrain_setting.get_chunk_size(level);
             let voxel_size = context.terrain_setting.get_voxel_size(level);
             let mut chunk_info_uniform = UniformBuffer::from(TerrainChunkInfo {
@@ -306,7 +306,7 @@ impl TerrainChunkSeamBuffers {
     pub fn update_buffers_reuse_info(&mut self, context: TerrainChunkSeamBufferCreateContext) {
         // let max = context.terrain_chunk_seam_lod.get_max_lod();
         let add_lod = context.terrain_chunk_seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
-        let level = context.terrain_chunk_address.0.level() + add_lod[0];
+        let level = context.terrain_chunk_address.0.depth() + add_lod[0];
         let voxel_size = context.terrain_setting.get_voxel_size(level);
         let chunk_size = context.terrain_setting.get_chunk_size(level - add_lod[0]);
         // let voxel_num = context.terrain_setting.get_voxel_num_in_chunk() * 2usize.pow(max as u32);
@@ -346,7 +346,7 @@ impl TerrainChunkSeamBuffers {
     pub fn create_buffers(context: TerrainChunkSeamBufferCreateContext) -> TerrainChunkSeamBuffers {
         let chunk_min = context.terrain_chunk_aabb.min;
         let add_lod = context.terrain_chunk_seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
-        let level = context.terrain_chunk_address.0.level() + add_lod[0];
+        let level = context.terrain_chunk_address.0.depth() + add_lod[0];
         let voxel_size = context.terrain_setting.get_voxel_size(level);
         let chunk_size = context.terrain_setting.get_chunk_size(level - add_lod[0]);
 
