@@ -16,7 +16,10 @@ use bevy::{
         Affine3A,
     },
     prelude::*,
-    render::{camera::CameraProjection, primitives::Aabb},
+    render::{
+        camera::CameraProjection,
+        primitives::{Aabb, Sphere},
+    },
     utils::HashMap,
 };
 
@@ -133,31 +136,39 @@ fn update_loaded_leaf_node_info(mut loader: ResMut<TerrainChunkLoader>) {
 fn update_leaf_node_data(
     leaf_node_key: &mut LeafNodeKey,
     frustums: &ObserverFrustums,
-    global_transforms: &ObserverGlobalTransforms,
+    _global_transforms: &ObserverGlobalTransforms,
 ) {
     let mut is_in_frustums = false;
     for frustum in frustums.iter() {
-        if frustum.intersects_obb(&leaf_node_key.aabb, &Affine3A::IDENTITY, true, true) {
-            is_in_frustums = true;
-            break;
+        let sphere = Sphere {
+            center: leaf_node_key.aabb.center,
+            radius: leaf_node_key.aabb.half_extents.length(),
+        };
+        // Do quick sphere-based frustum culling
+        if frustum.intersects_sphere(&sphere, true) {
+            // Do more precise OBB-based frustum culling
+            if frustum.intersects_obb(&leaf_node_key.aabb, &Affine3A::IDENTITY, true, true) {
+                is_in_frustums = true;
+                break;
+            }
         }
     }
-    let mut min_distance_squared = u64::MAX;
-    let mut min_angle = u32::MAX;
-    for global_transform in global_transforms.iter() {
-        let (_, rotation, translation) = global_transform.to_scale_rotation_translation();
-        let leaf_node_location: Vec3 = leaf_node_key.aabb.center.into();
-        let relative_translation = leaf_node_location - translation;
-        min_distance_squared =
-            min_distance_squared.min(relative_translation.length_squared() as u64);
+    // let mut min_distance_squared = u64::MAX;
+    // let mut min_angle = u32::MAX;
+    // for global_transform in global_transforms.iter() {
+    //     let (_, rotation, translation) = global_transform.to_scale_rotation_translation();
+    //     let leaf_node_location: Vec3 = leaf_node_key.aabb.center.into();
+    //     let relative_translation = leaf_node_location - translation;
+    //     min_distance_squared =
+    //         min_distance_squared.min(relative_translation.length_squared() as u64);
 
-        let (axis, _angle) = rotation.to_axis_angle();
-        min_angle = min_angle.min(relative_translation.angle_between(axis).to_degrees() as u32);
-    }
+    //     let (axis, _angle) = rotation.to_axis_angle();
+    //     min_angle = min_angle.min(relative_translation.angle_between(axis).to_degrees() as u32);
+    // }
 
     leaf_node_key.is_in_frustums = is_in_frustums;
-    leaf_node_key.distance_squared = min_distance_squared;
-    leaf_node_key.angle = min_angle;
+    // leaf_node_key.distance_squared = min_distance_squared;
+    // leaf_node_key.angle = min_angle;
 }
 
 #[allow(clippy::type_complexity)]
@@ -338,4 +349,29 @@ pub fn reload_terrain_chunk(
     commands.trigger(TerrainChunkReloadEvent {
         node_addresses: intersects_nodes,
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy::{
+        math::{Affine3A, Vec3},
+        prelude::{GlobalTransform, Projection},
+        render::{camera::CameraProjection, primitives::Aabb},
+    };
+
+    #[test]
+    fn test_frustum_intersect_with_obb() {
+        let transform = GlobalTransform::default();
+        let projection = Projection::default();
+        let frustum = projection.compute_frustum(&transform);
+
+        let aabb = Aabb::from_min_max(Vec3::splat(100.0), Vec3::splat(101.0));
+        assert!(!frustum.intersects_obb(&aabb, &Affine3A::IDENTITY, true, true));
+
+        let aabb = Aabb::from_min_max(Vec3::splat(-1.0), Vec3::splat(1.0));
+        assert!(frustum.intersects_obb(&aabb, &Affine3A::IDENTITY, true, true));
+
+        let aabb = Aabb::from_min_max(Vec3::new(100.0, 0.0, 0.0), Vec3::new(101.0, 1.0, 1.0));
+        assert!(frustum.intersects_obb(&aabb, &Affine3A::IDENTITY, true, true));
+    }
 }

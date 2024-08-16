@@ -584,6 +584,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "atom_shader_lib"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "dotenv",
+ "image 0.25.2",
+]
+
+[[package]]
 name = "atom_utils"
 version = "0.1.0"
 dependencies = [
@@ -5796,6 +5805,7 @@ version = "0.1.0"
 dependencies = [
  "atom_internal",
  "atom_renderdoc",
+ "atom_shader_lib",
  "atom_utils",
  "autoincrement",
  "avian3d",

@@ -28,6 +28,7 @@ terrain_player_client = { path = "../terrain_player_client" }
 terrain_core = { path = "../terrain_core" }
 settings = { path = "../settings" }
 log_layers = { path = "../log_layers" }
+atom_shader_lib = { path = "../atom_shader_lib" }
 
 rand = "0.8.5"
 ndshape = { version = "0.3.0" }

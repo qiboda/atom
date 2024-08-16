@@ -14,6 +14,7 @@
         "cSpell.words": [
             "Aabb",
             "biplanar",
+            "bitcast",
             "bitfield",
             "bytemuck",
             "chebyshev",
@@ -36,6 +37,7 @@
             "leafwing",
             "lifetimeless",
             "Mapface",
+            "modf",
             "Msaa",
             "ndshape",
             "octree",
@@ -51,6 +53,7 @@
             "stddev",
             "struct",
             "SUBEDGE",
+            "surflet",
             "sysinfo",
             "thiserror",
             "tnua",
@@ -66,6 +69,7 @@
             "wgpu",
             "wgsl",
             "wireframe",
+            "xorshift",
             "xpbd",
             "Zeroable"
         ],

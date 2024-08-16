@@ -254,6 +254,7 @@ fn can_divide_node(
     false
 }
 
+/// TODO depth小到一定程序就不再上移，否则相邻的chunk的mesh的连接，看起来过于粗糙，出现漏洞。
 fn can_divide(
     node: &TerrainLodOctreeNode,
     observer_locations: &ObserverLocations,
