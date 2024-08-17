@@ -2,7 +2,6 @@
 //! 根据地形的block type，选择不同的纹理
 //! 过渡有根据高度混合和权重mix混合。
 //! 还有根据自定义纹理进行混合的。纹理内存储的是数组纹理的索引，而不是纹理本身。
-use atom_shader_lib::AtomShaderLibPluginGroups;
 use bevy::{
     app::Plugin,
     asset::{DirectAssetAccessExt, Handle},
@@ -35,7 +34,6 @@ impl Plugin for TerrainMaterialPlugin {
             terrain_material: render_world.load_asset("shaders/terrain/terrain_material.wgsl"),
         });
 
-        app.add_plugins(MaterialPlugin::<TerrainMaterial>::default())
-            .add_plugins(AtomShaderLibPluginGroups);
+        app.add_plugins(MaterialPlugin::<TerrainMaterial>::default());
     }
 }

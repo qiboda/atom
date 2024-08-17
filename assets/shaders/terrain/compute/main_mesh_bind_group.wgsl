@@ -1,6 +1,7 @@
 #define_import_path terrain::main_mesh_bind_group
 
 #import terrain::voxel_type::{TerrainChunkInfo, VoxelVertexValue, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount}
+#import terrain::csg::csg_type::TerrainChunkCSGOperation
 
 @group(0) @binding(0)
 var<uniform> terrain_chunk_info: TerrainChunkInfo;
@@ -23,4 +24,6 @@ var<storage, read_write> mesh_vertex_map: array<u32>;
 @group(0) @binding(6)
 var<storage, read_write> mesh_vertices_indices_count: TerrainChunkVerticesIndicesCount;
 
+@group(0) @binding(7)
+var<storage, read> csg_operations: array<TerrainChunkCSGOperation>;
 

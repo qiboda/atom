@@ -13,10 +13,8 @@ use crate::{
     chunk_mgr::chunk::comp::{
         TerrainChunkAabb, TerrainChunkAddress, TerrainChunkSeamLod, TerrainChunkState,
     },
-    isosurface::{
-        dc::gpu_dc::buffer_cache::{TerrainChunkInfo, VoxelEdgeCrossPoint},
-        materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
-    },
+    isosurface::dc::gpu_dc::buffer_cache::{TerrainChunkInfo, VoxelEdgeCrossPoint},
+    materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
     setting::TerrainSetting,
     tables::{AxisType, SubNodeIndex},
 };

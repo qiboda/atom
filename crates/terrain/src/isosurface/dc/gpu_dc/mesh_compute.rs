@@ -32,12 +32,16 @@ use strum::IntoEnumIterator;
 use crate::isosurface::dc::gpu_dc::{
     bind_group_cache::{
         TerrainChunkSeamBindGroupCachedId, TerrainChunkSeamBindGroups,
-        TerrainChunkSeamBindGroupsCreateContext,
+        TerrainChunkSeamBindGroupsCache, TerrainChunkSeamBindGroupsCreateContext,
     },
     buffer_cache::{
-        TerrainChunkSeamBufferCreateContext, TerrainChunkSeamBuffers, TerrainChunkSeamKey,
+        TerrainChunkSeamBufferCreateContext, TerrainChunkSeamBuffers, TerrainChunkSeamBuffersCache,
+        TerrainChunkSeamKey,
     },
 };
+
+#[cfg(feature = "gpu_seam")]
+use super::pipelines::TerrainChunkSeamComputeShadersPlugin;
 
 use crate::{
     chunk_mgr::chunk::comp::{
@@ -45,9 +49,10 @@ use crate::{
         TerrainChunkState,
     },
     isosurface::{
+        csg::event::CSGOperationRecords,
         dc::gpu_dc::buffer_cache::{TerrainChunkMainBufferCreateContext, TerrainChunkMainBuffers},
-        materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
     },
+    materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
     setting::TerrainSetting,
     tables::AxisType,
 };
@@ -61,14 +66,16 @@ use super::{
     bind_group_cache::{
         TerrainChunkMainBindGroupCachedId, TerrainChunkMainBindGroups,
         TerrainChunkMainBindGroupsCache, TerrainChunkMainBindGroupsCreateContext,
-        TerrainChunkSeamBindGroupsCache,
     },
     buffer_cache::{
         TerrainChunkMainBufferCachedId, TerrainChunkMainBuffersCache,
-        TerrainChunkSeamBufferCachedId, TerrainChunkSeamBuffersCache,
+        TerrainChunkSeamBufferCachedId,
     },
     node::{TerrainChunkMeshComputeLabel, TerrainChunkMeshComputeNode},
-    pipelines::{TerrainChunkPipelines, TerrainChunkShadersPlugin},
+    pipelines::{
+        TerrainChunkDensityFieldComputeShadersPlugin, TerrainChunkMainComputeShadersPlugin,
+        TerrainChunkPipelines, TerrainChunkVoxelComputeShadersPlugin,
+    },
 };
 
 pub struct TerrainChunkGPUSeamMeshData {
@@ -130,9 +137,12 @@ impl Plugin for TerrainChunkMeshComputePlugin {
         render_app.init_resource::<TerrainChunkPipelines>();
         render_app.init_resource::<TerrainChunkMainBindGroupsCache>();
         render_app.init_resource::<TerrainChunkMainBuffersCache>();
-        render_app.init_resource::<TerrainChunkSeamBindGroupsCache>();
-        render_app.init_resource::<TerrainChunkSeamBuffersCache>();
         render_app.init_resource::<TerrainChunkRenderBorderVertices>();
+
+        #[cfg(feature = "gpu_seam")]
+        render_app.init_resource::<TerrainChunkSeamBindGroupsCache>();
+        #[cfg(feature = "gpu_seam")]
+        render_app.init_resource::<TerrainChunkSeamBuffersCache>();
 
         render_app
             .add_systems(
@@ -177,7 +187,11 @@ impl Plugin for TerrainChunkMeshComputePlugin {
 
     fn build(&self, app: &mut App) {
         let render_app = app.sub_app_mut(RenderApp);
-        render_app.add_plugins(TerrainChunkShadersPlugin);
+        render_app.add_plugins(TerrainChunkMainComputeShadersPlugin);
+        render_app.add_plugins(TerrainChunkVoxelComputeShadersPlugin);
+        render_app.add_plugins(TerrainChunkDensityFieldComputeShadersPlugin);
+        #[cfg(feature = "gpu_seam")]
+        render_app.add_plugins(TerrainChunkSeamComputeShadersPlugin);
     }
 }
 
@@ -193,6 +207,7 @@ fn prepare_main_buffers(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
     terrain_setting: Res<TerrainSetting>,
+    csg_operation_records: Res<CSGOperationRecords>,
 ) {
     buffers_cache.reset_used_count();
     for (entity, address, aabb, state) in query.iter() {
@@ -202,25 +217,32 @@ fn prepare_main_buffers(
 
         debug!("prepare main buffers: address: {:?}", address);
 
+        let chunk_operations_data = csg_operation_records.get_chunk_gpu_data(address.0);
+
+        let context = TerrainChunkMainBufferCreateContext {
+            render_device: &render_device,
+            render_queue: &render_queue,
+            terrain_chunk_aabb: aabb.0,
+            terrain_chunk_address: *address,
+            terrain_setting: &terrain_setting,
+            terrain_chunk_csg_operations: &chunk_operations_data,
+        };
+
         let cached_id = match buffers_cache.acquire_terrain_chunk_buffers() {
             Some(buffer_cached_id) => buffer_cached_id,
             None => {
-                let context = TerrainChunkMainBufferCreateContext {
-                    render_device: &render_device,
-                    render_queue: &render_queue,
-                    terrain_chunk_aabb: aabb.0,
-                    terrain_chunk_address: *address,
-                    terrain_setting: &terrain_setting,
-                };
-                let buffers = TerrainChunkMainBuffers::create_buffers(context);
+                let buffers = TerrainChunkMainBuffers::create_buffers(&context);
                 buffers_cache.insert_terrain_chunk_buffers(buffers);
                 buffers_cache.acquire_terrain_chunk_buffers().unwrap()
             }
         };
 
-        commands
-            .entity(entity)
-            .insert(TerrainChunkMainBufferCachedId(cached_id));
+        let buffer_cached_id = TerrainChunkMainBufferCachedId(cached_id);
+
+        let buffers = buffers_cache.get_buffers_mut(buffer_cached_id).unwrap();
+        buffers.write_buffers_data(context);
+
+        commands.entity(entity).insert(buffer_cached_id);
     }
 }
 
@@ -284,7 +306,6 @@ fn prepare_main_bind_group(
     mut commands: Commands,
     pipelines: Res<TerrainChunkPipelines>,
     render_device: Res<RenderDevice>,
-    render_queue: Res<RenderQueue>,
     query: Query<(
         Entity,
         &TerrainChunkState,
@@ -292,9 +313,8 @@ fn prepare_main_bind_group(
         &TerrainChunkAddress,
         &TerrainChunkMainBufferCachedId,
     )>,
-    mut buffers_cache: ResMut<TerrainChunkMainBuffersCache>,
+    buffers_cache: Res<TerrainChunkMainBuffersCache>,
     mut bind_groups_cache: ResMut<TerrainChunkMainBindGroupsCache>,
-    terrain_setting: Res<TerrainSetting>,
 ) {
     bind_groups_cache.reset_used_count();
     for (entity, state, aabb, address, buffer_cached_id) in query.iter() {
@@ -305,20 +325,7 @@ fn prepare_main_bind_group(
         debug!("prepare main bind groups: address: {:?}", address);
 
         let cached_id = match bind_groups_cache.acquire_terrain_chunk_bind_group() {
-            Some(bind_groups_cached_id) => {
-                // 更新uniform buffer
-                let context = TerrainChunkMainBufferCreateContext {
-                    render_device: &render_device,
-                    render_queue: &render_queue,
-                    terrain_chunk_aabb: aabb.0,
-                    terrain_chunk_address: *address,
-                    terrain_setting: &terrain_setting,
-                };
-                let buffers = buffers_cache.get_buffers_mut(*buffer_cached_id).unwrap();
-                buffers.update_buffers_reuse_info(context);
-
-                bind_groups_cached_id
-            }
+            Some(bind_groups_cached_id) => bind_groups_cached_id,
             None => {
                 let buffers = buffers_cache.get_buffers(*buffer_cached_id).unwrap();
                 let context = TerrainChunkMainBindGroupsCreateContext {

@@ -46,6 +46,7 @@
             "powf",
             "powi",
             "pqef",
+            "remesh",
             "renderdoc",
             "repr",
             "smallvec",
@@ -70,7 +71,6 @@
             "wgsl",
             "wireframe",
             "xorshift",
-            "xpbd",
             "Zeroable"
         ],
         "cSpell.enableFiletypes": [

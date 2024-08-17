@@ -16,14 +16,13 @@ use crate::{
 use crate::{isosurface::dc::gpu_dc::buffer_cache::TerrainChunkSeamKey, tables::SubNodeIndex};
 
 use super::bind_group_cache::TerrainChunkMainBindGroupCachedId;
+use super::buffer_cache::TerrainChunkMainBufferCachedId;
 use super::buffer_cache::TerrainChunkMainBuffersCache;
 use super::pipelines::TerrainChunkPipelines;
 use super::{
-    bind_group_cache::TerrainChunkMainBindGroupsCache, buffer_cache::TerrainChunkSeamBufferCachedId,
-};
-use super::{
+    bind_group_cache::TerrainChunkMainBindGroupsCache,
     bind_group_cache::TerrainChunkSeamBindGroupCachedId,
-    buffer_cache::TerrainChunkMainBufferCachedId,
+    buffer_cache::TerrainChunkSeamBufferCachedId,
 };
 
 #[cfg(feature = "gpu_seam")]

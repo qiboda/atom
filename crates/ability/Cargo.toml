@@ -17,7 +17,7 @@ layertag = { path = "../layertag" }
 datatables = { path = "../datatables" }
 atom_utils = { path = "../atom_utils" }
 
-paste = "1.0.15"
+paste = { workspace = true }
 uuid = "1.9.1"
 eval = "0.4.3"
 

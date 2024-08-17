@@ -1,6 +1,6 @@
 use bevy::prelude::{Handle, Image};
 
-use crate::isosurface::ecology::EcologyType;
+use crate::ecology::EcologyType;
 
 use super::EcologyMaterial;
 

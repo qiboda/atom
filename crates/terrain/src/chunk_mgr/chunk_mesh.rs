@@ -8,11 +8,12 @@ use avian3d::prelude::RigidBody;
 
 use avian3d::prelude::Collider;
 
+use crate::ecology::ecology_set::EcologyMaterials;
 use crate::isosurface::dc::gpu_dc::mesh_compute::TerrainChunkMeshDataMainWorldReceiver;
 use crate::isosurface::dc::gpu_dc::mesh_compute::TerrainChunkSeamMeshData;
-use crate::isosurface::materials::terrain_mat::TerrainDebugType;
+use crate::materials::terrain_mat::TerrainDebugType;
 
-use crate::isosurface::materials::terrain_mat::TerrainMaterial;
+use crate::materials::terrain_mat::TerrainMaterial;
 
 use super::chunk::comp::TerrainChunkAddress;
 
@@ -29,6 +30,7 @@ pub fn receive_terrain_chunk_mesh_data(
     )>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    ecology_materials: Res<EcologyMaterials>,
 ) {
     loop {
         match receiver.try_recv() {
@@ -51,11 +53,20 @@ pub fn receive_terrain_chunk_mesh_data(
                         debug!("receive_terrain_chunk_mesh_data main mesh ok");
                         let material = materials.add(TerrainMaterial {
                             lod: address.0.depth() as u32,
-                            debug_type: Some(TerrainDebugType::Color),
-                            color_texture: None,
-                            metallic_texture: None,
-                            normal_texture: None,
-                            roughness_texture: None,
+                            // debug_type: Some(TerrainDebugType::Color),
+                            debug_type: None,
+                            color_texture: Some(
+                                ecology_materials.forest_material.get_albedo_texture(),
+                            ),
+                            metallic_texture: Some(
+                                ecology_materials.forest_material.get_metallic_texture(),
+                            ),
+                            normal_texture: Some(
+                                ecology_materials.forest_material.get_normal_texture(),
+                            ),
+                            roughness_texture: Some(
+                                ecology_materials.forest_material.get_roughness_texture(),
+                            ),
                             cull_mode: Some(wgpu::Face::Back),
                         });
 
@@ -97,11 +108,20 @@ pub fn receive_terrain_chunk_mesh_data(
                                 debug!("receive_terrain_chunk_mesh_data seam mesh ok");
                                 let material = materials.add(TerrainMaterial {
                                     lod: address.0.depth() as u32,
-                                    debug_type: Some(TerrainDebugType::Color),
-                                    color_texture: None,
-                                    metallic_texture: None,
-                                    normal_texture: None,
-                                    roughness_texture: None,
+                                    // debug_type: Some(TerrainDebugType::Color),
+                                    debug_type: None,
+                                    color_texture: Some(
+                                        ecology_materials.forest_material.get_albedo_texture(),
+                                    ),
+                                    metallic_texture: Some(
+                                        ecology_materials.forest_material.get_metallic_texture(),
+                                    ),
+                                    normal_texture: Some(
+                                        ecology_materials.forest_material.get_normal_texture(),
+                                    ),
+                                    roughness_texture: Some(
+                                        ecology_materials.forest_material.get_roughness_texture(),
+                                    ),
                                     cull_mode: Some(wgpu::Face::Back),
                                     // cull_mode: None,
                                 });
@@ -147,10 +167,19 @@ pub fn receive_terrain_chunk_mesh_data(
                                 let material = materials.add(TerrainMaterial {
                                     lod: address.0.depth() as u32,
                                     debug_type: Some(TerrainDebugType::Color),
-                                    color_texture: None,
-                                    metallic_texture: None,
-                                    normal_texture: None,
-                                    roughness_texture: None,
+                                    // debug_type: None,
+                                    color_texture: Some(
+                                        ecology_materials.forest_material.get_albedo_texture(),
+                                    ),
+                                    metallic_texture: Some(
+                                        ecology_materials.forest_material.get_metallic_texture(),
+                                    ),
+                                    normal_texture: Some(
+                                        ecology_materials.forest_material.get_normal_texture(),
+                                    ),
+                                    roughness_texture: Some(
+                                        ecology_materials.forest_material.get_roughness_texture(),
+                                    ),
                                     cull_mode: Some(wgpu::Face::Back),
                                     // cull_mode: None,
                                 });

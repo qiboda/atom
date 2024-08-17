@@ -39,7 +39,7 @@ bevy_debug_grid = { version = "0.6.0" }
 seldom_state = { version = "0.11" }
 # Bevy Hanabi
 oxidized_navigation = { version = "0.11.0", default-features = false, features = [
-    "xpbd",
+    # "xpbd",
     "debug_draw",
 ] }
 # leafwing-input-manager = { git = "https://github.com/qiboda/leafwing-input-manager.git", branch = "atom_main" }
@@ -61,11 +61,11 @@ wgpu-types = { version = "0.20" }
 wgpu = { version = "0.20" }
 
 avian3d = { version = "0.1.0" }
-bevy_xpbd_3d = { version = "0.5.0" }
 dotenv = { version = "0.15.0" }
 vleue_navigator = { version = "0.8.0" }
 
 num-traits = "0.2.14"
+paste = "1.0.15"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

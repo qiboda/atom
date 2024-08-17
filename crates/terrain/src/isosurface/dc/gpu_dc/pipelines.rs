@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 
+use atom_shader_lib::shaders_plugin;
 use bevy::{
     prelude::*,
     render::{
         render_resource::{
-            binding_types::{storage_buffer, uniform_buffer},
+            binding_types::{storage_buffer, storage_buffer_read_only, uniform_buffer},
             BindGroupLayout, BindGroupLayoutEntries, CachedComputePipelineId,
             ComputePipelineDescriptor, PipelineCache,
         },
@@ -14,78 +15,51 @@ use bevy::{
 use wgpu_types::ShaderStages;
 
 use super::buffer_cache::{
-    TerrainChunkInfo, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VoxelEdgeCrossPoint,
+    TerrainChunkCSGOperation, TerrainChunkInfo, TerrainChunkVertexInfo,
+    TerrainChunkVerticesIndicesCount, VoxelEdgeCrossPoint,
 };
 
-const MAIN_COMPUTE_VERTICES_SHADER_ASSET_PATH: &str =
-    "shaders/terrain/compute/main_mesh_compute_vertices.wgsl";
-const MAIN_COMPUTE_INDICES_SHADER_ASSET_PATH: &str =
-    "shaders/terrain/compute/main_mesh_compute_indices.wgsl";
-const MAIN_COMPUTE_VOXEL_VERTEX_VALUES_SHADER_ASSET_PATH: &str =
-    "shaders/terrain/compute/voxel_vertices.wgsl";
-const MAIN_COMPUTE_VOXEL_CROSS_POINTS_SHADER_ASSET_PATH: &str =
-    "shaders/terrain/compute/voxel_cross_points.wgsl";
-const MAIN_BIND_GROUPS_SHADER_ASSET_PATH: &str = "shaders/terrain/compute/main_mesh_bind_group.wgsl";
+shaders_plugin!(
+    TerrainChunk,
+    MainCompute,
+    (
+        main_compute_vertices_shader -> "shaders/terrain/compute/main_mesh_compute_vertices.wgsl",
+        main_compute_indices_shader -> "shaders/terrain/compute/main_mesh_compute_indices.wgsl",
+        main_compute_voxel_cross_points_shader -> "shaders/terrain/compute/voxel_cross_points.wgsl",
+        main_compute_voxel_vertex_values_shader -> "shaders/terrain/compute/voxel_vertices.wgsl",
+        main_bind_group_shader -> "shaders/terrain/compute/main_mesh_bind_group.wgsl"
+    )
+);
 
-const VOXEL_TYPE_SHADER_ASSET_PATH: &str = "shaders/terrain/compute/voxel_type.wgsl";
-const VOXEL_UTILS_SHADER_ASSET_PATH: &str = "shaders/terrain/compute/voxel_utils.wgsl";
+shaders_plugin!(
+    TerrainChunk,
+    SeamCompute,
+    (
+        seam_compute_vertices_shader -> "shaders/terrain/compute/seams/seam_mesh_compute_vertices.wgsl",
+        seam_compute_indices_shader -> "shaders/terrain/compute/seams/seam_mesh_compute_indices.wgsl",
+        seam_bind_group_shader -> "shaders/terrain/compute/seams/seam_mesh_bind_group.wgsl",
+        seam_utils_shader -> "shaders/terrain/compute/seams/seam_mesh_utils.wgsl"
+    )
+);
 
-const DENSITY_FIELD_SHADER_ASSET_PATH: &str = "shaders/terrain/compute/density_field.wgsl";
+shaders_plugin!(
+    TerrainChunk,
+    VoxelCompute,
+    (
+        voxel_type_shader -> "shaders/terrain/compute/voxel_type.wgsl",
+        voxel_utils_shader -> "shaders/terrain/compute/voxel_utils.wgsl"
+    )
+);
 
-const SEAM_COMPUTE_VERTICES_SHADER_ASSET_PATH: &str =
-    "shaders/terrain/compute/seams/seam_mesh_compute_vertices.wgsl";
-const SEAM_COMPUTE_INDICES_SHADER_ASSET_PATH: &str =
-    "shaders/terrain/compute/seams/seam_mesh_compute_indices.wgsl";
-const SEAM_BIND_GROUPS_SHADER_ASSET_PATH: &str =
-    "shaders/terrain/compute/seams/seam_mesh_bind_group.wgsl";
-const SEAM_UTILS_SHADER_ASSET_PATH: &str = "shaders/terrain/compute/seams/seam_mesh_utils.wgsl";
-
-#[derive(Resource, Default)]
-pub struct TerrainChunkShaders {
-    pub main_compute_vertices_shader: Handle<Shader>,
-    pub main_compute_indices_shader: Handle<Shader>,
-    pub main_compute_voxel_cross_points_shader: Handle<Shader>,
-    pub main_compute_voxel_vertex_values_shader: Handle<Shader>,
-    pub main_bind_group_shader: Handle<Shader>,
-
-    pub density_field_shader: Handle<Shader>,
-    pub voxel_type_shader: Handle<Shader>,
-    pub voxel_utils_shader: Handle<Shader>,
-
-    pub seam_bind_group_shader: Handle<Shader>,
-    pub seam_compute_vertices_shader: Handle<Shader>,
-    pub seam_compute_indices_shader: Handle<Shader>,
-    pub seam_utils_shader: Handle<Shader>,
-}
-
-// render world plugin
-#[derive(Default)]
-pub struct TerrainChunkShadersPlugin;
-
-impl Plugin for TerrainChunkShadersPlugin {
-    fn build(&self, app: &mut App) {
-        // let render_app = app.get_sub_app_mut(RenderApp).unwrap();
-        let world = app.world_mut();
-
-        let shaders = TerrainChunkShaders {
-            main_compute_vertices_shader: world.load_asset(MAIN_COMPUTE_VERTICES_SHADER_ASSET_PATH),
-            main_compute_indices_shader: world.load_asset(MAIN_COMPUTE_INDICES_SHADER_ASSET_PATH),
-            main_compute_voxel_cross_points_shader: world
-                .load_asset(MAIN_COMPUTE_VOXEL_CROSS_POINTS_SHADER_ASSET_PATH),
-            main_compute_voxel_vertex_values_shader: world
-                .load_asset(MAIN_COMPUTE_VOXEL_VERTEX_VALUES_SHADER_ASSET_PATH),
-            density_field_shader: world.load_asset(DENSITY_FIELD_SHADER_ASSET_PATH),
-            voxel_type_shader: world.load_asset(VOXEL_TYPE_SHADER_ASSET_PATH),
-            voxel_utils_shader: world.load_asset(VOXEL_UTILS_SHADER_ASSET_PATH),
-            seam_compute_vertices_shader: world.load_asset(SEAM_COMPUTE_VERTICES_SHADER_ASSET_PATH),
-            seam_compute_indices_shader: world.load_asset(SEAM_COMPUTE_INDICES_SHADER_ASSET_PATH),
-            seam_utils_shader: world.load_asset(SEAM_UTILS_SHADER_ASSET_PATH),
-            main_bind_group_shader: world.load_asset(MAIN_BIND_GROUPS_SHADER_ASSET_PATH),
-            seam_bind_group_shader: world.load_asset(SEAM_BIND_GROUPS_SHADER_ASSET_PATH),
-        };
-        app.insert_resource(shaders);
-    }
-}
+shaders_plugin!(
+    TerrainChunk,
+    DensityFieldCompute,
+    (
+        density_field_shader -> "shaders/terrain/compute/density_field.wgsl",
+        csg_type_shader -> "shaders/terrain/compute/csg/csg_type.wgsl",
+        csg_utils_shader -> "shaders/terrain/compute/csg/csg_utils.wgsl"
+    )
+);
 
 #[derive(Resource)]
 pub struct TerrainChunkPipelines {
@@ -96,14 +70,21 @@ pub struct TerrainChunkPipelines {
     pub main_compute_vertices_pipeline: CachedComputePipelineId,
     pub main_compute_indices_pipeline: CachedComputePipelineId,
 
+    #[cfg(feature = "gpu_seam")]
     pub seam_compute_bind_group_layout: BindGroupLayout,
 
+    #[cfg(feature = "gpu_seam")]
     pub seam_compute_vertices_x_axis_pipeline: CachedComputePipelineId,
+    #[cfg(feature = "gpu_seam")]
     pub seam_compute_vertices_y_axis_pipeline: CachedComputePipelineId,
+    #[cfg(feature = "gpu_seam")]
     pub seam_compute_vertices_z_axis_pipeline: CachedComputePipelineId,
 
+    #[cfg(feature = "gpu_seam")]
     pub seam_compute_indices_x_axis_pipeline: CachedComputePipelineId,
+    #[cfg(feature = "gpu_seam")]
     pub seam_compute_indices_y_axis_pipeline: CachedComputePipelineId,
+    #[cfg(feature = "gpu_seam")]
     pub seam_compute_indices_z_axis_pipeline: CachedComputePipelineId,
 }
 
@@ -111,7 +92,9 @@ impl FromWorld for TerrainChunkPipelines {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
-        let shaders = world.resource::<TerrainChunkShaders>();
+        let main_compute_shaders = world.resource::<TerrainChunkMainComputeShaders>();
+        #[cfg(feature = "gpu_seam")]
+        let seam_compute_shaders = world.resource::<TerrainChunkSeamComputeShaders>();
 
         // bind group layout
 
@@ -133,10 +116,13 @@ impl FromWorld for TerrainChunkPipelines {
                     storage_buffer::<Vec<u32>>(false),
                     // vertices indices count
                     storage_buffer::<TerrainChunkVerticesIndicesCount>(false),
+                    // csg operation
+                    storage_buffer_read_only::<Vec<TerrainChunkCSGOperation>>(false),
                 ),
             ),
         );
 
+        #[cfg(feature = "gpu_seam")]
         let seam_compute_bind_group_layout = render_device.create_bind_group_layout(
             "terrain chunk seam mesh vertices bind group layout",
             &BindGroupLayoutEntries::sequential(
@@ -164,7 +150,9 @@ impl FromWorld for TerrainChunkPipelines {
                 label: Some("terrain chunk compute vertices pipeline".into()),
                 layout: vec![main_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.main_compute_vertices_shader.clone_weak(),
+                shader: main_compute_shaders
+                    .main_compute_vertices_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_vertices"),
             });
@@ -173,7 +161,9 @@ impl FromWorld for TerrainChunkPipelines {
                 label: Some("terrain chunk compute indices pipeline".into()),
                 layout: vec![main_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.main_compute_indices_shader.clone_weak(),
+                shader: main_compute_shaders
+                    .main_compute_indices_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_indices"),
             });
@@ -183,7 +173,9 @@ impl FromWorld for TerrainChunkPipelines {
                 label: Some("terrain chunk voxel vertex values pipeline".into()),
                 layout: vec![main_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.main_compute_voxel_vertex_values_shader.clone_weak(),
+                shader: main_compute_shaders
+                    .main_compute_voxel_vertex_values_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_voxel_vertices"),
             });
@@ -193,62 +185,82 @@ impl FromWorld for TerrainChunkPipelines {
                 label: Some("terrain chunk voxel cross points pipeline".into()),
                 layout: vec![main_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.main_compute_voxel_cross_points_shader.clone_weak(),
+                shader: main_compute_shaders
+                    .main_compute_voxel_cross_points_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_voxel_cross_points"),
             });
 
+        #[cfg(feature = "gpu_seam")]
         let seam_compute_vertices_x_axis_pipeline =
             pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
                 label: Some("terrain chunk seam compute vertices pipeline".into()),
                 layout: vec![seam_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.seam_compute_vertices_shader.clone_weak(),
+                shader: seam_compute_shaders
+                    .seam_compute_vertices_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_vertices_x_axis"),
             });
+        #[cfg(feature = "gpu_seam")]
         let seam_compute_indices_x_axis_pipeline =
             pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
                 label: Some("terrain chunk seam compute indices pipeline".into()),
                 layout: vec![seam_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.seam_compute_indices_shader.clone_weak(),
+                shader: seam_compute_shaders
+                    .seam_compute_indices_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_indices_x_axis"),
             });
+        #[cfg(feature = "gpu_seam")]
         let seam_compute_vertices_y_axis_pipeline =
             pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
                 label: Some("terrain chunk seam compute vertices pipeline".into()),
                 layout: vec![seam_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.seam_compute_vertices_shader.clone_weak(),
+                shader: seam_compute_shaders
+                    .seam_compute_vertices_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_vertices_y_axis"),
             });
+        #[cfg(feature = "gpu_seam")]
         let seam_compute_indices_y_axis_pipeline =
             pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
                 label: Some("terrain chunk seam compute indices pipeline".into()),
                 layout: vec![seam_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.seam_compute_indices_shader.clone_weak(),
+                shader: seam_compute_shaders
+                    .seam_compute_indices_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_indices_y_axis"),
             });
+        #[cfg(feature = "gpu_seam")]
         let seam_compute_vertices_z_axis_pipeline =
             pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
                 label: Some("terrain chunk seam compute vertices pipeline".into()),
                 layout: vec![seam_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.seam_compute_vertices_shader.clone_weak(),
+                shader: seam_compute_shaders
+                    .seam_compute_vertices_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_vertices_z_axis"),
             });
+        #[cfg(feature = "gpu_seam")]
         let seam_compute_indices_z_axis_pipeline =
             pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
                 label: Some("terrain chunk seam compute indices pipeline".into()),
                 layout: vec![seam_compute_bind_group_layout.clone()],
                 push_constant_ranges: Vec::new(),
-                shader: shaders.seam_compute_indices_shader.clone_weak(),
+                shader: seam_compute_shaders
+                    .seam_compute_indices_shader
+                    .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_indices_z_axis"),
             });
@@ -259,12 +271,19 @@ impl FromWorld for TerrainChunkPipelines {
             compute_voxel_cross_points_pipeline,
             main_compute_vertices_pipeline,
             main_compute_indices_pipeline,
+            #[cfg(feature = "gpu_seam")]
             seam_compute_bind_group_layout,
+            #[cfg(feature = "gpu_seam")]
             seam_compute_vertices_x_axis_pipeline,
+            #[cfg(feature = "gpu_seam")]
             seam_compute_indices_x_axis_pipeline,
+            #[cfg(feature = "gpu_seam")]
             seam_compute_vertices_y_axis_pipeline,
+            #[cfg(feature = "gpu_seam")]
             seam_compute_indices_y_axis_pipeline,
+            #[cfg(feature = "gpu_seam")]
             seam_compute_vertices_z_axis_pipeline,
+            #[cfg(feature = "gpu_seam")]
             seam_compute_indices_z_axis_pipeline,
         }
     }

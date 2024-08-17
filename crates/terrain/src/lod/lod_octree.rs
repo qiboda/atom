@@ -3,7 +3,10 @@ use std::hash::{Hash, Hasher};
 use atom_utils::swap_data::{SwapData, SwapDataTakeTrait, SwapDataTrait};
 /// TODO visibility range 范围就设置在chunk的创建和删除距离上。误差可以配置。（之后再做，chunk的加载和卸载可能有问题）
 use bevy::{
-    math::{bounding::Aabb3d, Vec3A},
+    math::{
+        bounding::{Aabb3d, IntersectsVolume},
+        Vec3A,
+    },
     prelude::*,
     render::primitives::Frustum,
     utils::HashSet,
@@ -130,6 +133,10 @@ impl TerrainLodOctreeLevel {
         }
     }
 
+    pub fn contains(&self, node: &TerrainLodOctreeNode) -> bool {
+        self.get_current().contains(node)
+    }
+
     pub fn find_leaf_node(&self, code: &MortonCode) -> Option<&TerrainLodOctreeNode> {
         self.get_current().get(&TerrainLodOctreeNode {
             code: *code,
@@ -156,6 +163,83 @@ impl TerrainLodOctree {
             return None;
         }
         self.octree_levels[level].find_leaf_node(code)
+    }
+
+    pub fn get_node_by_location(
+        &self,
+        location: Vec3A,
+        terrain_setting: &TerrainSetting,
+    ) -> Option<TerrainLodOctreeNode> {
+        let mut result = None;
+
+        let terrain_size = terrain_setting.get_terrain_size();
+        let root_morton_code = MortonCode::root();
+        let root_aabb = Aabb3d::new(Vec3A::splat(0.0), Vec3A::splat(terrain_size * 0.5));
+        let root_node = TerrainLodOctreeNode {
+            code: root_morton_code,
+            aabb: root_aabb,
+        };
+
+        let mut located_nodes_data: SwapData<Vec<TerrainLodOctreeNode>> = SwapData::default();
+        located_nodes_data.insert(root_node);
+        located_nodes_data.swap();
+
+        for i in 0..self.octree_levels.len() {
+            for located_node in located_nodes_data.take_last().iter() {
+                if located_node.aabb.closest_point(location) == location {
+                    if self.octree_levels[i].contains(located_node) {
+                        result = Some(located_node.clone());
+                    } else {
+                        for subnode_index in SubNodeIndex::iter() {
+                            let child_node = located_node.get_child_node(subnode_index);
+                            located_nodes_data.insert(child_node);
+                        }
+                    }
+                }
+            }
+
+            located_nodes_data.swap();
+        }
+
+        result
+    }
+
+    pub fn get_intersect_nodes(
+        &self,
+        aabb: Aabb3d,
+        terrain_setting: &TerrainSetting,
+    ) -> Vec<TerrainLodOctreeNode> {
+        let mut result = vec![];
+
+        let terrain_size = terrain_setting.get_terrain_size();
+        let root_morton_code = MortonCode::root();
+        let root_aabb = Aabb3d::new(Vec3A::splat(0.0), Vec3A::splat(terrain_size * 0.5));
+        let root_node = TerrainLodOctreeNode {
+            code: root_morton_code,
+            aabb: root_aabb,
+        };
+
+        let mut intersect_nodes_data: SwapData<Vec<TerrainLodOctreeNode>> = SwapData::default();
+        intersect_nodes_data.insert(root_node);
+        intersect_nodes_data.swap();
+
+        for i in 0..self.octree_levels.len() {
+            for intersected in intersect_nodes_data.take_last().iter() {
+                if intersected.aabb.intersects(&aabb) {
+                    if self.octree_levels[i].contains(intersected) {
+                        result.push(intersected.clone());
+                    } else {
+                        for subnode_index in SubNodeIndex::iter() {
+                            let child_node = intersected.get_child_node(subnode_index);
+                            intersect_nodes_data.insert(child_node);
+                        }
+                    }
+                }
+            }
+
+            intersect_nodes_data.swap();
+        }
+        result
     }
 }
 

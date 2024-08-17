@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use atom_shader_lib::{limit::AtomLimitShaderPlugin, noise::AtomNoiseShaderPlugin, random::AtomRandomShaderPlugin};
+use atom_shader_lib::{AtomLimitShadersPlugin, AtomNoiseShadersPlugin, AtomRandomShadersPlugin};
 use bevy::{
     asset::{embedded_asset, io::AssetSourceId, AssetPath},
     prelude::*,
@@ -15,9 +15,9 @@ fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins)
         .add_plugins(Material2dPlugin::<CustomMaterial>::default())
-        .add_plugins(AtomNoiseShaderPlugin)
-        .add_plugins(AtomRandomShaderPlugin)
-        .add_plugins(AtomLimitShaderPlugin)
+        .add_plugins(AtomNoiseShadersPlugin)
+        .add_plugins(AtomRandomShadersPlugin)
+        .add_plugins(AtomLimitShadersPlugin)
         .add_systems(Startup, setup);
 
     let omit_prefix = "crates/atom_shader_lib/examples";

@@ -8,9 +8,12 @@
 /// TODO 河流的支持。以及小路的生成。(小路或许可以靠寻路系统生成)
 /// TODO 地形和生态的分布。
 /// TODO 缓存密度函数的值，避免重复计算。
+/// TODO 热加载地形。
 pub mod chunk_mgr;
+pub mod ecology;
 pub mod isosurface;
 pub mod lod;
+pub mod materials;
 pub mod setting;
 pub mod tables;
 pub mod utils;
@@ -18,8 +21,10 @@ pub mod utils;
 use atom_internal::app_state::AppState;
 use bevy::{prelude::*, render::extract_resource::ExtractResourcePlugin};
 use chunk_mgr::plugin::TerrainChunkPlugin;
-use isosurface::IsosurfaceExtractionPlugin;
+use ecology::EcologyPlugin;
+use isosurface::{csg::plugin::TerrainCSGPlugin, IsosurfaceExtractionPlugin};
 use lod::lod_octree::TerrainLodOctreePlugin;
+use materials::TerrainMaterialPlugin;
 use setting::TerrainSetting;
 use settings::SettingPlugin;
 
@@ -41,7 +46,10 @@ impl Plugin for TerrainSubsystemPlugin {
             )
             .add_plugins(ExtractResourcePlugin::<TerrainSetting>::default())
             .add_plugins(TerrainLodOctreePlugin)
+            .add_plugins(TerrainCSGPlugin)
             .add_plugins(TerrainChunkPlugin)
+            .add_plugins(EcologyPlugin)
+            .add_plugins(TerrainMaterialPlugin)
             .add_plugins(IsosurfaceExtractionPlugin);
     }
 }
@@ -49,6 +57,7 @@ impl Plugin for TerrainSubsystemPlugin {
 #[derive(Debug, Reflect, SystemSet, PartialEq, Eq, Hash, Clone)]
 pub enum TerrainSystemSet {
     UpdateLodOctree,
+    ApplyCSG,
     UpdateChunk,
     GenerateTerrain,
 }

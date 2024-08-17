@@ -1,7 +1,4 @@
-use bevy::{
-    app::Update,
-    log::{debug, info},
-};
+use bevy::log::{debug, info};
 use std::sync::Arc;
 
 use bevy::prelude::{Added, App, AssetServer, Commands, Entity, Plugin, Query, Res, Startup};
@@ -29,8 +26,8 @@ pub struct EcologyPlugin;
 
 impl Plugin for EcologyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, startup)
-            .add_systems(Update, add_ecology_layer_sampler);
+        app.add_systems(Startup, startup);
+        // .add_systems(Update, add_ecology_layer_sampler);
     }
 }
 

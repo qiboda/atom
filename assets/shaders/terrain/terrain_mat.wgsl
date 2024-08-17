@@ -36,11 +36,7 @@ fn fragment(
 ) -> FragmentOutput {
 
     var out: FragmentOutput;
-#ifdef COLOR_DEBUG
-    out.color = terrain_debug_material.debug_color;
-#else ifdef NORMAL_DEBUG
-    out.color = vec4<f32>(in.world_normal, 1.0);
-#else 
+
     // generate a PbrInput struct from the StandardMaterial bindings
     var pbr_input = pbr_input_from_standard_material(in, is_front);
 

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bevy::math::bounding::Aabb3d;
 use terrain_core::chunk::coords::TerrainChunkCoord;
 
-use crate::isosurface::ecology::category::EcologyMaterial;
+use crate::ecology::category::EcologyMaterial;
 
 use super::{EcologyLayer, Sampler};
 

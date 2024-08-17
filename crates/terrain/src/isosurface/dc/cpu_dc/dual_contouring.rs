@@ -9,9 +9,8 @@ use tracing::{instrument, trace};
 use wgpu::PrimitiveTopology;
 
 use crate::{
-    isosurface::{materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE, voxel::VoxelMaterialType},
-    lod::morton_code::MortonCode,
-    tables::VertexIndex,
+    isosurface::voxel::VoxelMaterialType, lod::morton_code::MortonCode,
+    materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE, tables::VertexIndex,
 };
 
 use crate::tables::{EDGE_NODES_VERTICES, FACE_TO_SUB_EDGES_AXIS_TYPE};

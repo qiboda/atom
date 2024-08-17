@@ -5,16 +5,16 @@ use std::{
 
 use crate::{
     lod::{
-        lod_octree::{ObserverFrustums, ObserverGlobalTransforms, TerrainLodOctree},
+        lod_octree::{
+            ObserverFrustums, ObserverGlobalTransforms, TerrainLodOctree, TerrainLodOctreeNode,
+        },
         morton_code::MortonCode,
     },
+    setting::TerrainSetting,
     TerrainObserver,
 };
 use bevy::{
-    math::{
-        bounding::{Aabb3d, BoundingVolume, IntersectsVolume},
-        Affine3A,
-    },
+    math::{bounding::BoundingVolume, Affine3A},
     prelude::*,
     render::{
         camera::CameraProjection,
@@ -44,7 +44,7 @@ impl Plugin for TerrainChunkLoaderPlugin {
                     update_loader_state,
                     to_load_chunk,
                     to_unload_chunk,
-                    reload_terrain_chunk,
+                    to_reload_chunk,
                 )
                     .chain()
                     .in_set(TerrainChunkSystemSet::UpdateLoader),
@@ -61,6 +61,19 @@ pub struct LeafNodeKey {
     pub distance_squared: u64,
     // unit is degree
     pub angle: u32,
+}
+
+impl LeafNodeKey {
+    pub fn from_lod_leaf_node(node: &TerrainLodOctreeNode) -> Self {
+        Self {
+            address: node.code,
+            aabb: Aabb {
+                center: node.aabb.center(),
+                half_extents: node.aabb.half_size(),
+            },
+            ..Default::default()
+        }
+    }
 }
 
 impl Hash for LeafNodeKey {
@@ -100,15 +113,26 @@ pub struct TerrainChunkLoader {
 
     pub loaded_leaf_node_map: HashMap<MortonCode, LoadedNodeInfo>,
 
-    pub pending_reload_aabb_vec: Vec<Aabb3d>,
+    pub pending_reload_leaf_node_map: HashMap<MortonCode, LeafNodeKey>,
 }
 
 impl TerrainChunkLoader {
-    pub fn add_reload_aabb(&mut self, aabb: Aabb3d) {
-        self.pending_reload_aabb_vec.push(aabb);
+    /// TODO reload 是否需要加载缝隙。以及加载哪些缝隙。
+    /// reload 的分类，csg操作或者其他操作。
+    pub fn insert_pending_reload_leaf_node_map(
+        &mut self,
+        morton_code: MortonCode,
+        leaf_node_key: LeafNodeKey,
+    ) {
+        self.pending_reload_leaf_node_map
+            .insert(morton_code, leaf_node_key);
     }
 
     pub fn is_loaded(&self, morton_code: &MortonCode) -> bool {
+        self.loaded_leaf_node_map.contains_key(morton_code)
+    }
+
+    pub fn can_reload(&self, morton_code: &MortonCode) -> bool {
         self.loaded_leaf_node_map.contains_key(morton_code)
     }
 
@@ -137,6 +161,7 @@ fn update_leaf_node_data(
     leaf_node_key: &mut LeafNodeKey,
     frustums: &ObserverFrustums,
     _global_transforms: &ObserverGlobalTransforms,
+    terrain_setting: &Res<TerrainSetting>,
 ) {
     let mut is_in_frustums = false;
     for frustum in frustums.iter() {
@@ -145,9 +170,14 @@ fn update_leaf_node_data(
             radius: leaf_node_key.aabb.half_extents.length(),
         };
         // Do quick sphere-based frustum culling
-        if frustum.intersects_sphere(&sphere, true) {
+        if frustum.intersects_sphere(&sphere, terrain_setting.camera_far_limit) {
             // Do more precise OBB-based frustum culling
-            if frustum.intersects_obb(&leaf_node_key.aabb, &Affine3A::IDENTITY, true, true) {
+            if frustum.intersects_obb(
+                &leaf_node_key.aabb,
+                &Affine3A::IDENTITY,
+                true,
+                terrain_setting.camera_far_limit,
+            ) {
                 is_in_frustums = true;
                 break;
             }
@@ -176,6 +206,7 @@ pub fn update_loader_state(
     mut loader: ResMut<TerrainChunkLoader>,
     observer_query: Query<(&GlobalTransform, &Projection), With<TerrainObserver>>,
     lod_octree: Res<TerrainLodOctree>,
+    terrain_setting: Res<TerrainSetting>,
 ) {
     let mut frustums = ObserverFrustums::new();
     let mut global_transforms = ObserverGlobalTransforms::new();
@@ -188,14 +219,7 @@ pub fn update_loader_state(
     for level in lod_octree.octree_levels.iter() {
         // to add nodes
         for node in level.get_added_nodes() {
-            let leaf_node_key = LeafNodeKey {
-                address: node.code,
-                aabb: Aabb {
-                    center: node.aabb.center(),
-                    half_extents: node.aabb.half_size(),
-                },
-                ..Default::default()
-            };
+            let leaf_node_key = LeafNodeKey::from_lod_leaf_node(node);
             loader.pending_unload_leaf_node_map.remove(&node.code);
             loader
                 .pending_load_leaf_node_map
@@ -204,14 +228,7 @@ pub fn update_loader_state(
 
         // to remove nodes
         for node in level.get_removed_nodes() {
-            let leaf_node_key = LeafNodeKey {
-                address: node.code,
-                aabb: Aabb {
-                    center: node.aabb.center(),
-                    half_extents: node.aabb.half_size(),
-                },
-                ..Default::default()
-            };
+            let leaf_node_key = LeafNodeKey::from_lod_leaf_node(node);
             loader.pending_load_leaf_node_map.remove(&node.code);
             loader
                 .pending_unload_leaf_node_map
@@ -220,17 +237,37 @@ pub fn update_loader_state(
     }
 
     for (_code, leaf_node_key) in loader.pending_load_leaf_node_map.iter_mut() {
-        update_leaf_node_data(leaf_node_key, &frustums, &global_transforms);
+        update_leaf_node_data(
+            leaf_node_key,
+            &frustums,
+            &global_transforms,
+            &terrain_setting,
+        );
     }
 
     for (_code, leaf_node_key) in loader.pending_unload_leaf_node_map.iter_mut() {
-        update_leaf_node_data(leaf_node_key, &frustums, &global_transforms);
+        update_leaf_node_data(
+            leaf_node_key,
+            &frustums,
+            &global_transforms,
+            &terrain_setting,
+        );
+    }
+
+    for (_code, leaf_node_key) in loader.pending_reload_leaf_node_map.iter_mut() {
+        update_leaf_node_data(
+            leaf_node_key,
+            &frustums,
+            &global_transforms,
+            &terrain_setting,
+        );
     }
 
     debug!(
-        "loader.leaf_node_pending_load_deque :{}, loader.pending_unload_leaf_node_set: {}",
+        "loader.leaf_node_pending_load_deque :{}, loader.pending_unload_leaf_node_set: {}, loader.pending_reload_leaf_node_set: {}",
         loader.pending_load_leaf_node_map.len(),
-        loader.pending_unload_leaf_node_map.len()
+        loader.pending_unload_leaf_node_map.len(),
+        loader.pending_reload_leaf_node_map.len()
     );
 }
 
@@ -310,6 +347,31 @@ pub fn to_unload_chunk(
     }
 }
 
+pub fn to_reload_chunk(mut loader: ResMut<TerrainChunkLoader>, mut commands: Commands) {
+    if loader.pending_reload_leaf_node_map.is_empty() {
+        return;
+    }
+
+    let mut reload_event = TerrainChunkReloadEvent {
+        node_addresses: Vec::with_capacity(loader.pending_reload_leaf_node_map.len()),
+    };
+
+    let to_reload_nodes = loader
+        .pending_reload_leaf_node_map
+        .iter()
+        .filter(|(_, key)| loader.can_reload(&key.address) && key.is_in_frustums);
+
+    to_reload_nodes.for_each(|(code, _key)| {
+        reload_event.node_addresses.push(*code);
+    });
+
+    for code in reload_event.node_addresses.iter() {
+        loader.pending_reload_leaf_node_map.remove(code);
+    }
+
+    commands.trigger(reload_event);
+}
+
 #[derive(Event, Debug)]
 pub struct TerrainChunkLoadEvent {
     pub node_addresses: Vec<MortonCode>,
@@ -323,32 +385,6 @@ pub struct TerrainChunkUnLoadEvent {
 #[derive(Event, Debug)]
 pub struct TerrainChunkReloadEvent {
     pub node_addresses: Vec<MortonCode>,
-}
-
-pub fn reload_terrain_chunk(
-    mut loader: ResMut<TerrainChunkLoader>,
-    lod_octree: Res<TerrainLodOctree>,
-    mut commands: Commands,
-) {
-    if loader.pending_reload_aabb_vec.is_empty() {
-        return;
-    }
-
-    let mut intersects_nodes = vec![];
-    for level in lod_octree.octree_levels.iter() {
-        for node in level.get_current() {
-            for aabb in loader.pending_reload_aabb_vec.iter() {
-                if node.aabb.intersects(aabb) {
-                    intersects_nodes.push(node.code);
-                }
-            }
-        }
-    }
-    loader.pending_reload_aabb_vec.clear();
-
-    commands.trigger(TerrainChunkReloadEvent {
-        node_addresses: intersects_nodes,
-    });
 }
 
 #[cfg(test)]

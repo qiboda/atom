@@ -1,3 +1,4 @@
+use atom_shader_lib::AtomShaderLibPluginGroups;
 use bevy::{
     app::{PluginGroup, PluginGroupBuilder},
     asset::AssetPlugin,
@@ -65,6 +66,7 @@ impl PluginGroup for AtomDefaultPlugins {
                         ..default()
                     }),
             )
+            .add_group(AtomShaderLibPluginGroups)
             .add(InputManagerSubsystemPlugin)
             .add(ConsolePlugin)
             .add(StateMachinePlugin)

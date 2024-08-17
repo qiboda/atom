@@ -14,3 +14,4 @@ log_layers = { path = "../log_layers" }
 settings = { path = "../settings" }
 datatables = { path = "../datatables" }
 project = { path = "../project" }
+atom_shader_lib = { path = "../atom_shader_lib" }

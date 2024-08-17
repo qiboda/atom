@@ -19,7 +19,9 @@ pub struct TerrainSetting {
     /// qef solver的单位标准差
     pub qef_stddev: f32,
     /// lod octree depth
-    lod_octree_depth: LodOctreeDepthType,
+    pub lod_octree_depth: LodOctreeDepthType,
+    /// 地形的最远可见距离是否和相机的远裁剪面一致
+    pub camera_far_limit: bool,
 }
 
 impl SettingValidate for TerrainSetting {
@@ -53,6 +55,7 @@ impl Default for TerrainSetting {
             qef_solver_threshold: 0.1,
             qef_stddev: 0.1,
             lod_octree_depth: 12,
+            camera_far_limit: true,
         }
     }
 }
@@ -66,9 +69,9 @@ impl TerrainSetting {
         self.lod_octree_depth
     }
 
-    pub fn get_chunk_size(&self, level: LodOctreeDepthType) -> f32 {
-        assert!(self.lod_octree_depth >= level);
-        let lod = self.lod_octree_depth - level;
+    pub fn get_chunk_size(&self, depth: LodOctreeDepthType) -> f32 {
+        assert!(self.lod_octree_depth >= depth);
+        let lod = self.lod_octree_depth - depth;
         self.chunk_size * 2.0f32.powi(lod as i32)
     }
 
@@ -80,9 +83,9 @@ impl TerrainSetting {
         self.chunk_size / self.get_voxel_num_in_chunk() as f32
     }
 
-    pub fn get_voxel_size(&self, level: LodOctreeDepthType) -> f32 {
-        assert!(self.lod_octree_depth >= level);
-        let lod = self.lod_octree_depth - level;
+    pub fn get_voxel_size(&self, depth: LodOctreeDepthType) -> f32 {
+        assert!(self.lod_octree_depth >= depth);
+        let lod = self.lod_octree_depth - depth;
         self.get_default_voxel_size() * 2.0f32.powi(lod as i32)
     }
 }
@@ -100,6 +103,7 @@ mod tests {
             qef_solver_threshold: 0.1,
             qef_stddev: 0.1,
             lod_octree_depth: 4,
+            camera_far_limit: true,
         };
         assert_eq!(setting.get_chunk_size(4), 64.0);
         assert_eq!(setting.get_chunk_size(3), 128.0);
@@ -117,6 +121,7 @@ mod tests {
             qef_solver_threshold: 0.1,
             qef_stddev: 0.1,
             lod_octree_depth: 4,
+            camera_far_limit: true,
         };
         assert_eq!(setting.get_default_voxel_size(), 0.5);
         assert_eq!(setting.get_voxel_num_in_chunk(), 128);
@@ -138,6 +143,7 @@ mod tests {
             qef_solver_threshold: 0.1,
             qef_stddev: 0.1,
             lod_octree_depth: 4,
+            camera_far_limit: true,
         };
         setting.get_chunk_size(5);
     }
@@ -152,6 +158,7 @@ mod tests {
             qef_solver_threshold: 0.1,
             qef_stddev: 0.1,
             lod_octree_depth: 4,
+            camera_far_limit: true,
         };
         setting.get_voxel_size(5);
     }
@@ -165,6 +172,7 @@ mod tests {
             qef_solver_threshold: 0.1,
             qef_stddev: 0.1,
             lod_octree_depth: 8,
+            camera_far_limit: true,
         };
         assert_eq!(setting.get_terrain_size(), 16384.0);
     }

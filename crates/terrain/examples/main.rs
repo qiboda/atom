@@ -8,7 +8,6 @@ use bevy::{
     },
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     log::LogPlugin,
-    math::{bounding::Aabb3d, Vec3A},
     pbr::{
         wireframe::{WireframeConfig, WireframePlugin},
         ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
@@ -18,20 +17,14 @@ use bevy::{
 };
 use bevy_debug_grid::{Grid, GridAxis};
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
-use bevy_xpbd_3d::prelude::Collider;
 use dotenv::dotenv;
 use log_layers::LogLayersPlugin;
-use oxidized_navigation::{
-    debug_draw::{DrawNavMesh, OxidizedNavigationDebugDrawPlugin},
-    NavMeshSettings, OxidizedNavigationPlugin,
-};
+// use oxidized_navigation::{
+//     debug_draw::{DrawNavMesh, OxidizedNavigationDebugDrawPlugin},
+//     NavMeshSettings, OxidizedNavigationPlugin,
+// };
 use terrain::{
-    chunk_mgr::chunk_loader::TerrainChunkLoader,
-    isosurface::surface::{
-        csg::{csg_shapes::CSGCube, CSGOperation},
-        event::CSGOperationEndEvent,
-        shape_surface::IsosurfaceContext,
-    },
+    isosurface::csg::event::{CSGOperateApplyEvent, CSGOperateType, CSGPrimitive},
     lod::lod_gizmos::TerrainLodGizmosPlugin,
     TerrainObserver, TerrainSubsystemPlugin,
 };
@@ -58,12 +51,12 @@ pub fn main() {
             }),
     )
     // .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(0.5)))
-    .add_plugins((
-        OxidizedNavigationPlugin::<Collider>::new(NavMeshSettings::from_agent_and_bounds(
-            1.0, 2.0, 300.0, -100.0,
-        )),
-        OxidizedNavigationDebugDrawPlugin,
-    ))
+    // .add_plugins((
+    //     OxidizedNavigationPlugin::<Collider>::new(NavMeshSettings::from_agent_and_bounds(
+    //         1.0, 2.0, 300.0, -100.0,
+    //     )),
+    //     OxidizedNavigationDebugDrawPlugin,
+    // ))
     .add_plugins(RenderDocPlugin)
     .add_plugins(RenderDiagnosticsPlugin)
     .add_plugins(WireframePlugin)
@@ -88,7 +81,7 @@ pub fn main() {
         (
             update_terrain_observer,
             change_camera_speed,
-            // apply_csg_operation,
+            apply_csg_operation,
         ),
     )
     // .add_plugins(WorldInspectorPlugin::new())
@@ -102,11 +95,11 @@ pub fn main() {
 fn startup(
     mut commands: Commands,
     mut wireframe_config: ResMut<WireframeConfig>,
-    mut nav_mesh: ResMut<DrawNavMesh>,
+    // mut nav_mesh: ResMut<DrawNavMesh>,
     mut _meshes: ResMut<Assets<Mesh>>,
     mut _materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    nav_mesh.0 = true;
+    // nav_mesh.0 = true;
     wireframe_config.global = true;
 
     // fn startup(mut commands: Commands) {
@@ -228,28 +221,15 @@ pub fn change_camera_speed(
 
 pub fn apply_csg_operation(
     input: Res<ButtonInput<KeyCode>>,
-    context: ResMut<IsosurfaceContext>,
-    mut commands: Commands,
-    mut loader: ResMut<TerrainChunkLoader>,
+    mut event_writer: EventWriter<CSGOperateApplyEvent>,
 ) {
     if input.just_pressed(KeyCode::KeyJ) {
-        let mut shape_surface = context.shape_surface.write().unwrap();
-        shape_surface.apply_csg_operation(
-            Box::new(CSGCube {
-                location: Vec3::new(5.0, 0.0, 5.0),
-                half_size: Vec3::splat(3.0),
-            }),
-            CSGOperation::Difference,
-        );
-        commands.trigger(CSGOperationEndEvent {
-            aabb: Aabb3d {
-                min: Vec3A::new(5.0, 0.0, 5.0) - Vec3A::splat(3.0),
-                max: Vec3A::new(5.0, 0.0, 5.0) + Vec3A::splat(3.0),
+        event_writer.send(CSGOperateApplyEvent {
+            transform: Transform::from_translation(Vec3::new(5.0, 0.0, 5.0)),
+            primitive: CSGPrimitive::Box {
+                size: Vec3::splat(5.0),
             },
-        });
-        loader.add_reload_aabb(Aabb3d {
-            min: Vec3A::new(5.0, 0.0, 5.0) - Vec3A::splat(3.0),
-            max: Vec3A::new(5.0, 0.0, 5.0) + Vec3A::splat(3.0),
+            operate_type: CSGOperateType::Difference,
         });
     }
 }

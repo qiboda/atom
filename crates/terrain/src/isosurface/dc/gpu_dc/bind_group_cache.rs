@@ -4,15 +4,14 @@ use bevy::{
         render_resource::{BindGroup, BindGroupEntries},
         renderer::RenderDevice,
     },
-    utils::HashMap,
 };
 
 use crate::chunk_mgr::chunk::comp::TerrainChunkAabb;
 
-use super::{
-    buffer_cache::{TerrainChunkMainBuffers, TerrainChunkSeamBuffers, TerrainChunkSeamKey},
-    pipelines::TerrainChunkPipelines,
-};
+use super::{buffer_cache::TerrainChunkMainBuffers, pipelines::TerrainChunkPipelines};
+
+use super::buffer_cache::{TerrainChunkSeamBuffers, TerrainChunkSeamKey};
+use bevy::utils::HashMap;
 
 pub struct TerrainChunkMainBindGroups {
     pub main_mesh_bind_group: BindGroup,
@@ -28,7 +27,7 @@ pub struct TerrainChunkMainBindGroupsCreateContext<'a> {
 impl TerrainChunkMainBindGroups {
     pub fn create_bind_groups(context: TerrainChunkMainBindGroupsCreateContext) -> Self {
         let mesh_vertices_bind_group: BindGroup = context.render_device.create_bind_group(
-            "terrain chunk mesh vertices bind group",
+            "terrain chunk main mesh bind group",
             &context.pipelines.main_compute_bind_group_layout,
             &BindGroupEntries::sequential((
                 context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
@@ -57,6 +56,7 @@ impl TerrainChunkMainBindGroups {
                     .get_gpu_buffer()
                     .binding()
                     .unwrap(),
+                context.buffers.csg_operations_buffer.binding().unwrap(),
             )),
         );
 
@@ -112,6 +112,7 @@ pub struct TerrainChunkSeamBindGroupsCreateContext<'a> {
 }
 
 impl TerrainChunkSeamBindGroups {
+    #[cfg(feature = "gpu_seam")]
     pub fn create_bind_groups(context: TerrainChunkSeamBindGroupsCreateContext) -> Self {
         let seam_mesh_bind_group: BindGroup = context.render_device.create_bind_group(
             "terrain chunk seam mesh vertices bind group",
