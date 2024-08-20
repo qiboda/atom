@@ -6,7 +6,10 @@ use bevy::{
 
 use crate::TerrainSystemSet;
 
-use super::event::{read_csg_operation_apply_event, CSGOperateApplyEvent, CSGOperationRecords};
+use super::event::{
+    read_csg_operation_apply_event, update_csg_operations_records, CSGOperateApplyEvent,
+    CSGOperationRecords,
+};
 
 pub struct TerrainCSGPlugin;
 
@@ -17,7 +20,11 @@ impl Plugin for TerrainCSGPlugin {
             .add_event::<CSGOperateApplyEvent>()
             .add_systems(
                 Update,
-                read_csg_operation_apply_event.in_set(TerrainSystemSet::ApplyCSG),
+                (
+                    update_csg_operations_records,
+                    read_csg_operation_apply_event,
+                )
+                    .in_set(TerrainSystemSet::ApplyCSG),
             );
     }
 }

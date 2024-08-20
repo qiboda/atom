@@ -2,126 +2,308 @@ use bevy::{
     math::bounding::Aabb3d,
     prelude::*,
     render::{
-        render_resource::{BufferVec, CommandEncoder, ShaderType, UniformBuffer},
+        render_resource::{CommandEncoder, ShaderType},
         renderer::{RenderDevice, RenderQueue},
     },
     utils::HashMap,
 };
-use bytemuck::{Pod, Zeroable};
-use strum::EnumCount;
-use wgpu_types::BufferUsages;
+use bitflags::bitflags;
+use wgpu::{BufferAddress, BufferSize, DynamicOffset};
 
 use crate::{
-    chunk_mgr::chunk::comp::{TerrainChunkAddress, TerrainChunkSeamLod},
-    isosurface::voxel::VoxelMaterialType,
-    setting::TerrainSetting,
-    tables::SubNodeIndex,
+    chunk_mgr::chunk::comp::TerrainChunkAddress,
+    isosurface::dc::gpu_dc::buffer_type::TerrainChunkVerticesIndicesCount, setting::TerrainSetting,
 };
 
-use super::staged_buffer;
+use super::{
+    buffer_type::{
+        TerrainChunkCSGOperation, TerrainChunkInfo, TerrainChunkMeshIndicesVec,
+        TerrainChunkMeshVertexInfoVec, TerrainChunkMeshVertexMapVec, TerrainChunkVertexInfo,
+        VoxelEdgeCrossPoint, VoxelEdgeCrossPointVec, VoxelVertexValueVec,
+    },
+    shared_buffer::{SharedStorageBuffer, SharedUniformBuffer},
+    staged_buffer,
+};
 
-#[derive(ShaderType, Default, Clone, Copy, Debug)]
-pub struct VoxelEdgeCrossPoint {
-    // w is exist or not
-    pub cross_pos: Vec4,
-    // xyz is normal, w is material_index
-    pub normal_material_index: Vec4,
-}
-
-#[derive(ShaderType, Default)]
-pub struct TerrainChunkInfo {
-    // aabb的min 和 w作为chunk的size
-    pub chunk_min_location_size: Vec4,
-    // unit: meter
-    pub voxel_size: f32,
-    // unit: meter
-    pub voxel_num: u32,
-    // qef_threshold < 0 => 不使用qef
-    pub qef_threshold: f32,
-    pub qef_stddev: f32,
-}
-
-#[repr(C)]
-#[derive(ShaderType, Default, Clone, PartialEq, Copy, Debug, Pod, Zeroable)]
-pub struct TerrainChunkVertexInfo {
-    pub vertex_location: Vec4,
-    pub vertex_normal_materials: Vec4,
-    pub vertex_local_coord: UVec4,
-    pub voxel_materials_0: UVec4,
-    pub voxel_materials_1: UVec4,
-}
-
-impl TerrainChunkVertexInfo {
-    pub fn is_on_border(&self, voxel_num: u32) -> bool {
-        self.vertex_local_coord.x == 0
-            || self.vertex_local_coord.y == 0
-            || self.vertex_local_coord.z == 0
-            || self.vertex_local_coord.x == voxel_num - 1
-            || self.vertex_local_coord.y == voxel_num - 1
-            || self.vertex_local_coord.z == voxel_num - 1
-    }
-
-    pub fn get_material(&self) -> VoxelMaterialType {
-        VoxelMaterialType::from(self.vertex_normal_materials.w as u32)
-    }
-
-    pub fn get_voxel_materials(&self) -> [VoxelMaterialType; SubNodeIndex::COUNT] {
-        [
-            VoxelMaterialType::from(self.voxel_materials_0.x),
-            VoxelMaterialType::from(self.voxel_materials_0.y),
-            VoxelMaterialType::from(self.voxel_materials_0.z),
-            VoxelMaterialType::from(self.voxel_materials_0.w),
-            VoxelMaterialType::from(self.voxel_materials_1.x),
-            VoxelMaterialType::from(self.voxel_materials_1.y),
-            VoxelMaterialType::from(self.voxel_materials_1.z),
-            VoxelMaterialType::from(self.voxel_materials_1.w),
-        ]
+bitflags! {
+    #[derive(Debug, PartialEq, Eq, Default)]
+    pub struct TerrainChunkMainRecreateBindGroup: u8 {
+        const None = 0;
+        const MainMesh = 1;
+        const CSG = 2;
     }
 }
 
-#[repr(C)]
-#[derive(ShaderType, Default, Clone, Copy, Debug, Pod, Zeroable)]
-pub struct TerrainChunkVerticesIndicesCount {
-    pub vertices_count: u32,
-    pub indices_count: u32,
+#[derive(Resource)]
+pub struct TerrainChunkMainDynamicBuffers {
+    pub terrain_chunk_info_dynamic_buffer: SharedUniformBuffer<TerrainChunkInfo>,
+    pub voxel_vertex_values_dynamic_buffer: SharedStorageBuffer<VoxelVertexValueVec>,
+    pub voxel_cross_points_dynamic_buffer: SharedStorageBuffer<VoxelEdgeCrossPointVec>,
+
+    pub mesh_vertex_map_dynamic_buffer: SharedStorageBuffer<TerrainChunkMeshVertexMapVec>,
+
+    pub mesh_vertices_dynamic_buffer:
+        staged_buffer::SharedStagedBuffer<TerrainChunkMeshVertexInfoVec>,
+    pub mesh_indices_dynamic_buffer: staged_buffer::SharedStagedBuffer<TerrainChunkMeshIndicesVec>,
+
+    pub mesh_vertices_indices_count_dynamic_buffer:
+        staged_buffer::SharedStagedBuffer<TerrainChunkVerticesIndicesCount>,
+
+    pub csg_info_dynamic_buffer: SharedUniformBuffer<u32>,
+    pub csg_operations_dynamic_buffer: SharedStorageBuffer<Vec<TerrainChunkCSGOperation>>,
+
+    pub terrain_chunk_buffer_bindings_map: HashMap<Entity, TerrainChunkMainBufferBindings>,
+
+    pub recreate_bind_group: TerrainChunkMainRecreateBindGroup,
 }
 
-#[repr(C)]
-#[derive(ShaderType, Default, Clone, Copy, Debug, Pod, Zeroable)]
-pub struct TerrainChunkCSGOperation {
-    pub location: Vec3,
-    pub primitive_type: u32,
-    pub shape: Vec3,
-    pub operation_type: u32,
-}
-
-pub struct TerrainChunkMainBuffers {
-    pub terrain_chunk_info_buffer: UniformBuffer<TerrainChunkInfo>,
-    pub voxel_vertex_values_buffer: BufferVec<f32>,
-    pub voxel_cross_points_buffer: BufferVec<VoxelEdgeCrossPoint>,
-
-    pub mesh_vertex_map_buffer: BufferVec<u32>,
-
-    pub mesh_vertices_buffer: staged_buffer::StagedBufferVec<TerrainChunkVertexInfo>,
-    pub mesh_indices_buffer: staged_buffer::StagedBufferVec<u32>,
-
-    pub mesh_vertices_indices_count_buffer:
-        staged_buffer::StagedBuffer<TerrainChunkVerticesIndicesCount>,
-
-    pub csg_operations_buffer: BufferVec<TerrainChunkCSGOperation>,
-}
-
-pub struct TerrainChunkMainBufferCreateContext<'a> {
+pub struct TerrainChunkMainDynamicBufferReserveContext<'a> {
     pub render_device: &'a RenderDevice,
     pub render_queue: &'a RenderQueue,
-    pub terrain_chunk_aabb: Aabb3d,
-    pub terrain_chunk_address: TerrainChunkAddress,
     pub terrain_setting: &'a TerrainSetting,
-    pub terrain_chunk_csg_operations: &'a Option<Vec<TerrainChunkCSGOperation>>,
+    pub instance_num: usize,
+    pub csg_operations_num: usize,
 }
 
-impl TerrainChunkMainBuffers {
-    pub fn write_buffers_data(&mut self, context: TerrainChunkMainBufferCreateContext) {
+impl TerrainChunkMainDynamicBuffers {
+    pub fn insert_terrain_chunk_buffer_bindings(
+        &mut self,
+        entity: Entity,
+        buffer_bindings: TerrainChunkMainBufferBindings,
+    ) {
+        self.terrain_chunk_buffer_bindings_map
+            .insert(entity, buffer_bindings);
+    }
+
+    pub fn get_buffers_dynamic_offset(&self, entity: Entity, group_id: u32) -> Vec<DynamicOffset> {
+        if let Some(bindings) = self.terrain_chunk_buffer_bindings_map.get(&entity) {
+            return bindings.get_dynamic_offset(group_id);
+        }
+        vec![]
+    }
+
+    pub fn get_csg_operations_binding_info(&self, entity: Entity) -> DynamicBufferBindingInfo {
+        let bindings = self.terrain_chunk_buffer_bindings_map.get(&entity).unwrap();
+        bindings.csg_operations_buffer_binding
+    }
+
+    pub fn get_buffer_bindings(&self, entity: Entity) -> Option<&TerrainChunkMainBufferBindings> {
+        self.terrain_chunk_buffer_bindings_map.get(&entity)
+    }
+
+    pub fn clear(&mut self) {
+        let _span = info_span!("terrain chunk main dynamic buffers clear").entered();
+
+        self.terrain_chunk_buffer_bindings_map.clear();
+
+        self.terrain_chunk_info_dynamic_buffer.clear();
+        self.voxel_vertex_values_dynamic_buffer.clear();
+        self.voxel_cross_points_dynamic_buffer.clear();
+
+        self.mesh_vertex_map_dynamic_buffer.clear();
+
+        self.mesh_vertices_dynamic_buffer.clear();
+        self.mesh_indices_dynamic_buffer.clear();
+
+        self.mesh_vertices_indices_count_dynamic_buffer.clear();
+
+        self.csg_info_dynamic_buffer.clear();
+        self.csg_operations_dynamic_buffer.clear();
+
+        self.recreate_bind_group = TerrainChunkMainRecreateBindGroup::None;
+    }
+}
+
+impl TerrainChunkMainDynamicBuffers {
+    pub fn new(render_device: &RenderDevice) -> TerrainChunkMainDynamicBuffers {
+        let storage_buffer_alignment =
+            render_device.limits().min_storage_buffer_offset_alignment as u64;
+        let uniform_buffer_alignment =
+            render_device.limits().min_uniform_buffer_offset_alignment as u64;
+
+        let mut terrain_chunk_info_dynamic_buffer =
+            SharedUniformBuffer::<TerrainChunkInfo>::new_with_alignment(uniform_buffer_alignment);
+        terrain_chunk_info_dynamic_buffer.set_label(Some("terrain chunk info uniform buffer"));
+
+        let mut voxel_vertex_values_dynamic_buffer =
+            SharedStorageBuffer::<VoxelVertexValueVec>::new(storage_buffer_alignment);
+        voxel_vertex_values_dynamic_buffer
+            .set_label(Some("terrain chunk voxel vertex values buffer"));
+
+        let mut voxel_cross_points_dynamic_buffer =
+            SharedStorageBuffer::<VoxelEdgeCrossPointVec>::new(storage_buffer_alignment);
+        voxel_cross_points_dynamic_buffer.set_label(Some("terrain chunk voxel cross point buffer"));
+
+        let mut mesh_vertex_map_dynamic_buffer =
+            SharedStorageBuffer::<TerrainChunkMeshVertexMapVec>::new(storage_buffer_alignment);
+        mesh_vertex_map_dynamic_buffer.set_label(Some("terrain chunk mesh vertex map buffer"));
+
+        let mut mesh_vertices_dynamic_buffer = staged_buffer::SharedStagedBuffer::<
+            TerrainChunkMeshVertexInfoVec,
+        >::new(storage_buffer_alignment);
+        mesh_vertices_dynamic_buffer.set_label("terrain chunk vertices buffer");
+
+        let mut mesh_indices_dynamic_buffer = staged_buffer::SharedStagedBuffer::<
+            TerrainChunkMeshIndicesVec,
+        >::new(storage_buffer_alignment);
+        mesh_indices_dynamic_buffer.set_label("terrain chunk indices buffer");
+
+        let mut mesh_vertices_indices_count_dynamic_buffer =
+            staged_buffer::SharedStagedBuffer::<TerrainChunkVerticesIndicesCount>::new(
+                storage_buffer_alignment,
+            );
+        mesh_vertices_indices_count_dynamic_buffer.set_label("terrain chunk vertices num buffer");
+
+        let mut csg_info_dynamic_buffer =
+            SharedUniformBuffer::<u32>::new_with_alignment(uniform_buffer_alignment);
+        csg_info_dynamic_buffer.set_label(Some("terrain chunk mesh csg info buffer"));
+
+        let mut csg_operations_dynamic_buffer =
+            SharedStorageBuffer::<Vec<TerrainChunkCSGOperation>>::new(storage_buffer_alignment);
+        csg_operations_dynamic_buffer.set_label(Some("terrain chunk mesh csg operations buffer"));
+
+        Self {
+            terrain_chunk_info_dynamic_buffer,
+            voxel_vertex_values_dynamic_buffer,
+            voxel_cross_points_dynamic_buffer,
+            mesh_vertex_map_dynamic_buffer,
+            mesh_vertices_dynamic_buffer,
+            mesh_indices_dynamic_buffer,
+            mesh_vertices_indices_count_dynamic_buffer,
+            csg_info_dynamic_buffer,
+            csg_operations_dynamic_buffer,
+
+            terrain_chunk_buffer_bindings_map: HashMap::new(),
+            recreate_bind_group: TerrainChunkMainRecreateBindGroup::None,
+        }
+    }
+
+    pub fn set_stride(&mut self, terrain_setting: &TerrainSetting) {
+        let voxel_num = terrain_setting.get_voxel_num_in_chunk();
+        let voxel_vertex_num = voxel_num + 1;
+
+        let total_voxel_num = (voxel_num * voxel_num * voxel_num) as u64;
+        let mesh_vertex_num = (voxel_num * voxel_num * 10) as u64;
+        let total_voxel_vertex_num =
+            (voxel_vertex_num * voxel_vertex_num * voxel_vertex_num) as u64;
+
+        self.voxel_vertex_values_dynamic_buffer
+            .set_stride(BufferSize::new(f32::min_size().get() * total_voxel_vertex_num).unwrap());
+        self.voxel_cross_points_dynamic_buffer.set_stride(
+            BufferSize::new(VoxelEdgeCrossPoint::min_size().get() * total_voxel_vertex_num * 3)
+                .unwrap(),
+        );
+        self.mesh_vertex_map_dynamic_buffer
+            .set_stride(BufferSize::new(u32::min_size().get() * total_voxel_num).unwrap());
+        self.mesh_vertices_dynamic_buffer.set_stride(
+            BufferSize::new(TerrainChunkVertexInfo::min_size().get() * mesh_vertex_num).unwrap(),
+        );
+        self.mesh_indices_dynamic_buffer
+            .set_stride(BufferSize::new(u32::min_size().get() * mesh_vertex_num * 18).unwrap());
+    }
+
+    pub fn reserve_buffers(&mut self, context: &TerrainChunkMainDynamicBufferReserveContext) {
+        let _span = info_span!("terrain chunk main buffers reverse").entered();
+
+        {
+            let _span = info_span!("terrain chunk main info buffers reserve").entered();
+            if self
+                .terrain_chunk_info_dynamic_buffer
+                .reserve_buffer(context.instance_num, context.render_device)
+            {
+                self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::MainMesh;
+            }
+        }
+
+        {
+            let _span =
+                info_span!("terrain chunk main voxel vertex values buffers reserve").entered();
+            if self
+                .voxel_vertex_values_dynamic_buffer
+                .reserve_buffer(context.instance_num, context.render_device)
+            {
+                self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::MainMesh;
+            }
+        };
+
+        {
+            let _span =
+                info_span!("terrain chunk main voxel cross point buffers reserve").entered();
+            if self
+                .voxel_cross_points_dynamic_buffer
+                .reserve_buffer(context.instance_num, context.render_device)
+            {
+                self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::MainMesh;
+            }
+        };
+
+        {
+            let _span = info_span!("terrain chunk main mesh vertex map buffers reserve").entered();
+            if self
+                .mesh_vertex_map_dynamic_buffer
+                .reserve_buffer(context.instance_num, context.render_device)
+            {
+                self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::MainMesh;
+            }
+        };
+
+        {
+            let _span = info_span!("terrain chunk main mesh vertex stage buffers create").entered();
+            if self
+                .mesh_vertices_dynamic_buffer
+                .reserve_buffer(context.render_device, context.instance_num)
+            {
+                self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::MainMesh;
+            }
+        };
+
+        {
+            let _span =
+                info_span!("terrain chunk main mesh indices stage buffers create").entered();
+            if self
+                .mesh_indices_dynamic_buffer
+                .reserve_buffer(context.render_device, context.instance_num)
+            {
+                self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::MainMesh;
+            }
+        };
+
+        {
+            let _span =
+                info_span!("terrain chunk main mesh vertices indices count stage buffers reserve")
+                    .entered();
+            if self
+                .mesh_vertices_indices_count_dynamic_buffer
+                .reserve_buffer(context.render_device, context.instance_num)
+            {
+                self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::MainMesh;
+            }
+        };
+
+        {
+            let _span = info_span!("terrain chunk main csg info buffers reserve").entered();
+            if self
+                .csg_info_dynamic_buffer
+                .reserve_buffer(context.instance_num, context.render_device)
+            {
+                self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::CSG;
+            }
+        }
+
+        // {
+        //     let _span = info_span!("terrain chunk main csg operations buffers reserve").entered();
+        //     if self
+        //         .csg_operations_dynamic_buffer
+        //         .reserve_buffer(context.csg_operations_num, context.render_device)
+        //     {
+        //         self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::CSG;
+        //     }
+        // };
+    }
+
+    pub fn set_buffers_data(&mut self, context: TerrainChunkMainBufferCreateContext) {
+        let _span = info_span!("terrain chunk main buffers write buffers data").entered();
+
         let level = context.terrain_chunk_address.0.depth();
         let chunk_size = context.terrain_setting.get_chunk_size(level);
         let voxel_size = context.terrain_setting.get_voxel_size(level);
@@ -129,423 +311,308 @@ impl TerrainChunkMainBuffers {
 
         let chunk_min = context.terrain_chunk_aabb.min;
 
-        self.terrain_chunk_info_buffer.set(TerrainChunkInfo {
-            chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, chunk_size),
-            voxel_size,
-            voxel_num: voxel_num as u32,
-            qef_threshold: context.terrain_setting.qef_solver_threshold,
-            qef_stddev: context.terrain_setting.qef_stddev,
-        });
-        self.terrain_chunk_info_buffer
-            .write_buffer(context.render_device, context.render_queue);
+        {
+            let _span = info_span!("terrain chunk main chunk info buffers write buffer").entered();
 
-        self.mesh_vertices_indices_count_buffer
-            .set_value(TerrainChunkVerticesIndicesCount {
-                vertices_count: 0,
-                indices_count: 0,
-            });
-        self.mesh_vertices_indices_count_buffer
-            .write_buffer(context.render_device, context.render_queue);
-
-        self.csg_operations_buffer.clear();
-        if let Some(csg_operations) = context.terrain_chunk_csg_operations {
-            for operation in csg_operations.iter() {
-                self.csg_operations_buffer.push(*operation);
-            }
-            info!("buffer write: csg_operations: {:?}", csg_operations.len());
-        } else {
-            self.csg_operations_buffer.push(TerrainChunkCSGOperation {
-                location: Vec3::ZERO,
-                primitive_type: 100,
-                shape: Vec3::ZERO,
-                operation_type: 10000,
-            });
+            self.terrain_chunk_info_dynamic_buffer
+                .push(&TerrainChunkInfo {
+                    chunk_min_location_size: Vec4::new(
+                        chunk_min.x,
+                        chunk_min.y,
+                        chunk_min.z,
+                        chunk_size,
+                    ),
+                    voxel_size,
+                    voxel_num: voxel_num as u32,
+                    qef_threshold: context.terrain_setting.qef_solver_threshold,
+                    qef_stddev: context.terrain_setting.qef_stddev,
+                });
         }
-        self.csg_operations_buffer
-            .write_buffer(context.render_device, context.render_queue);
-    }
 
-    pub fn create_buffers(
-        context: &TerrainChunkMainBufferCreateContext,
-    ) -> TerrainChunkMainBuffers {
-        let voxel_num = context.terrain_setting.get_voxel_num_in_chunk();
-        let voxel_vertex_num = voxel_num + 1;
-        let total_voxel_num = voxel_num * voxel_num * voxel_num;
-        let vertex_num = voxel_num * voxel_num * 7;
-        let total_voxel_vertex_num = voxel_vertex_num * voxel_vertex_num * voxel_vertex_num;
-
-        let terrain_chunk_info_buffer = {
-            let mut chunk_info_uniform = UniformBuffer::from(TerrainChunkInfo::default());
-            chunk_info_uniform.set_label(Some("terrain chunk info uniform buffer"));
-            chunk_info_uniform
-        };
-
-        let voxel_vertex_values_buffer = {
-            let mut vertex_buffer = BufferVec::<f32>::new(BufferUsages::STORAGE);
-            vertex_buffer.set_label(Some("terrain chunk voxel vertex values buffer"));
-            vertex_buffer.reserve(total_voxel_vertex_num, context.render_device);
-            vertex_buffer
-        };
-
-        let voxel_cross_points_buffer = {
-            let mut vertex_buffer = BufferVec::<VoxelEdgeCrossPoint>::new(BufferUsages::STORAGE);
-            vertex_buffer.set_label(Some("terrain chunk voxel cross point buffer"));
-            vertex_buffer.reserve(total_voxel_vertex_num * 3, context.render_device);
-            vertex_buffer
-        };
-
-        let mesh_vertex_map_buffer = {
-            let mut vertex_buffer = BufferVec::<u32>::new(BufferUsages::STORAGE);
-            vertex_buffer.set_label(Some("terrain chunk mesh vertex map buffer"));
-            vertex_buffer.reserve(total_voxel_num, context.render_device);
-            vertex_buffer
-        };
-
-        let mesh_vertices_buffer =
-            staged_buffer::StagedBufferVec::<TerrainChunkVertexInfo>::create_buffer(
-                context.render_device,
-                "terrain chunk vertices buffer",
-                BufferUsages::STORAGE,
-                vertex_num,
-            );
-
-        let mesh_indices_buffer = staged_buffer::StagedBufferVec::<u32>::create_buffer(
-            context.render_device,
-            "terrain chunk indices buffer",
-            BufferUsages::STORAGE,
-            vertex_num * 18,
-        );
-
-        let mesh_vertices_indices_count_buffer =
-            staged_buffer::StagedBuffer::<TerrainChunkVerticesIndicesCount>::create_buffer(
-                context.render_device,
-                context.render_queue,
-                "terrain chunk vertices num buffer",
-                BufferUsages::STORAGE,
+        {
+            let _span =
+                info_span!("terrain chunk main vertices indices count buffers write buffer")
+                    .entered();
+            self.mesh_vertices_indices_count_dynamic_buffer.push_value(
                 TerrainChunkVerticesIndicesCount {
                     vertices_count: 0,
                     indices_count: 0,
                 },
             );
-
-        let csg_operations_buffer = {
-            let mut csg_operations_buffer =
-                BufferVec::<TerrainChunkCSGOperation>::new(BufferUsages::STORAGE);
-            csg_operations_buffer.set_label(Some("terrain chunk mesh csg operations buffer"));
-            csg_operations_buffer.reserve(
-                context
-                    .terrain_chunk_csg_operations
-                    .as_ref()
-                    .map_or(0, |v| v.len()),
-                context.render_device,
-            );
-            csg_operations_buffer
-        };
-
-        Self {
-            terrain_chunk_info_buffer,
-            voxel_vertex_values_buffer,
-            voxel_cross_points_buffer,
-            mesh_vertex_map_buffer,
-            mesh_vertices_buffer,
-            mesh_indices_buffer,
-            mesh_vertices_indices_count_buffer,
-            csg_operations_buffer,
         }
+
+        {
+            let _span =
+                info_span!("terrain chunk main vertices indices count buffers write buffer")
+                    .entered();
+            if let Some(csg_operators) = context.terrain_chunk_csg_operations {
+                self.csg_info_dynamic_buffer
+                    .push(&(csg_operators.len() as u32));
+            } else {
+                self.csg_info_dynamic_buffer.push(&0);
+            }
+        }
+
+        {
+            let _span =
+                info_span!("terrain chunk main csg operations buffers write buffer").entered();
+
+            let offset;
+            let size;
+            if let Some(csg_operations) = context.terrain_chunk_csg_operations {
+                offset = self
+                    .csg_operations_dynamic_buffer
+                    .push(csg_operations.clone());
+                size = csg_operations.len() as u64 * TerrainChunkCSGOperation::min_size().get();
+            } else {
+                offset = self
+                    .csg_operations_dynamic_buffer
+                    .push(vec![TerrainChunkCSGOperation {
+                        location: Vec3::ZERO,
+                        primitive_type: 100,
+                        shape: Vec3::ZERO,
+                        operation_type: 10000,
+                    }]);
+                size = TerrainChunkCSGOperation::min_size().get();
+            }
+
+            let binding = self
+                .terrain_chunk_buffer_bindings_map
+                .get_mut(&context.entity)
+                .unwrap();
+            binding.csg_operations_buffer_binding = DynamicBufferBindingInfo::new(
+                offset as u64,
+                BufferSize::new(
+                    self.csg_operations_dynamic_buffer
+                        .get_alignment_value()
+                        .round_up(size),
+                ),
+            );
+        }
+    }
+
+    pub fn write_buffers(&mut self, render_device: &RenderDevice, render_queue: &RenderQueue) {
+        if self
+            .terrain_chunk_info_dynamic_buffer
+            .write_buffer(render_device, render_queue)
+        {
+            self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::MainMesh;
+        }
+
+        self.mesh_vertices_indices_count_dynamic_buffer
+            .write_buffer(render_device, render_queue);
+
+        if self
+            .csg_info_dynamic_buffer
+            .write_buffer(render_device, render_queue)
+        {
+            self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::CSG;
+        }
+
+        if self
+            .csg_operations_dynamic_buffer
+            .reserve_buffer_to_scratch(render_device)
+        {
+            self.recreate_bind_group |= TerrainChunkMainRecreateBindGroup::CSG;
+        }
+
+        self.csg_operations_dynamic_buffer
+            .write_buffer(render_device, render_queue)
     }
 
     pub fn stage_buffers(&self, command_encoder: &mut CommandEncoder) {
-        self.mesh_vertices_buffer.stage_buffer(command_encoder);
-        self.mesh_indices_buffer.stage_buffer(command_encoder);
-        self.mesh_vertices_indices_count_buffer
-            .stage_buffer(command_encoder);
+        self.mesh_vertices_dynamic_buffer.stage_buffer(
+            command_encoder,
+            self.mesh_vertices_dynamic_buffer
+                .cpu_buffer
+                .as_ref()
+                .unwrap()
+                .size(),
+        );
+        self.mesh_indices_dynamic_buffer.stage_buffer(
+            command_encoder,
+            self.mesh_indices_dynamic_buffer
+                .cpu_buffer
+                .as_ref()
+                .unwrap()
+                .size(),
+        );
+        self.mesh_vertices_indices_count_dynamic_buffer
+            .stage_buffer(
+                command_encoder,
+                self.mesh_vertices_indices_count_dynamic_buffer
+                    .cpu_buffer
+                    .as_ref()
+                    .unwrap()
+                    .size(),
+            );
     }
 
     pub fn unmap(&self) {
-        self.mesh_vertices_buffer.unmap();
-        self.mesh_indices_buffer.unmap();
-        self.mesh_vertices_indices_count_buffer.unmap();
+        self.mesh_vertices_dynamic_buffer.unmap();
+        self.mesh_indices_dynamic_buffer.unmap();
+        self.mesh_vertices_indices_count_dynamic_buffer.unmap();
+    }
+
+    pub fn map_async(&self) {
+        self.mesh_vertices_dynamic_buffer.map_async(..);
+        self.mesh_indices_dynamic_buffer.map_async(..);
+        self.mesh_vertices_indices_count_dynamic_buffer
+            .map_async(..);
     }
 }
 
-#[derive(Resource, Default)]
-pub struct TerrainChunkMainBuffersCache {
-    terrain_chunk_buffers: Vec<TerrainChunkMainBuffers>,
-    used_count: usize,
+#[derive(Default, Debug, Copy, Clone)]
+pub struct DynamicBufferBindingInfo {
+    pub offset: BufferAddress,
+    pub size: Option<BufferSize>,
 }
 
-impl TerrainChunkMainBuffersCache {
-    pub fn acquire_terrain_chunk_buffers(&mut self) -> Option<usize> {
-        if self.used_count < self.terrain_chunk_buffers.len() {
-            self.used_count += 1;
-            return Some(self.used_count - 1);
+impl DynamicBufferBindingInfo {
+    pub fn new(offset: BufferAddress, size: Option<BufferSize>) -> Self {
+        Self { offset, size }
+    }
+
+    pub fn from_num(last_num: usize, current_num: usize, type_size: u64) -> Self {
+        Self {
+            offset: type_size * last_num as u64,
+            size: Some(BufferSize::new(type_size * current_num as u64).unwrap()),
         }
-        None
     }
 
-    pub fn insert_terrain_chunk_buffers(&mut self, buffers: TerrainChunkMainBuffers) {
-        self.terrain_chunk_buffers.push(buffers);
-    }
-
-    pub fn get_buffers_mut(
-        &mut self,
-        cached_id: TerrainChunkMainBufferCachedId,
-    ) -> Option<&mut TerrainChunkMainBuffers> {
-        self.terrain_chunk_buffers.get_mut(cached_id.0)
-    }
-
-    pub fn get_buffers(
-        &self,
-        cached_id: TerrainChunkMainBufferCachedId,
-    ) -> Option<&TerrainChunkMainBuffers> {
-        self.terrain_chunk_buffers.get(cached_id.0)
-    }
-
-    pub fn reset_used_count(&mut self) {
-        self.used_count = 0;
+    pub fn get_right_offset(&self) -> BufferAddress {
+        self.offset + self.size.unwrap().get()
     }
 }
 
-#[derive(Component, Deref, Copy, Clone)]
-pub struct TerrainChunkMainBufferCachedId(pub usize);
+#[derive(Default, Debug)]
+pub struct TerrainChunkMainBufferBindings {
+    pub terrain_chunk_info_buffer_binding: DynamicBufferBindingInfo,
+    pub voxel_vertex_values_buffer_binding: DynamicBufferBindingInfo,
+    pub voxel_cross_points_buffer_binding: DynamicBufferBindingInfo,
 
-pub struct TerrainChunkSeamBuffers {
-    pub terrain_chunk_info_buffer: UniformBuffer<TerrainChunkInfo>,
-    pub terrain_chunks_lod_buffer: UniformBuffer<[UVec4; 16]>,
+    pub mesh_vertex_map_buffer_binding: DynamicBufferBindingInfo,
 
-    pub seam_mesh_vertex_map_buffer: BufferVec<u32>,
+    pub mesh_vertices_buffer_binding: DynamicBufferBindingInfo,
+    pub mesh_indices_buffer_binding: DynamicBufferBindingInfo,
 
-    pub seam_mesh_vertices_buffer: staged_buffer::StagedBufferVec<TerrainChunkVertexInfo>,
-    pub seam_mesh_indices_buffer: staged_buffer::StagedBufferVec<u32>,
+    pub mesh_vertices_indices_count_buffer_binding: DynamicBufferBindingInfo,
 
-    pub seam_mesh_vertices_indices_count_buffer:
-        staged_buffer::StagedBuffer<TerrainChunkVerticesIndicesCount>,
+    pub csg_info_buffer_binding: DynamicBufferBindingInfo,
+    pub csg_operations_buffer_binding: DynamicBufferBindingInfo,
 }
 
-pub struct TerrainChunkSeamBufferCreateContext<'a> {
-    pub render_device: &'a RenderDevice,
-    pub render_queue: &'a RenderQueue,
+pub struct TerrainChunkMainBufferCreateContext<'a> {
     pub terrain_chunk_aabb: Aabb3d,
     pub terrain_chunk_address: TerrainChunkAddress,
-    pub terrain_chunk_seam_lod: TerrainChunkSeamLod,
     pub terrain_setting: &'a TerrainSetting,
+    pub terrain_chunk_csg_operations: &'a Option<Vec<TerrainChunkCSGOperation>>,
+    pub entity: Entity,
 }
 
-impl TerrainChunkSeamBuffers {
-    pub fn update_buffers_reuse_info(&mut self, context: TerrainChunkSeamBufferCreateContext) {
-        // let max = context.terrain_chunk_seam_lod.get_max_lod();
-        let add_lod = context.terrain_chunk_seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
-        let level = context.terrain_chunk_address.0.depth() + add_lod[0];
-        let voxel_size = context.terrain_setting.get_voxel_size(level);
-        let chunk_size = context.terrain_setting.get_chunk_size(level - add_lod[0]);
-        // let voxel_num = context.terrain_setting.get_voxel_num_in_chunk() * 2usize.pow(max as u32);
-        let voxel_num = (chunk_size / voxel_size).round();
+pub struct TerrainChunkMainBufferBindingsBuilder<'a> {
+    pub current_index: usize,
 
-        let chunk_min = context.terrain_chunk_aabb.min;
+    pub last_csg_operations_num: usize,
+    pub current_csg_operations_num: usize,
 
-        self.terrain_chunk_info_buffer.set(TerrainChunkInfo {
-            chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, chunk_size),
-            voxel_size,
-            voxel_num: voxel_num as u32,
-            qef_threshold: context.terrain_setting.qef_solver_threshold,
-            qef_stddev: context.terrain_setting.qef_stddev,
-        });
-        self.terrain_chunk_info_buffer
-            .write_buffer(context.render_device, context.render_queue);
+    pub terrain_setting: &'a TerrainSetting,
+    pub dynamic_buffers: &'a TerrainChunkMainDynamicBuffers,
+}
 
-        let lod = context.terrain_chunk_seam_lod.to_uniform_buffer_array();
-        self.terrain_chunks_lod_buffer.set(lod);
-        self.terrain_chunks_lod_buffer
-            .write_buffer(context.render_device, context.render_queue);
+impl TerrainChunkMainBufferBindings {
+    pub fn get_dynamic_offset(&self, group_id: u32) -> Vec<DynamicOffset> {
+        if group_id == 0 {
+            vec![
+                self.terrain_chunk_info_buffer_binding.offset as DynamicOffset,
+                self.voxel_vertex_values_buffer_binding.offset as DynamicOffset,
+                self.voxel_cross_points_buffer_binding.offset as DynamicOffset,
+                self.mesh_vertices_buffer_binding.offset as DynamicOffset,
+                self.mesh_indices_buffer_binding.offset as DynamicOffset,
+                self.mesh_vertex_map_buffer_binding.offset as DynamicOffset,
+                self.mesh_vertices_indices_count_buffer_binding.offset as DynamicOffset,
+            ]
+        } else {
+            vec![
+                self.csg_info_buffer_binding.offset as DynamicOffset,
+                self.csg_operations_buffer_binding.offset as DynamicOffset,
+            ]
+        }
+    }
 
-        debug!(
-            "TerrainChunkInfo: address: {:?}, voxel size: {}, voxel_num: {}, add_lod: {:?}",
-            context.terrain_chunk_address, voxel_size, voxel_num, add_lod
+    pub fn rebuild_binding_size(&mut self, builder: TerrainChunkMainBufferBindingsBuilder) {
+        let last_index = builder.current_index - 1;
+
+        self.terrain_chunk_info_buffer_binding = DynamicBufferBindingInfo::from_num(
+            last_index,
+            1,
+            builder
+                .dynamic_buffers
+                .terrain_chunk_info_dynamic_buffer
+                .get_alignment(),
         );
 
-        self.seam_mesh_vertices_indices_count_buffer
-            .set_value(TerrainChunkVerticesIndicesCount {
-                vertices_count: 0,
-                indices_count: 0,
-            });
-        self.seam_mesh_vertices_indices_count_buffer
-            .write_buffer(context.render_device, context.render_queue);
-    }
-
-    pub fn create_buffers(context: TerrainChunkSeamBufferCreateContext) -> TerrainChunkSeamBuffers {
-        let chunk_min = context.terrain_chunk_aabb.min;
-        let add_lod = context.terrain_chunk_seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
-        let level = context.terrain_chunk_address.0.depth() + add_lod[0];
-        let voxel_size = context.terrain_setting.get_voxel_size(level);
-        let chunk_size = context.terrain_setting.get_chunk_size(level - add_lod[0]);
-
-        // let max = context.terrain_chunk_seam_lod.get_max_lod();
-        // context.terrain_setting.get_voxel_num_in_chunk() * 2usize.pow(max as u32);
-        let voxel_num = (chunk_size / voxel_size).round() as usize;
-        let total_voxel_num = (voxel_num + 1) * (voxel_num + 1) * 2;
-        let vertices_num = (voxel_num + 1) * (voxel_num + 1) * 2;
-
-        let terrain_chunk_info_buffer = {
-            let mut chunk_info_uniform = UniformBuffer::from(TerrainChunkInfo {
-                chunk_min_location_size: Vec4::new(
-                    chunk_min.x,
-                    chunk_min.y,
-                    chunk_min.z,
-                    chunk_size,
-                ),
-                voxel_size,
-                voxel_num: voxel_num as u32,
-                qef_threshold: context.terrain_setting.qef_solver_threshold,
-                qef_stddev: context.terrain_setting.qef_stddev,
-            });
-            debug!(
-                "TerrainChunkInfo: address: {:?}, voxel size: {}, voxel_num: {}, add_lod: {:?}",
-                context.terrain_chunk_address, voxel_size, voxel_num, add_lod
-            );
-            chunk_info_uniform.set_label(Some("terrain chunk seam info uniform buffer"));
-            chunk_info_uniform.write_buffer(context.render_device, context.render_queue);
-            chunk_info_uniform
-        };
-
-        let terrain_chunks_lod_buffer = {
-            let lod = context.terrain_chunk_seam_lod.to_uniform_buffer_array();
-            let mut chunk_info_uniform = UniformBuffer::from(lod);
-            chunk_info_uniform.set_label(Some("terrain chunk lod uniform buffer"));
-            chunk_info_uniform.write_buffer(context.render_device, context.render_queue);
-            chunk_info_uniform
-        };
-
-        let seam_mesh_vertex_map_buffer = {
-            let mut vertex_buffer = BufferVec::<u32>::new(BufferUsages::STORAGE);
-            vertex_buffer.set_label(Some("terrain chunk seam mesh vertex map buffer"));
-            vertex_buffer.reserve(total_voxel_num, context.render_device);
-            vertex_buffer
-        };
-
-        let seam_mesh_vertices_buffer =
-            staged_buffer::StagedBufferVec::<TerrainChunkVertexInfo>::create_buffer(
-                context.render_device,
-                &format!("terrain chunk seam mesh vertices buffer {:?}", chunk_min),
-                BufferUsages::STORAGE,
-                vertices_num,
-            );
-
-        let seam_mesh_indices_buffer = staged_buffer::StagedBufferVec::<u32>::create_buffer(
-            context.render_device,
-            &format!("terrain chunk indices buffer {:?}", chunk_min),
-            BufferUsages::STORAGE,
-            vertices_num * 18,
+        self.voxel_vertex_values_buffer_binding = DynamicBufferBindingInfo::from_num(
+            last_index,
+            1,
+            builder
+                .dynamic_buffers
+                .voxel_vertex_values_dynamic_buffer
+                .get_stride_alignment(),
         );
 
-        let seam_mesh_vertices_indices_count_buffer =
-            staged_buffer::StagedBuffer::<TerrainChunkVerticesIndicesCount>::create_buffer(
-                context.render_device,
-                context.render_queue,
-                &format!("terrain chunk vertices num buffer {:?}", chunk_min),
-                BufferUsages::STORAGE,
-                TerrainChunkVerticesIndicesCount {
-                    vertices_count: 0,
-                    indices_count: 0,
-                },
-            );
+        self.voxel_cross_points_buffer_binding = DynamicBufferBindingInfo::from_num(
+            last_index,
+            1,
+            builder
+                .dynamic_buffers
+                .voxel_cross_points_dynamic_buffer
+                .get_stride_alignment(),
+        );
 
-        Self {
-            terrain_chunk_info_buffer,
-            terrain_chunks_lod_buffer,
-            seam_mesh_vertex_map_buffer,
-            seam_mesh_vertices_buffer,
-            seam_mesh_indices_buffer,
-            seam_mesh_vertices_indices_count_buffer,
-        }
-    }
+        self.mesh_vertex_map_buffer_binding = DynamicBufferBindingInfo::from_num(
+            last_index,
+            1,
+            builder
+                .dynamic_buffers
+                .mesh_vertex_map_dynamic_buffer
+                .get_stride_alignment(),
+        );
 
-    pub fn stage_buffers(&self, command_encoder: &mut CommandEncoder) {
-        self.seam_mesh_vertices_buffer.stage_buffer(command_encoder);
-        self.seam_mesh_indices_buffer.stage_buffer(command_encoder);
-        self.seam_mesh_vertices_indices_count_buffer
-            .stage_buffer(command_encoder);
-    }
+        self.mesh_vertices_buffer_binding = DynamicBufferBindingInfo::from_num(
+            last_index,
+            1,
+            builder
+                .dynamic_buffers
+                .mesh_vertices_dynamic_buffer
+                .get_alignment(),
+        );
 
-    pub fn unmap(&self) {
-        self.seam_mesh_vertices_buffer.unmap();
-        self.seam_mesh_indices_buffer.unmap();
-        self.seam_mesh_vertices_indices_count_buffer.unmap();
-    }
-}
+        self.mesh_indices_buffer_binding = DynamicBufferBindingInfo::from_num(
+            last_index,
+            1,
+            builder
+                .dynamic_buffers
+                .mesh_indices_dynamic_buffer
+                .get_alignment(),
+        );
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub struct TerrainChunkSeamKey {
-    pub lod: TerrainChunkSeamLod,
-}
+        self.mesh_vertices_indices_count_buffer_binding = DynamicBufferBindingInfo::from_num(
+            last_index,
+            1,
+            builder
+                .dynamic_buffers
+                .mesh_vertices_indices_count_dynamic_buffer
+                .get_alignment(),
+        );
 
-pub struct TerrainChunkSeamBuffersCounter {
-    terrain_chunk_seam_buffers: Vec<TerrainChunkSeamBuffers>,
-    used_count: usize,
-}
-
-#[derive(Resource, Default)]
-pub struct TerrainChunkSeamBuffersCache {
-    terrain_chunk_seam_buffers_map: HashMap<TerrainChunkSeamKey, TerrainChunkSeamBuffersCounter>,
-}
-
-impl TerrainChunkSeamBuffersCache {
-    pub fn acquire_terrain_chunk_buffers(&mut self, key: TerrainChunkSeamKey) -> Option<usize> {
-        if let Some(buffers_counter) = self.terrain_chunk_seam_buffers_map.get_mut(&key) {
-            if buffers_counter.used_count < buffers_counter.terrain_chunk_seam_buffers.len() {
-                buffers_counter.used_count += 1;
-                return Some(buffers_counter.used_count - 1);
-            }
-        }
-        None
-    }
-
-    pub fn insert_terrain_chunk_buffers(
-        &mut self,
-        key: TerrainChunkSeamKey,
-        buffers: TerrainChunkSeamBuffers,
-    ) {
-        let buffers_counter = self
-            .terrain_chunk_seam_buffers_map
-            .entry(key)
-            .or_insert_with(|| TerrainChunkSeamBuffersCounter {
-                terrain_chunk_seam_buffers: Vec::new(),
-                used_count: 0,
-            });
-        buffers_counter.terrain_chunk_seam_buffers.push(buffers);
-    }
-
-    pub fn get_buffers_mut(
-        &mut self,
-        key: TerrainChunkSeamKey,
-        cached_id: usize,
-    ) -> Option<&mut TerrainChunkSeamBuffers> {
-        if let Some(buffers_counter) = self.terrain_chunk_seam_buffers_map.get_mut(&key) {
-            buffers_counter
-                .terrain_chunk_seam_buffers
-                .get_mut(cached_id)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_buffers(
-        &self,
-        key: TerrainChunkSeamKey,
-        cached_id: usize,
-    ) -> Option<&TerrainChunkSeamBuffers> {
-        if let Some(buffers_counter) = self.terrain_chunk_seam_buffers_map.get(&key) {
-            buffers_counter.terrain_chunk_seam_buffers.get(cached_id)
-        } else {
-            None
-        }
-    }
-
-    pub fn reset_used_count(&mut self) {
-        for value in self.terrain_chunk_seam_buffers_map.values_mut() {
-            value.used_count = 0;
-        }
+        self.csg_info_buffer_binding = DynamicBufferBindingInfo::from_num(
+            last_index,
+            1,
+            builder
+                .dynamic_buffers
+                .csg_info_dynamic_buffer
+                .get_alignment(),
+        );
     }
 }
-
-#[derive(Component, Deref, Copy, Clone)]
-pub struct TerrainChunkSeamBufferCachedId(pub [usize; 3]);

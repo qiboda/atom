@@ -1,5 +1,6 @@
 use atom_internal::plugins::AtomDefaultPlugins;
 use atom_renderdoc::RenderDocPlugin;
+use avian3d::PhysicsPlugins;
 use bevy::{
     color::palettes::css,
     core_pipeline::{
@@ -17,6 +18,12 @@ use bevy::{
 };
 use bevy_debug_grid::{Grid, GridAxis};
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
+use bevy_mod_picking::{
+    debug::DebugPickingMode,
+    events::{Click, Move, Pointer},
+    prelude::RaycastBackend,
+    DefaultPickingPlugins,
+};
 use dotenv::dotenv;
 use log_layers::LogLayersPlugin;
 // use oxidized_navigation::{
@@ -57,6 +64,19 @@ pub fn main() {
     //     )),
     //     OxidizedNavigationDebugDrawPlugin,
     // ))
+    .add_plugins(
+        // We want to disable the raycast backend because it is enabled by default. All supplied
+        // backends are optional. In your app, you can disable the default features of the
+        // plugin and only enable the backends you want to use. Picking will still work if both
+        // backends are enabled, but that would mean we wouldn't be able to test the Avian
+        // backend in isolation.
+        DefaultPickingPlugins.build().disable::<RaycastBackend>(),
+    )
+    .add_plugins((
+        PhysicsPlugins::default(),
+        // PhysicsDebugPlugin::default()
+    ))
+    .insert_resource(DebugPickingMode::Normal)
     .add_plugins(RenderDocPlugin)
     .add_plugins(RenderDiagnosticsPlugin)
     .add_plugins(WireframePlugin)
@@ -81,7 +101,8 @@ pub fn main() {
         (
             update_terrain_observer,
             change_camera_speed,
-            apply_csg_operation,
+            pointer_move_terrain,
+            pointer_click_terrain,
         ),
     )
     // .add_plugins(WorldInspectorPlugin::new())
@@ -219,17 +240,32 @@ pub fn change_camera_speed(
     }
 }
 
-pub fn apply_csg_operation(
-    input: Res<ButtonInput<KeyCode>>,
+fn pointer_move_terrain(mut event_reader: EventReader<Pointer<Move>>, mut gizmos: Gizmos) {
+    for event in event_reader.read() {
+        if let Some(position) = event.event.hit.position {
+            gizmos.cuboid(
+                Transform::from_translation(position).with_scale(Vec3::splat(3.0)),
+                LinearRgba::RED,
+            );
+        }
+    }
+}
+
+fn pointer_click_terrain(
+    mut event_reader: EventReader<Pointer<Click>>,
     mut event_writer: EventWriter<CSGOperateApplyEvent>,
 ) {
-    if input.just_pressed(KeyCode::KeyJ) {
-        event_writer.send(CSGOperateApplyEvent {
-            transform: Transform::from_translation(Vec3::new(5.0, 0.0, 5.0)),
-            primitive: CSGPrimitive::Box {
-                size: Vec3::splat(5.0),
-            },
-            operate_type: CSGOperateType::Difference,
-        });
+    for event in event_reader.read() {
+        info!("pointer_click_terrain");
+        if let Some(position) = event.event.hit.position {
+            info!("pointer_click_terrain send event");
+            event_writer.send(CSGOperateApplyEvent {
+                transform: Transform::from_translation(position),
+                primitive: CSGPrimitive::Box {
+                    size: Vec3::splat(3.0),
+                },
+                operate_type: CSGOperateType::Difference,
+            });
+        }
     }
 }

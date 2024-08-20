@@ -2,6 +2,7 @@
 #import noise::fbm::open_simplex_2d_fbm_with_seed
 
 #import terrain::csg::csg_utils::apply_csg_operations
+#import terrain::main_mesh_bind_group::csg_operations
 
 fn plane(location: vec3f, normal: vec3f, height: f32) -> f32 {
     // n must be normalized

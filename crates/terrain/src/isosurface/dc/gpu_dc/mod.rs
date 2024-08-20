@@ -3,6 +3,8 @@ pub mod buffer_cache;
 pub mod mesh_compute;
 pub mod node;
 pub mod pipelines;
+pub mod shared_buffer;
 #[cfg(feature = "simulate_gpu_seam")]
 pub mod simulate_gpu_seam;
 pub mod staged_buffer;
+pub mod buffer_type;

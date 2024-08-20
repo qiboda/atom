@@ -30,11 +30,20 @@ pub fn trigger_chunk_reload_event(
     for node_address in event_trigger.event().node_addresses.iter() {
         let terrain_chunk_address: TerrainChunkAddress = node_address.into();
         let Some(entity) = terrain_chunk_mapper.data.get(&terrain_chunk_address) else {
+            warn!(
+                "to reload chunk: {:?}, but not found",
+                terrain_chunk_address
+            );
             continue;
         };
         if let Ok(mut state) = query.get_mut(*entity) {
             *state |= TerrainChunkState::CREATE_MAIN_MESH | TerrainChunkState::CREATE_SEAM_MESH;
-            info!("trigger_chunk_reload_event");
+            debug!("to reload chunk: {:?} set state: {:?}", node_address, state);
+        } else {
+            warn!(
+                "to reload chunk: {:?}, {:?}, but query not found",
+                terrain_chunk_address, entity
+            );
         }
     }
 }

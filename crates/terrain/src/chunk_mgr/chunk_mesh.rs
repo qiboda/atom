@@ -1,12 +1,11 @@
+use atom_internal::physical::PhysicalCollisionLayer;
 use bevy::prelude::*;
 
 use bevy::pbr::wireframe::WireframeColor;
 
 use bevy::pbr::wireframe::Wireframe;
 
-use avian3d::prelude::RigidBody;
-
-use avian3d::prelude::Collider;
+use avian3d::prelude::*;
 
 use crate::ecology::ecology_set::EcologyMaterials;
 use crate::isosurface::dc::gpu_dc::mesh_compute::TerrainChunkMeshDataMainWorldReceiver;
@@ -70,9 +69,22 @@ pub fn receive_terrain_chunk_mesh_data(
                             cull_mode: Some(wgpu::Face::Back),
                         });
 
-                        let main_mesh_id = commands
-                            .spawn((
-                                Collider::trimesh_from_mesh(&main_mesh.mesh).unwrap(),
+                        let mut entity_commands = commands.spawn_empty();
+
+                        entity_commands.insert((
+                            Collider::trimesh_from_mesh(&main_mesh.mesh).unwrap(),
+                            RigidBody::Static,
+                            CollisionLayers::new(
+                                PhysicalCollisionLayer::Terrain,
+                                [
+                                    PhysicalCollisionLayer::Player,
+                                    PhysicalCollisionLayer::Enemy,
+                                ],
+                            ),
+                        ));
+
+                        let main_mesh_id = entity_commands
+                            .insert((
                                 MaterialMeshBundle {
                                     mesh: meshes.add(main_mesh.mesh),
                                     material,
@@ -80,7 +92,6 @@ pub fn receive_terrain_chunk_mesh_data(
                                     visibility: Visibility::Visible,
                                     ..Default::default()
                                 },
-                                RigidBody::Static,
                                 Wireframe,
                                 WireframeColor {
                                     color: LinearRgba::BLACK.into(),
@@ -88,6 +99,7 @@ pub fn receive_terrain_chunk_mesh_data(
                             ))
                             .set_parent(data.entity)
                             .id();
+
                         mesh_entities.main_mesh = Some(main_mesh_id);
                     }
 
@@ -126,9 +138,22 @@ pub fn receive_terrain_chunk_mesh_data(
                                     // cull_mode: None,
                                 });
 
-                                let seam_mesh_id = commands
-                                    .spawn((
-                                        Collider::trimesh_from_mesh(&gpu_mesh.seam_mesh).unwrap(),
+                                let mut entity_commands = commands.spawn_empty();
+
+                                entity_commands.insert((
+                                    Collider::trimesh_from_mesh(&gpu_mesh.seam_mesh).unwrap(),
+                                    RigidBody::Static,
+                                    CollisionLayers::new(
+                                        PhysicalCollisionLayer::Terrain,
+                                        [
+                                            PhysicalCollisionLayer::Player,
+                                            PhysicalCollisionLayer::Enemy,
+                                        ],
+                                    ),
+                                ));
+
+                                let seam_mesh_id = entity_commands
+                                    .insert((
                                         MaterialMeshBundle {
                                             mesh: meshes.add(gpu_mesh.seam_mesh),
                                             material,
@@ -138,7 +163,6 @@ pub fn receive_terrain_chunk_mesh_data(
                                             visibility: Visibility::Visible,
                                             ..Default::default()
                                         },
-                                        RigidBody::Static,
                                         Wireframe,
                                         WireframeColor {
                                             color: LinearRgba::WHITE.into(),
@@ -184,9 +208,22 @@ pub fn receive_terrain_chunk_mesh_data(
                                     // cull_mode: None,
                                 });
 
-                                let seam_mesh_id = commands
-                                    .spawn((
-                                        Collider::trimesh_from_mesh(&cpu_mesh.seam_mesh).unwrap(),
+                                let mut entity_commands = commands.spawn_empty();
+
+                                entity_commands.insert((
+                                    Collider::trimesh_from_mesh(&cpu_mesh.seam_mesh).unwrap(),
+                                    RigidBody::Static,
+                                    CollisionLayers::new(
+                                        PhysicalCollisionLayer::Terrain,
+                                        [
+                                            PhysicalCollisionLayer::Player,
+                                            PhysicalCollisionLayer::Enemy,
+                                        ],
+                                    ),
+                                ));
+
+                                let seam_mesh_id = entity_commands
+                                    .insert((
                                         MaterialMeshBundle {
                                             mesh: meshes.add(cpu_mesh.seam_mesh),
                                             material,
@@ -196,7 +233,6 @@ pub fn receive_terrain_chunk_mesh_data(
                                             visibility: Visibility::Visible,
                                             ..Default::default()
                                         },
-                                        RigidBody::Static,
                                         Wireframe,
                                         WireframeColor {
                                             color: LinearRgba::WHITE.into(),

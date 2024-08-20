@@ -8,48 +8,21 @@ use bevy::{
 };
 
 use crate::{
-    chunk_mgr::chunk::comp::{TerrainChunkAddress, TerrainChunkSeamLod},
+    chunk_mgr::chunk::comp::{TerrainChunkAddress, TerrainChunkState},
     setting::TerrainSetting,
 };
 
-#[cfg(feature = "gpu_seam")]
-use crate::{isosurface::dc::gpu_dc::buffer_cache::TerrainChunkSeamKey, tables::SubNodeIndex};
-
-use super::bind_group_cache::TerrainChunkMainBindGroupCachedId;
-use super::buffer_cache::TerrainChunkMainBufferCachedId;
-use super::buffer_cache::TerrainChunkMainBuffersCache;
-use super::pipelines::TerrainChunkPipelines;
 use super::{
-    bind_group_cache::TerrainChunkMainBindGroupsCache,
-    bind_group_cache::TerrainChunkSeamBindGroupCachedId,
-    buffer_cache::TerrainChunkSeamBufferCachedId,
+    bind_group_cache::TerrainChunkMainBindGroups, buffer_cache::TerrainChunkMainDynamicBuffers,
 };
-
-#[cfg(feature = "gpu_seam")]
-use super::{
-    bind_group_cache::TerrainChunkSeamBindGroupsCache, buffer_cache::TerrainChunkSeamBuffersCache,
-};
+use super::{buffer_cache::DynamicBufferBindingInfo, pipelines::TerrainChunkPipelines};
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
 pub struct TerrainChunkMeshComputeLabel;
 
 pub(crate) struct TerrainChunkMeshComputeNode {
     #[allow(clippy::type_complexity)]
-    pub(crate) query: QueryState<
-        (
-            Entity,
-            Read<TerrainChunkAddress>,
-            Option<Read<TerrainChunkMainBufferCachedId>>,
-            Option<Read<TerrainChunkMainBindGroupCachedId>>,
-            Read<TerrainChunkSeamLod>,
-            Option<Read<TerrainChunkSeamBufferCachedId>>,
-            Option<Read<TerrainChunkSeamBindGroupCachedId>>,
-        ),
-        Or<(
-            With<TerrainChunkMainBindGroupCachedId>,
-            With<TerrainChunkSeamBindGroupCachedId>,
-        )>,
-    >,
+    pub(crate) query: QueryState<(Entity, Read<TerrainChunkState>, Read<TerrainChunkAddress>)>,
     pub(crate) entities: Vec<Entity>,
 }
 
@@ -67,8 +40,12 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
         self.query.update_archetypes(world);
 
         self.entities.clear();
-        for (entity, _, _, _, _, _, _) in self.query.iter(world) {
-            self.entities.push(entity);
+        for (entity, state, _) in self.query.iter(world) {
+            if state.contains(TerrainChunkState::CREATE_MAIN_MESH)
+                || state.contains(TerrainChunkState::CREATE_SEAM_MESH)
+            {
+                self.entities.push(entity);
+            }
         }
     }
 
@@ -78,6 +55,10 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
         render_context: &mut bevy::render::renderer::RenderContext<'w>,
         world: &'w World,
     ) -> Result<(), render_graph::NodeRunError> {
+        if self.entities.is_empty() {
+            return Ok(());
+        }
+
         let _span = info_span!(
             "TerrainChunkMeshComputeNode::run",
             count = self.entities.len()
@@ -86,12 +67,8 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
 
         let pipeline_cache = world.resource::<PipelineCache>();
         let pipelines = world.resource::<TerrainChunkPipelines>();
-        let main_buffers_cache = world.resource::<TerrainChunkMainBuffersCache>();
-        let main_bind_groups_cache = world.resource::<TerrainChunkMainBindGroupsCache>();
-        #[cfg(feature = "gpu_seam")]
-        let seam_buffers_cache = world.resource::<TerrainChunkSeamBuffersCache>();
-        #[cfg(feature = "gpu_seam")]
-        let seam_bind_groups_cache = world.resource::<TerrainChunkSeamBindGroupsCache>();
+        let main_buffers = world.resource::<TerrainChunkMainDynamicBuffers>();
+        let main_bind_groups = world.resource::<TerrainChunkMainBindGroups>();
         let terrain_setting = world.resource::<TerrainSetting>();
 
         {
@@ -110,12 +87,8 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
             for entity in self.entities.iter() {
                 let _span = info_span!("TerrainChunkMeshComputeNode::run one").entered();
 
-                #[allow(unused_variables)]
-                #[allow(clippy::collapsible_match)]
-                if let Ok((_, address, _, main_bind_groups_id, seam_lod, _, seam_bind_group_id)) =
-                    self.query.get_manual(world, *entity)
-                {
-                    if let Some(main_bind_groups_id) = main_bind_groups_id {
+                if let Ok((entity, state, address)) = self.query.get_manual(world, *entity) {
+                    if state.contains(TerrainChunkState::CREATE_MAIN_MESH) {
                         let _span =
                             info_span!("TerrainChunkMeshComputeNode::run one main").entered();
 
@@ -123,9 +96,13 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                         let voxel_num = terrain_setting.get_voxel_num_in_chunk();
                         let workgroup_size = (voxel_num / 4) as u32;
 
-                        let main_bind_groups = main_bind_groups_cache
-                            .get_bind_groups(*main_bind_groups_id)
-                            .unwrap();
+                        let dynamic_offset_0 = main_buffers.get_buffers_dynamic_offset(entity, 0);
+                        let dynamic_offset_1 = main_buffers.get_buffers_dynamic_offset(entity, 1);
+
+                        // info!("dynamic_offset_0: {:?}", dynamic_offset_0);
+                        let csg_binding_info = main_buffers.get_csg_operations_binding_info(entity);
+                        let csg_binding_group = main_bind_groups
+                            .get_csg_binding_group(csg_binding_info.size.unwrap().get());
 
                         {
                             let _span = info_span!(
@@ -138,7 +115,12 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                     pipelines.compute_voxel_vertex_values_pipeline,
                                 )
                                 .unwrap();
-                            pass.set_bind_group(0, &main_bind_groups.main_mesh_bind_group, &[]);
+                            pass.set_bind_group(
+                                0,
+                                main_bind_groups.main_mesh_bind_group.as_ref().unwrap(),
+                                dynamic_offset_0.as_slice(),
+                            );
+                            pass.set_bind_group(1, csg_binding_group, dynamic_offset_1.as_slice());
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size + 1,
@@ -155,7 +137,12 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             let pipeline = pipeline_cache
                                 .get_compute_pipeline(pipelines.compute_voxel_cross_points_pipeline)
                                 .unwrap();
-                            pass.set_bind_group(0, &main_bind_groups.main_mesh_bind_group, &[]);
+                            pass.set_bind_group(
+                                0,
+                                main_bind_groups.main_mesh_bind_group.as_ref().unwrap(),
+                                dynamic_offset_0.as_slice(),
+                            );
+                            pass.set_bind_group(1, csg_binding_group, dynamic_offset_1.as_slice());
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size + 1,
@@ -173,7 +160,12 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             let pipeline = pipeline_cache
                                 .get_compute_pipeline(pipelines.main_compute_vertices_pipeline)
                                 .unwrap();
-                            pass.set_bind_group(0, &main_bind_groups.main_mesh_bind_group, &[]);
+                            pass.set_bind_group(
+                                0,
+                                main_bind_groups.main_mesh_bind_group.as_ref().unwrap(),
+                                dynamic_offset_0.as_slice(),
+                            );
+                            pass.set_bind_group(1, csg_binding_group, dynamic_offset_1.as_slice());
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size,
@@ -191,169 +183,18 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             let pipeline = pipeline_cache
                                 .get_compute_pipeline(pipelines.main_compute_indices_pipeline)
                                 .unwrap();
-                            pass.set_bind_group(0, &main_bind_groups.main_mesh_bind_group, &[]);
+                            pass.set_bind_group(
+                                0,
+                                main_bind_groups.main_mesh_bind_group.as_ref().unwrap(),
+                                dynamic_offset_0.as_slice(),
+                            );
+                            pass.set_bind_group(1, csg_binding_group, dynamic_offset_1.as_slice());
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size,
                                 workgroup_size,
                                 workgroup_size,
                             );
-                        }
-                    }
-
-                    #[cfg(feature = "gpu_seam")]
-                    if let Some(seam_bind_groups_id) = seam_bind_group_id {
-                        let _span =
-                            info_span!("TerrainChunkMeshComputeNode::run one seam").entered();
-                        debug!("seam mesh node run: address: {:?}", address);
-
-                        let max_lod = seam_lod.get_max_lod();
-                        // let voxel_num =
-                        //     terrain_setting.get_voxel_num_in_chunk() * 2usize.pow(max_lod as u32);
-                        let add_lod = seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
-                        let depth = address.0.depth();
-                        let voxel_size = terrain_setting.get_voxel_size(depth + add_lod[0]);
-                        let chunk_size = terrain_setting.get_chunk_size(depth);
-
-                        let voxel_num = (chunk_size / voxel_size).round();
-                        let workgroup_size = voxel_num as u32;
-
-                        let terrain_chunk_seam_key = TerrainChunkSeamKey { lod: *seam_lod };
-
-                        debug!( "Terrain Seam info: address: {:?}, voxel_num: {}, max lod: {}, workgroup size:{}", address, voxel_num, max_lod, workgroup_size);
-
-                        let x_axis_bind_groups = seam_bind_groups_cache
-                            .get_bind_groups(terrain_chunk_seam_key, seam_bind_groups_id[0])
-                            .unwrap();
-
-                        // x axis
-                        {
-                            {
-                                let _span = info_span!(
-                                    "TerrainChunkMeshComputeNode::run one seam x axis vertices"
-                                )
-                                .entered();
-                                let pipeline = pipeline_cache
-                                    .get_compute_pipeline(
-                                        pipelines.seam_compute_vertices_x_axis_pipeline,
-                                    )
-                                    .unwrap();
-                                pass.set_bind_group(
-                                    0,
-                                    &x_axis_bind_groups.seam_mesh_bind_group,
-                                    &[],
-                                );
-                                pass.set_pipeline(pipeline);
-                                pass.dispatch_workgroups(1, workgroup_size + 1, workgroup_size + 1);
-                            }
-
-                            {
-                                let _span = info_span!(
-                                    "TerrainChunkMeshComputeNode::run one seam x axis indices"
-                                )
-                                .entered();
-                                let pipeline = pipeline_cache
-                                    .get_compute_pipeline(
-                                        pipelines.seam_compute_indices_x_axis_pipeline,
-                                    )
-                                    .unwrap();
-                                pass.set_bind_group(
-                                    0,
-                                    &x_axis_bind_groups.seam_mesh_bind_group,
-                                    &[],
-                                );
-                                pass.set_pipeline(pipeline);
-                                pass.dispatch_workgroups(1, workgroup_size + 1, workgroup_size + 1);
-                            }
-                        }
-
-                        let y_axis_bind_groups = seam_bind_groups_cache
-                            .get_bind_groups(terrain_chunk_seam_key, seam_bind_groups_id[1])
-                            .unwrap();
-
-                        // y axis
-                        {
-                            {
-                                let _span = info_span!(
-                                    "TerrainChunkMeshComputeNode::run one seam y axis vertices"
-                                )
-                                .entered();
-                                let pipeline = pipeline_cache
-                                    .get_compute_pipeline(
-                                        pipelines.seam_compute_vertices_y_axis_pipeline,
-                                    )
-                                    .unwrap();
-                                pass.set_bind_group(
-                                    0,
-                                    &y_axis_bind_groups.seam_mesh_bind_group,
-                                    &[],
-                                );
-                                pass.set_pipeline(pipeline);
-                                pass.dispatch_workgroups(workgroup_size + 1, 1, workgroup_size + 1);
-                            }
-                            {
-                                let _span = info_span!(
-                                    "TerrainChunkMeshComputeNode::run one seam y axis indices"
-                                )
-                                .entered();
-                                let pipeline = pipeline_cache
-                                    .get_compute_pipeline(
-                                        pipelines.seam_compute_indices_y_axis_pipeline,
-                                    )
-                                    .unwrap();
-                                pass.set_bind_group(
-                                    0,
-                                    &y_axis_bind_groups.seam_mesh_bind_group,
-                                    &[],
-                                );
-                                pass.set_pipeline(pipeline);
-                                pass.dispatch_workgroups(workgroup_size + 1, 1, workgroup_size + 1);
-                            }
-                        }
-
-                        let z_axis_bind_groups = seam_bind_groups_cache
-                            .get_bind_groups(terrain_chunk_seam_key, seam_bind_groups_id[2])
-                            .unwrap();
-
-                        // z axis
-                        {
-                            {
-                                let _span = info_span!(
-                                    "TerrainChunkMeshComputeNode::run one seam z axis vertices"
-                                )
-                                .entered();
-                                let pipeline = pipeline_cache
-                                    .get_compute_pipeline(
-                                        pipelines.seam_compute_vertices_z_axis_pipeline,
-                                    )
-                                    .unwrap();
-                                pass.set_bind_group(
-                                    0,
-                                    &z_axis_bind_groups.seam_mesh_bind_group,
-                                    &[],
-                                );
-                                pass.set_pipeline(pipeline);
-                                pass.dispatch_workgroups(workgroup_size + 1, workgroup_size + 1, 1);
-                            }
-
-                            {
-                                let _span = info_span!(
-                                    "TerrainChunkMeshComputeNode::run one seam z axis indices"
-                                )
-                                .entered();
-                                let pipeline = pipeline_cache
-                                    .get_compute_pipeline(
-                                        pipelines.seam_compute_indices_z_axis_pipeline,
-                                    )
-                                    .unwrap();
-                                pass.set_bind_group(
-                                    0,
-                                    &z_axis_bind_groups.seam_mesh_bind_group,
-                                    &[],
-                                );
-                                pass.set_pipeline(pipeline);
-                                pass.dispatch_workgroups(workgroup_size + 1, workgroup_size + 1, 1);
-                            }
                         }
                     }
                 }
@@ -367,45 +208,50 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
             )
             .entered();
 
-            let command_encoder = render_context.command_encoder();
-            for entity in self.entities.iter() {
-                let _span =
-                    info_span!("TerrainChunkMeshComputeNode::run one stage buffers").entered();
-
-                #[allow(unused_variables)]
-                #[allow(clippy::collapsible_match)]
-                if let Ok((_, _, main_buffers_id, _, seam_lod, seam_buffers_id, _)) =
-                    self.query.get_manual(world, *entity)
+            let mut max_vertices_indices_count_binding_info = DynamicBufferBindingInfo::default();
+            let mut max_vertices_binding_info = DynamicBufferBindingInfo::default();
+            let mut max_indices_binding_info = DynamicBufferBindingInfo::default();
+            for (_, value) in main_buffers.terrain_chunk_buffer_bindings_map.iter() {
+                if max_vertices_indices_count_binding_info.offset
+                    < value.mesh_vertices_indices_count_buffer_binding.offset
+                    || (max_vertices_indices_count_binding_info.offset
+                        == value.mesh_vertices_indices_count_buffer_binding.offset
+                        && max_vertices_indices_count_binding_info.size
+                            < value.mesh_vertices_indices_count_buffer_binding.size)
                 {
-                    if let Some(main_buffers_id) = main_buffers_id {
-                        let _span =
-                            info_span!("TerrainChunkMeshComputeNode::run one main stage buffers")
-                                .entered();
-                        let buffers = main_buffers_cache.get_buffers(*main_buffers_id).unwrap();
-                        buffers.stage_buffers(command_encoder);
-                    }
-
-                    #[cfg(feature = "gpu_seam")]
-                    if let Some(seam_buffers_id) = seam_buffers_id {
-                        let _span =
-                            info_span!("TerrainChunkMeshComputeNode::run one seam stage buffers")
-                                .entered();
-                        let terrain_chunk_seam_key = TerrainChunkSeamKey { lod: *seam_lod };
-                        let x_axis_buffers = seam_buffers_cache
-                            .get_buffers(terrain_chunk_seam_key, seam_buffers_id[0])
-                            .unwrap();
-                        let y_axis_buffers = seam_buffers_cache
-                            .get_buffers(terrain_chunk_seam_key, seam_buffers_id[1])
-                            .unwrap();
-                        let z_axis_buffers = seam_buffers_cache
-                            .get_buffers(terrain_chunk_seam_key, seam_buffers_id[2])
-                            .unwrap();
-                        x_axis_buffers.stage_buffers(command_encoder);
-                        y_axis_buffers.stage_buffers(command_encoder);
-                        z_axis_buffers.stage_buffers(command_encoder);
-                    }
+                    max_vertices_indices_count_binding_info =
+                        value.mesh_vertices_indices_count_buffer_binding;
+                }
+                if max_vertices_binding_info.offset < value.mesh_vertices_buffer_binding.offset
+                    || (max_vertices_binding_info.offset
+                        == value.mesh_vertices_buffer_binding.offset
+                        && max_vertices_binding_info.size < value.mesh_vertices_buffer_binding.size)
+                {
+                    max_vertices_binding_info = value.mesh_vertices_buffer_binding;
+                }
+                if max_indices_binding_info.offset < value.mesh_indices_buffer_binding.offset
+                    || (max_indices_binding_info.offset == value.mesh_indices_buffer_binding.offset
+                        && max_indices_binding_info.size < value.mesh_indices_buffer_binding.size)
+                {
+                    max_indices_binding_info = value.mesh_indices_buffer_binding;
                 }
             }
+
+            let command_encoder = render_context.command_encoder();
+
+            main_buffers.mesh_vertices_dynamic_buffer.stage_buffer(
+                command_encoder,
+                max_vertices_binding_info.get_right_offset(),
+            );
+            main_buffers
+                .mesh_indices_dynamic_buffer
+                .stage_buffer(command_encoder, max_indices_binding_info.get_right_offset());
+            main_buffers
+                .mesh_vertices_indices_count_dynamic_buffer
+                .stage_buffer(
+                    command_encoder,
+                    max_vertices_indices_count_binding_info.get_right_offset(),
+                );
         }
 
         Ok(())

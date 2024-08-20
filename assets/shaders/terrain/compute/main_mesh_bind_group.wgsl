@@ -24,6 +24,9 @@ var<storage, read_write> mesh_vertex_map: array<u32>;
 @group(0) @binding(6)
 var<storage, read_write> mesh_vertices_indices_count: TerrainChunkVerticesIndicesCount;
 
-@group(0) @binding(7)
+@group(1) @binding(0)
+var<uniform> csg_info: u32;
+
+@group(1) @binding(1)
 var<storage, read> csg_operations: array<TerrainChunkCSGOperation>;
 

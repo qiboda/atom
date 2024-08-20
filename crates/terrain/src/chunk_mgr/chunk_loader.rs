@@ -160,7 +160,6 @@ fn update_loaded_leaf_node_info(mut loader: ResMut<TerrainChunkLoader>) {
 fn update_leaf_node_data(
     leaf_node_key: &mut LeafNodeKey,
     frustums: &ObserverFrustums,
-    _global_transforms: &ObserverGlobalTransforms,
     terrain_setting: &Res<TerrainSetting>,
 ) {
     let mut is_in_frustums = false;
@@ -340,11 +339,8 @@ pub fn to_unload_chunk(
 
     *last_num = load_event.node_addresses.len();
 
-    debug!("to load chunk: {:?}", load_event.node_addresses.len());
-    // 防止显存占用过多，卡死。
-    if load_event.node_addresses.len() < 1500 {
-        commands.trigger(load_event);
-    }
+    debug!("to unload chunk: {:?}", load_event.node_addresses.len());
+    commands.trigger(load_event);
 }
 
 pub fn to_reload_chunk(mut loader: ResMut<TerrainChunkLoader>, mut commands: Commands) {
@@ -368,6 +364,8 @@ pub fn to_reload_chunk(mut loader: ResMut<TerrainChunkLoader>, mut commands: Com
     for code in reload_event.node_addresses.iter() {
         loader.pending_reload_leaf_node_map.remove(code);
     }
+
+    debug!("to reload chunk: {:?}", reload_event.node_addresses);
 
     commands.trigger(reload_event);
 }

@@ -5,7 +5,7 @@ use bevy::{prelude::*, render::extract_component::ExtractComponent};
 use bitflags::bitflags;
 use strum::EnumCount;
 
-use crate::isosurface::dc::gpu_dc::buffer_cache::TerrainChunkVertexInfo;
+use crate::isosurface::dc::gpu_dc::buffer_type::TerrainChunkVertexInfo;
 use crate::lod::lod_octree::{LodOctreeDepthType, TerrainLodOctreeNode};
 use crate::lod::morton_code::MortonCode;
 use crate::tables::{AxisType, SubNodeIndex};

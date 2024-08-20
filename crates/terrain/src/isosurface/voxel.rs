@@ -12,6 +12,7 @@ impl From<u32> for VoxelMaterialType {
             0 => VoxelMaterialType::Air,
             1 => VoxelMaterialType::Block,
             _ => panic!("Invalid VoxelMaterialType value: {}", value),
+            // _ => VoxelMaterialType::Air,
         }
     }
 }

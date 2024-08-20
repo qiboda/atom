@@ -8,7 +8,7 @@ use super::EcologyMaterial;
 pub struct ForestEcologyMaterial {
     pub albedo_texture: Handle<Image>,
     pub normal_texture: Handle<Image>,
-    pub clussion_texture: Handle<Image>,
+    pub occlusion_texture: Handle<Image>,
     pub metallic_texture: Handle<Image>,
     pub roughness_texture: Handle<Image>,
     pub height_texture: Handle<Image>,
@@ -28,7 +28,7 @@ impl EcologyMaterial for ForestEcologyMaterial {
     }
 
     fn get_occlusion_texture(&self) -> Handle<Image> {
-        self.clussion_texture.clone()
+        self.occlusion_texture.clone()
     }
 
     fn get_metallic_texture(&self) -> Handle<Image> {

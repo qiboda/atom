@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use bevy::{
     prelude::*,
     render::{
@@ -5,208 +7,125 @@ use bevy::{
         renderer::RenderDevice,
     },
 };
+use wgpu::{BindingResource, BufferBinding};
 
-use crate::chunk_mgr::chunk::comp::TerrainChunkAabb;
+use super::{
+    buffer_cache::{TerrainChunkMainDynamicBuffers, TerrainChunkMainRecreateBindGroup},
+    pipelines::TerrainChunkPipelines,
+};
 
-use super::{buffer_cache::TerrainChunkMainBuffers, pipelines::TerrainChunkPipelines};
-
-use super::buffer_cache::{TerrainChunkSeamBuffers, TerrainChunkSeamKey};
 use bevy::utils::HashMap;
 
+#[derive(Resource, Default)]
 pub struct TerrainChunkMainBindGroups {
-    pub main_mesh_bind_group: BindGroup,
+    pub main_mesh_bind_group: Option<BindGroup>,
+    /// key is csg operations number
+    pub main_mesh_csg_bind_group: HashMap<u64, BindGroup>,
 }
 
 pub struct TerrainChunkMainBindGroupsCreateContext<'a> {
     pub render_device: &'a RenderDevice,
     pub pipelines: &'a TerrainChunkPipelines,
-    pub buffers: &'a TerrainChunkMainBuffers,
-    pub aabb: &'a TerrainChunkAabb,
+    pub dynamic_buffers: &'a TerrainChunkMainDynamicBuffers,
 }
 
 impl TerrainChunkMainBindGroups {
-    pub fn create_bind_groups(context: TerrainChunkMainBindGroupsCreateContext) -> Self {
-        let mesh_vertices_bind_group: BindGroup = context.render_device.create_bind_group(
-            "terrain chunk main mesh bind group",
-            &context.pipelines.main_compute_bind_group_layout,
-            &BindGroupEntries::sequential((
-                context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
-                context
-                    .buffers
-                    .voxel_vertex_values_buffer
-                    .binding()
-                    .unwrap(),
-                context.buffers.voxel_cross_points_buffer.binding().unwrap(),
-                context
-                    .buffers
-                    .mesh_vertices_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
-                    .mesh_indices_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-                context.buffers.mesh_vertex_map_buffer.binding().unwrap(),
-                context
-                    .buffers
-                    .mesh_vertices_indices_count_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-                context.buffers.csg_operations_buffer.binding().unwrap(),
-            )),
-        );
-
-        Self {
-            main_mesh_bind_group: mesh_vertices_bind_group,
+    pub fn create_bind_groups(&mut self, context: TerrainChunkMainBindGroupsCreateContext) {
+        if context
+            .dynamic_buffers
+            .recreate_bind_group
+            .contains(TerrainChunkMainRecreateBindGroup::MainMesh)
+        {
+            self.main_mesh_bind_group = Some(
+                context.render_device.create_bind_group(
+                    "terrain chunk main mesh bind group",
+                    &context.pipelines.main_compute_bind_group_layout,
+                    &BindGroupEntries::sequential((
+                        context
+                            .dynamic_buffers
+                            .terrain_chunk_info_dynamic_buffer
+                            .binding()
+                            .unwrap(),
+                        context
+                            .dynamic_buffers
+                            .voxel_vertex_values_dynamic_buffer
+                            .binding()
+                            .unwrap(),
+                        context
+                            .dynamic_buffers
+                            .voxel_cross_points_dynamic_buffer
+                            .binding()
+                            .unwrap(),
+                        context
+                            .dynamic_buffers
+                            .mesh_vertices_dynamic_buffer
+                            .get_gpu_buffer()
+                            .binding()
+                            .unwrap(),
+                        context
+                            .dynamic_buffers
+                            .mesh_indices_dynamic_buffer
+                            .get_gpu_buffer()
+                            .binding()
+                            .unwrap(),
+                        context
+                            .dynamic_buffers
+                            .mesh_vertex_map_dynamic_buffer
+                            .binding()
+                            .unwrap(),
+                        context
+                            .dynamic_buffers
+                            .mesh_vertices_indices_count_dynamic_buffer
+                            .get_gpu_buffer()
+                            .binding()
+                            .unwrap(),
+                    )),
+                ),
+            );
         }
-    }
-}
 
-#[derive(Resource, Default)]
-pub struct TerrainChunkMainBindGroupsCache {
-    pub terrain_chunk_bind_groups: Vec<TerrainChunkMainBindGroups>,
-    pub used_count: usize,
-}
-
-impl TerrainChunkMainBindGroupsCache {
-    pub fn acquire_terrain_chunk_bind_group(&mut self) -> Option<usize> {
-        if self.used_count < self.terrain_chunk_bind_groups.len() {
-            self.used_count += 1;
-            return Some(self.used_count - 1);
+        if context
+            .dynamic_buffers
+            .recreate_bind_group
+            .contains(TerrainChunkMainRecreateBindGroup::CSG)
+        {
+            self.main_mesh_csg_bind_group.clear();
         }
-        None
-    }
 
-    pub fn insert(&mut self, bind_groups: TerrainChunkMainBindGroups) {
-        self.terrain_chunk_bind_groups.push(bind_groups);
-    }
-
-    pub fn get_bind_groups(
-        &self,
-        id: TerrainChunkMainBindGroupCachedId,
-    ) -> Option<&TerrainChunkMainBindGroups> {
-        self.terrain_chunk_bind_groups.get(id.0)
-    }
-
-    pub fn reset_used_count(&mut self) {
-        self.used_count = 0;
-    }
-}
-
-#[derive(Component, Deref, Copy, Clone)]
-pub struct TerrainChunkMainBindGroupCachedId(pub usize);
-
-pub struct TerrainChunkSeamBindGroups {
-    pub seam_mesh_bind_group: BindGroup,
-}
-
-pub struct TerrainChunkSeamBindGroupsCreateContext<'a> {
-    pub render_device: &'a RenderDevice,
-    pub pipelines: &'a TerrainChunkPipelines,
-    pub buffers: &'a TerrainChunkSeamBuffers,
-    pub aabb: &'a TerrainChunkAabb,
-}
-
-impl TerrainChunkSeamBindGroups {
-    #[cfg(feature = "gpu_seam")]
-    pub fn create_bind_groups(context: TerrainChunkSeamBindGroupsCreateContext) -> Self {
-        let seam_mesh_bind_group: BindGroup = context.render_device.create_bind_group(
-            "terrain chunk seam mesh vertices bind group",
-            &context.pipelines.seam_compute_bind_group_layout,
-            &BindGroupEntries::sequential((
-                context.buffers.terrain_chunk_info_buffer.binding().unwrap(),
-                context.buffers.terrain_chunks_lod_buffer.binding().unwrap(),
-                context
-                    .buffers
-                    .seam_mesh_vertices_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
-                    .seam_mesh_indices_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
-                    .seam_mesh_vertex_map_buffer
-                    .binding()
-                    .unwrap(),
-                context
-                    .buffers
-                    .seam_mesh_vertices_indices_count_buffer
-                    .get_gpu_buffer()
-                    .binding()
-                    .unwrap(),
-            )),
-        );
-
-        Self {
-            seam_mesh_bind_group,
-        }
-    }
-}
-
-pub struct TerrainChunkSeamBindGroupsCounter {
-    terrain_chunk_seam_bind_groups: Vec<TerrainChunkSeamBindGroups>,
-    used_count: usize,
-}
-
-#[derive(Resource, Default)]
-pub struct TerrainChunkSeamBindGroupsCache {
-    pub terrain_chunk_bind_groups_map:
-        HashMap<TerrainChunkSeamKey, TerrainChunkSeamBindGroupsCounter>,
-}
-
-impl TerrainChunkSeamBindGroupsCache {
-    pub fn acquire_terrain_chunk_bind_group(&mut self, key: TerrainChunkSeamKey) -> Option<usize> {
-        if let Some(bind_groups_counter) = self.terrain_chunk_bind_groups_map.get_mut(&key) {
-            if bind_groups_counter.used_count
-                < bind_groups_counter.terrain_chunk_seam_bind_groups.len()
-            {
-                bind_groups_counter.used_count += 1;
-                return Some(bind_groups_counter.used_count - 1);
+        for (_key, value) in context
+            .dynamic_buffers
+            .terrain_chunk_buffer_bindings_map
+            .iter()
+        {
+            let csg_operations_binding = &value.csg_operations_buffer_binding;
+            let size = csg_operations_binding.size.unwrap().get();
+            if self.main_mesh_csg_bind_group.contains_key(&size).not() {
+                let bind_group = context.render_device.create_bind_group(
+                    "terrain chunk main mesh bind group",
+                    &context.pipelines.main_compute_csg_bind_group_layout,
+                    &BindGroupEntries::sequential((
+                        context
+                            .dynamic_buffers
+                            .csg_info_dynamic_buffer
+                            .binding()
+                            .unwrap(),
+                        BindingResource::Buffer(BufferBinding {
+                            buffer: context
+                                .dynamic_buffers
+                                .csg_operations_dynamic_buffer
+                                .buffer()
+                                .unwrap(),
+                            offset: 0,
+                            size: csg_operations_binding.size,
+                        }),
+                    )),
+                );
+                self.main_mesh_csg_bind_group.insert(size, bind_group);
             }
         }
-        None
     }
 
-    pub fn insert(&mut self, key: TerrainChunkSeamKey, bind_groups: TerrainChunkSeamBindGroups) {
-        let bind_groups_counter = self
-            .terrain_chunk_bind_groups_map
-            .entry(key)
-            .or_insert_with(|| TerrainChunkSeamBindGroupsCounter {
-                terrain_chunk_seam_bind_groups: Vec::new(),
-                used_count: 0,
-            });
-        bind_groups_counter
-            .terrain_chunk_seam_bind_groups
-            .push(bind_groups);
-    }
-
-    pub fn get_bind_groups(
-        &self,
-        key: TerrainChunkSeamKey,
-        id: usize,
-    ) -> Option<&TerrainChunkSeamBindGroups> {
-        if let Some(bind_groups_counter) = self.terrain_chunk_bind_groups_map.get(&key) {
-            bind_groups_counter.terrain_chunk_seam_bind_groups.get(id)
-        } else {
-            None
-        }
-    }
-
-    pub fn reset_used_count(&mut self) {
-        for value in self.terrain_chunk_bind_groups_map.values_mut() {
-            value.used_count = 0;
-        }
+    pub fn get_csg_binding_group(&self, buff_size: u64) -> &BindGroup {
+        self.main_mesh_csg_bind_group.get(&buff_size).unwrap()
     }
 }
-
-#[derive(Component, Deref, Copy, Clone)]
-pub struct TerrainChunkSeamBindGroupCachedId(pub [usize; 3]);
