@@ -236,30 +236,15 @@ pub fn update_loader_state(
     }
 
     for (_code, leaf_node_key) in loader.pending_load_leaf_node_map.iter_mut() {
-        update_leaf_node_data(
-            leaf_node_key,
-            &frustums,
-            &global_transforms,
-            &terrain_setting,
-        );
+        update_leaf_node_data(leaf_node_key, &frustums, &terrain_setting);
     }
 
     for (_code, leaf_node_key) in loader.pending_unload_leaf_node_map.iter_mut() {
-        update_leaf_node_data(
-            leaf_node_key,
-            &frustums,
-            &global_transforms,
-            &terrain_setting,
-        );
+        update_leaf_node_data(leaf_node_key, &frustums, &terrain_setting);
     }
 
     for (_code, leaf_node_key) in loader.pending_reload_leaf_node_map.iter_mut() {
-        update_leaf_node_data(
-            leaf_node_key,
-            &frustums,
-            &global_transforms,
-            &terrain_setting,
-        );
+        update_leaf_node_data(leaf_node_key, &frustums, &terrain_setting);
     }
 
     debug!(
