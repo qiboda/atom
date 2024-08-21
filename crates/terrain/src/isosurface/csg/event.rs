@@ -161,7 +161,8 @@ pub fn update_csg_operations_records(
                     .get_node_by_location(operation.transform.translation.into(), &terrain_setting)
                 {
                     let voxel_size = terrain_setting.get_voxel_size(located_node.code.depth);
-                    aabb = aabb.grow(Vec3A::splat(voxel_size));
+                    // 可能aabb的边界刚好在最外层voxel的最里面，因此乘以2.0
+                    aabb = aabb.grow(Vec3A::splat(voxel_size * 2.0));
                 } else {
                     warn!("csg location can not get lod octree node: {:?}", operation);
                 }
@@ -172,7 +173,7 @@ pub fn update_csg_operations_records(
                     // loader.insert_pending_reload_leaf_node_map(node.code, leaf_node_key);
 
                     csg_operation_records.insert_node(node, index);
-                } 
+                }
             }
 
             for node in level.get_removed_nodes() {
@@ -202,7 +203,8 @@ pub fn read_csg_operation_apply_event(
         {
             let voxel_size = terrain_setting.get_voxel_size(located_node.code.depth);
             debug!("csg aabb grow voxel size: {}", voxel_size);
-            aabb = aabb.grow(Vec3A::splat(voxel_size));
+            // 可能aabb的边界刚好在最外层voxel的最里面，因此乘以2.0
+            aabb = aabb.grow(Vec3A::splat(voxel_size * 2.0));
         } else {
             warn!("csg location can not get lod octree node: {:?}", event);
         }
