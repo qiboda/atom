@@ -39,9 +39,9 @@ fn height_map(height: f32) -> f32 {
 }
 
 fn get_terrain_noise(location: vec3f) -> f32 {
-    let density_value = plane(location, vec3f(0.0, 1.0, 1.0), -1.0);
-    // let loc = location + vec3f(6.0, 6.0, 6.0);
-    // let density_value = cube(loc, vec3f(14.0, 14.0, 14.0));
+    // let density_value = plane(location, vec3f(0.0, 1.0, 1.0), -1.0);
+    let loc = location + vec3f(6.0, 6.0, 6.0);
+    let density_value = cube(loc, vec3f(14.0, 14.0, 14.0));
 
     // let basic_noise = open_simplex_2d_fbm_with_seed(location.xz, 323u, 3u, 0.0025, 5.0, 3.0);
     // let mapped_height_value = height_map(basic_noise) * 100.0;

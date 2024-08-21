@@ -24,6 +24,14 @@ fn compute_cross_point_data(edge_index: u32, qef: ptr<function, Quadric>, locati
     (*materials_count)[material_index] = (*materials_count)[material_index] + 1u;
 }
 
+fn is_in_aabb(location: vec3f, min_location: vec3f, max_location: vec3f) -> bool {
+    return all(min_location < location) && all(location < max_location);
+}
+
+fn clamp_aabb(location: vec3f, min_location: vec3f, max_location: vec3f) -> vec3f {
+    return min(max(location, min_location), max_location);
+}
+
 // Vertex and Edge Index Map
 //
 //       2-------1------3
@@ -41,6 +49,19 @@ fn compute_cross_point_data(edge_index: u32, qef: ptr<function, Quadric>, locati
 //
 @compute @workgroup_size(4, 4, 4)
 fn compute_vertices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
+
+    let voxel_min_location = terrain_chunk_info.chunk_min_location_size.xyz + vec3<f32>(
+        f32(invocation_id.x),
+        f32(invocation_id.y),
+        f32(invocation_id.z),
+    ) * terrain_chunk_info.voxel_size;
+
+    let voxel_max_location = terrain_chunk_info.chunk_min_location_size.xyz + vec3<f32>(
+        f32(invocation_id.x + 1),
+        f32(invocation_id.y + 1),
+        f32(invocation_id.z + 1),
+    ) * terrain_chunk_info.voxel_size;
+
     // 获取12条边的交点，计算出mesh的顶点的位置
     let edge_0 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z, 0u);
     let edge_1 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z, 1u);
@@ -83,7 +104,11 @@ fn compute_vertices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
 
     var qef_location = quadric_minimizer(qef);
     if quadric_residual_l2_error(qef, qef_location) < terrain_chunk_info.qef_threshold {
-        avg_location = vec4f(qef_location, 1.0);
+        if is_in_aabb(qef_location, voxel_min_location, voxel_max_location) {
+            avg_location = vec4f(qef_location, 1.0);
+        } else {
+            avg_location = vec4f(clamp_aabb(qef_location, voxel_min_location + vec3f(0.01, 0.01, 0.01), voxel_max_location - vec3f(0.01, 0.01, 0.01)), 1.0);
+        }
     } else {
         avg_location = avg_location / count;
     }

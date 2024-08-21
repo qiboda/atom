@@ -45,7 +45,7 @@ pub fn main() {
         AtomDefaultPlugins
             .set(LogPlugin {
                 custom_layer: LogLayersPlugin::get_layer,
-                filter: "wgpu=error,naga=warn,terrain=trace".to_string(),
+                filter: "wgpu=error,naga=warn,terrain=info".to_string(),
                 ..default()
             })
             .set(WindowPlugin {

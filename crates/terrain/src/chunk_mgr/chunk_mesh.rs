@@ -39,7 +39,7 @@ pub fn receive_terrain_chunk_mesh_data(
 
                     debug!("receive_terrain_chunk_mesh_data");
 
-                    if let Some(main_mesh) = data.main_mesh_data {
+                    if let Some(mut main_mesh) = data.main_mesh_data {
                         if let Some(main_mesh_entity) = mesh_entities.main_mesh {
                             commands.entity(main_mesh_entity).despawn_recursive();
                         }
@@ -52,8 +52,8 @@ pub fn receive_terrain_chunk_mesh_data(
                         debug!("receive_terrain_chunk_mesh_data main mesh ok");
                         let material = materials.add(TerrainMaterial {
                             lod: address.0.depth() as u32,
-                            // debug_type: Some(TerrainDebugType::Color),
-                            debug_type: None,
+                            debug_type: Some(TerrainDebugType::Normal),
+                            // debug_type: None,
                             color_texture: Some(
                                 ecology_materials.forest_material.get_albedo_texture(),
                             ),
@@ -70,6 +70,11 @@ pub fn receive_terrain_chunk_mesh_data(
                         });
 
                         let mut entity_commands = commands.spawn_empty();
+
+                        // {
+                        //     let _span = info_span!("compute main mesh normals").entered();
+                        //     main_mesh.mesh.compute_normals();
+                        // }
 
                         entity_commands.insert((
                             Collider::trimesh_from_mesh(&main_mesh.mesh).unwrap(),
@@ -105,7 +110,7 @@ pub fn receive_terrain_chunk_mesh_data(
 
                     if let Some(seam_mesh) = data.seam_mesh_data {
                         match seam_mesh {
-                            TerrainChunkSeamMeshData::GPUMesh(gpu_mesh) => {
+                            TerrainChunkSeamMeshData::GPUMesh(mut gpu_mesh) => {
                                 mesh_entities.seam_mesh.despawn_recursive(&mut commands);
 
                                 if gpu_mesh
@@ -120,8 +125,8 @@ pub fn receive_terrain_chunk_mesh_data(
                                 debug!("receive_terrain_chunk_mesh_data seam mesh ok");
                                 let material = materials.add(TerrainMaterial {
                                     lod: address.0.depth() as u32,
-                                    // debug_type: Some(TerrainDebugType::Color),
-                                    debug_type: None,
+                                    debug_type: Some(TerrainDebugType::Normal),
+                                    // debug_type: None,
                                     color_texture: Some(
                                         ecology_materials.forest_material.get_albedo_texture(),
                                     ),
@@ -139,6 +144,11 @@ pub fn receive_terrain_chunk_mesh_data(
                                 });
 
                                 let mut entity_commands = commands.spawn_empty();
+
+                                // {
+                                //     let _span = info_span!("compute main mesh normals").entered();
+                                //     gpu_mesh.seam_mesh.compute_normals();
+                                // }
 
                                 entity_commands.insert((
                                     Collider::trimesh_from_mesh(&gpu_mesh.seam_mesh).unwrap(),
@@ -175,7 +185,7 @@ pub fn receive_terrain_chunk_mesh_data(
                                     .seam_mesh
                                     .set_gpu_seam_mesh(seam_mesh_id, gpu_mesh.axis);
                             }
-                            TerrainChunkSeamMeshData::CPUMesh(cpu_mesh) => {
+                            TerrainChunkSeamMeshData::CPUMesh(mut cpu_mesh) => {
                                 mesh_entities.seam_mesh.despawn_recursive(&mut commands);
 
                                 if cpu_mesh
@@ -190,7 +200,7 @@ pub fn receive_terrain_chunk_mesh_data(
                                 debug!("receive_terrain_chunk_mesh_data seam mesh ok");
                                 let material = materials.add(TerrainMaterial {
                                     lod: address.0.depth() as u32,
-                                    debug_type: Some(TerrainDebugType::Color),
+                                    debug_type: Some(TerrainDebugType::Normal),
                                     // debug_type: None,
                                     color_texture: Some(
                                         ecology_materials.forest_material.get_albedo_texture(),
@@ -209,6 +219,11 @@ pub fn receive_terrain_chunk_mesh_data(
                                 });
 
                                 let mut entity_commands = commands.spawn_empty();
+
+                                // {
+                                //     let _span = info_span!("compute main mesh normals").entered();
+                                //     cpu_mesh.seam_mesh.compute_normals();
+                                // }
 
                                 entity_commands.insert((
                                     Collider::trimesh_from_mesh(&cpu_mesh.seam_mesh).unwrap(),

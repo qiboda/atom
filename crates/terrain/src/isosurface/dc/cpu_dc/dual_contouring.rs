@@ -500,7 +500,7 @@ fn visit_leaf_edge(
 
 #[cfg(test)]
 mod tests {
-    use bevy::math::{bounding::Aabb3d, Vec3, Vec3A, VectorSpace};
+    use bevy::math::{bounding::Aabb3d, Vec3, Vec3A};
     use ndshape::RuntimeShape;
 
     use crate::{

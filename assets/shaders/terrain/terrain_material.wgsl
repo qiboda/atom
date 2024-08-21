@@ -54,10 +54,11 @@ fn vertex(
     out.world_position = mesh_position_local_to_world(world_from_local, vec4<f32>(in.position, 1.0));
     out.clip_position = position_world_to_clip(out.world_position.xyz);
 
-    out.world_normal = mesh_normal_local_to_world(
-        in.normal,
-        in.instance_index
-    );
+    out.world_normal = in.normal;
+    // out.world_normal = mesh_normal_local_to_world(
+    //     in.normal,
+    //     in.instance_index
+    // );
 
     out.material = in.material;
     out.instance_index = in.instance_index;
