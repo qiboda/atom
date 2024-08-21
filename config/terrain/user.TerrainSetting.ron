@@ -1,9 +1,9 @@
 (
-    chunk_size: 16.0,
-    chunk_depth: 5,
+    chunk_size: 4.0,
+    chunk_depth: 2,
     qef_solver: true,
     qef_solver_threshold: 0.1,
     qef_stddev: 0.1,
-    lod_octree_depth: 4,
+    lod_octree_depth: 1,
     camera_far_limit: true,
 )

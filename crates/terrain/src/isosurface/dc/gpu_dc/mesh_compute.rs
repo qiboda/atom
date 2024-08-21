@@ -352,9 +352,31 @@ fn map_and_read_buffer(
                 );
 
             debug!(
-                "main mesh vertices indices num: {:?}",
-                mesh_vertices_indices_count
+                "main mesh vertices indices num: {:?}, chunk_min: {}",
+                mesh_vertices_indices_count, aabb.0.min,
             );
+
+            let vertices = if mesh_vertices_indices_count.vertices_count > 0 {
+                main_buffers
+                    .mesh_vertices_dynamic_buffer
+                    .read_inner_size::<TerrainChunkVertexInfo>(
+                        buffer_binding.mesh_vertices_buffer_binding.offset,
+                        mesh_vertices_indices_count.vertices_count as u64,
+                    )
+            } else {
+                vec![]
+            };
+
+            let indices = if mesh_vertices_indices_count.indices_count > 0 {
+                main_buffers
+                    .mesh_indices_dynamic_buffer
+                    .read_inner_size::<u32>(
+                        buffer_binding.mesh_indices_buffer_binding.offset,
+                        mesh_vertices_indices_count.indices_count as u64,
+                    )
+            } else {
+                vec![]
+            };
 
             if mesh_vertices_indices_count.vertices_count > 0
                 && mesh_vertices_indices_count.indices_count > 0
@@ -365,19 +387,6 @@ fn map_and_read_buffer(
                     PrimitiveTopology::TriangleList,
                     RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
                 );
-
-                let vertices = main_buffers
-                    .mesh_vertices_dynamic_buffer
-                    .read_inner_size::<TerrainChunkVertexInfo>(
-                        buffer_binding.mesh_vertices_buffer_binding.offset,
-                        mesh_vertices_indices_count.vertices_count as u64,
-                    );
-                let indices = main_buffers
-                    .mesh_indices_dynamic_buffer
-                    .read_inner_size::<u32>(
-                        buffer_binding.mesh_indices_buffer_binding.offset,
-                        mesh_vertices_indices_count.indices_count as u64,
-                    );
 
                 mesh.insert_attribute(
                     Mesh::ATTRIBUTE_POSITION,
@@ -411,9 +420,11 @@ fn map_and_read_buffer(
                     Ok(_) => {}
                     Err(e) => error!("{}", e),
                 }
+            }
 
-                #[cfg(feature = "cpu_seam")]
-                {
+            #[cfg(feature = "cpu_seam")]
+            {
+                if mesh_vertices_indices_count.vertices_count > 0 {
                     let chunk_min = aabb.0.min;
                     let level = address.0.depth();
                     let voxel_size = terrain_setting.get_voxel_size(level);

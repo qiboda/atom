@@ -101,7 +101,7 @@ impl PartialOrd for LeafNodeKey {
 
 #[derive(Debug, Default)]
 pub struct LoadedNodeInfo {
-    pub loaded_frame_count: usize,
+    pub to_unload_wait_frame_count: usize,
 }
 
 /// 需要保证最后删除，避免闪烁。
@@ -140,7 +140,7 @@ impl TerrainChunkLoader {
         if let Some(loaded_info) = self.loaded_leaf_node_map.get(morton_code) {
             // 因为节点和子节点或者父节点是同时添加和删除的，以此可以通过帧数来判断是否可以删除。
             // 添加的子节点或者父节点过两帧后会创建出来，所以这里判断是否大于2帧。
-            if loaded_info.loaded_frame_count > 2 {
+            if loaded_info.to_unload_wait_frame_count > 3 {
                 return true;
             }
         }
@@ -153,7 +153,7 @@ fn update_loaded_leaf_node_info(mut loader: ResMut<TerrainChunkLoader>) {
         .loaded_leaf_node_map
         .iter_mut()
         .for_each(|(_, info)| {
-            info.loaded_frame_count += 1;
+            info.to_unload_wait_frame_count += 1;
         });
 }
 
@@ -232,6 +232,10 @@ pub fn update_loader_state(
             loader
                 .pending_unload_leaf_node_map
                 .insert(node.code, leaf_node_key);
+
+            if let Some(loaded_info) = loader.loaded_leaf_node_map.get_mut(&node.code) {
+                loaded_info.to_unload_wait_frame_count = 0;
+            }
         }
     }
 

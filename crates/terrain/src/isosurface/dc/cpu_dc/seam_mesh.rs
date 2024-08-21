@@ -108,7 +108,7 @@ pub(crate) fn create_seam_mesh(
         let seam_voxel_num = (seam_chunk_size / seam_voxel_size).round() as u32;
         let seam_chunk_depth = seam_voxel_num.ilog2() as u8;
 
-        debug!("current chunk aabb: {:?}, add_lod: {}, seam_chunk_depth: {}, seam_voxel_size: {}, seam_chunk_size: {}, seam_voxel_num: {}",
+        debug!("chunk_min: {:?}, add_lod: {}, seam_chunk_depth: {}, seam_voxel_size: {}, seam_chunk_size: {}, seam_voxel_num: {}",
             seam_chunk_min, add_lod[0], seam_chunk_lod_depth, seam_voxel_size, seam_chunk_size, seam_voxel_num);
 
         let shape = RuntimeShape::<u32, 3>::new([seam_voxel_num, seam_voxel_num, seam_voxel_num]);
@@ -136,14 +136,14 @@ pub(crate) fn create_seam_mesh(
         }
 
         debug!(
-            "seam_leaf_nodes size: {} before octree build",
-            octree.get_nodes_num()
+            "chunk_min: {}, voxel num: {}, seam_leaf_nodes size: {} before octree build",
+            seam_chunk_min, seam_voxel_num, octree.get_nodes_num()
         );
 
         Octree::build_bottom_up_from_leaf_nodes(&mut octree, seam_voxel_size);
         debug!(
-            "seam_leaf_nodes size: {} after octree build",
-            octree.get_nodes_num()
+            "chunk_min: {}, voxel num: {}, seam_leaf_nodes size: {} after octree build",
+            seam_chunk_min, seam_voxel_num, octree.get_nodes_num()
         );
 
         check_octree_nodes_relation!(&octree);
@@ -152,16 +152,19 @@ pub(crate) fn create_seam_mesh(
         let octree = OctreeProxy {
             octree: &octree,
             is_seam: true,
+            chunk_min: seam_chunk_min,
         };
         dual_contouring::dual_contouring(&octree, &mut default_visiter);
 
         debug!(
-            "seam mesh positions: {}, positions: {:?}",
+            "chunk_min: {}, seam mesh positions: {}, positions: {:?}",
+            seam_chunk_min,
             default_visiter.positions.len(),
             default_visiter.positions
         );
         debug!(
-            "seam mesh indices: {}, indices: {:?}",
+            "chunk_min: {}, seam mesh indices: {}, indices: {:?}",
+            seam_chunk_min,
             default_visiter.indices.len(),
             default_visiter.indices
         );

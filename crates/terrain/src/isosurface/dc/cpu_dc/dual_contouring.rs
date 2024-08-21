@@ -121,7 +121,11 @@ struct EdgeNodes<'a> {
 }
 
 fn node_proc(octree: &OctreeProxy, parent_node: &Node, visiter: &mut impl DualContouringVisiter) {
-    trace!("node proc: {:?}", parent_node.address);
+    trace!(
+        "node proc: chunk_min: {}, {:?}",
+        octree.chunk_min,
+        parent_node.address
+    );
 
     if parent_node.node_type == NodeType::Leaf {
         visiter.visit_node(parent_node);
@@ -206,7 +210,8 @@ fn face_proc(
     visiter: &mut impl DualContouringVisiter,
 ) {
     trace!(
-        "face proc: axis type: {:?}, left node: {:?}, right node: {:?}",
+        "face proc: chunk_min: {}, axis type: {:?}, left node: {:?}, right node: {:?}",
+        octree.chunk_min,
         face_nodes.axis_type,
         face_nodes.nodes[0].address,
         face_nodes.nodes[1].address
@@ -265,6 +270,15 @@ fn face_proc(
                 face_nodes.nodes[axis_value_3.bits() as usize],
                 node_index_3,
             );
+            trace!(
+                "face proc get four edge: chunk_min: {}, faces: {:?}, edges: {:?}, {:?}, {:?}, {:?}",
+                octree.chunk_min,
+                face_nodes,
+                child_node_0,
+                child_node_1,
+                child_node_2,
+                child_node_3
+            );
             if let (
                 Some(child_node_0),
                 Some(child_node_1),
@@ -301,7 +315,8 @@ fn edge_proc(
     visiter: &mut impl DualContouringVisiter,
 ) {
     trace!(
-        "edge proc: axis type: {:?}, 0 node: {:?}, 1 node: {:?}, 2 node: {:?}, 3 node: {:?}",
+        "edge proc: chunk_min: {}, axis type: {:?}, 0 node: {:?}, 1 node: {:?}, 2 node: {:?}, 3 node: {:?}",
+        octree.chunk_min,
         edge_nodes.axis_type,
         edge_nodes.nodes[0].address,
         edge_nodes.nodes[1].address,
@@ -322,6 +337,7 @@ fn edge_proc(
             let pos_2 = edge_nodes.nodes[2].address.morton_code_on_level(1).unwrap();
             let pos_3 = edge_nodes.nodes[3].address.morton_code_on_level(1).unwrap();
             if pos_0 == pos_1 && pos_0 == pos_2 && pos_0 == pos_3 {
+                trace!("seam dual contouring: exclusive edge nodes in the same chunk, chunk_min: {}, pos: {:?}", octree.chunk_min, pos_0);
                 return;
             }
         }
@@ -342,7 +358,8 @@ fn edge_proc(
         let child_node_3 = get_child_node(octree, node_4, subnode_index_4);
 
         trace!(
-            "edge proc: {:?}, {:?}, {:?}, {:?}",
+            "edge proc: chunk_min: {}, {:?}, {:?}, {:?}, {:?}",
+            octree.chunk_min,
             child_node_0,
             child_node_1,
             child_node_2,
@@ -373,7 +390,7 @@ fn edge_proc(
 }
 
 fn visit_leaf_edge(
-    _octree: &OctreeProxy,
+    octree: &OctreeProxy,
     edge_nodes: EdgeNodes,
     visiter: &mut impl DualContouringVisiter,
 ) {
@@ -383,7 +400,8 @@ fn visit_leaf_edge(
         .all(|node| node.node_type == NodeType::Leaf));
 
     trace!(
-        "leaf edge proc: axis type: {:?}, 0 node: {:?}, 1 node: {:?}, 2 node: {:?}, 3 node: {:?}",
+        "leaf edge proc: chunk_min: {}, axis type: {:?}, 0 node: {:?}, 1 node: {:?}, 2 node: {:?}, 3 node: {:?}",
+        octree.chunk_min,
         edge_nodes.axis_type,
         edge_nodes.nodes[0].address,
         edge_nodes.nodes[1].address,
@@ -416,8 +434,9 @@ fn visit_leaf_edge(
             // Not a bipolar edge.
 
             trace!(
-                "visit leaf edge is not a bipolar edge, mat0: {:?}, mat1: {:?}, axis:{:?}, \
+                "visit leaf edge is not a bipolar edge, chunk_min: {}, mat0: {:?}, mat1: {:?}, axis:{:?}, \
                 min_node_index:{}, vertex_samplers:{:?}, {:?}, {:?}, {:?}, {:?}, {:?}",
+                octree.chunk_min,
                 mat0,
                 mat1,
                 edge_nodes.axis_type,
@@ -433,7 +452,8 @@ fn visit_leaf_edge(
         }
     };
     trace!(
-        "node pos: {:?}, {:?}, {:?}, {:?}, {:?}",
+        "node pos: chunk_min: {}, {:?}, {:?}, {:?}, {:?}, {:?}",
+        octree.chunk_min,
         edge_nodes.axis_type,
         edge_nodes.nodes[0].address,
         edge_nodes.nodes[1].address,
@@ -480,7 +500,7 @@ fn visit_leaf_edge(
 
 #[cfg(test)]
 mod tests {
-    use bevy::math::{bounding::Aabb3d, Vec3, Vec3A};
+    use bevy::math::{bounding::Aabb3d, Vec3, Vec3A, VectorSpace};
     use ndshape::RuntimeShape;
 
     use crate::{
@@ -646,6 +666,7 @@ mod tests {
         let octree = OctreeProxy {
             octree: &octree,
             is_seam: true,
+            chunk_min: Vec3A::ZERO,
         };
 
         let mut visiter = DefaultDualContouringVisiter::default();

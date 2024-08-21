@@ -38,6 +38,7 @@ pub trait OctreeSampler {
 pub struct OctreeProxy<'a> {
     pub octree: &'a Octree,
     pub is_seam: bool,
+    pub chunk_min: Vec3A,
 }
 
 impl<'a> OctreeProxy<'a> {
