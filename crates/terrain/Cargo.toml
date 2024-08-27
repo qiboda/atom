@@ -28,6 +28,12 @@ log_layers = { path = "../log_layers" }
 atom_shader_lib = { path = "../atom_shader_lib" }
 
 rand = "0.8.5"
+rand_distr = "0.4"
+rand_pcg = "0.3"
+fast_poisson = "1.0.0"
+spade = { version = "2.12" }
+voronator = { version = "0.2" }
+
 ndshape = { version = "0.3.0" }
 
 noise = { workspace = true }
@@ -50,6 +56,8 @@ bevy_async_task = { version = "0.2.0" }
 autoincrement = { workspace = true }
 # oxidized_navigation = { workspace = true }
 image = { workspace = true }
+imageproc = { version = "0.25" }
+
 num-traits = { workspace = true }
 wgpu-types = { workspace = true }
 wgpu = { workspace = true }

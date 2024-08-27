@@ -203,7 +203,7 @@ pub fn read_csg_operation_apply_event(
         {
             let voxel_size = terrain_setting.get_voxel_size(located_node.code.depth);
             debug!("csg aabb grow voxel size: {}", voxel_size);
-            // 可能aabb的边界刚好在最外层voxel的最里面，因此乘以2.0
+            // aabb扩展范围收到csg操作的范围的影响，因此先乘以2.0看看效果。
             aabb = aabb.grow(Vec3A::splat(voxel_size * 2.0));
         } else {
             warn!("csg location can not get lod octree node: {:?}", event);

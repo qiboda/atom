@@ -3,8 +3,9 @@ use std::ops::Not;
 use bevy::{
     prelude::*,
     render::{
-        render_resource::{BindGroup, BindGroupEntries},
+        render_resource::{BindGroup, BindGroupEntries, IntoBinding},
         renderer::RenderDevice,
+        texture::GpuImage,
     },
 };
 use wgpu::{BindingResource, BufferBinding};
@@ -21,12 +22,16 @@ pub struct TerrainChunkMainBindGroups {
     pub main_mesh_bind_group: Option<BindGroup>,
     /// key is csg operations number
     pub main_mesh_csg_bind_group: HashMap<u64, BindGroup>,
+
+    pub main_mesh_map_bind_group: Option<BindGroup>,
 }
 
 pub struct TerrainChunkMainBindGroupsCreateContext<'a> {
     pub render_device: &'a RenderDevice,
     pub pipelines: &'a TerrainChunkPipelines,
     pub dynamic_buffers: &'a TerrainChunkMainDynamicBuffers,
+    pub map_image: &'a GpuImage,
+    pub map_biome_image: &'a GpuImage,
 }
 
 impl TerrainChunkMainBindGroups {
@@ -122,6 +127,28 @@ impl TerrainChunkMainBindGroups {
                 );
                 self.main_mesh_csg_bind_group.insert(size, bind_group);
             }
+        }
+
+        if self.main_mesh_map_bind_group.is_none() {
+            info!("create main_mesh_map_bind_group ok");
+            self.main_mesh_map_bind_group = Some(
+                context.render_device.create_bind_group(
+                    "terrain chunk main mesh map bind group",
+                    &context.pipelines.main_compute_map_bind_group_layout,
+                    &BindGroupEntries::sequential((
+                        context
+                            .dynamic_buffers
+                            .terrain_map_config_buffer
+                            .as_ref()
+                            .unwrap()
+                            .into_binding(),
+                        context.map_image.texture_view.into_binding(),
+                        context.map_image.sampler.into_binding(),
+                        context.map_biome_image.texture_view.into_binding(),
+                        context.map_biome_image.sampler.into_binding(),
+                    )),
+                ),
+            );
         }
     }
 

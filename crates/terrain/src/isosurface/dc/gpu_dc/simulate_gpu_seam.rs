@@ -1652,11 +1652,11 @@ pub fn create_seam_mesh(
         let add_lod = seam_lod.get_lod(SubNodeIndex::X0Y0Z0);
         let depth = address.0.depth() + add_lod[0];
         let voxel_size = terrain_setting.get_voxel_size(depth);
-        let chunk_size = terrain_setting.get_chunk_size(depth - add_lod[0]);
+        let terrain_size = terrain_setting.get_terrain_size();
         let voxel_num = (chunk_size / voxel_size).round() as usize;
 
         let terrain_chunk_info = TerrainChunkInfo {
-            chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, chunk_size),
+            chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, terrain_size),
             voxel_size,
             voxel_num: voxel_num as u32,
             qef_threshold: terrain_setting.qef_solver_threshold,

@@ -121,6 +121,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 dynamic_offset_0.as_slice(),
                             );
                             pass.set_bind_group(1, csg_binding_group, dynamic_offset_1.as_slice());
+                            pass.set_bind_group(
+                                2,
+                                main_bind_groups.main_mesh_map_bind_group.as_ref().unwrap(),
+                                &[],
+                            );
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size + 1,
@@ -143,6 +148,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 dynamic_offset_0.as_slice(),
                             );
                             pass.set_bind_group(1, csg_binding_group, dynamic_offset_1.as_slice());
+                            pass.set_bind_group(
+                                2,
+                                main_bind_groups.main_mesh_map_bind_group.as_ref().unwrap(),
+                                &[],
+                            );
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size + 1,
@@ -166,6 +176,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 dynamic_offset_0.as_slice(),
                             );
                             pass.set_bind_group(1, csg_binding_group, dynamic_offset_1.as_slice());
+                            pass.set_bind_group(
+                                2,
+                                main_bind_groups.main_mesh_map_bind_group.as_ref().unwrap(),
+                                &[],
+                            );
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size,
@@ -189,6 +204,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 dynamic_offset_0.as_slice(),
                             );
                             pass.set_bind_group(1, csg_binding_group, dynamic_offset_1.as_slice());
+                            pass.set_bind_group(
+                                2,
+                                main_bind_groups.main_mesh_map_bind_group.as_ref().unwrap(),
+                                &[],
+                            );
                             pass.set_pipeline(pipeline);
                             pass.dispatch_workgroups(
                                 workgroup_size,

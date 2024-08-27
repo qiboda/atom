@@ -26,6 +26,8 @@ struct VoxelGizmos;
 // TODO: move to other debug crate
 #[allow(dead_code)]
 fn draw_world_coordinate_axes(mut world_coordinate_gizmos: Gizmos<WorldCoordinateGizmos>) {
+    return;
+
     world_coordinate_gizmos.axes(
         Transform {
             translation: Vec3::ZERO,

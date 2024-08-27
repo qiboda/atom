@@ -1,3 +1,4 @@
+pub mod math;
 pub mod asset_barrier;
 pub mod async_event;
 pub mod clone_entities;

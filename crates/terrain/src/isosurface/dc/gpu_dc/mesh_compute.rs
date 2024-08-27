@@ -6,10 +6,11 @@ use bevy::{
     prelude::*,
     render::{
         mesh::Indices,
-        render_asset::RenderAssetUsages,
+        render_asset::{RenderAssetUsages, RenderAssets},
         render_graph::RenderGraph,
         render_resource::Maintain,
         renderer::{RenderDevice, RenderQueue},
+        texture::GpuImage,
         Render, RenderApp, RenderSet,
     },
     utils::HashMap,
@@ -33,9 +34,10 @@ use crate::{
     isosurface::{
         csg::event::CSGOperationRecords,
         dc::gpu_dc::buffer_cache::{
-            TerrainChunkMainBufferBindings, TerrainChunkMainBufferCreateContext,
+            TerrainChunkMainBufferBindings, TerrainChunkMainDynamicBufferCreateContext,
         },
     },
+    map::{compute_height::TerrainHeightMapImage, config::TerrainMapGpuConfig, TerrainMapImages},
     materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
     setting::TerrainSetting,
     tables::AxisType,
@@ -45,7 +47,8 @@ use super::{
     bind_group_cache::{TerrainChunkMainBindGroups, TerrainChunkMainBindGroupsCreateContext},
     buffer_cache::{
         TerrainChunkMainBufferBindingsBuilder, TerrainChunkMainDynamicBufferReserveContext,
-        TerrainChunkMainDynamicBuffers, TerrainChunkMainRecreateBindGroup,
+        TerrainChunkMainDynamicBuffers, TerrainChunkMainGlobalBufferCreateContext,
+        TerrainChunkMainRecreateBindGroup,
     },
     node::{TerrainChunkMeshComputeLabel, TerrainChunkMeshComputeNode},
     pipelines::{
@@ -181,6 +184,7 @@ fn prepare_main_buffers(
     terrain_setting: Res<TerrainSetting>,
     csg_operation_records: Res<CSGOperationRecords>,
     mut dynamic_buffers: ResMut<TerrainChunkMainDynamicBuffers>,
+    map_gpu_config: Res<TerrainMapGpuConfig>,
 ) {
     dynamic_buffers.clear();
 
@@ -237,17 +241,23 @@ fn prepare_main_buffers(
 
         let csg_data = csg_operations_map.get(address).unwrap();
 
-        let context = TerrainChunkMainBufferCreateContext {
+        let context = TerrainChunkMainDynamicBufferCreateContext {
             terrain_chunk_aabb: **aabb,
             terrain_chunk_address: *address,
             terrain_setting: &terrain_setting,
             terrain_chunk_csg_operations: csg_data,
             entity,
         };
-        dynamic_buffers.set_buffers_data(context);
+        dynamic_buffers.set_dynamic_buffers_data(context);
     }
 
-    dynamic_buffers.write_buffers(&render_device, &render_queue);
+    let context = TerrainChunkMainGlobalBufferCreateContext {
+        terrain_map_gpu_config: &map_gpu_config,
+    };
+    dynamic_buffers.set_global_buffers(context);
+
+    dynamic_buffers.write_dynamic_buffers(&render_device, &render_queue);
+    dynamic_buffers.write_global_buffers(&render_device, &render_queue);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -263,6 +273,9 @@ fn prepare_main_bind_group(
     )>,
     mut bind_groups: ResMut<TerrainChunkMainBindGroups>,
     mut dynamic_buffers: ResMut<TerrainChunkMainDynamicBuffers>,
+    map_images: Res<TerrainMapImages>,
+    height_map_images: Res<TerrainHeightMapImage>,
+    images: Res<RenderAssets<GpuImage>>,
 ) {
     let mut num = 0;
     for (_entity, state, _aabb, _address) in query.iter() {
@@ -281,6 +294,8 @@ fn prepare_main_bind_group(
         render_device: &render_device,
         pipelines: &pipelines,
         dynamic_buffers: &dynamic_buffers,
+        map_image: images.get(map_images.height_climate_image.id()).unwrap(),
+        map_biome_image: images.get(height_map_images.texture.id()).unwrap(),
     };
     bind_groups.create_bind_groups(context);
 

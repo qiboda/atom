@@ -2,7 +2,7 @@
 #import noise::fbm::open_simplex_2d_fbm_with_seed
 
 #import terrain::csg::csg_utils::apply_csg_operations
-#import terrain::main_mesh_bind_group::csg_operations
+#import terrain::main_mesh_bind_group::{ csg_operations, map_config, map_height_climate_texture, map_height_climate_sampler, map_biome_sampler, map_biome_texture, terrain_chunk_info }
 
 fn plane(location: vec3f, normal: vec3f, height: f32) -> f32 {
     // n must be normalized
@@ -19,7 +19,7 @@ var<private> TERRAIN_HEIGHT_MAP_INPUT: array<f32, TERRAIN_HEIGHT_MAP_SIZE> = arr
     -1.0, -0.3, 0.0, 0.2, 0.4, 1.0
 );
 var<private> TERRAIN_HEIGHT_MAP_OUTPUT: array<f32, TERRAIN_HEIGHT_MAP_SIZE> = array<f32, TERRAIN_HEIGHT_MAP_SIZE>(
-    -0.2, -0.1, 0.0, 0.05, 0.4, 1.0
+    -0.2, -0.1, 0.0, 0.05, 0.6, 1.0
 );
 
 // input is [-1.0, 1.0]
@@ -38,15 +38,29 @@ fn height_map(height: f32) -> f32 {
     return TERRAIN_HEIGHT_MAP_INPUT[TERRAIN_HEIGHT_MAP_SIZE - 1];
 }
 
+// output is [0.0, 1.0]
+fn get_terrain_height_map(location: vec2f) -> f32 {
+
+    let height_humidity_temperature = textureSampleLevel(map_height_climate_texture, map_height_climate_sampler, location, 0.0).xyz;
+
+    let basic_noise = open_simplex_2d_fbm_with_seed(location, 323u, 5u, 0.001, 2.3, 2.0);
+    return basic_noise;
+}
+
 fn get_terrain_noise(location: vec3f) -> f32 {
     // let density_value = plane(location, vec3f(0.0, 1.0, 1.0), -1.0);
-    let loc = location + vec3f(6.0, 6.0, 6.0);
-    let density_value = cube(loc, vec3f(14.0, 14.0, 14.0));
+    // let loc = location + vec3f(6.0, 6.0, 6.0);
+    // let density_value = cube(loc, vec3f(14.0, 14.0, 14.0));
 
-    // let basic_noise = open_simplex_2d_fbm_with_seed(location.xz, 323u, 3u, 0.0025, 5.0, 3.0);
-    // let mapped_height_value = height_map(basic_noise) * 100.0;
+    // let pos = location.xz / map_config.pixel_size;
 
-    // let density_value = location.y - mapped_height_value;
+    // let height_humidity_temperature = textureSampleLevel(map_height_climate_texture, map_height_climate_sampler, pos, 0.0).xyz;
+
+    let terrain_size = terrain_chunk_info.chunk_min_location_size.w;
+    let uv = (location.xz + terrain_size * 0.5) / terrain_size;
+    let height = textureSampleLevel(map_biome_texture, map_biome_sampler, uv, 0.0).x * 100.0;
+
+    let density_value = location.y - height;
 
     return apply_csg_operations(location, density_value);
 }

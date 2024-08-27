@@ -17,7 +17,7 @@ var<private> VOXEL_MATERIAL_TABLE: array<u32, VOXEL_MATERIAL_NUM> = array<u32, V
 
 
 struct TerrainChunkInfo {
-    // chunk min location and chunk size
+    // chunk min location and terrain size
     chunk_min_location_size: vec4<f32>,
     voxel_size: f32,
     voxel_num: u32,
@@ -51,4 +51,15 @@ struct TerrainChunkVertexInfo {
 struct TerrainChunkVerticesIndicesCount {
     vertices_count: atomic<u32>,
     indices_count: atomic<u32>
+}
+
+struct TerrainMapConfig {
+    // 图片的大小
+    image_size: f32,
+    // 一个像素代表的地图大小
+    pixel_size: f32,
+    // 最小温度
+    temperature_min: f32,
+    // 最大温度
+    temperature_max: f32,
 }

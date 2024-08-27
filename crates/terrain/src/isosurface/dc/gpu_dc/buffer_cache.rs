@@ -2,7 +2,7 @@ use bevy::{
     math::bounding::Aabb3d,
     prelude::*,
     render::{
-        render_resource::{CommandEncoder, ShaderType},
+        render_resource::{CommandEncoder, ShaderType, UniformBuffer},
         renderer::{RenderDevice, RenderQueue},
     },
     utils::HashMap,
@@ -12,7 +12,8 @@ use wgpu::{BufferAddress, BufferSize, DynamicOffset};
 
 use crate::{
     chunk_mgr::chunk::comp::TerrainChunkAddress,
-    isosurface::dc::gpu_dc::buffer_type::TerrainChunkVerticesIndicesCount, setting::TerrainSetting,
+    isosurface::dc::gpu_dc::buffer_type::TerrainChunkVerticesIndicesCount,
+    map::config::TerrainMapGpuConfig, setting::TerrainSetting,
 };
 
 use super::{
@@ -36,6 +37,9 @@ bitflags! {
 
 #[derive(Resource)]
 pub struct TerrainChunkMainDynamicBuffers {
+    // TODO 移除option
+    pub terrain_map_config_buffer: Option<UniformBuffer<TerrainMapGpuConfig>>,
+
     pub terrain_chunk_info_dynamic_buffer: SharedUniformBuffer<TerrainChunkInfo>,
     pub voxel_vertex_values_dynamic_buffer: SharedStorageBuffer<VoxelVertexValueVec>,
     pub voxel_cross_points_dynamic_buffer: SharedStorageBuffer<VoxelEdgeCrossPointVec>,
@@ -162,7 +166,10 @@ impl TerrainChunkMainDynamicBuffers {
             SharedStorageBuffer::<Vec<TerrainChunkCSGOperation>>::new(storage_buffer_alignment);
         csg_operations_dynamic_buffer.set_label(Some("terrain chunk mesh csg operations buffer"));
 
+        let terrain_map_config_buffer = Some(UniformBuffer::<TerrainMapGpuConfig>::default());
+
         Self {
+            terrain_map_config_buffer,
             terrain_chunk_info_dynamic_buffer,
             voxel_vertex_values_dynamic_buffer,
             voxel_cross_points_dynamic_buffer,
@@ -301,11 +308,22 @@ impl TerrainChunkMainDynamicBuffers {
         // };
     }
 
-    pub fn set_buffers_data(&mut self, context: TerrainChunkMainBufferCreateContext) {
+    pub fn set_global_buffers(&mut self, context: TerrainChunkMainGlobalBufferCreateContext) {
+        if let Some(buffer) = &mut self.terrain_map_config_buffer {
+            let _span = info_span!("terrain chunk main map config buffers write buffer").entered();
+
+            buffer.set(context.terrain_map_gpu_config.clone());
+        }
+    }
+
+    pub fn set_dynamic_buffers_data(
+        &mut self,
+        context: TerrainChunkMainDynamicBufferCreateContext,
+    ) {
         let _span = info_span!("terrain chunk main buffers write buffers data").entered();
 
         let level = context.terrain_chunk_address.0.depth();
-        let chunk_size = context.terrain_setting.get_chunk_size(level);
+        let terrain_size = context.terrain_setting.get_terrain_size();
         let voxel_size = context.terrain_setting.get_voxel_size(level);
         let voxel_num = context.terrain_setting.get_voxel_num_in_chunk();
 
@@ -320,7 +338,7 @@ impl TerrainChunkMainDynamicBuffers {
                         chunk_min.x,
                         chunk_min.y,
                         chunk_min.z,
-                        chunk_size,
+                        terrain_size,
                     ),
                     voxel_size,
                     voxel_num: voxel_num as u32,
@@ -365,6 +383,7 @@ impl TerrainChunkMainDynamicBuffers {
                     .push(csg_operations.clone());
                 size = csg_operations.len() as u64 * TerrainChunkCSGOperation::min_size().get();
             } else {
+                // TODO 是否可以不填充数据？？？
                 offset = self
                     .csg_operations_dynamic_buffer
                     .push(vec![TerrainChunkCSGOperation {
@@ -391,7 +410,11 @@ impl TerrainChunkMainDynamicBuffers {
         }
     }
 
-    pub fn write_buffers(&mut self, render_device: &RenderDevice, render_queue: &RenderQueue) {
+    pub fn write_dynamic_buffers(
+        &mut self,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) {
         if self
             .terrain_chunk_info_dynamic_buffer
             .write_buffer(render_device, render_queue)
@@ -417,7 +440,17 @@ impl TerrainChunkMainDynamicBuffers {
         }
 
         self.csg_operations_dynamic_buffer
-            .write_buffer(render_device, render_queue)
+            .write_buffer(render_device, render_queue);
+    }
+
+    pub fn write_global_buffers(
+        &mut self,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) {
+        if let Some(buffer) = &mut self.terrain_map_config_buffer {
+            buffer.write_buffer(render_device, render_queue);
+        }
     }
 
     pub fn stage_buffers(&self, command_encoder: &mut CommandEncoder) {
@@ -502,7 +535,11 @@ pub struct TerrainChunkMainBufferBindings {
     pub csg_operations_buffer_binding: DynamicBufferBindingInfo,
 }
 
-pub struct TerrainChunkMainBufferCreateContext<'a> {
+pub struct TerrainChunkMainGlobalBufferCreateContext<'a> {
+    pub terrain_map_gpu_config: &'a TerrainMapGpuConfig,
+}
+
+pub struct TerrainChunkMainDynamicBufferCreateContext<'a> {
     pub terrain_chunk_aabb: Aabb3d,
     pub terrain_chunk_address: TerrainChunkAddress,
     pub terrain_setting: &'a TerrainSetting,

@@ -5,14 +5,19 @@ use bevy::{
     prelude::*,
     render::{
         render_resource::{
-            binding_types::{storage_buffer, storage_buffer_read_only, uniform_buffer},
+            binding_types::{
+                sampler, storage_buffer, storage_buffer_read_only, texture_2d, uniform_buffer,
+            },
             BindGroupLayout, BindGroupLayoutEntries, CachedComputePipelineId,
             ComputePipelineDescriptor, PipelineCache,
         },
         renderer::RenderDevice,
     },
 };
+use wgpu::{SamplerBindingType, TextureSampleType};
 use wgpu_types::ShaderStages;
+
+use crate::map::config::TerrainMapGpuConfig;
 
 use super::buffer_type::{
     TerrainChunkCSGOperation, TerrainChunkInfo, TerrainChunkVertexInfo,
@@ -65,6 +70,7 @@ shaders_plugin!(
 pub struct TerrainChunkPipelines {
     pub main_compute_bind_group_layout: BindGroupLayout,
     pub main_compute_csg_bind_group_layout: BindGroupLayout,
+    pub main_compute_map_bind_group_layout: BindGroupLayout,
 
     pub compute_voxel_vertex_values_pipeline: CachedComputePipelineId,
     pub compute_voxel_cross_points_pipeline: CachedComputePipelineId,
@@ -115,6 +121,24 @@ impl FromWorld for TerrainChunkPipelines {
             ),
         );
 
+        let main_compute_map_bind_group_layout = render_device.create_bind_group_layout(
+            "terrain chunk main mesh map bind group layout",
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::COMPUTE,
+                (
+                    uniform_buffer::<TerrainMapGpuConfig>(false),
+                    // map height climate texture
+                    texture_2d(TextureSampleType::Float { filterable: false }),
+                    // map height climate sampler
+                    sampler(SamplerBindingType::Filtering),
+                    // map height image texture
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    // map height image sampler
+                    sampler(SamplerBindingType::Filtering),
+                ),
+            ),
+        );
+
         // create pipeline
 
         let main_compute_vertices_pipeline =
@@ -123,6 +147,7 @@ impl FromWorld for TerrainChunkPipelines {
                 layout: vec![
                     main_compute_bind_group_layout.clone(),
                     main_compute_csg_bind_group_layout.clone(),
+                    main_compute_map_bind_group_layout.clone(),
                 ],
                 push_constant_ranges: Vec::new(),
                 shader: main_compute_shaders
@@ -137,6 +162,7 @@ impl FromWorld for TerrainChunkPipelines {
                 layout: vec![
                     main_compute_bind_group_layout.clone(),
                     main_compute_csg_bind_group_layout.clone(),
+                    main_compute_map_bind_group_layout.clone(),
                 ],
                 push_constant_ranges: Vec::new(),
                 shader: main_compute_shaders
@@ -152,6 +178,7 @@ impl FromWorld for TerrainChunkPipelines {
                 layout: vec![
                     main_compute_bind_group_layout.clone(),
                     main_compute_csg_bind_group_layout.clone(),
+                    main_compute_map_bind_group_layout.clone(),
                 ],
                 push_constant_ranges: Vec::new(),
                 shader: main_compute_shaders
@@ -167,6 +194,7 @@ impl FromWorld for TerrainChunkPipelines {
                 layout: vec![
                     main_compute_bind_group_layout.clone(),
                     main_compute_csg_bind_group_layout.clone(),
+                    main_compute_map_bind_group_layout.clone(),
                 ],
                 push_constant_ranges: Vec::new(),
                 shader: main_compute_shaders
@@ -179,6 +207,7 @@ impl FromWorld for TerrainChunkPipelines {
         TerrainChunkPipelines {
             main_compute_bind_group_layout,
             main_compute_csg_bind_group_layout,
+            main_compute_map_bind_group_layout,
             compute_voxel_vertex_values_pipeline,
             compute_voxel_cross_points_pipeline,
             main_compute_vertices_pipeline,

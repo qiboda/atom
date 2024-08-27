@@ -32,7 +32,10 @@ atom_shaders_plugin!(Limit, (numeric_shader -> "shaders/limit/numeric.wgsl"));
 
 atom_shaders_plugin!(
     Math,
-    (const_shader -> "shaders/math/const.wgsl")
+    (
+        const_shader -> "shaders/math/const.wgsl",
+        map_shader -> "shaders/math/map.wgsl"
+    )
 );
 
 atom_shaders_plugin!(

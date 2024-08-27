@@ -8,6 +8,8 @@ pub trait SwapDataItemTrait {
     fn remove(&mut self, data: &Self::Item);
 
     fn clear(&mut self);
+
+    fn batch_insert(&mut self, data: Vec<Self::Item>);
 }
 
 pub trait SwapDataTakeTrait {
@@ -36,6 +38,10 @@ pub trait SwapDataTrait {
 
     fn remove(&mut self, data: &<Self::Item as SwapDataItemTrait>::Item) {
         self.get_current_mut().remove(data);
+    }
+
+    fn extend(&mut self, data: Vec<<Self::Item as SwapDataItemTrait>::Item>) {
+        self.get_current_mut().batch_insert(data);
     }
 }
 
@@ -144,6 +150,10 @@ where
         if let Some(index) = self.iter().position(|x| x == data) {
             self.remove(index);
         }
+    }
+
+    fn batch_insert(&mut self, data: Vec<Self::Item>) {
+        self.extend(data);
     }
 
     fn clear(&mut self) {

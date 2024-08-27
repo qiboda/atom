@@ -2,7 +2,6 @@ use atom_internal::plugins::AtomDefaultPlugins;
 use atom_renderdoc::RenderDocPlugin;
 use avian3d::PhysicsPlugins;
 use bevy::{
-    color::palettes::css,
     core_pipeline::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
@@ -14,9 +13,9 @@ use bevy::{
         ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
     },
     prelude::*,
-    render::diagnostic::RenderDiagnosticsPlugin,
+    render::{camera::RenderTarget, diagnostic::RenderDiagnosticsPlugin},
+    window::WindowRef,
 };
-use bevy_debug_grid::{Grid, GridAxis};
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
 use bevy_mod_picking::{
     debug::DebugPickingMode,
@@ -33,6 +32,7 @@ use log_layers::LogLayersPlugin;
 use terrain::{
     isosurface::csg::event::{CSGOperateApplyEvent, CSGOperateType, CSGPrimitive},
     lod::lod_gizmos::TerrainLodGizmosPlugin,
+    map::compute_height::TerrainHeightMapImage,
     TerrainObserver, TerrainSubsystemPlugin,
 };
 
@@ -83,6 +83,7 @@ pub fn main() {
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(TerrainLodGizmosPlugin)
     .add_plugins(NoCameraPlayerPlugin)
+    // .add_plugins(TerrainHeightMapPlugin)
     .add_plugins(FpsOverlayPlugin {
         config: FpsOverlayConfig {
             text_config: TextStyle {
@@ -101,7 +102,7 @@ pub fn main() {
         (
             update_terrain_observer,
             change_camera_speed,
-            pointer_move_terrain,
+            // pointer_move_terrain,
             pointer_click_terrain,
         ),
     )
@@ -117,38 +118,9 @@ fn startup(
     mut commands: Commands,
     mut wireframe_config: ResMut<WireframeConfig>,
     // mut nav_mesh: ResMut<DrawNavMesh>,
-    mut _meshes: ResMut<Assets<Mesh>>,
-    mut _materials: ResMut<Assets<StandardMaterial>>,
+    mut terrain_height_map_image: Option<ResMut<TerrainHeightMapImage>>,
 ) {
-    // nav_mesh.0 = true;
-    wireframe_config.global = true;
-
-    // fn startup(mut commands: Commands) {
-    commands.spawn((
-        Grid {
-            // Space between each line
-            spacing: 16.0,
-            // Line count along a single axis
-            count: 256,
-            // Color of the lines
-            color: css::ORANGE.into(),
-            // Alpha mode for all components
-            alpha_mode: AlphaMode::Opaque,
-        },
-        // SubGrid {
-        //     // Line count between each line of the main grid
-        //     count: 16,
-        //     // Line color
-        //     color: css::GRAY.into(),
-        // },
-        GridAxis {
-            x: Some(css::RED.into()),
-            y: Some(css::GREEN.into()),
-            z: Some(css::BLUE.into()),
-        },
-        TransformBundle::default(),
-        VisibilityBundle::default(),
-    ));
+    // wireframe_config.global = true;
 
     commands.insert_resource(ClearColor(LinearRgba::new(0.3, 0.2, 0.1, 1.0).into()));
     commands.insert_resource(Msaa::Sample4);
@@ -175,20 +147,6 @@ fn startup(
         ..Default::default()
     });
 
-    // commands.spawn(MaterialMeshBundle {
-    //     mesh: meshes.add(Mesh::from(Plane3d {
-    //         normal: Dir3::Y,
-    //         half_size: Vec2::splat(32.0 * 0.5),
-    //     })),
-    //     material: materials.add(StandardMaterial {
-    //         base_color: Color::WHITE,
-    //         unlit: true,
-    //         ..default()
-    //     }),
-    //     transform: Transform::from_xyz(0.0, -8.3, 0.0),
-    //     ..default()
-    // });
-
     commands.spawn((
         Camera3dBundle {
             transform: Transform::from_xyz(8.0, -0.1, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -211,6 +169,40 @@ fn startup(
         FlyCam,
         // TerrainObserver,
     ));
+
+    if let Some(image) = terrain_height_map_image {
+        let second_window = commands
+            .spawn(Window {
+                title: "Second window".to_owned(),
+                ..default()
+            })
+            .id();
+
+        let second_camera = commands
+            .spawn(Camera2dBundle {
+                camera: Camera {
+                    target: RenderTarget::Window(WindowRef::Entity(second_window)),
+                    // target: RenderTarget::Image(image.texture.clone()),
+                    ..default()
+                },
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
+                ..default()
+            })
+            .id();
+
+        commands
+            .spawn((NodeBundle::default(), TargetCamera(second_camera)))
+            .with_children(|parent| {
+                parent.spawn(SpriteBundle {
+                    sprite: Sprite {
+                        custom_size: Some(Vec2::new(1024.0, 1024.0)),
+                        ..default()
+                    },
+                    texture: image.texture.clone(),
+                    ..default()
+                });
+            });
+    }
 }
 
 pub fn update_terrain_observer(

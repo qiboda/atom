@@ -4,7 +4,7 @@
 /// TODO 如何将切断的mesh，施加重力。
 /// TODO 如何支持地形的函数自定义，以及曲线修改地形。
 /// TODO 自定义地形的函数组合。
-/// TODO 水面的支持。
+/// TODO 水面的支持。水面隐藏当有csg操作时。
 /// TODO 河流的支持。以及小路的生成。(小路或许可以靠寻路系统生成)
 /// TODO 地形和生态的分布。
 /// TODO 缓存密度函数的值，避免重复计算。
@@ -13,6 +13,7 @@ pub mod chunk_mgr;
 pub mod ecology;
 pub mod isosurface;
 pub mod lod;
+pub mod map;
 pub mod materials;
 pub mod setting;
 pub mod tables;
@@ -24,6 +25,7 @@ use chunk_mgr::plugin::TerrainChunkPlugin;
 use ecology::EcologyPlugin;
 use isosurface::{csg::plugin::TerrainCSGPlugin, IsosurfaceExtractionPlugin};
 use lod::lod_octree::TerrainLodOctreePlugin;
+use map::TerrainMapPlugin;
 use materials::TerrainMaterialPlugin;
 use setting::TerrainSetting;
 use settings::SettingPlugin;
@@ -49,6 +51,7 @@ impl Plugin for TerrainSubsystemPlugin {
             .add_plugins(TerrainCSGPlugin)
             .add_plugins(TerrainChunkPlugin)
             .add_plugins(EcologyPlugin)
+            .add_plugins(TerrainMapPlugin)
             .add_plugins(TerrainMaterialPlugin)
             .add_plugins(IsosurfaceExtractionPlugin);
     }
