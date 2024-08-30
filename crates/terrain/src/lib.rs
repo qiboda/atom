@@ -19,13 +19,12 @@ pub mod setting;
 pub mod tables;
 pub mod utils;
 
-use atom_internal::app_state::AppState;
 use bevy::{prelude::*, render::extract_resource::ExtractResourcePlugin};
 use chunk_mgr::plugin::TerrainChunkPlugin;
 use ecology::EcologyPlugin;
 use isosurface::{csg::plugin::TerrainCSGPlugin, IsosurfaceExtractionPlugin};
 use lod::lod_octree::TerrainLodOctreePlugin;
-use map::TerrainMapPlugin;
+use map::{compute_height::TerrainHeightMapPlugin, TerrainMapPlugin};
 use materials::TerrainMaterialPlugin;
 use setting::TerrainSetting;
 use settings::SettingPlugin;
@@ -44,14 +43,16 @@ impl Plugin for TerrainSubsystemPlugin {
                     TerrainSystemSet::GenerateTerrain,
                 )
                     .chain()
-                    .run_if(in_state(AppState::AppRunning)),
+                    .run_if(in_state(TerrainState::GenerateTerrainMesh)),
             )
+            .init_state::<TerrainState>()
             .add_plugins(ExtractResourcePlugin::<TerrainSetting>::default())
             .add_plugins(TerrainLodOctreePlugin)
             .add_plugins(TerrainCSGPlugin)
             .add_plugins(TerrainChunkPlugin)
             .add_plugins(EcologyPlugin)
             .add_plugins(TerrainMapPlugin)
+            .add_plugins(TerrainHeightMapPlugin)
             .add_plugins(TerrainMaterialPlugin)
             .add_plugins(IsosurfaceExtractionPlugin);
     }
@@ -67,3 +68,11 @@ pub enum TerrainSystemSet {
 
 #[derive(Component, Debug, Default)]
 pub struct TerrainObserver;
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, States, Default)]
+pub enum TerrainState {
+    #[default]
+    GenerateTerrainInfoMap,
+    GenerateHeightMap,
+    GenerateTerrainMesh,
+}

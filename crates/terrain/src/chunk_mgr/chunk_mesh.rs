@@ -6,13 +6,12 @@ use bevy::pbr::wireframe::WireframeColor;
 use bevy::pbr::wireframe::Wireframe;
 
 use avian3d::prelude::*;
+use wgpu::Face;
 
-use crate::ecology::ecology_set::EcologyMaterials;
+use crate::ecology::category::forest::ForestEcologyMaterial;
 use crate::isosurface::dc::gpu_dc::mesh_compute::TerrainChunkMeshDataMainWorldReceiver;
-use crate::isosurface::dc::gpu_dc::mesh_compute::TerrainChunkSeamMeshData;
-use crate::materials::terrain_mat::TerrainDebugType;
 
-use crate::materials::terrain_mat::TerrainMaterial;
+use crate::materials::terrain_material::TerrainMaterial;
 
 use super::chunk::comp::TerrainChunkAddress;
 
@@ -29,7 +28,7 @@ pub fn receive_terrain_chunk_mesh_data(
     )>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    ecology_materials: Res<EcologyMaterials>,
+    forest_material: Option<Res<ForestEcologyMaterial>>,
 ) {
     loop {
         match receiver.try_recv() {
@@ -39,7 +38,7 @@ pub fn receive_terrain_chunk_mesh_data(
 
                     debug!("receive_terrain_chunk_mesh_data");
 
-                    if let Some(mut main_mesh) = data.main_mesh_data {
+                    if let Some(main_mesh) = data.main_mesh_data {
                         if let Some(main_mesh_entity) = mesh_entities.main_mesh {
                             commands.entity(main_mesh_entity).despawn_recursive();
                         }
@@ -49,24 +48,34 @@ pub fn receive_terrain_chunk_mesh_data(
                             continue;
                         }
 
+                        if forest_material.is_none() {
+                            debug!("receive_terrain_chunk_mesh_data forest material is none");
+                            continue;
+                        }
+
+                        let forest_material = forest_material.as_ref().unwrap();
+
                         debug!("receive_terrain_chunk_mesh_data main mesh ok");
                         let material = materials.add(TerrainMaterial {
-                            lod: address.0.depth() as u32,
-                            debug_type: Some(TerrainDebugType::Normal),
+                            lod: address.0.depth(),
+                            debug_type: None,
                             // debug_type: None,
-                            color_texture: Some(
-                                ecology_materials.forest_material.get_albedo_texture(),
-                            ),
-                            metallic_texture: Some(
-                                ecology_materials.forest_material.get_metallic_texture(),
-                            ),
-                            normal_texture: Some(
-                                ecology_materials.forest_material.get_normal_texture(),
-                            ),
-                            roughness_texture: Some(
-                                ecology_materials.forest_material.get_roughness_texture(),
-                            ),
-                            cull_mode: Some(wgpu::Face::Back),
+                            base_color_texture: forest_material.base_color_texture.clone(),
+                            metallic: 0.0,
+                            perceptual_roughness: 1.0,
+                            metallic_roughness_texture: forest_material
+                                .metallic_roughness_texture
+                                .clone(),
+                            normal_map_texture: forest_material.normal_texture.clone(),
+                            occlusion_texture: forest_material.occlusion_texture.clone(),
+                            cull_mode: Some(Face::Back),
+                            double_sided: false,
+                            unlit: false,
+                            fog_enabled: true,
+                            reflectance: 0.5,
+                            attenuation_distance: f32::INFINITY,
+                            attenuation_color: Color::WHITE,
+                            base_color: Color::WHITE,
                         });
 
                         let mut entity_commands = commands.spawn_empty();
@@ -108,157 +117,85 @@ pub fn receive_terrain_chunk_mesh_data(
                         mesh_entities.main_mesh = Some(main_mesh_id);
                     }
 
-                    if let Some(seam_mesh) = data.seam_mesh_data {
-                        match seam_mesh {
-                            TerrainChunkSeamMeshData::GPUMesh(mut gpu_mesh) => {
-                                mesh_entities.seam_mesh.despawn_recursive(&mut commands);
+                    if let Some(seam_mesh_data) = data.seam_mesh_data {
+                        mesh_entities.seam_mesh.despawn_recursive(&mut commands);
 
-                                if gpu_mesh
-                                    .seam_mesh
-                                    .attribute(Mesh::ATTRIBUTE_POSITION)
-                                    .is_none()
-                                {
-                                    debug!("receive_terrain_chunk_mesh_data seam mesh is none");
-                                    continue;
-                                }
-
-                                debug!("receive_terrain_chunk_mesh_data seam mesh ok");
-                                let material = materials.add(TerrainMaterial {
-                                    lod: address.0.depth() as u32,
-                                    debug_type: Some(TerrainDebugType::Normal),
-                                    // debug_type: None,
-                                    color_texture: Some(
-                                        ecology_materials.forest_material.get_albedo_texture(),
-                                    ),
-                                    metallic_texture: Some(
-                                        ecology_materials.forest_material.get_metallic_texture(),
-                                    ),
-                                    normal_texture: Some(
-                                        ecology_materials.forest_material.get_normal_texture(),
-                                    ),
-                                    roughness_texture: Some(
-                                        ecology_materials.forest_material.get_roughness_texture(),
-                                    ),
-                                    cull_mode: Some(wgpu::Face::Back),
-                                    // cull_mode: None,
-                                });
-
-                                let mut entity_commands = commands.spawn_empty();
-
-                                // {
-                                //     let _span = info_span!("compute main mesh normals").entered();
-                                //     gpu_mesh.seam_mesh.compute_normals();
-                                // }
-
-                                entity_commands.insert((
-                                    Collider::trimesh_from_mesh(&gpu_mesh.seam_mesh).unwrap(),
-                                    RigidBody::Static,
-                                    CollisionLayers::new(
-                                        PhysicalCollisionLayer::Terrain,
-                                        [
-                                            PhysicalCollisionLayer::Player,
-                                            PhysicalCollisionLayer::Enemy,
-                                        ],
-                                    ),
-                                ));
-
-                                let seam_mesh_id = entity_commands
-                                    .insert((
-                                        MaterialMeshBundle {
-                                            mesh: meshes.add(gpu_mesh.seam_mesh),
-                                            material,
-                                            transform: Transform::from_translation(Vec3::splat(
-                                                0.0,
-                                            )),
-                                            visibility: Visibility::Visible,
-                                            ..Default::default()
-                                        },
-                                        Wireframe,
-                                        WireframeColor {
-                                            color: LinearRgba::WHITE.into(),
-                                        },
-                                    ))
-                                    .set_parent(data.entity)
-                                    .id();
-
-                                mesh_entities
-                                    .seam_mesh
-                                    .set_gpu_seam_mesh(seam_mesh_id, gpu_mesh.axis);
-                            }
-                            TerrainChunkSeamMeshData::CPUMesh(mut cpu_mesh) => {
-                                mesh_entities.seam_mesh.despawn_recursive(&mut commands);
-
-                                if cpu_mesh
-                                    .seam_mesh
-                                    .attribute(Mesh::ATTRIBUTE_POSITION)
-                                    .is_none()
-                                {
-                                    debug!("receive_terrain_chunk_mesh_data seam mesh is none");
-                                    continue;
-                                }
-
-                                debug!("receive_terrain_chunk_mesh_data seam mesh ok");
-                                let material = materials.add(TerrainMaterial {
-                                    lod: address.0.depth() as u32,
-                                    debug_type: Some(TerrainDebugType::Normal),
-                                    // debug_type: None,
-                                    color_texture: Some(
-                                        ecology_materials.forest_material.get_albedo_texture(),
-                                    ),
-                                    metallic_texture: Some(
-                                        ecology_materials.forest_material.get_metallic_texture(),
-                                    ),
-                                    normal_texture: Some(
-                                        ecology_materials.forest_material.get_normal_texture(),
-                                    ),
-                                    roughness_texture: Some(
-                                        ecology_materials.forest_material.get_roughness_texture(),
-                                    ),
-                                    cull_mode: Some(wgpu::Face::Back),
-                                    // cull_mode: None,
-                                });
-
-                                let mut entity_commands = commands.spawn_empty();
-
-                                // {
-                                //     let _span = info_span!("compute main mesh normals").entered();
-                                //     cpu_mesh.seam_mesh.compute_normals();
-                                // }
-
-                                entity_commands.insert((
-                                    Collider::trimesh_from_mesh(&cpu_mesh.seam_mesh).unwrap(),
-                                    RigidBody::Static,
-                                    CollisionLayers::new(
-                                        PhysicalCollisionLayer::Terrain,
-                                        [
-                                            PhysicalCollisionLayer::Player,
-                                            PhysicalCollisionLayer::Enemy,
-                                        ],
-                                    ),
-                                ));
-
-                                let seam_mesh_id = entity_commands
-                                    .insert((
-                                        MaterialMeshBundle {
-                                            mesh: meshes.add(cpu_mesh.seam_mesh),
-                                            material,
-                                            transform: Transform::from_translation(Vec3::splat(
-                                                0.0,
-                                            )),
-                                            visibility: Visibility::Visible,
-                                            ..Default::default()
-                                        },
-                                        Wireframe,
-                                        WireframeColor {
-                                            color: LinearRgba::WHITE.into(),
-                                        },
-                                    ))
-                                    .set_parent(data.entity)
-                                    .id();
-
-                                mesh_entities.seam_mesh.set_cpu_seam_mesh(seam_mesh_id);
-                            }
+                        if seam_mesh_data
+                            .seam_mesh
+                            .attribute(Mesh::ATTRIBUTE_POSITION)
+                            .is_none()
+                        {
+                            debug!("receive_terrain_chunk_mesh_data seam mesh is none");
+                            continue;
                         }
+
+                        if forest_material.is_none() {
+                            debug!("receive_terrain_chunk_mesh_data forest material is none");
+                            continue;
+                        }
+
+                        let forest_material = forest_material.as_ref().unwrap();
+
+                        debug!("receive_terrain_chunk_mesh_data seam mesh ok");
+                        let material = materials.add(TerrainMaterial {
+                            lod: address.0.depth(),
+                            debug_type: None,
+                            // debug_type: None,
+                            base_color_texture: forest_material.base_color_texture.clone(),
+                            metallic: 0.0,
+                            perceptual_roughness: 1.0,
+                            metallic_roughness_texture: forest_material
+                                .metallic_roughness_texture
+                                .clone(),
+                            normal_map_texture: forest_material.normal_texture.clone(),
+                            occlusion_texture: forest_material.occlusion_texture.clone(),
+                            cull_mode: Some(Face::Back),
+                            double_sided: false,
+                            unlit: false,
+                            fog_enabled: true,
+                            reflectance: 0.5,
+                            attenuation_distance: f32::INFINITY,
+                            attenuation_color: Color::WHITE,
+                            base_color: Color::WHITE,
+                        });
+
+                        let mut entity_commands = commands.spawn_empty();
+
+                        // {
+                        //     let _span = info_span!("compute main mesh normals").entered();
+                        //     cpu_mesh.seam_mesh.compute_normals();
+                        // }
+
+                        entity_commands.insert((
+                            Collider::trimesh_from_mesh(&seam_mesh_data.seam_mesh).unwrap(),
+                            RigidBody::Static,
+                            CollisionLayers::new(
+                                PhysicalCollisionLayer::Terrain,
+                                [
+                                    PhysicalCollisionLayer::Player,
+                                    PhysicalCollisionLayer::Enemy,
+                                ],
+                            ),
+                        ));
+
+                        let seam_mesh_id = entity_commands
+                            .insert((
+                                MaterialMeshBundle {
+                                    mesh: meshes.add(seam_mesh_data.seam_mesh),
+                                    material,
+                                    transform: Transform::from_translation(Vec3::splat(0.0)),
+                                    visibility: Visibility::Visible,
+                                    ..Default::default()
+                                },
+                                Wireframe,
+                                WireframeColor {
+                                    color: LinearRgba::WHITE.into(),
+                                },
+                            ))
+                            .set_parent(data.entity)
+                            .id();
+
+                        mesh_entities.seam_mesh.set_cpu_seam_mesh(seam_mesh_id);
                     }
                 }
             }

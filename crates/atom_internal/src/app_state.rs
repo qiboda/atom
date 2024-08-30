@@ -14,6 +14,7 @@ pub struct AppStatePlugin;
 
 impl Plugin for AppStatePlugin {
     fn build(&self, app: &mut App) {
+        info!("AppStatePlugin");
         app.init_state::<AppState>().add_systems(
             Update,
             wait_load_startup_assets_over.run_if(in_state(AppState::LoadingStartupAssets)),
@@ -26,6 +27,7 @@ fn wait_load_startup_assets_over(
     table_state: Res<State<TableLoadingState>>,
     settings_status: Res<SettingsLoadStatus>,
 ) {
+    info!("wait_load_startup_assets_over");
     if table_state.get() == &TableLoadingState::Loaded && settings_status.all_loaded() {
         state.set(AppState::AppRunning);
         info!("app state to AppRunning");

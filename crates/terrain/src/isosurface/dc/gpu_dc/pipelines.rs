@@ -52,7 +52,8 @@ shaders_plugin!(
     VoxelCompute,
     (
         voxel_type_shader -> "shaders/terrain/compute/voxel_type.wgsl",
-        voxel_utils_shader -> "shaders/terrain/compute/voxel_utils.wgsl"
+        voxel_utils_shader -> "shaders/terrain/compute/voxel_utils.wgsl",
+        pbr_shader -> "shaders/terrain/pbr_functions.wgsl"
     )
 );
 

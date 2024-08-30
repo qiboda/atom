@@ -187,9 +187,9 @@ mod tests {
 
     #[test]
     fn test_range() {
-        let p0 = Vec2::new(513.6790446110355, 645.6052703334332);
-        let p1 = Vec2::new(513.6836578966156, 636.3931600196696);
-        let p2 = Vec2::new(507.0046536505824, 641.9618904430255);
+        let p0 = Vec2::new(513.679, 645.605);
+        let p1 = Vec2::new(513.683, 636.393);
+        let p2 = Vec2::new(507.004, 641.961);
         let points = points_in_triangle(p0, p1, p2);
         println!("{:?}", points);
     }

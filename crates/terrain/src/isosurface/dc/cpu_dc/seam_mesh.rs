@@ -15,9 +15,8 @@ use crate::{
     isosurface::dc::{
         cpu_dc::octree::{check_octree_nodes_relation, OctreeLevel},
         gpu_dc::mesh_compute::{
-            TerrainChunkCPUSeamMeshData, TerrainChunkMeshData,
-            TerrainChunkMeshDataRenderWorldSender, TerrainChunkRenderBorderVertices,
-            TerrainChunkSeamMeshData,
+            TerrainChunkMeshData, TerrainChunkMeshDataRenderWorldSender,
+            TerrainChunkRenderBorderVertices, TerrainChunkSeamMeshData,
         },
     },
     lod::morton_code::MortonCode,
@@ -176,7 +175,7 @@ pub(crate) fn create_seam_mesh(
         match sender.send(TerrainChunkMeshData {
             entity,
             main_mesh_data: None,
-            seam_mesh_data: Some(TerrainChunkSeamMeshData::CPUMesh( TerrainChunkCPUSeamMeshData { seam_mesh: mesh })),
+            seam_mesh_data: Some(TerrainChunkSeamMeshData { seam_mesh: mesh }),
         }) {
             Ok(_) => {}
             Err(e) => error!("{}", e),

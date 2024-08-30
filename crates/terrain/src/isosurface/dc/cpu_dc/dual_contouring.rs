@@ -5,12 +5,12 @@ use bevy::{
     utils::HashMap,
 };
 use strum::{EnumCount, IntoEnumIterator};
-use tracing::{instrument, trace};
+use tracing::{instrument, trace, warn};
 use wgpu::PrimitiveTopology;
 
 use crate::{
     isosurface::voxel::VoxelMaterialType, lod::morton_code::MortonCode,
-    materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE, tables::VertexIndex,
+    materials::terrain_material::MATERIAL_VERTEX_ATTRIBUTE, tables::VertexIndex,
 };
 
 use crate::tables::{EDGE_NODES_VERTICES, FACE_TO_SUB_EDGES_AXIS_TYPE};
@@ -46,6 +46,12 @@ impl DefaultDualContouringVisiter {
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
         mesh.insert_attribute(MATERIAL_VERTEX_ATTRIBUTE, self.materials);
         mesh.insert_indices(Indices::U32(self.indices));
+        // match mesh.generate_tangents() {
+        //     Ok(_) => {}
+        //     Err(e) => {
+        //         warn!("generate_tangents error: {:?}", e);
+        //     }
+        // }
 
         mesh
     }

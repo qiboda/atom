@@ -37,10 +37,9 @@ use crate::{
             TerrainChunkMainBufferBindings, TerrainChunkMainDynamicBufferCreateContext,
         },
     },
-    map::{compute_height::TerrainHeightMapImage, config::TerrainMapGpuConfig, TerrainMapImages},
-    materials::terrain_mat::MATERIAL_VERTEX_ATTRIBUTE,
+    map::{compute_height::TerrainHeightMap, config::TerrainMapGpuConfig, TerrainInfoMap},
+    materials::terrain_material::MATERIAL_VERTEX_ATTRIBUTE,
     setting::TerrainSetting,
-    tables::AxisType,
 };
 
 use super::{
@@ -61,18 +60,8 @@ use crate::isosurface::dc::gpu_dc::buffer_type::TerrainChunkVertexInfo;
 #[cfg(feature = "cpu_seam")]
 use bevy::math::{bounding::Aabb3d, Vec3A};
 
-pub struct TerrainChunkGPUSeamMeshData {
+pub struct TerrainChunkSeamMeshData {
     pub seam_mesh: Mesh,
-    pub axis: AxisType,
-}
-
-pub struct TerrainChunkCPUSeamMeshData {
-    pub seam_mesh: Mesh,
-}
-
-pub enum TerrainChunkSeamMeshData {
-    GPUMesh(TerrainChunkGPUSeamMeshData),
-    CPUMesh(TerrainChunkCPUSeamMeshData),
 }
 
 pub struct TerrainChunkMainMeshData {
@@ -273,8 +262,8 @@ fn prepare_main_bind_group(
     )>,
     mut bind_groups: ResMut<TerrainChunkMainBindGroups>,
     mut dynamic_buffers: ResMut<TerrainChunkMainDynamicBuffers>,
-    map_images: Res<TerrainMapImages>,
-    height_map_images: Res<TerrainHeightMapImage>,
+    map_images: Res<TerrainInfoMap>,
+    height_map_images: Res<TerrainHeightMap>,
     images: Res<RenderAssets<GpuImage>>,
 ) {
     let mut num = 0;
@@ -294,7 +283,7 @@ fn prepare_main_bind_group(
         render_device: &render_device,
         pipelines: &pipelines,
         dynamic_buffers: &dynamic_buffers,
-        map_image: images.get(map_images.height_climate_image.id()).unwrap(),
+        map_image: images.get(map_images.height_climate_map.id()).unwrap(),
         map_biome_image: images.get(height_map_images.texture.id()).unwrap(),
     };
     bind_groups.create_bind_groups(context);
@@ -425,6 +414,13 @@ fn map_and_read_buffer(
                         .collect::<Vec<u32>>(),
                 );
                 mesh.insert_indices(Indices::U32(indices));
+                // match mesh.generate_tangents() {
+                //     Ok(_) => {}
+                //     Err(e) => {
+                //         warn!("generate_tangents error: {:?}", e);
+                //         panic!("generate_tangents error: {:?}", e);
+                //     }
+                // }
 
                 let main_mesh_data = TerrainChunkMainMeshData { mesh };
                 match sender.send(TerrainChunkMeshData {
@@ -467,6 +463,7 @@ fn map_and_read_buffer(
                         })
                         .collect::<Vec<Aabb3d>>();
 
+                    // TODO 只有添加没有删除，会导致内存占用过大。
                     render_border_vertices.map.insert(entity, border_vertices);
                 }
             }

@@ -63,6 +63,7 @@ wgpu-types = { workspace = true }
 wgpu = { workspace = true }
 thiserror = { workspace = true }
 bevy_console = { workspace = true }
+bevy_asset_loader = { workspace = true }
 clap = { version = "4.5" }
 
 encase = { version = "0.8" }

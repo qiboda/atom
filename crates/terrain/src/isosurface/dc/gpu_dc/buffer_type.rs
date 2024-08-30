@@ -34,6 +34,7 @@ pub struct TerrainChunkVertexInfo {
     pub vertex_location: Vec4,
     pub vertex_normal_materials: Vec4,
     pub vertex_local_coord: UVec4,
+    // TODO: 优化为8个u8
     pub voxel_materials_0: UVec4,
     pub voxel_materials_1: UVec4,
 }

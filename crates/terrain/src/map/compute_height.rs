@@ -8,15 +8,16 @@ use bevy::{
         render_resource::{binding_types::texture_storage_2d, *},
         renderer::{RenderContext, RenderDevice, RenderQueue},
         texture::GpuImage,
-        Render, RenderApp, RenderSet,
+        Extract, Render, RenderApp, RenderSet,
     },
 };
 use binding_types::{sampler, texture_2d_array, uniform_buffer};
-use std::borrow::Cow;
+use crossbeam_channel::{Receiver, Sender};
+use std::{borrow::Cow, ops::Not};
 
-use crate::setting::TerrainSetting;
+use crate::{setting::TerrainSetting, TerrainState};
 
-use super::TerrainMapImages;
+use super::TerrainInfoMap;
 
 shaders_plugin!(
     Terrain,
@@ -37,6 +38,18 @@ pub struct TerrainHeightMapBuffer {
     pub uniform_buffer: Option<UniformBuffer<TerrainHeightMapInfo>>,
 }
 
+#[derive(Default)]
+pub struct TerrainHeightMapOver(bool);
+
+/// This will receive asynchronously any data sent from the render world
+#[derive(Resource, Deref)]
+pub struct TerrainHeightMapMainWorldReceiver(Receiver<TerrainHeightMapOver>);
+
+/// This will send asynchronously any data to the main world
+#[derive(Resource, Deref)]
+pub struct TerrainHeightMapRenderWorldSender(Sender<TerrainHeightMapOver>);
+
+#[derive(Default)]
 pub struct TerrainHeightMapPlugin;
 
 impl Plugin for TerrainHeightMapPlugin {
@@ -55,21 +68,26 @@ impl Plugin for TerrainHeightMapPlugin {
 
         image.texture_descriptor.usage = TextureUsages::COPY_DST
             | TextureUsages::STORAGE_BINDING
-            | TextureUsages::TEXTURE_BINDING
-            | TextureUsages::RENDER_ATTACHMENT;
+            | TextureUsages::TEXTURE_BINDING;
 
+        info!("TerrainHeightMapPlugin");
         let image_handle = app.world_mut().add_asset(image);
-        app.insert_resource(TerrainHeightMapImage::new(image_handle));
-        app.add_plugins(ExtractResourcePlugin::<TerrainHeightMapImage>::default());
+
+        app.add_plugins(ExtractResourcePlugin::<TerrainHeightMap>::default());
+        app.insert_resource(TerrainHeightMap::new(image_handle));
+
+        app.add_systems(PreUpdate, receive_msg_from_render_world);
 
         let render_app = app.sub_app_mut(RenderApp);
-        render_app.add_systems(
-            Render,
-            (
-                prepare_buffer.in_set(RenderSet::PrepareResources),
-                prepare_bind_group.in_set(RenderSet::PrepareBindGroups),
-            ),
-        );
+        render_app
+            .add_systems(ExtractSchedule, extract_terrain_state)
+            .add_systems(
+                Render,
+                (
+                    prepare_buffer.in_set(RenderSet::PrepareResources),
+                    prepare_bind_group.in_set(RenderSet::PrepareBindGroups),
+                ),
+            );
 
         let mut render_graph = render_app.world_mut().resource_mut::<RenderGraph>();
         render_graph.add_node(TerrainHeightMapLabel, TerrainHeightComputeNode);
@@ -80,11 +98,17 @@ impl Plugin for TerrainHeightMapPlugin {
     }
 
     fn finish(&self, app: &mut App) {
+        let (s, r) = crossbeam_channel::unbounded();
+        app.insert_resource(TerrainHeightMapMainWorldReceiver(r));
+
         let render_app = app.sub_app_mut(RenderApp);
+        render_app.insert_resource(TerrainHeightMapRenderWorldSender(s));
+
         render_app.add_plugins(TerrainHeightMapShadersPlugin);
         render_app.init_resource::<TerrainHeightMapPipeline>();
         render_app.init_resource::<TerrainHeightMapBuffer>();
         render_app.init_resource::<TerrainHeightMapBindGroups>();
+        render_app.init_resource::<TerrainHeightMapEnable>();
     }
 }
 
@@ -92,11 +116,11 @@ impl Plugin for TerrainHeightMapPlugin {
 pub struct TerrainHeightMapLabel;
 
 #[derive(Debug, Resource, Default, Clone, ExtractResource)]
-pub struct TerrainHeightMapImage {
+pub struct TerrainHeightMap {
     pub texture: Handle<Image>,
 }
 
-impl TerrainHeightMapImage {
+impl TerrainHeightMap {
     pub fn new(texture: Handle<Image>) -> Self {
         Self { texture }
     }
@@ -105,20 +129,27 @@ impl TerrainHeightMapImage {
 #[derive(Resource, Default)]
 struct TerrainHeightMapBindGroups(Option<BindGroup>);
 
+#[derive(Resource, Default)]
+struct TerrainHeightMapEnable(bool);
+
+#[allow(clippy::too_many_arguments)]
 fn prepare_bind_group(
     pipeline: Res<TerrainHeightMapPipeline>,
     gpu_images: Res<RenderAssets<GpuImage>>,
-    terrain_height_map_image: Res<TerrainHeightMapImage>,
-    terrain_map_images: Res<TerrainMapImages>,
+    terrain_height_map_image: Res<TerrainHeightMap>,
+    terrain_map_images: Res<TerrainInfoMap>,
     render_device: Res<RenderDevice>,
     buffer: Res<TerrainHeightMapBuffer>,
     mut bind_group: ResMut<TerrainHeightMapBindGroups>,
+    enable: Res<TerrainHeightMapEnable>,
 ) {
+    if enable.0.not() {
+        return;
+    }
+
     if bind_group.0.is_none() {
         let height_image = gpu_images.get(&terrain_height_map_image.texture).unwrap();
-        let biome_blend_images = gpu_images
-            .get(&terrain_map_images.biome_blend_image)
-            .unwrap();
+        let biome_blend_images = gpu_images.get(&terrain_map_images.biome_blend_map).unwrap();
 
         bind_group.0 = Some(render_device.create_bind_group(
             None,
@@ -138,7 +169,12 @@ fn prepare_buffer(
     terrain_setting: Res<TerrainSetting>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
+    enable: Res<TerrainHeightMapEnable>,
 ) {
+    if enable.0.not() {
+        return;
+    }
+
     if buffer.uniform_buffer.is_none() {
         let terrain_size = terrain_setting.get_terrain_size();
         info!("prepare buffer terrain size: {}", terrain_size);
@@ -153,7 +189,6 @@ fn prepare_buffer(
 struct TerrainHeightMapPipeline {
     texture_bind_group_layout: BindGroupLayout,
     update_pipeline: CachedComputePipelineId,
-    computed: u32,
 }
 
 impl FromWorld for TerrainHeightMapPipeline {
@@ -187,7 +222,6 @@ impl FromWorld for TerrainHeightMapPipeline {
         TerrainHeightMapPipeline {
             texture_bind_group_layout,
             update_pipeline,
-            computed: 0,
         }
     }
 }
@@ -196,20 +230,18 @@ impl FromWorld for TerrainHeightMapPipeline {
 struct TerrainHeightComputeNode;
 
 impl render_graph::Node for TerrainHeightComputeNode {
-    fn update(&mut self, world: &mut World) {
-        let mut pipeline = world.resource_mut::<TerrainHeightMapPipeline>();
-        pipeline.computed += 1;
-    }
     fn run(
         &self,
         _graph: &mut render_graph::RenderGraphContext,
         render_context: &mut RenderContext,
         world: &World,
     ) -> Result<(), render_graph::NodeRunError> {
-        let pipeline_cache = world.resource::<PipelineCache>();
-        let pipeline = world.resource::<TerrainHeightMapPipeline>();
+        let enable = world.resource::<TerrainHeightMapEnable>();
 
-        // if pipeline.computed < 5 {
+        if enable.0 {
+            let pipeline_cache = world.resource::<PipelineCache>();
+            let pipeline = world.resource::<TerrainHeightMapPipeline>();
+
             if let Some(update_pipeline) =
                 pipeline_cache.get_compute_pipeline(pipeline.update_pipeline)
             {
@@ -226,8 +258,39 @@ impl render_graph::Node for TerrainHeightComputeNode {
                 pass.set_bind_group(0, bind_group, &[]);
                 pass.set_pipeline(update_pipeline);
                 pass.dispatch_workgroups(4096 / 16, 4096 / 16, 1);
+
+                let sender = world.resource::<TerrainHeightMapRenderWorldSender>();
+
+                if enable.0 {
+                    match sender.send(TerrainHeightMapOver(true)) {
+                        Ok(_) => {}
+                        Err(_) => panic!("TerrainHeightMapRenderWorldSender send data fail!"),
+                    }
+                }
             }
-        // }
+        }
         Ok(())
+    }
+}
+
+fn extract_terrain_state(
+    mut enable: ResMut<TerrainHeightMapEnable>,
+    state: Extract<Res<State<TerrainState>>>,
+) {
+    // TODO 会运行两次，需要解决。之后再处理。
+    enable.0 = state.get() == &TerrainState::GenerateHeightMap;
+    if enable.0 {
+        info!("TerrainState::GenerateHeightMap enable: {}", enable.0);
+    }
+}
+
+fn receive_msg_from_render_world(
+    receiver: Res<TerrainHeightMapMainWorldReceiver>,
+    mut state: ResMut<NextState<TerrainState>>,
+) {
+    if let Ok(data) = receiver.0.try_recv() {
+        if data.0 {
+            state.set(TerrainState::GenerateTerrainMesh);
+        }
     }
 }

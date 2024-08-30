@@ -9,8 +9,8 @@ use bevy::{
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     log::LogPlugin,
     pbr::{
-        wireframe::{WireframeConfig, WireframePlugin},
-        ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings,
+        wireframe::WireframePlugin, ScreenSpaceAmbientOcclusionQualityLevel,
+        ScreenSpaceAmbientOcclusionSettings,
     },
     prelude::*,
     render::{camera::RenderTarget, diagnostic::RenderDiagnosticsPlugin},
@@ -18,7 +18,6 @@ use bevy::{
 };
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
 use bevy_mod_picking::{
-    debug::DebugPickingMode,
     events::{Click, Move, Pointer},
     prelude::RaycastBackend,
     DefaultPickingPlugins,
@@ -32,7 +31,7 @@ use log_layers::LogLayersPlugin;
 use terrain::{
     isosurface::csg::event::{CSGOperateApplyEvent, CSGOperateType, CSGPrimitive},
     lod::lod_gizmos::TerrainLodGizmosPlugin,
-    map::compute_height::TerrainHeightMapImage,
+    map::compute_height::TerrainHeightMap,
     TerrainObserver, TerrainSubsystemPlugin,
 };
 
@@ -57,6 +56,7 @@ pub fn main() {
                 ..default()
             }),
     )
+    // 固定帧率
     // .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(0.5)))
     // .add_plugins((
     //     OxidizedNavigationPlugin::<Collider>::new(NavMeshSettings::from_agent_and_bounds(
@@ -76,14 +76,13 @@ pub fn main() {
         PhysicsPlugins::default(),
         // PhysicsDebugPlugin::default()
     ))
-    .insert_resource(DebugPickingMode::Normal)
+    // .insert_resource(DebugPickingMode::Normal)
     .add_plugins(RenderDocPlugin)
     .add_plugins(RenderDiagnosticsPlugin)
     .add_plugins(WireframePlugin)
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(TerrainLodGizmosPlugin)
     .add_plugins(NoCameraPlayerPlugin)
-    // .add_plugins(TerrainHeightMapPlugin)
     .add_plugins(FpsOverlayPlugin {
         config: FpsOverlayConfig {
             text_config: TextStyle {
@@ -102,7 +101,6 @@ pub fn main() {
         (
             update_terrain_observer,
             change_camera_speed,
-            // pointer_move_terrain,
             pointer_click_terrain,
         ),
     )
@@ -116,12 +114,9 @@ pub fn main() {
 
 fn startup(
     mut commands: Commands,
-    mut wireframe_config: ResMut<WireframeConfig>,
     // mut nav_mesh: ResMut<DrawNavMesh>,
-    mut terrain_height_map_image: Option<ResMut<TerrainHeightMapImage>>,
+    terrain_height_map_image: Option<ResMut<TerrainHeightMap>>,
 ) {
-    // wireframe_config.global = true;
-
     commands.insert_resource(ClearColor(LinearRgba::new(0.3, 0.2, 0.1, 1.0).into()));
     commands.insert_resource(Msaa::Sample4);
     commands.insert_resource(AmbientLight {
@@ -132,13 +127,13 @@ fn startup(
             alpha: 1.0,
         }
         .into(),
-        brightness: 0.3,
+        brightness: 1000.0,
     });
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             color: Color::WHITE,
-            illuminance: 100000.0,
+            illuminance: 10000.0,
             shadows_enabled: true,
             shadow_depth_bias: 0.0,
             shadow_normal_bias: 0.0,
@@ -174,6 +169,7 @@ fn startup(
         let second_window = commands
             .spawn(Window {
                 title: "Second window".to_owned(),
+                present_mode: bevy::window::PresentMode::AutoNoVsync,
                 ..default()
             })
             .id();
@@ -182,7 +178,6 @@ fn startup(
             .spawn(Camera2dBundle {
                 camera: Camera {
                     target: RenderTarget::Window(WindowRef::Entity(second_window)),
-                    // target: RenderTarget::Image(image.texture.clone()),
                     ..default()
                 },
                 transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
@@ -232,6 +227,7 @@ pub fn change_camera_speed(
     }
 }
 
+#[allow(dead_code)]
 fn pointer_move_terrain(mut event_reader: EventReader<Pointer<Move>>, mut gizmos: Gizmos) {
     for event in event_reader.read() {
         if let Some(position) = event.event.hit.position {

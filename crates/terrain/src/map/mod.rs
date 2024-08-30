@@ -3,6 +3,7 @@ pub mod config;
 
 use std::{f64::consts::PI, ops::Not};
 
+use atom_internal::app_state::AppState;
 use atom_utils::{
     math::{points_in_triangle, triangle_interpolation},
     swap_data::{SwapData, SwapDataTakeTrait, SwapDataTrait},
@@ -19,7 +20,6 @@ use bevy::{
     },
     utils::hashbrown::HashSet,
 };
-use compute_height::TerrainHeightMapPlugin;
 use config::{extract_terrain_map_config, TerrainMapGpuConfig};
 use image::{ImageBuffer, Luma};
 use imageproc::{
@@ -35,6 +35,8 @@ use topography::{
 use voronator::delaunator::Coord;
 use wgpu::{Extent3d, TextureDimension, TextureFormat, TextureUsages};
 
+use crate::TerrainState;
+
 pub mod map_diagram;
 pub mod topography;
 
@@ -46,13 +48,13 @@ pub mod topography;
 ///
 /// 生成一个生态图。用于确定地形。(应该在gpu生成)
 #[derive(Resource, Default, Debug, ExtractResource, Clone)]
-pub struct TerrainMapImages {
+pub struct TerrainInfoMap {
     /// r channel: height
     /// g channel: humidity
     /// b channel: temperature
-    pub height_climate_image: Handle<Image>,
+    pub height_climate_map: Handle<Image>,
     // 4个channel，每个通道(u8)表示1层地形类型的占比，这个vec的所有通道总和为255。
-    pub biome_blend_image: Handle<Image>,
+    pub biome_blend_map: Handle<Image>,
 }
 
 #[derive(Default)]
@@ -60,6 +62,7 @@ pub struct TerrainMapPlugin;
 
 impl Plugin for TerrainMapPlugin {
     fn build(&self, app: &mut App) {
+        // image size is GRID_NUM * GRID_CELL_SIZE
         const GRID_NUM: usize = 128;
         const GRID_CELL_SIZE: f64 = 8.0;
 
@@ -81,11 +84,10 @@ impl Plugin for TerrainMapPlugin {
             max_base_humidity: 0.3,
             image_save_path: saved_root_path.join("maps"),
         })
-        .insert_resource(TerrainMapImages::default())
-        .add_plugins(ExtractResourcePlugin::<TerrainMapImages>::default())
-        .add_plugins(TerrainHeightMapPlugin)
+        .insert_resource(TerrainInfoMap::default())
+        .add_plugins(ExtractResourcePlugin::<TerrainInfoMap>::default())
         .add_systems(
-            Startup,
+            Update,
             (
                 create_terrain_map,
                 generate_heights,
@@ -106,8 +108,13 @@ impl Plugin for TerrainMapPlugin {
                     draw_temperature_image,
                     draw_delaunay_triangle_image,
                 ),
+                to_generate_height_map,
             )
-                .chain(),
+                .chain()
+                .run_if(
+                    in_state(AppState::AppRunning)
+                        .and_then(in_state(TerrainState::GenerateTerrainInfoMap)),
+                ),
         );
     }
 
@@ -757,7 +764,7 @@ pub fn amount_of_precipitation(
 pub fn generate_map_image(
     map: Res<TerrainMap>,
     map_config: Res<config::TerrainMapConfig>,
-    mut map_images: ResMut<TerrainMapImages>,
+    mut map_images: ResMut<TerrainInfoMap>,
     mut images: ResMut<Assets<Image>>,
 ) {
     let mut terrain_map_image = image::Rgb32FImage::new(
@@ -861,7 +868,7 @@ pub fn generate_map_image(
         RenderAssetUsages::RENDER_WORLD,
     );
 
-    map_images.height_climate_image = images.add(image);
+    map_images.height_climate_map = images.add(image);
 
     if let Some(x) = terrain_height_image.as_ref() {
         x.save(map_config.image_save_path.join("terrain map height.png"))
@@ -886,7 +893,7 @@ pub fn generate_map_image(
 pub fn generate_biome_image(
     map: Res<TerrainMap>,
     map_config: Res<config::TerrainMapConfig>,
-    mut map_images: ResMut<TerrainMapImages>,
+    mut map_images: ResMut<TerrainInfoMap>,
     mut images: ResMut<Assets<Image>>,
 ) {
     let width = map_config.grid_num as u32 * map_config.grid_cell_size as u32;
@@ -987,7 +994,7 @@ pub fn generate_biome_image(
     biome_render_image.sampler = ImageSampler::linear();
 
     let handle = images.add(biome_render_image);
-    map_images.biome_blend_image = handle;
+    map_images.biome_blend_map = handle;
 }
 
 pub fn draw_terrain_image(map: Res<TerrainMap>, map_config: Res<config::TerrainMapConfig>) {
@@ -1215,4 +1222,9 @@ fn draw_delaunay_triangle_image(map: Res<TerrainMap>, map_config: Res<config::Te
     image
         .save(map_config.image_save_path.join("delaunay.png"))
         .unwrap();
+}
+
+fn to_generate_height_map(mut state: ResMut<NextState<TerrainState>>) {
+    state.set(TerrainState::GenerateHeightMap);
+    info!("to_generate_height_map");
 }

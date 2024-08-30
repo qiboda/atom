@@ -18,8 +18,8 @@ bevy = { version = "0.14", features = [
     "trace",
     "trace_tracy",
 ] }
-# bevy_asset_loader = { path = "../bevy_asset_loader/bevy_asset_loader" }
-# bevy_asset_loader_derive = { path = "../bevy_asset_loader/bevy_asset_loader_derive" }
+bevy_asset_loader = { version = "0.21", features = ["2d", "3d", "standard_dynamic_assets"] }
+bevy_asset_loader_derive = { version = "0.21" }
 # bevy_mod_scripting_rune = { version = "0.6.0" }
 aery = { version = "0.7.3" }
 

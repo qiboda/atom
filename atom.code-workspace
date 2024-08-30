@@ -66,6 +66,7 @@
             "trimesh",
             "triplanar",
             "unmap",
+            "Unorm",
             "unthrottled",
             "uvec",
             "voronator",
