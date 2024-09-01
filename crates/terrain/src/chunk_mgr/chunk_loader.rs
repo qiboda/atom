@@ -58,6 +58,7 @@ pub struct LeafNodeKey {
     pub aabb: Aabb,
 
     pub is_in_frustums: bool,
+    pub is_in_height: bool,
     pub distance_squared: u64,
     // unit is degree
     pub angle: u32,
@@ -73,6 +74,10 @@ impl LeafNodeKey {
             },
             ..Default::default()
         }
+    }
+
+    pub fn can_load(&self) -> bool {
+        self.is_in_frustums && self.is_in_height
     }
 }
 
@@ -162,6 +167,13 @@ fn update_leaf_node_data(
     frustums: &ObserverFrustums,
     terrain_setting: &Res<TerrainSetting>,
 ) {
+    let mut is_in_height = false;
+    if leaf_node_key.aabb.max().y >= *terrain_setting.terrain_height_range.start()
+        && leaf_node_key.aabb.min().y <= *terrain_setting.terrain_height_range.end()
+    {
+        is_in_height = true;
+    }
+
     let mut is_in_frustums = false;
     for frustum in frustums.iter() {
         let sphere = Sphere {
@@ -196,6 +208,8 @@ fn update_leaf_node_data(
     // }
 
     leaf_node_key.is_in_frustums = is_in_frustums;
+    leaf_node_key.is_in_height = is_in_height;
+
     // leaf_node_key.distance_squared = min_distance_squared;
     // leaf_node_key.angle = min_angle;
 }
@@ -271,7 +285,7 @@ pub fn to_load_chunk(
     let to_load_nodes = loader
         .pending_load_leaf_node_map
         .iter()
-        .filter(|(_, key)| loader.is_loaded(&key.address).not() && key.is_in_frustums);
+        .filter(|(_, key)| loader.is_loaded(&key.address).not() && key.can_load());
 
     to_load_nodes.for_each(|(code, _key)| {
         load_event.node_addresses.push(*code);
@@ -310,7 +324,7 @@ pub fn to_unload_chunk(
         .pending_unload_leaf_node_map
         .iter()
         .filter(|(_, key)| {
-            (loader.can_unload(&key.address) && key.is_in_frustums) || key.is_in_frustums.not()
+            (loader.can_unload(&key.address) && key.can_load()) || key.can_load().not()
         });
 
     to_unload_nodes.for_each(|(code, _key)| {
@@ -344,7 +358,7 @@ pub fn to_reload_chunk(mut loader: ResMut<TerrainChunkLoader>, mut commands: Com
     let to_reload_nodes = loader
         .pending_reload_leaf_node_map
         .iter()
-        .filter(|(_, key)| loader.can_reload(&key.address) && key.is_in_frustums);
+        .filter(|(_, key)| loader.can_reload(&key.address) && key.can_load());
 
     to_reload_nodes.for_each(|(code, _key)| {
         reload_event.node_addresses.push(*code);

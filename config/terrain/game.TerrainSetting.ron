@@ -6,4 +6,8 @@
     qef_stddev: 0.1,
     lod_octree_depth: 12,
     camera_far_limit: true,
+    terrain_height_range: (
+        start: -128.0,
+        end: 256.0,
+    ),
 )

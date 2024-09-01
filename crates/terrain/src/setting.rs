@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use bevy::{prelude::*, render::extract_resource::ExtractResource};
 use serde::{Deserialize, Serialize};
 use settings::{Setting, SettingValidate};
@@ -22,6 +24,8 @@ pub struct TerrainSetting {
     pub lod_octree_depth: LodOctreeDepthType,
     /// 地形的最远可见距离是否和相机的远裁剪面一致
     pub camera_far_limit: bool,
+    /// 地形高度的范围
+    pub terrain_height_range: RangeInclusive<f32>,
 }
 
 impl SettingValidate for TerrainSetting {
@@ -56,6 +60,7 @@ impl Default for TerrainSetting {
             qef_stddev: 0.1,
             lod_octree_depth: 12,
             camera_far_limit: true,
+            terrain_height_range: -128.0..=256.0,
         }
     }
 }
@@ -88,6 +93,10 @@ impl TerrainSetting {
         let lod = self.lod_octree_depth - depth;
         self.get_default_voxel_size() * 2.0f32.powi(lod as i32)
     }
+
+    pub fn is_in_height_range(&self, height: f32) -> bool {
+        self.terrain_height_range.contains(&height)
+    }
 }
 
 #[cfg(test)]
@@ -104,6 +113,7 @@ mod tests {
             qef_stddev: 0.1,
             lod_octree_depth: 4,
             camera_far_limit: true,
+            ..default()
         };
         assert_eq!(setting.get_chunk_size(4), 64.0);
         assert_eq!(setting.get_chunk_size(3), 128.0);
@@ -122,6 +132,7 @@ mod tests {
             qef_stddev: 0.1,
             lod_octree_depth: 4,
             camera_far_limit: true,
+            ..default()
         };
         assert_eq!(setting.get_default_voxel_size(), 0.5);
         assert_eq!(setting.get_voxel_num_in_chunk(), 128);
@@ -144,6 +155,7 @@ mod tests {
             qef_stddev: 0.1,
             lod_octree_depth: 4,
             camera_far_limit: true,
+            ..default()
         };
         setting.get_chunk_size(5);
     }
@@ -159,6 +171,7 @@ mod tests {
             qef_stddev: 0.1,
             lod_octree_depth: 4,
             camera_far_limit: true,
+            ..default()
         };
         setting.get_voxel_size(5);
     }
@@ -173,6 +186,7 @@ mod tests {
             qef_stddev: 0.1,
             lod_octree_depth: 8,
             camera_far_limit: true,
+            ..default()
         };
         assert_eq!(setting.get_terrain_size(), 16384.0);
     }
