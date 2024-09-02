@@ -52,8 +52,7 @@ shaders_plugin!(
     VoxelCompute,
     (
         voxel_type_shader -> "shaders/terrain/compute/voxel_type.wgsl",
-        voxel_utils_shader -> "shaders/terrain/compute/voxel_utils.wgsl",
-        pbr_shader -> "shaders/terrain/pbr_functions.wgsl"
+        voxel_utils_shader -> "shaders/terrain/compute/voxel_utils.wgsl"
     )
 );
 
@@ -128,14 +127,14 @@ impl FromWorld for TerrainChunkPipelines {
                 ShaderStages::COMPUTE,
                 (
                     uniform_buffer::<TerrainMapGpuConfig>(false),
-                    // map height climate texture
-                    texture_2d(TextureSampleType::Float { filterable: false }),
-                    // map height climate sampler
-                    sampler(SamplerBindingType::Filtering),
-                    // map height image texture
+                    // height map texture
                     texture_2d(TextureSampleType::Float { filterable: true }),
-                    // map height image sampler
+                    // height map sampler
                     sampler(SamplerBindingType::Filtering),
+                    // biome map texture
+                    texture_2d(TextureSampleType::Uint),
+                    // biome map sampler
+                    sampler(SamplerBindingType::NonFiltering),
                 ),
             ),
         );

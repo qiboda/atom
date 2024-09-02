@@ -260,9 +260,9 @@ impl Octree {
                             }
                             NodeType::Leaf => {
                                 // child node的children_index对角的点的材质
-                                mid_mat = Some(child_node.vertices_mat_types[7 - children_index]);
+                                mid_mat = Some(child_node.vertices_side_types[7 - children_index]);
                                 node_mats[children_index] =
-                                    Some(child_node.vertices_mat_types[children_index]);
+                                    Some(child_node.vertices_side_types[children_index]);
                                 conner_values[children_index] =
                                     Some(child_node.conner_sampler_data[children_index]);
                             }
@@ -283,8 +283,8 @@ impl Octree {
                     if all_children_leaf {
                         for (vertex_index, _) in VertexIndex::iter().enumerate() {
                             match node_mats[vertex_index] {
-                                Some(mat) => node.vertices_mat_types[vertex_index] = mat,
-                                None => node.vertices_mat_types[vertex_index] = mid_mat.unwrap(),
+                                Some(mat) => node.vertices_side_types[vertex_index] = mat,
+                                None => node.vertices_side_types[vertex_index] = mid_mat.unwrap(),
                             }
                         }
                     }

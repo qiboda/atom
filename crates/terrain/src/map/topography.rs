@@ -26,10 +26,67 @@ pub enum MapFlatTerrainType {
     MountainCommon = 17,
     MountainSnow = 18,
     MountainVolcano = 19,
+
+    Underground = 20,
 }
 
 impl MapFlatTerrainType {
-    pub const MAX: usize = 20;
+    pub const MAX: usize = 21;
+    pub const INVALID: u32 = 255;
+}
+
+impl MapFlatTerrainType {
+    pub fn is_surface_type(&self) -> bool {
+        match self {
+            MapFlatTerrainType::Ocean => true,
+            MapFlatTerrainType::Lake => true,
+            MapFlatTerrainType::Beach => true,
+            MapFlatTerrainType::PlainSwamp => true,
+            MapFlatTerrainType::PlainDesert => true,
+            MapFlatTerrainType::PlainRainForest => true,
+            MapFlatTerrainType::PlainForest => true,
+            MapFlatTerrainType::PlainGrassLand => true,
+            MapFlatTerrainType::PlainSnow => true,
+            MapFlatTerrainType::PlainIce => true,
+            MapFlatTerrainType::HillsSwamp => true,
+            MapFlatTerrainType::HillsDesert => true,
+            MapFlatTerrainType::HillsRainForest => true,
+            MapFlatTerrainType::HillsForest => true,
+            MapFlatTerrainType::HillsGrassLand => true,
+            MapFlatTerrainType::HillsSnow => true,
+            MapFlatTerrainType::HillsIce => true,
+            MapFlatTerrainType::MountainCommon => true,
+            MapFlatTerrainType::MountainSnow => true,
+            MapFlatTerrainType::MountainVolcano => true,
+            MapFlatTerrainType::Underground => false,
+        }
+    }
+
+    pub fn is_underground_type(&self) -> bool {
+        match self {
+            MapFlatTerrainType::Ocean => false,
+            MapFlatTerrainType::Lake => false,
+            MapFlatTerrainType::Beach => false,
+            MapFlatTerrainType::PlainSwamp => false,
+            MapFlatTerrainType::PlainDesert => false,
+            MapFlatTerrainType::PlainRainForest => false,
+            MapFlatTerrainType::PlainForest => false,
+            MapFlatTerrainType::PlainGrassLand => false,
+            MapFlatTerrainType::PlainSnow => false,
+            MapFlatTerrainType::PlainIce => false,
+            MapFlatTerrainType::HillsSwamp => false,
+            MapFlatTerrainType::HillsDesert => false,
+            MapFlatTerrainType::HillsRainForest => false,
+            MapFlatTerrainType::HillsForest => false,
+            MapFlatTerrainType::HillsGrassLand => false,
+            MapFlatTerrainType::HillsSnow => false,
+            MapFlatTerrainType::HillsIce => false,
+            MapFlatTerrainType::MountainCommon => false,
+            MapFlatTerrainType::MountainSnow => false,
+            MapFlatTerrainType::MountainVolcano => false,
+            MapFlatTerrainType::Underground => true,
+        }
+    }
 }
 
 impl From<MapTerrainType> for MapFlatTerrainType {
@@ -61,6 +118,9 @@ impl From<MapTerrainType> for MapFlatTerrainType {
                 MapMountainLandform::Snow => MapFlatTerrainType::MountainSnow,
                 MapMountainLandform::Volcano => MapFlatTerrainType::MountainVolcano,
             },
+            MapTerrainType::Underground(underground) => match underground {
+                MapUndergroundLandform::Common => MapFlatTerrainType::Underground,
+            },
         }
     }
 }
@@ -73,6 +133,7 @@ pub enum MapTerrainType {
     Plain(MapPlainLandform),
     Hills(MapHillsLandform),
     Mountain(MapMountainLandform),
+    Underground(MapUndergroundLandform),
 }
 
 impl From<MapFlatTerrainType> for MapTerrainType {
@@ -103,12 +164,16 @@ impl From<MapFlatTerrainType> for MapTerrainType {
             }
             MapFlatTerrainType::HillsSnow => MapTerrainType::Hills(MapHillsLandform::Snow),
             MapFlatTerrainType::HillsIce => MapTerrainType::Hills(MapHillsLandform::Ice),
+
             MapFlatTerrainType::MountainCommon => {
                 MapTerrainType::Mountain(MapMountainLandform::Common)
             }
             MapFlatTerrainType::MountainSnow => MapTerrainType::Mountain(MapMountainLandform::Snow),
             MapFlatTerrainType::MountainVolcano => {
                 MapTerrainType::Mountain(MapMountainLandform::Volcano)
+            }
+            MapFlatTerrainType::Underground => {
+                MapTerrainType::Underground(MapUndergroundLandform::Common)
             }
         }
     }
@@ -184,6 +249,7 @@ impl MapTerrainType {
                 MapMountainLandform::Snow => [255, 250, 250, 255],
                 MapMountainLandform::Volcano => [255, 0, 0, 255],
             },
+            MapTerrainType::Underground(_) => [0, 0, 0, 255],
         };
         color
     }
@@ -295,5 +361,17 @@ impl MapMountainLandform {
                 panic!("temperature out of range");
             }
         }
+    }
+}
+
+/// 地貌
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MapUndergroundLandform {
+    Common,
+}
+
+impl MapUndergroundLandform {
+    pub fn determine_landform(_temperature: f64, _humidity: f64) -> MapUndergroundLandform {
+        MapUndergroundLandform::Common
     }
 }

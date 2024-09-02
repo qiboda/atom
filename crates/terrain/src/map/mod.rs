@@ -55,6 +55,7 @@ pub struct TerrainInfoMap {
     pub height_climate_map: Handle<Image>,
     // 4个channel，每个通道(u8)表示1层地形类型的占比，这个vec的所有通道总和为255。
     pub biome_blend_map: Handle<Image>,
+    pub all_biome_map: Handle<Image>,
 }
 
 #[derive(Default)]
@@ -900,16 +901,19 @@ pub fn generate_biome_image(
     let height = map_config.grid_num as u32 * map_config.grid_cell_size as u32;
 
     let biome_num = MapFlatTerrainType::MAX;
-    let mut biome_blend_image_vec = Vec::with_capacity(biome_num);
-    for _ in 0..biome_num {
+    let image_num = (biome_num + 3) / 4 * 4;
+    let mut biome_blend_image_vec = Vec::with_capacity(image_num);
+    for _ in 0..image_num {
         let image = image::GrayImage::new(width, height);
         biome_blend_image_vec.push(image);
     }
+    let mut all_biome_image_buffer = image::GrayImage::new(width, height);
 
     for (i, cell) in map.diagram.cells.iter().enumerate() {
         let terrain_type = map.sites_info[i].terrain_type.unwrap();
         let flat_terrain_type: MapFlatTerrainType = terrain_type.into();
         let biome_color = image::Luma([u8::MAX]);
+        let all_biome_color = image::Luma([flat_terrain_type as u8]);
         let points = cell
             .points()
             .iter()
@@ -918,17 +922,23 @@ pub fn generate_biome_image(
         if points.len() > 2 {
             let biome_image = &mut biome_blend_image_vec[flat_terrain_type as usize];
             draw_polygon_mut(biome_image, points.as_slice(), biome_color);
+            draw_polygon_mut(
+                &mut all_biome_image_buffer,
+                points.as_slice(),
+                all_biome_color,
+            );
         }
     }
 
     for (i, image) in biome_blend_image_vec.iter_mut().enumerate() {
         *image = box_filter(image, 2, 2);
 
-        let terrain_flat_type = MapFlatTerrainType::from_repr(i).unwrap();
-        let filename = format!("biome_{:?}.png", terrain_flat_type);
-        image
-            .save(map_config.image_save_path.join(filename))
-            .unwrap();
+        if let Some(terrain_flat_type) = MapFlatTerrainType::from_repr(i) {
+            let filename = format!("biome_{:?}.png", terrain_flat_type);
+            image
+                .save(map_config.image_save_path.join(filename))
+                .unwrap();
+        }
     }
 
     let image_num = (biome_num + 3) / 4;
@@ -995,6 +1005,23 @@ pub fn generate_biome_image(
 
     let handle = images.add(biome_render_image);
     map_images.biome_blend_map = handle;
+
+    all_biome_image_buffer
+        .save(map_config.image_save_path.join("biome_all.png"))
+        .unwrap();
+    let mut all_biome_image = Image::new(
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        all_biome_image_buffer.into_raw(),
+        TextureFormat::R8Uint,
+        RenderAssetUsages::RENDER_WORLD,
+    );
+    all_biome_image.sampler = ImageSampler::nearest();
+    map_images.all_biome_map = images.add(all_biome_image);
 }
 
 pub fn draw_terrain_image(map: Res<TerrainMap>, map_config: Res<config::TerrainMapConfig>) {

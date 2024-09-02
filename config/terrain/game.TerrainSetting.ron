@@ -1,11 +1,12 @@
 (
-    chunk_size: 32.0,
+    chunk_size: 16.0,
     chunk_depth: 5,
     qef_solver: true,
     qef_solver_threshold: 0.1,
     qef_stddev: 0.1,
-    lod_octree_depth: 12,
+    lod_octree_depth: 10,
     camera_far_limit: true,
+    base_visibility_range: 256.0,
     terrain_height_range: (
         start: -128.0,
         end: 256.0,

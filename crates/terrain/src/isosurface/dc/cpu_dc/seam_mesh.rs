@@ -65,9 +65,9 @@ fn get_seam_leaf_nodes(
         let node_address = MortonCode::encode(node_coord.as_uvec3(), node_depth);
         let mut node = Node::new(NodeType::Leaf, node_address);
         node.vertex_estimate = voxel_vertex.vertex_location.xyz();
-        node.normal_estimate = voxel_vertex.vertex_normal_materials.xyz();
-        // node.vertices_mat_types = [voxel_vertex.get_material(); VertexIndex::COUNT];
-        node.vertices_mat_types = voxel_vertex.get_voxel_materials();
+        node.normal_estimate = voxel_vertex.vertex_normal.xyz();
+        node.vertices_side_types = voxel_vertex.get_voxel_side();
+        node.vertices_biomes = voxel_vertex.get_voxel_biome();
         node.aabb = voxel_aabb;
 
         octree.insert_leaf_node(node);

@@ -8,7 +8,7 @@ use bevy::pbr::wireframe::Wireframe;
 use avian3d::prelude::*;
 use wgpu::Face;
 
-use crate::ecology::category::forest::ForestEcologyMaterial;
+use crate::ecology::category::forest::GrassEcologyMaterial;
 use crate::isosurface::dc::gpu_dc::mesh_compute::TerrainChunkMeshDataMainWorldReceiver;
 
 use crate::materials::terrain_material::TerrainMaterial;
@@ -28,7 +28,7 @@ pub fn receive_terrain_chunk_mesh_data(
     )>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    forest_material: Option<Res<ForestEcologyMaterial>>,
+    forest_material: Option<Res<GrassEcologyMaterial>>,
 ) {
     loop {
         match receiver.try_recv() {
@@ -55,6 +55,10 @@ pub fn receive_terrain_chunk_mesh_data(
 
                         let forest_material = forest_material.as_ref().unwrap();
 
+                        let biomes = main_mesh.get_biomes();
+
+                        info!("biomes: {:?}", biomes);
+
                         debug!("receive_terrain_chunk_mesh_data main mesh ok");
                         let material = materials.add(TerrainMaterial {
                             lod: address.0.depth(),
@@ -75,7 +79,8 @@ pub fn receive_terrain_chunk_mesh_data(
                             reflectance: 0.5,
                             attenuation_distance: f32::INFINITY,
                             attenuation_color: Color::WHITE,
-                            base_color: Color::WHITE,
+                            biome_colors: biomes,
+                            ..Default::default()
                         });
 
                         let mut entity_commands = commands.spawn_empty();
@@ -136,6 +141,8 @@ pub fn receive_terrain_chunk_mesh_data(
 
                         let forest_material = forest_material.as_ref().unwrap();
 
+                        let biomes = seam_mesh_data.get_biomes();
+
                         debug!("receive_terrain_chunk_mesh_data seam mesh ok");
                         let material = materials.add(TerrainMaterial {
                             lod: address.0.depth(),
@@ -156,7 +163,8 @@ pub fn receive_terrain_chunk_mesh_data(
                             reflectance: 0.5,
                             attenuation_distance: f32::INFINITY,
                             attenuation_color: Color::WHITE,
-                            base_color: Color::WHITE,
+                            biome_colors: biomes,
+                            ..Default::default()
                         });
 
                         let mut entity_commands = commands.spawn_empty();

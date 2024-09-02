@@ -27,7 +27,7 @@ fn estimate_edge_cross_point(
         }
 
         var cross_pos = left_vertex_location + (right_vertex_location - left_vertex_location) * 0.5;
-        var step = (right_vertex_location - left_vertex_location) / 4.0;
+        var step = (right_vertex_location - left_vertex_location) * 0.25;
         var cross_value = get_terrain_noise(cross_pos);
         for (var j = 0u; j < 8u; j++) {
             if cross_value == 0.0 {
@@ -41,19 +41,14 @@ fn estimate_edge_cross_point(
                 };
                 cross_pos += offset_dir * step;
                 cross_value = get_terrain_noise(cross_pos);
-                step /= 2.0;
+                step *= 0.5;
             }
         }
 
-        // 因为有一个必为Air，不需要记录
-        let s1_material_type_index = get_voxel_material_type_index(s1);
-        let s2_material_type_index = get_voxel_material_type_index(s2);
-        let material_index = max(s1_material_type_index, s2_material_type_index);
-
         let normal = central_gradient(cross_pos, terrain_chunk_info.voxel_size);
-        voxel_cross_points[edge_index] = VoxelEdgeCrossPoint(vec4f(cross_pos, 1.0), vec4f(normal, f32(material_index)));
+        voxel_cross_points[edge_index] = VoxelEdgeCrossPoint(vec4f(cross_pos, 1.0), vec4f(normal, 1.0));
     } else {
-        voxel_cross_points[edge_index] = VoxelEdgeCrossPoint(vec4f(0.0, 0.0, 0.0, 0.0), vec4f(0.0, 0.0, 0.0, f32(VOXEL_MATERIAL_AIR_INDEX)));
+        voxel_cross_points[edge_index] = VoxelEdgeCrossPoint(vec4f(0.0, 0.0, 0.0, 0.0), vec4f(0.0, 0.0, 0.0, 0.0));
     }
 }
 

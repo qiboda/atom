@@ -1,6 +1,6 @@
 #define_import_path terrain::main_mesh_bind_group
 
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelVertexValue, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, TerrainMapConfig}
+#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, TerrainMapConfig}
 #import terrain::csg::csg_type::TerrainChunkCSGOperation
 
 @group(0) @binding(0)
@@ -30,15 +30,15 @@ var<uniform> csg_info: u32;
 @group(1) @binding(1)
 var<storage, read> csg_operations: array<TerrainChunkCSGOperation>;
 
-@group(2) @binding(1)
+@group(2) @binding(0)
 var<uniform> map_config: TerrainMapConfig;
 
 @group(2) @binding(1)
-var map_height_climate_texture: texture_2d<f32>;
+var height_map_texture: texture_2d<f32>;
 @group(2) @binding(2)
-var map_height_climate_sampler: sampler;
+var height_map_sampler: sampler;
 
 @group(2) @binding(3)
-var map_biome_texture: texture_2d<f32>;
+var biome_map_texture: texture_2d<u32>;
 @group(2) @binding(4)
-var map_biome_sampler: sampler;
+var biome_map_sampler: sampler;

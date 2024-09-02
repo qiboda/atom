@@ -1,7 +1,7 @@
 use bevy_asset_loader::prelude::*;
 
 use bevy::prelude::*;
-use category::forest::ForestEcologyMaterial;
+use category::forest::{ForestEcologyMaterial, GrassEcologyMaterial};
 
 pub mod category;
 pub mod ecology_set;
@@ -32,13 +32,14 @@ impl Plugin for EcologyPlugin {
                     .with_dynamic_assets_file::<StandardDynamicAssetCollection>(
                         "textures/terrain/terrain.assets.ron",
                     )
+                    .load_collection::<GrassEcologyMaterial>()
                     .load_collection::<ForestEcologyMaterial>(),
             )
             .add_systems(OnEnter(TerrainMaterialLoadState::Next), startup);
     }
 }
 
-fn startup(mut images: ResMut<Assets<Image>>, material: Res<ForestEcologyMaterial>) {
+fn startup(mut images: ResMut<Assets<Image>>, material: Res<GrassEcologyMaterial>) {
     if let Some(image) = images.get_mut(
         material
             .base_color_texture

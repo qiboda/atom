@@ -9,21 +9,42 @@ use bevy::render::render_resource::{
 use bevy::render::texture::GpuImage;
 use wgpu::{Face, TextureFormat, VertexFormat};
 
+use crate::map::topography::MapFlatTerrainType;
+
 #[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq, Hash)]
 pub enum TerrainDebugType {
     Color,
     Normal,
 }
 
-pub const MATERIAL_VERTEX_ATTRIBUTE: MeshVertexAttribute =
-    MeshVertexAttribute::new("material", 100, VertexFormat::Uint32);
+pub const BIOME_VERTEX_ATTRIBUTE: MeshVertexAttribute =
+    MeshVertexAttribute::new("biome", 100, VertexFormat::Uint32);
 
 // 根据 terrain chunk 的 material 的类型来决定使用哪种地形材质。
 // 如果是过渡部分，则使用过渡材质。
 
+#[derive(ShaderType, Clone, Default, Copy, Debug)]
+pub struct BiomeColor {
+    pub base_color: Vec4,
+    pub biome: u32,
+}
+
+impl BiomeColor {
+    pub const INVALID: BiomeColor = BiomeColor {
+        base_color: Vec4::ZERO,
+        biome: MapFlatTerrainType::INVALID,
+    };
+
+    pub fn new(base_color: Color, biomes: u32) -> Self {
+        BiomeColor {
+            base_color: LinearRgba::from(base_color).to_f32_array().into(),
+            biome: biomes,
+        }
+    }
+}
+
 #[derive(Clone, Default, ShaderType)]
 pub struct TerrainMaterialUniform {
-    pub base_color: Vec4,
     pub lod: u32,
     pub roughness: f32,
     pub metallic: f32,
@@ -31,6 +52,7 @@ pub struct TerrainMaterialUniform {
     pub reflectance: f32,
     pub attenuation_distance: f32,
     pub attenuation_color: Vec4,
+    pub biome_colors: [BiomeColor; MapFlatTerrainType::MAX],
 }
 
 impl AsBindGroupShaderType<TerrainMaterialUniform> for TerrainMaterial {
@@ -78,7 +100,6 @@ impl AsBindGroupShaderType<TerrainMaterialUniform> for TerrainMaterial {
 
         TerrainMaterialUniform {
             lod: self.lod as u32,
-            base_color: LinearRgba::from(self.base_color).to_vec4(),
             roughness: self.perceptual_roughness,
             metallic: self.metallic,
             flags: flags.bits(),
@@ -87,6 +108,9 @@ impl AsBindGroupShaderType<TerrainMaterialUniform> for TerrainMaterial {
             attenuation_color: LinearRgba::from(self.attenuation_color)
                 .to_f32_array()
                 .into(),
+            biome_colors: self
+                .biome_colors
+                .map(|color| color.unwrap_or(BiomeColor::INVALID)),
         }
     }
 }
@@ -98,8 +122,11 @@ pub struct TerrainMaterial {
     pub lod: u8,
     pub debug_type: Option<TerrainDebugType>,
 
-    pub base_color: Color,
+    pub metallic: f32,
+    pub perceptual_roughness: f32,
+    pub biome_colors: [Option<BiomeColor>; MapFlatTerrainType::MAX],
 
+    // biome 0
     #[texture(1, dimension = "2d_array")]
     #[sampler(2)]
     pub base_color_texture: Option<Handle<Image>>,
@@ -107,9 +134,6 @@ pub struct TerrainMaterial {
     #[texture(3, dimension = "2d_array")]
     #[sampler(4)]
     pub normal_map_texture: Option<Handle<Image>>,
-
-    pub metallic: f32,
-    pub perceptual_roughness: f32,
 
     // metallic is b channel, roughness is g channel
     #[texture(5, dimension = "2d_array")]
@@ -120,6 +144,21 @@ pub struct TerrainMaterial {
     #[texture(7, dimension = "2d_array")]
     #[sampler(8)]
     pub occlusion_texture: Option<Handle<Image>>,
+
+    // biome 1
+    #[texture(9, dimension = "2d_array")]
+    pub base_color_texture_1: Option<Handle<Image>>,
+
+    #[texture(10, dimension = "2d_array")]
+    pub normal_map_texture_1: Option<Handle<Image>>,
+
+    // metallic is b channel, roughness is g channel
+    #[texture(11, dimension = "2d_array")]
+    pub metallic_roughness_texture_1: Option<Handle<Image>>,
+
+    // r channel
+    #[texture(12, dimension = "2d_array")]
+    pub occlusion_texture_2: Option<Handle<Image>>,
 
     pub double_sided: bool,
     pub cull_mode: Option<Face>,
@@ -139,7 +178,6 @@ impl Default for TerrainMaterial {
         TerrainMaterial {
             lod: 0,
             debug_type: None,
-            base_color: Color::WHITE,
             base_color_texture: None,
             normal_map_texture: None,
             metallic: 0.0,
@@ -153,6 +191,11 @@ impl Default for TerrainMaterial {
             reflectance: 0.5,
             attenuation_distance: f32::INFINITY,
             attenuation_color: Color::WHITE,
+            base_color_texture_1: None,
+            normal_map_texture_1: None,
+            metallic_roughness_texture_1: None,
+            occlusion_texture_2: None,
+            biome_colors: [None; MapFlatTerrainType::MAX],
         }
     }
 }
@@ -212,7 +255,7 @@ impl Material for TerrainMaterial {
         let vertex_layout = layout.0.get_layout(&[
             Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
             Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
-            MATERIAL_VERTEX_ATTRIBUTE.at_shader_location(2),
+            BIOME_VERTEX_ATTRIBUTE.at_shader_location(2),
         ])?;
         descriptor.vertex.buffers = vec![vertex_layout];
         Ok(())

@@ -5,7 +5,7 @@ use bevy::{
     app::Plugin,
     prelude::*,
     render::{
-        mesh::Indices,
+        mesh::{Indices, VertexAttributeValues},
         render_asset::{RenderAssetUsages, RenderAssets},
         render_graph::RenderGraph,
         render_resource::Maintain,
@@ -13,7 +13,7 @@ use bevy::{
         texture::GpuImage,
         Render, RenderApp, RenderSet,
     },
-    utils::HashMap,
+    utils::{HashMap, HashSet},
 };
 use wgpu_types::{MaintainResult, PrimitiveTopology};
 
@@ -37,8 +37,13 @@ use crate::{
             TerrainChunkMainBufferBindings, TerrainChunkMainDynamicBufferCreateContext,
         },
     },
-    map::{compute_height::TerrainHeightMap, config::TerrainMapGpuConfig, TerrainInfoMap},
-    materials::terrain_material::MATERIAL_VERTEX_ATTRIBUTE,
+    map::{
+        compute_height::TerrainHeightMap,
+        config::TerrainMapGpuConfig,
+        topography::{MapFlatTerrainType, MapTerrainType},
+        TerrainInfoMap,
+    },
+    materials::terrain_material::{BiomeColor, BIOME_VERTEX_ATTRIBUTE},
     setting::TerrainSetting,
 };
 
@@ -55,17 +60,55 @@ use super::{
         TerrainChunkPipelines, TerrainChunkVoxelComputeShadersPlugin,
     },
 };
-#[cfg(feature = "cpu_seam")]
 use crate::isosurface::dc::gpu_dc::buffer_type::TerrainChunkVertexInfo;
-#[cfg(feature = "cpu_seam")]
 use bevy::math::{bounding::Aabb3d, Vec3A};
 
 pub struct TerrainChunkSeamMeshData {
     pub seam_mesh: Mesh,
 }
 
+impl TerrainChunkSeamMeshData {
+    pub fn get_biomes(&self) -> [Option<BiomeColor>; MapFlatTerrainType::MAX] {
+        get_biomes(&self.seam_mesh)
+    }
+}
+
+fn get_biomes(mesh: &Mesh) -> [Option<BiomeColor>; MapFlatTerrainType::MAX] {
+    let values = mesh.attribute(BIOME_VERTEX_ATTRIBUTE).unwrap();
+    let mut set = HashSet::new();
+    if let VertexAttributeValues::Uint32(biomes) = values {
+        for biome in biomes.iter() {
+            set.insert(*biome);
+        }
+    }
+    let mut biomes = [None; MapFlatTerrainType::MAX];
+    for (index, s) in set.iter().enumerate() {
+        let biome = MapFlatTerrainType::from_repr(*s as usize).unwrap();
+        let color = MapTerrainType::from(biome).get_color();
+        let base_color = Vec4::new(
+            color[0] as f32 / 255.0,
+            color[1] as f32 / 255.0,
+            color[2] as f32 / 255.0,
+            color[3] as f32 / 255.0,
+        );
+
+        biomes[index] = Some(BiomeColor {
+            biome: biome as u32,
+            base_color,
+        });
+    }
+
+    biomes
+}
+
 pub struct TerrainChunkMainMeshData {
     pub mesh: Mesh,
+}
+
+impl TerrainChunkMainMeshData {
+    pub fn get_biomes(&self) -> [Option<BiomeColor>; MapFlatTerrainType::MAX] {
+        get_biomes(&self.mesh)
+    }
 }
 
 pub struct TerrainChunkMeshData {
@@ -138,7 +181,6 @@ impl Plugin for TerrainChunkMeshComputePlugin {
                 Render,
                 (
                     map_and_read_buffer,
-                    #[cfg(feature = "cpu_seam")]
                     crate::isosurface::dc::cpu_dc::seam_mesh::create_seam_mesh,
                 )
                     .chain()
@@ -283,8 +325,8 @@ fn prepare_main_bind_group(
         render_device: &render_device,
         pipelines: &pipelines,
         dynamic_buffers: &dynamic_buffers,
-        map_image: images.get(map_images.height_climate_map.id()).unwrap(),
-        map_biome_image: images.get(height_map_images.texture.id()).unwrap(),
+        height_map_image: images.get(height_map_images.texture.id()).unwrap(),
+        map_biome_image: images.get(map_images.all_biome_map.id()).unwrap(),
     };
     bind_groups.create_bind_groups(context);
 
@@ -304,9 +346,7 @@ fn map_and_read_buffer(
     main_buffers: Res<TerrainChunkMainDynamicBuffers>,
     sender: Res<TerrainChunkMeshDataRenderWorldSender>,
     terrain_setting: Res<TerrainSetting>,
-    #[cfg(feature = "cpu_seam")] mut render_border_vertices: ResMut<
-        TerrainChunkRenderBorderVertices,
-    >,
+    mut render_border_vertices: ResMut<TerrainChunkRenderBorderVertices>,
 ) {
     let mut num = 0;
     for (_entity, state, _address, _lod, _aabb) in query.iter() {
@@ -403,14 +443,14 @@ fn map_and_read_buffer(
                     Mesh::ATTRIBUTE_NORMAL,
                     vertices
                         .iter()
-                        .map(|x| x.vertex_normal_materials.xyz())
+                        .map(|x| x.vertex_normal.xyz())
                         .collect::<Vec<Vec3>>(),
                 );
                 mesh.insert_attribute(
-                    MATERIAL_VERTEX_ATTRIBUTE,
+                    BIOME_VERTEX_ATTRIBUTE,
                     vertices
                         .iter()
-                        .map(|x| x.vertex_normal_materials.w as u32)
+                        .map(|x| x.get_vertex_biome() as u32)
                         .collect::<Vec<u32>>(),
                 );
                 mesh.insert_indices(Indices::U32(indices));
@@ -433,7 +473,6 @@ fn map_and_read_buffer(
                 }
             }
 
-            #[cfg(feature = "cpu_seam")]
             {
                 if mesh_vertices_indices_count.vertices_count > 0 {
                     let chunk_min = aabb.0.min;

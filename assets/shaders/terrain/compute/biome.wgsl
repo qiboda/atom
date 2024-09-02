@@ -2,8 +2,8 @@
 
 #import noise::fbm::open_simplex_2d_fbm_with_seed
 #import math::map::map
-// 地形noise，生态noise
 
+// 地形noise，生态noise
 const TerrainType_Ocean:u32 = 0;
 const TerrainType_Lake:u32 = 1;
 const TerrainType_Beach:u32 = 2;
@@ -28,7 +28,9 @@ const TerrainType_MountainCommon:u32 = 17;
 const TerrainType_MountainSnow:u32 = 18;
 const TerrainType_MountainVolcano:u32 = 19;
 
+const TerrainType_Underground:u32 = 20;
 
+const TerrainType_MAX:u32 = 21;
 
 const terrain_height: f32 = 1.0;
 
@@ -80,7 +82,7 @@ fn get_mountain_noise(location: vec2f) -> f32 {
 }
 
 
-fn get_terrain_noise(location: vec2f, biome_type: u32) -> f32{
+fn get_terrain_noise(location: vec2f, biome_type: u32) -> f32 {
     switch biome_type {
         case TerrainType_Ocean {
             return get_ocean_noise(location);

@@ -36,7 +36,7 @@ pub struct TerrainMapConfig {
 #[derive(ShaderType, Resource, Default, Clone, Debug)]
 pub struct TerrainMapGpuConfig {
     // 图片的大小
-    pub image_size: f32,
+    pub terrain_height: f32,
     // 一个像素代表的地图大小
     pub pixel_size: f32,
     // 最小温度
@@ -54,6 +54,6 @@ pub fn extract_terrain_map_config(
     terrain_map_gpu_config.temperature_max = terrain_map_config.temperature_range.end as f32;
 
     let pixel_num = terrain_map_config.grid_num as u32 * terrain_map_config.grid_cell_size as u32;
-    terrain_map_gpu_config.image_size = pixel_num as f32;
+    terrain_map_gpu_config.terrain_height = terrain_setting.get_terrain_max_height();
     terrain_map_gpu_config.pixel_size = terrain_setting.get_terrain_size() / pixel_num as f32;
 }

@@ -14,7 +14,10 @@ use crate::{
     TerrainObserver,
 };
 use bevy::{
-    math::{bounding::BoundingVolume, Affine3A},
+    math::{
+        bounding::{Aabb3d, BoundingVolume, IntersectsVolume},
+        Affine3A,
+    },
     prelude::*,
     render::{
         camera::CameraProjection,
@@ -57,11 +60,9 @@ pub struct LeafNodeKey {
     pub address: MortonCode,
     pub aabb: Aabb,
 
+    pub is_in_base_range: bool,
     pub is_in_frustums: bool,
     pub is_in_height: bool,
-    pub distance_squared: u64,
-    // unit is degree
-    pub angle: u32,
 }
 
 impl LeafNodeKey {
@@ -77,30 +78,13 @@ impl LeafNodeKey {
     }
 
     pub fn can_load(&self) -> bool {
-        self.is_in_frustums && self.is_in_height
+        (self.is_in_frustums || self.is_in_base_range) && self.is_in_height
     }
 }
 
 impl Hash for LeafNodeKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.address.hash(state);
-    }
-}
-
-#[allow(clippy::non_canonical_partial_ord_impl)]
-impl PartialOrd for LeafNodeKey {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match self.is_in_frustums.partial_cmp(&other.is_in_frustums) {
-            Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord,
-        }
-        match self.distance_squared.partial_cmp(&other.distance_squared) {
-            Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord.map(|ord| ord.reverse()),
-        }
-        self.angle
-            .partial_cmp(&other.angle)
-            .map(|ord| ord.reverse())
     }
 }
 
@@ -165,6 +149,7 @@ fn update_loaded_leaf_node_info(mut loader: ResMut<TerrainChunkLoader>) {
 fn update_leaf_node_data(
     leaf_node_key: &mut LeafNodeKey,
     frustums: &ObserverFrustums,
+    global_transforms: &ObserverGlobalTransforms,
     terrain_setting: &Res<TerrainSetting>,
 ) {
     let mut is_in_height = false;
@@ -194,24 +179,23 @@ fn update_leaf_node_data(
             }
         }
     }
-    // let mut min_distance_squared = u64::MAX;
-    // let mut min_angle = u32::MAX;
-    // for global_transform in global_transforms.iter() {
-    //     let (_, rotation, translation) = global_transform.to_scale_rotation_translation();
-    //     let leaf_node_location: Vec3 = leaf_node_key.aabb.center.into();
-    //     let relative_translation = leaf_node_location - translation;
-    //     min_distance_squared =
-    //         min_distance_squared.min(relative_translation.length_squared() as u64);
 
-    //     let (axis, _angle) = rotation.to_axis_angle();
-    //     min_angle = min_angle.min(relative_translation.angle_between(axis).to_degrees() as u32);
-    // }
+    let mut is_in_base_range = false;
+    for global_transform in global_transforms.iter() {
+        let translation = global_transform.translation();
+        let observer_aabb = Aabb3d::new(
+            translation,
+            Vec3::splat(terrain_setting.base_visibility_range),
+        );
+        let aabb = Aabb3d::new(leaf_node_key.aabb.center, leaf_node_key.aabb.half_extents);
+        if observer_aabb.intersects(&aabb) {
+            is_in_base_range = true;
+        }
+    }
 
     leaf_node_key.is_in_frustums = is_in_frustums;
     leaf_node_key.is_in_height = is_in_height;
-
-    // leaf_node_key.distance_squared = min_distance_squared;
-    // leaf_node_key.angle = min_angle;
+    leaf_node_key.is_in_base_range = is_in_base_range;
 }
 
 #[allow(clippy::type_complexity)]
@@ -254,15 +238,30 @@ pub fn update_loader_state(
     }
 
     for (_code, leaf_node_key) in loader.pending_load_leaf_node_map.iter_mut() {
-        update_leaf_node_data(leaf_node_key, &frustums, &terrain_setting);
+        update_leaf_node_data(
+            leaf_node_key,
+            &frustums,
+            &global_transforms,
+            &terrain_setting,
+        );
     }
 
     for (_code, leaf_node_key) in loader.pending_unload_leaf_node_map.iter_mut() {
-        update_leaf_node_data(leaf_node_key, &frustums, &terrain_setting);
+        update_leaf_node_data(
+            leaf_node_key,
+            &frustums,
+            &global_transforms,
+            &terrain_setting,
+        );
     }
 
     for (_code, leaf_node_key) in loader.pending_reload_leaf_node_map.iter_mut() {
-        update_leaf_node_data(leaf_node_key, &frustums, &terrain_setting);
+        update_leaf_node_data(
+            leaf_node_key,
+            &frustums,
+            &global_transforms,
+            &terrain_setting,
+        );
     }
 
     debug!(

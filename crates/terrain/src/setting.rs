@@ -24,6 +24,8 @@ pub struct TerrainSetting {
     pub lod_octree_depth: LodOctreeDepthType,
     /// 地形的最远可见距离是否和相机的远裁剪面一致
     pub camera_far_limit: bool,
+    /// 地形的基础可见范围
+    pub base_visibility_range: f32,
     /// 地形高度的范围
     pub terrain_height_range: RangeInclusive<f32>,
 }
@@ -53,13 +55,14 @@ impl SettingValidate for TerrainSetting {
 impl Default for TerrainSetting {
     fn default() -> Self {
         Self {
-            chunk_size: 32.0,
+            chunk_size: 16.0,
             chunk_depth: 5,
             qef_solver: true,
             qef_solver_threshold: 0.1,
             qef_stddev: 0.1,
-            lod_octree_depth: 12,
+            lod_octree_depth: 10,
             camera_far_limit: true,
+            base_visibility_range: 256.0,
             terrain_height_range: -128.0..=256.0,
         }
     }
@@ -96,6 +99,10 @@ impl TerrainSetting {
 
     pub fn is_in_height_range(&self, height: f32) -> bool {
         self.terrain_height_range.contains(&height)
+    }
+
+    pub fn get_terrain_max_height(&self) -> f32 {
+        *self.terrain_height_range.end()
     }
 }
 

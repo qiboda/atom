@@ -9,8 +9,10 @@ use tracing::{instrument, trace, warn};
 use wgpu::PrimitiveTopology;
 
 use crate::{
-    isosurface::voxel::VoxelMaterialType, lod::morton_code::MortonCode,
-    materials::terrain_material::MATERIAL_VERTEX_ATTRIBUTE, tables::VertexIndex,
+    isosurface::{select_voxel_biome, IsosurfaceSide},
+    lod::morton_code::MortonCode,
+    materials::terrain_material::BIOME_VERTEX_ATTRIBUTE,
+    tables::VertexIndex,
 };
 
 use crate::tables::{EDGE_NODES_VERTICES, FACE_TO_SUB_EDGES_AXIS_TYPE};
@@ -30,7 +32,7 @@ use crate::tables::{
 pub struct DefaultDualContouringVisiter {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
-    pub materials: Vec<u32>,
+    pub biomes: Vec<u32>,
     pub indices: Vec<u32>,
     pub address_vertex_id_map: HashMap<MortonCode, u32>,
 }
@@ -44,7 +46,7 @@ impl DefaultDualContouringVisiter {
 
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, self.positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
-        mesh.insert_attribute(MATERIAL_VERTEX_ATTRIBUTE, self.materials);
+        mesh.insert_attribute(BIOME_VERTEX_ATTRIBUTE, self.biomes);
         mesh.insert_indices(Indices::U32(self.indices));
         // match mesh.generate_tangents() {
         //     Ok(_) => {}
@@ -67,7 +69,8 @@ impl DualContouringVisiter for DefaultDualContouringVisiter {
 
         self.positions.push(node.vertex_estimate);
         self.normals.push(node.normal_estimate);
-        self.materials.push(node.vertices_mat_types[0] as u32);
+        let biome = select_voxel_biome(node.vertices_biomes);
+        self.biomes.push(biome as u32);
     }
 
     fn visit_triangle(&mut self, nodes: [&octree::node::Node; 3]) {
@@ -428,15 +431,15 @@ fn visit_leaf_edge(
     }
     // Select the edge at the opposite corner of the octant.
     let node_vertex_indices = EDGE_NODES_VERTICES[edge_nodes.axis_type as usize][min_node_index];
-    let vertex_mats = &edge_nodes.nodes[min_node_index].vertices_mat_types;
+    let vertex_mats = &edge_nodes.nodes[min_node_index].vertices_side_types;
     let mat0 = vertex_mats[node_vertex_indices[0] as usize];
     let mat1 = vertex_mats[node_vertex_indices[1] as usize];
 
     let flip = match (mat0, mat1) {
-        (VoxelMaterialType::Air, VoxelMaterialType::Block) => true,
-        (VoxelMaterialType::Block, VoxelMaterialType::Air) => false,
-        (VoxelMaterialType::Block, VoxelMaterialType::Block)
-        | (VoxelMaterialType::Air, VoxelMaterialType::Air) => {
+        (IsosurfaceSide::Outside, IsosurfaceSide::Inside) => true,
+        (IsosurfaceSide::Inside, IsosurfaceSide::Outside) => false,
+        (IsosurfaceSide::Inside, IsosurfaceSide::Inside)
+        | (IsosurfaceSide::Outside, IsosurfaceSide::Outside) => {
             // Not a bipolar edge.
 
             trace!(
@@ -515,9 +518,10 @@ mod tests {
                 node::{Node, NodeType},
                 Octree, OctreeProxy,
             },
-            voxel::VoxelMaterialType,
+            IsosurfaceSide,
         },
         lod::morton_code::MortonCode,
+        map::topography::MapFlatTerrainType,
         tables::SubNodeIndex,
     };
 
@@ -555,20 +559,21 @@ mod tests {
             node_type: NodeType::Branch,
             vertex_estimate: Vec3::new(2.0, 2.0, 2.0),
             normal_estimate: Default::default(),
-            vertices_mat_types: [
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
+            vertices_side_types: [
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
             ],
             aabb: Aabb3d::new(Vec3A::new(2.0, 2.0, 2.0), Vec3A::new(2.0, 2.0, 2.0)),
             conner_sampler_data: [0.0; 8],
             qef: None,
             qef_error: 0.0,
+            vertices_biomes: [MapFlatTerrainType::Ocean; 8],
         });
 
         octree.insert_leaf_node(Node {
@@ -576,20 +581,21 @@ mod tests {
             node_type: NodeType::Leaf,
             vertex_estimate: Vec3::new(1.0, 1.0, 1.0),
             normal_estimate: Default::default(),
-            vertices_mat_types: [
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
+            vertices_side_types: [
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
             ],
             aabb: Aabb3d::new(Vec3A::new(1.0, 1.0, 1.0), Vec3A::new(1.0, 1.0, 1.0)),
             conner_sampler_data: [0.0; 8],
             qef: None,
             qef_error: 0.0,
+            vertices_biomes: [MapFlatTerrainType::Ocean; 8],
         });
 
         octree.insert_leaf_node(Node {
@@ -597,20 +603,21 @@ mod tests {
             node_type: NodeType::Branch,
             vertex_estimate: Vec3::new(3.0, 1.0, 1.0),
             normal_estimate: Default::default(),
-            vertices_mat_types: [
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
+            vertices_side_types: [
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
             ],
             aabb: Aabb3d::new(Vec3A::new(3.0, 1.0, 1.0), Vec3A::new(1.0, 1.0, 1.0)),
             conner_sampler_data: [0.0; 8],
             qef: None,
             qef_error: 0.0,
+            vertices_biomes: [MapFlatTerrainType::Ocean; 8],
         });
 
         //      (2)o--------------o(3)
@@ -632,20 +639,21 @@ mod tests {
             node_type: NodeType::Leaf,
             vertex_estimate: Vec3::new(2.5, 0.5, 0.5),
             normal_estimate: Default::default(),
-            vertices_mat_types: [
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
+            vertices_side_types: [
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
             ],
             aabb: Aabb3d::new(Vec3A::new(2.5, 0.5, 0.5), Vec3A::new(0.5, 0.5, 0.5)),
             conner_sampler_data: [0.0; 8],
             qef: None,
             qef_error: 0.0,
+            vertices_biomes: [MapFlatTerrainType::Ocean; 8],
         });
 
         octree.insert_leaf_node(Node {
@@ -653,20 +661,21 @@ mod tests {
             node_type: NodeType::Leaf,
             vertex_estimate: Vec3::new(2.5, 0.5, 1.5),
             normal_estimate: Default::default(),
-            vertices_mat_types: [
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Block,
-                VoxelMaterialType::Air,
-                VoxelMaterialType::Air,
+            vertices_side_types: [
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Inside,
+                IsosurfaceSide::Outside,
+                IsosurfaceSide::Outside,
             ],
             aabb: Aabb3d::new(Vec3A::new(2.5, 0.5, 1.5), Vec3A::new(0.5, 0.5, 0.5)),
             conner_sampler_data: [0.0; 8],
             qef: None,
             qef_error: 0.0,
+            vertices_biomes: [MapFlatTerrainType::Ocean; 8],
         });
 
         let octree = OctreeProxy {

@@ -34,7 +34,8 @@ atom_shaders_plugin!(
     Math,
     (
         const_shader -> "shaders/math/const.wgsl",
-        map_shader -> "shaders/math/map.wgsl"
+        map_shader -> "shaders/math/map.wgsl",
+        pack_shader -> "shaders/math/pack.wgsl"
     )
 );
 

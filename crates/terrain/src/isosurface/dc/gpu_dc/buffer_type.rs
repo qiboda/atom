@@ -1,11 +1,13 @@
 use bevy::{
-    math::{UVec4, Vec3, Vec4},
+    math::{UVec2, UVec4, Vec3, Vec4},
     render::render_resource::ShaderType,
 };
 use bytemuck::{Pod, Zeroable};
-use strum::EnumCount;
 
-use crate::{isosurface::voxel::VoxelMaterialType, tables::SubNodeIndex};
+use crate::{
+    isosurface::{select_voxel_biome, IsosurfaceSide},
+    map::topography::MapFlatTerrainType,
+};
 
 #[derive(ShaderType, Default, Clone, Copy, Debug)]
 pub struct VoxelEdgeCrossPoint {
@@ -32,11 +34,10 @@ pub struct TerrainChunkInfo {
 #[derive(ShaderType, Default, Clone, PartialEq, Copy, Debug, Pod, Zeroable)]
 pub struct TerrainChunkVertexInfo {
     pub vertex_location: Vec4,
-    pub vertex_normal_materials: Vec4,
+    pub vertex_normal: Vec4,
     pub vertex_local_coord: UVec4,
-    // TODO: 优化为8个u8
-    pub voxel_materials_0: UVec4,
-    pub voxel_materials_1: UVec4,
+    pub voxel_biome: UVec2,
+    pub voxel_side: UVec2,
 }
 
 impl TerrainChunkVertexInfo {
@@ -49,21 +50,36 @@ impl TerrainChunkVertexInfo {
             || self.vertex_local_coord.z == voxel_num - 1
     }
 
-    pub fn get_material(&self) -> VoxelMaterialType {
-        VoxelMaterialType::from(self.vertex_normal_materials.w as u32)
+    pub fn unpack_u32(value: u32) -> [u32; 4] {
+        [
+            value & 0x000000FF,
+            (value & 0x0000FF00) >> 8,
+            (value & 0x00FF0000) >> 16,
+            (value & 0xFF000000) >> 24,
+        ]
     }
 
-    pub fn get_voxel_materials(&self) -> [VoxelMaterialType; SubNodeIndex::COUNT] {
-        [
-            VoxelMaterialType::from(self.voxel_materials_0.x),
-            VoxelMaterialType::from(self.voxel_materials_0.y),
-            VoxelMaterialType::from(self.voxel_materials_0.z),
-            VoxelMaterialType::from(self.voxel_materials_0.w),
-            VoxelMaterialType::from(self.voxel_materials_1.x),
-            VoxelMaterialType::from(self.voxel_materials_1.y),
-            VoxelMaterialType::from(self.voxel_materials_1.z),
-            VoxelMaterialType::from(self.voxel_materials_1.w),
-        ]
+    pub fn get_voxel_side(&self) -> [IsosurfaceSide; 8] {
+        let x = TerrainChunkVertexInfo::unpack_u32(self.voxel_side.x)
+            .map(|x| x > 0)
+            .map(IsosurfaceSide::from);
+        let y = TerrainChunkVertexInfo::unpack_u32(self.voxel_side.y)
+            .map(|x| x > 0)
+            .map(IsosurfaceSide::from);
+        [x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]]
+    }
+
+    pub fn get_vertex_biome(&self) -> MapFlatTerrainType {
+        let biomes = self.get_voxel_biome();
+        select_voxel_biome(biomes)
+    }
+
+    pub fn get_voxel_biome(&self) -> [MapFlatTerrainType; 8] {
+        let x = TerrainChunkVertexInfo::unpack_u32(self.voxel_biome.x)
+            .map(|x| MapFlatTerrainType::from_repr(x as usize).unwrap());
+        let y = TerrainChunkVertexInfo::unpack_u32(self.voxel_biome.y)
+            .map(|x| MapFlatTerrainType::from_repr(x as usize).unwrap());
+        [x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]]
     }
 }
 
@@ -125,4 +141,20 @@ pub struct TerrainChunkMeshVertexMapVec {
 pub struct TerrainChunkVerticesIndicesCountVec {
     #[size(runtime)]
     pub vertices_indices_count: Vec<TerrainChunkVerticesIndicesCount>,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::isosurface::dc::gpu_dc::buffer_type::TerrainChunkVertexInfo;
+
+    #[test]
+    fn test_unpack_u32() {
+        let value = 1 + (1 << 8) + (1 << 16) + (1 << 24);
+        let result = TerrainChunkVertexInfo::unpack_u32(value);
+        assert_eq!(result, [1, 1, 1, 1]);
+
+        let value = 1 + (1 << 8) + (1 << 24);
+        let result = TerrainChunkVertexInfo::unpack_u32(value);
+        assert_eq!(result, [1, 1, 0, 1]);
+    }
 }

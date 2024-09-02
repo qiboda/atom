@@ -7,6 +7,25 @@ use super::EcologyMaterial;
 
 #[derive(AssetCollection, Resource, Debug)]
 pub struct ForestEcologyMaterial {
+    #[asset(key = "bricks.color")]
+    #[asset(optional)]
+    pub base_color_texture: Option<Handle<Image>>,
+    #[asset(key = "bricks.normal_map")]
+    #[asset(optional)]
+    pub normal_texture: Option<Handle<Image>>,
+    #[asset(key = "bricks.ambient_occlusion")]
+    #[asset(optional)]
+    pub occlusion_texture: Option<Handle<Image>>,
+    #[asset(key = "bricks.metallic_roughness")]
+    #[asset(optional)]
+    pub metallic_roughness_texture: Option<Handle<Image>>,
+    #[asset(key = "bricks.depth")]
+    #[asset(optional)]
+    pub depth_texture: Option<Handle<Image>>,
+}
+
+#[derive(AssetCollection, Resource, Debug)]
+pub struct GrassEcologyMaterial {
     #[asset(key = "grass.color")]
     #[asset(optional)]
     pub base_color_texture: Option<Handle<Image>>,
@@ -24,7 +43,7 @@ pub struct ForestEcologyMaterial {
     pub depth_texture: Option<Handle<Image>>,
 }
 
-impl EcologyMaterial for ForestEcologyMaterial {
+impl EcologyMaterial for GrassEcologyMaterial {
     fn get_ecology_type(&self) -> EcologyType {
         EcologyType::Forest
     }

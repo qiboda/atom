@@ -30,7 +30,7 @@ pub struct TerrainChunkMainBindGroupsCreateContext<'a> {
     pub render_device: &'a RenderDevice,
     pub pipelines: &'a TerrainChunkPipelines,
     pub dynamic_buffers: &'a TerrainChunkMainDynamicBuffers,
-    pub map_image: &'a GpuImage,
+    pub height_map_image: &'a GpuImage,
     pub map_biome_image: &'a GpuImage,
 }
 
@@ -142,8 +142,8 @@ impl TerrainChunkMainBindGroups {
                             .as_ref()
                             .unwrap()
                             .into_binding(),
-                        context.map_image.texture_view.into_binding(),
-                        context.map_image.sampler.into_binding(),
+                        context.height_map_image.texture_view.into_binding(),
+                        context.height_map_image.sampler.into_binding(),
                         context.map_biome_image.texture_view.into_binding(),
                         context.map_biome_image.sampler.into_binding(),
                     )),

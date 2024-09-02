@@ -6,11 +6,12 @@ use bevy::{
     prelude::*,
 };
 use pqef::quadric::Quadric;
-use strum::{EnumCount, IntoEnumIterator};
+use strum::EnumCount;
 
 use crate::{
-    isosurface::voxel::VoxelMaterialType,
+    isosurface::IsosurfaceSide,
     lod::morton_code::MortonCode,
+    map::topography::MapFlatTerrainType,
     tables::{VertexIndex, EDGE_VERTEX_PAIRS},
 };
 
@@ -27,7 +28,8 @@ pub struct Node {
     pub node_type: NodeType,
     pub address: MortonCode,
     pub aabb: Aabb3d,
-    pub vertices_mat_types: [VoxelMaterialType; VertexIndex::COUNT],
+    pub vertices_side_types: [IsosurfaceSide; VertexIndex::COUNT],
+    pub vertices_biomes: [MapFlatTerrainType; VertexIndex::COUNT],
     pub conner_sampler_data: [f32; 8],
 
     pub qef: Option<Quadric>,
@@ -47,8 +49,9 @@ impl Node {
             qef_error: 0.0,
             vertex_estimate: Vec3::ZERO,
             normal_estimate: Vec3::ZERO,
-            vertices_mat_types: [VoxelMaterialType::Air; VertexIndex::COUNT],
+            vertices_side_types: [IsosurfaceSide::Outside; VertexIndex::COUNT],
             conner_sampler_data: [0.0; 8],
+            vertices_biomes: [MapFlatTerrainType::Ocean; VertexIndex::COUNT],
         }
     }
 
@@ -76,7 +79,6 @@ impl Node {
         vertices_values: [f32; VertexIndex::COUNT],
         qef_stddev: f32,
     ) {
-        self.estimate_vertex_mat(vertices_values);
         let qef = Node::estimate_interior_vertex_qef(&self.aabb, &vertices_values, sdf, qef_stddev);
         self.estimate_vertex_with_qef(qef.0, qef.1, qef.2);
         trace!(
@@ -120,18 +122,6 @@ impl Node {
             sdf.sampler_split(p.x, p.y, p.z + h) - sdf.sampler_split(p.x, p.y, p.z - h),
         )
         .normalize()
-    }
-
-    pub fn estimate_vertex_mat(&mut self, vertices_values: [f32; VertexIndex::COUNT]) {
-        // assert!(self.node_type == NodeType::Leaf);
-        self.conner_sampler_data = vertices_values;
-        for i in VertexIndex::iter() {
-            if vertices_values[i as usize] < 0.0 {
-                self.vertices_mat_types[i as usize] = VoxelMaterialType::Block;
-            } else {
-                self.vertices_mat_types[i as usize] = VoxelMaterialType::Air;
-            }
-        }
     }
 
     #[allow(dead_code)]

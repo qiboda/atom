@@ -7,7 +7,5 @@
 ///     1. 创建两个同样大小的缓冲区，分别记录下顶点和索引数量以及对应的内容。
 ///     2. 在每个chunk dispatch的最后拷贝。通过indirect dispatch, 设置线程组的数量，然后进行每线程1个数据拷贝。
 ///     3. 最后读取缓冲区，获取开始的顶点数量，然后根据索引数量，从缓冲区中读取数据。
-
-#[cfg(feature = "cpu_seam")]
 pub mod cpu_dc;
 pub mod gpu_dc;

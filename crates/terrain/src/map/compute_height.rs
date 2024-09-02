@@ -7,7 +7,7 @@ use bevy::{
         render_graph::{self, RenderGraph, RenderLabel},
         render_resource::{binding_types::texture_storage_2d, *},
         renderer::{RenderContext, RenderDevice, RenderQueue},
-        texture::GpuImage,
+        texture::{GpuImage, ImageSampler},
         Extract, Render, RenderApp, RenderSet,
     },
 };
@@ -63,9 +63,10 @@ impl Plugin for TerrainHeightMapPlugin {
             TextureDimension::D2,
             &[0, 0, 0, 255],
             TextureFormat::R32Float,
-            RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+            RenderAssetUsages::RENDER_WORLD,
         );
 
+        image.sampler = ImageSampler::linear();
         image.texture_descriptor.usage = TextureUsages::COPY_DST
             | TextureUsages::STORAGE_BINDING
             | TextureUsages::TEXTURE_BINDING;
