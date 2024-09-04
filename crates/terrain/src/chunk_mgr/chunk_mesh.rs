@@ -57,8 +57,6 @@ pub fn receive_terrain_chunk_mesh_data(
 
                         let biomes = main_mesh.get_biomes();
 
-                        info!("biomes: {:?}", biomes);
-
                         debug!("receive_terrain_chunk_mesh_data main mesh ok");
                         let material = materials.add(TerrainMaterial {
                             lod: address.0.depth(),

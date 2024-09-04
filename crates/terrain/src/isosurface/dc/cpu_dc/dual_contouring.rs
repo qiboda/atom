@@ -41,7 +41,7 @@ impl DefaultDualContouringVisiter {
     pub fn to_render_mesh(self) -> Mesh {
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
+            RenderAssetUsages::RENDER_WORLD,
         );
 
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, self.positions);

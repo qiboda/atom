@@ -11,7 +11,7 @@ use bevy::{
         Extract, Render, RenderApp, RenderSet,
     },
 };
-use binding_types::{sampler, texture_2d_array, uniform_buffer};
+use binding_types::{sampler, texture_2d_array, texture_storage_2d_array, uniform_buffer};
 use crossbeam_channel::{Receiver, Sender};
 use std::{borrow::Cow, ops::Not};
 
@@ -24,6 +24,7 @@ shaders_plugin!(
     HeightMap,
     (
         height_map_shader -> "shaders/terrain/compute/height/height.wgsl",
+        biome_filter_shader -> "shaders/terrain/compute/height/biome_filter.wgsl",
         biome_shader -> "shaders/terrain/compute/biome.wgsl"
     )
 );
@@ -54,7 +55,7 @@ pub struct TerrainHeightMapPlugin;
 
 impl Plugin for TerrainHeightMapPlugin {
     fn build(&self, app: &mut App) {
-        let mut image = Image::new_fill(
+        let mut height_image = Image::new_fill(
             Extent3d {
                 width: 8192,
                 height: 8192,
@@ -66,16 +67,36 @@ impl Plugin for TerrainHeightMapPlugin {
             RenderAssetUsages::RENDER_WORLD,
         );
 
-        image.sampler = ImageSampler::linear();
-        image.texture_descriptor.usage = TextureUsages::COPY_DST
+        height_image.sampler = ImageSampler::linear();
+        height_image.texture_descriptor.usage = TextureUsages::COPY_DST
             | TextureUsages::STORAGE_BINDING
             | TextureUsages::TEXTURE_BINDING;
 
-        info!("TerrainHeightMapPlugin");
-        let image_handle = app.world_mut().add_asset(image);
+        let mut biome_image = Image::new_fill(
+            Extent3d {
+                width: 8192,
+                height: 8192,
+                depth_or_array_layers: 1,
+            },
+            TextureDimension::D2,
+            &[0, 0, 0, 255],
+            TextureFormat::R8Uint,
+            RenderAssetUsages::RENDER_WORLD,
+        );
 
-        app.add_plugins(ExtractResourcePlugin::<TerrainHeightMap>::default());
-        app.insert_resource(TerrainHeightMap::new(image_handle));
+        biome_image.sampler = ImageSampler::nearest();
+        biome_image.texture_descriptor.usage = TextureUsages::COPY_DST
+            | TextureUsages::STORAGE_BINDING
+            | TextureUsages::TEXTURE_BINDING;
+
+        let height_image_handle = app.world_mut().add_asset(height_image);
+        let biome_image_handle = app.world_mut().add_asset(biome_image);
+
+        app.add_plugins(ExtractResourcePlugin::<TerrainMapTextures>::default());
+        app.insert_resource(TerrainMapTextures::new(
+            height_image_handle,
+            biome_image_handle,
+        ));
 
         app.add_systems(PreUpdate, receive_msg_from_render_world);
 
@@ -117,18 +138,25 @@ impl Plugin for TerrainHeightMapPlugin {
 pub struct TerrainHeightMapLabel;
 
 #[derive(Debug, Resource, Default, Clone, ExtractResource)]
-pub struct TerrainHeightMap {
-    pub texture: Handle<Image>,
+pub struct TerrainMapTextures {
+    pub height_texture: Handle<Image>,
+    pub biome_texture: Handle<Image>,
 }
 
-impl TerrainHeightMap {
-    pub fn new(texture: Handle<Image>) -> Self {
-        Self { texture }
+impl TerrainMapTextures {
+    pub fn new(height_texture: Handle<Image>, biome_texture: Handle<Image>) -> Self {
+        Self {
+            height_texture,
+            biome_texture,
+        }
     }
 }
 
 #[derive(Resource, Default)]
-struct TerrainHeightMapBindGroups(Option<BindGroup>);
+struct TerrainHeightMapBindGroups {
+    pub height_bind_group: Option<BindGroup>,
+    pub filter_bind_group: Option<BindGroup>,
+}
 
 #[derive(Resource, Default)]
 struct TerrainHeightMapEnable(bool);
@@ -137,8 +165,8 @@ struct TerrainHeightMapEnable(bool);
 fn prepare_bind_group(
     pipeline: Res<TerrainHeightMapPipeline>,
     gpu_images: Res<RenderAssets<GpuImage>>,
-    terrain_height_map_image: Res<TerrainHeightMap>,
-    terrain_map_images: Res<TerrainInfoMap>,
+    terrain_map_image: Res<TerrainMapTextures>,
+    terrain_info_map_images: Res<TerrainInfoMap>,
     render_device: Res<RenderDevice>,
     buffer: Res<TerrainHeightMapBuffer>,
     mut bind_group: ResMut<TerrainHeightMapBindGroups>,
@@ -148,18 +176,39 @@ fn prepare_bind_group(
         return;
     }
 
-    if bind_group.0.is_none() {
-        let height_image = gpu_images.get(&terrain_height_map_image.texture).unwrap();
-        let biome_blend_images = gpu_images.get(&terrain_map_images.biome_blend_map).unwrap();
+    if bind_group.filter_bind_group.is_none() {
+        let biome_image = gpu_images.get(&terrain_info_map_images.biome_map).unwrap();
+        let biome_blend_image = gpu_images
+            .get(&terrain_info_map_images.biome_blend_map)
+            .unwrap();
 
-        bind_group.0 = Some(render_device.create_bind_group(
+        bind_group.filter_bind_group = Some(render_device.create_bind_group(
             None,
-            &pipeline.texture_bind_group_layout,
+            &pipeline.filter_bind_group_layout,
             &BindGroupEntries::sequential((
                 buffer.uniform_buffer.as_ref().unwrap().into_binding(),
-                &biome_blend_images.texture_view,
-                biome_blend_images.sampler.into_binding(),
+                &biome_image.texture_view,
+                &biome_blend_image.texture_view,
+            )),
+        ));
+    }
+
+    if bind_group.height_bind_group.is_none() {
+        let height_image = gpu_images.get(&terrain_map_image.height_texture).unwrap();
+        let biome_image = gpu_images.get(&terrain_map_image.biome_texture).unwrap();
+        let biome_blend_image = gpu_images
+            .get(&terrain_info_map_images.biome_blend_map)
+            .unwrap();
+
+        bind_group.height_bind_group = Some(render_device.create_bind_group(
+            None,
+            &pipeline.height_bind_group_layout,
+            &BindGroupEntries::sequential((
+                buffer.uniform_buffer.as_ref().unwrap().into_binding(),
+                &biome_blend_image.texture_view,
+                biome_blend_image.sampler.into_binding(),
                 &height_image.texture_view,
+                &biome_image.texture_view,
             )),
         ));
     }
@@ -188,14 +237,17 @@ fn prepare_buffer(
 
 #[derive(Resource)]
 struct TerrainHeightMapPipeline {
-    texture_bind_group_layout: BindGroupLayout,
-    update_pipeline: CachedComputePipelineId,
+    height_bind_group_layout: BindGroupLayout,
+    filter_bind_group_layout: BindGroupLayout,
+
+    compute_height_pipeline: CachedComputePipelineId,
+    filter_pipeline: CachedComputePipelineId,
 }
 
 impl FromWorld for TerrainHeightMapPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
-        let texture_bind_group_layout = render_device.create_bind_group_layout(
+        let height_bind_group_layout = render_device.create_bind_group_layout(
             "terrain height map",
             &BindGroupLayoutEntries::sequential(
                 ShaderStages::COMPUTE,
@@ -204,6 +256,22 @@ impl FromWorld for TerrainHeightMapPipeline {
                     texture_2d_array(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
                     texture_storage_2d(TextureFormat::R32Float, StorageTextureAccess::WriteOnly),
+                    texture_storage_2d(TextureFormat::R8Uint, StorageTextureAccess::WriteOnly),
+                ),
+            ),
+        );
+
+        let filter_bind_group_layout = render_device.create_bind_group_layout(
+            "terrain biome filter",
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::COMPUTE,
+                (
+                    uniform_buffer::<TerrainHeightMapInfo>(false),
+                    texture_2d_array(TextureSampleType::Float { filterable: false }),
+                    texture_storage_2d_array(
+                        TextureFormat::Rgba8Unorm,
+                        StorageTextureAccess::WriteOnly,
+                    ),
                 ),
             ),
         );
@@ -211,18 +279,32 @@ impl FromWorld for TerrainHeightMapPipeline {
         let shaders: &TerrainHeightMapShaders = world.resource::<TerrainHeightMapShaders>();
 
         let pipeline_cache = world.resource::<PipelineCache>();
-        let update_pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
-            label: Some(Cow::from("compute terrain height")),
-            layout: vec![texture_bind_group_layout.clone()],
-            push_constant_ranges: Vec::new(),
-            shader: shaders.height_map_shader.clone(),
-            shader_defs: vec![],
-            entry_point: Cow::from("compute_terrain_height"),
-        });
+        let compute_height_pipeline: CachedComputePipelineId = pipeline_cache
+            .queue_compute_pipeline(ComputePipelineDescriptor {
+                label: Some(Cow::from("compute terrain height")),
+                layout: vec![height_bind_group_layout.clone()],
+                push_constant_ranges: Vec::new(),
+                shader: shaders.height_map_shader.clone(),
+                shader_defs: vec![],
+                entry_point: Cow::from("compute_terrain_height"),
+            });
+
+        let pipeline_cache = world.resource::<PipelineCache>();
+        let filter_pipeline: CachedComputePipelineId =
+            pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
+                label: Some(Cow::from("filter biome")),
+                layout: vec![filter_bind_group_layout.clone()],
+                push_constant_ranges: Vec::new(),
+                shader: shaders.biome_filter_shader.clone(),
+                shader_defs: vec![],
+                entry_point: Cow::from("compute_terrain_height"),
+            });
 
         TerrainHeightMapPipeline {
-            texture_bind_group_layout,
-            update_pipeline,
+            filter_bind_group_layout,
+            height_bind_group_layout,
+            compute_height_pipeline,
+            filter_pipeline,
         }
     }
 }
@@ -243,18 +325,32 @@ impl render_graph::Node for TerrainHeightComputeNode {
             let pipeline_cache = world.resource::<PipelineCache>();
             let pipeline = world.resource::<TerrainHeightMapPipeline>();
 
-            if let Some(update_pipeline) =
-                pipeline_cache.get_compute_pipeline(pipeline.update_pipeline)
+            let mut pass = render_context
+                .command_encoder()
+                .begin_compute_pass(&ComputePassDescriptor::default());
+
+            if let Some(filter_pipeline) =
+                pipeline_cache.get_compute_pipeline(pipeline.filter_pipeline)
             {
                 let bind_group = world
                     .resource::<TerrainHeightMapBindGroups>()
-                    .0
+                    .filter_bind_group
                     .as_ref()
                     .unwrap();
 
-                let mut pass = render_context
-                    .command_encoder()
-                    .begin_compute_pass(&ComputePassDescriptor::default());
+                pass.set_bind_group(0, bind_group, &[]);
+                pass.set_pipeline(filter_pipeline);
+                pass.dispatch_workgroups(4096 / 16, 4096 / 16, 1);
+            }
+
+            if let Some(update_pipeline) =
+                pipeline_cache.get_compute_pipeline(pipeline.compute_height_pipeline)
+            {
+                let bind_group = world
+                    .resource::<TerrainHeightMapBindGroups>()
+                    .height_bind_group
+                    .as_ref()
+                    .unwrap();
 
                 pass.set_bind_group(0, bind_group, &[]);
                 pass.set_pipeline(update_pipeline);

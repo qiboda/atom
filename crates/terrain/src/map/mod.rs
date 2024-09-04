@@ -18,14 +18,12 @@ use bevy::{
         texture::ImageSampler,
         RenderApp,
     },
+    tasks::{AsyncComputeTaskPool, ParallelSliceMut},
     utils::hashbrown::HashSet,
 };
 use config::{extract_terrain_map_config, TerrainMapGpuConfig};
 use image::{ImageBuffer, Luma};
-use imageproc::{
-    drawing::{draw_line_segment_mut, draw_polygon_mut},
-    filter::box_filter,
-};
+use imageproc::drawing::{draw_line_segment_mut, draw_polygon_mut};
 use map_diagram::{shared_edge, MapPoint, TerrainMap};
 use project::project_saved_root_path;
 use rand::Rng;
@@ -54,8 +52,8 @@ pub struct TerrainInfoMap {
     /// b channel: temperature
     pub height_climate_map: Handle<Image>,
     // 4个channel，每个通道(u8)表示1层地形类型的占比，这个vec的所有通道总和为255。
+    pub biome_map: Handle<Image>,
     pub biome_blend_map: Handle<Image>,
-    pub all_biome_map: Handle<Image>,
 }
 
 #[derive(Default)]
@@ -64,8 +62,8 @@ pub struct TerrainMapPlugin;
 impl Plugin for TerrainMapPlugin {
     fn build(&self, app: &mut App) {
         // image size is GRID_NUM * GRID_CELL_SIZE
-        const GRID_NUM: usize = 128;
-        const GRID_CELL_SIZE: f64 = 8.0;
+        const GRID_NUM: usize = 256;
+        const GRID_CELL_SIZE: f64 = 32.0;
 
         let rng = rand_pcg::Pcg32::new(10020349, 102934719850918234);
 
@@ -197,6 +195,10 @@ pub fn generate_heights(
         }
     }
 
+    for height in height_declines.iter() {
+        info!("height : {}", height);
+    }
+
     info!("random point over");
 
     let mut count = 0;
@@ -211,7 +213,7 @@ pub fn generate_heights(
             let height_decline = height_declines[parent_site_info.area_id];
 
             let height_adjust = map_config.rng.gen_range(
-                (-0.1 + 0.006 * count as f64).min(-0.01)..(0.1 - 0.01 * count as f64).max(0.01),
+                (-0.1 + 0.006 * count as f64).min(-0.02)..(0.1 - 0.006 * count as f64).max(0.01),
             );
             for neighbor_index in map.diagram.neighbors[*parent_index].clone() {
                 let neighbor_site_info = &mut map.sites_info[neighbor_index];
@@ -233,6 +235,7 @@ pub fn generate_heights(
 }
 
 pub fn determine_landform(mut map: ResMut<TerrainMap>) {
+    info!("determine_landform start");
     {
         let plain_cells = map
             .terrain_types
@@ -311,6 +314,8 @@ pub fn determine_landform(mut map: ResMut<TerrainMap>) {
             .insert(MapTerrainType::Plain(MapPlainLandform::Snow), plain_snow);
         map.terrain_types
             .insert(MapTerrainType::Plain(MapPlainLandform::Ice), plain_ice);
+
+        info!("determine_landform plain");
     }
 
     {
@@ -392,6 +397,8 @@ pub fn determine_landform(mut map: ResMut<TerrainMap>) {
             .insert(MapTerrainType::Hills(MapHillsLandform::Snow), hills_snow);
         map.terrain_types
             .insert(MapTerrainType::Hills(MapHillsLandform::Ice), hills_ice);
+
+        info!("determine_landform hills");
     }
 
     {
@@ -439,6 +446,8 @@ pub fn determine_landform(mut map: ResMut<TerrainMap>) {
             mountain_volcano,
         );
     }
+
+    info!("determine_landform mountain");
 }
 
 pub fn determine_terrain_type_by_height(mut map: ResMut<TerrainMap>) {
@@ -625,6 +634,7 @@ pub fn generate_temperature(
                 .clamp(temperature_range.start, temperature_range.end - 1.0);
         }
     }
+    info!("generate_temperature end");
 }
 
 fn select_neighbor_on_dir(
@@ -726,13 +736,13 @@ pub fn amount_of_precipitation(
 
     let mut clouds_precipitation = default_precipitation;
 
+    let mut next = HashSet::new();
     loop {
         let last = clouds.take_last();
         if last.is_empty() {
             break;
         }
 
-        let mut next = HashSet::new();
         let mut total_clouds_precipitation = 0.0;
         let mut count = 0.0;
         for b in last {
@@ -740,7 +750,11 @@ pub fn amount_of_precipitation(
                 continue;
             }
 
-            map.sites_info[b].precipitation += clouds_precipitation * map.sites_info[b].height;
+            if map.sites_info[b].precipitation > 0.0 {
+                continue;
+            }
+
+            map.sites_info[b].precipitation = clouds_precipitation * map.sites_info[b].height;
             total_clouds_precipitation += clouds_precipitation * (1.0 - map.sites_info[b].height);
             count += 1.0;
 
@@ -755,8 +769,10 @@ pub fn amount_of_precipitation(
         clouds_precipitation = total_clouds_precipitation / count;
 
         next.remove(&usize::MAX);
-        clouds.extend(next.into_iter().collect());
+        info!("precipitation: next size: {}", next.len());
+        clouds.extend(next.iter().copied().collect());
         clouds.swap();
+        next.clear();
     }
 
     info!("amount_of_precipitation seconds");
@@ -889,6 +905,8 @@ pub fn generate_map_image(
         )
         .unwrap();
     }
+
+    info!("generate map image");
 }
 
 pub fn generate_biome_image(
@@ -897,23 +915,22 @@ pub fn generate_biome_image(
     mut map_images: ResMut<TerrainInfoMap>,
     mut images: ResMut<Assets<Image>>,
 ) {
+    info!("generate map start");
     let width = map_config.grid_num as u32 * map_config.grid_cell_size as u32;
     let height = map_config.grid_num as u32 * map_config.grid_cell_size as u32;
 
     let biome_num = MapFlatTerrainType::MAX;
-    let image_num = (biome_num + 3) / 4 * 4;
-    let mut biome_blend_image_vec = Vec::with_capacity(image_num);
-    for _ in 0..image_num {
+    let image_num = (biome_num + 3) / 4;
+    let mut biome_blend_image_vec = Vec::with_capacity(image_num * 4);
+    for _ in 0..(image_num * 4) {
         let image = image::GrayImage::new(width, height);
         biome_blend_image_vec.push(image);
     }
-    let mut all_biome_image_buffer = image::GrayImage::new(width, height);
 
     for (i, cell) in map.diagram.cells.iter().enumerate() {
         let terrain_type = map.sites_info[i].terrain_type.unwrap();
         let flat_terrain_type: MapFlatTerrainType = terrain_type.into();
         let biome_color = image::Luma([u8::MAX]);
-        let all_biome_color = image::Luma([flat_terrain_type as u8]);
         let points = cell
             .points()
             .iter()
@@ -922,66 +939,38 @@ pub fn generate_biome_image(
         if points.len() > 2 {
             let biome_image = &mut biome_blend_image_vec[flat_terrain_type as usize];
             draw_polygon_mut(biome_image, points.as_slice(), biome_color);
-            draw_polygon_mut(
-                &mut all_biome_image_buffer,
-                points.as_slice(),
-                all_biome_color,
-            );
         }
     }
 
-    for (i, image) in biome_blend_image_vec.iter_mut().enumerate() {
-        *image = box_filter(image, 2, 2);
-
-        if let Some(terrain_flat_type) = MapFlatTerrainType::from_repr(i) {
-            let filename = format!("biome_{:?}.png", terrain_flat_type);
-            image
-                .save(map_config.image_save_path.join(filename))
-                .unwrap();
-        }
-    }
-
-    let image_num = (biome_num + 3) / 4;
-    info!(
-        "biome array layer num: {}, width: {}, height: {}",
-        image_num,
-        width,
-        height * image_num as u32,
-    );
+    info!("generate map center");
 
     let mut rgba_image = image::RgbaImage::new(width, height * image_num as u32);
-    let mut pixel_gray_vec = Vec::with_capacity(image_num * 4);
-    for x in 0..width {
-        for y in 0..height {
-            // 得到所有的gray。
-            for i in 0..image_num {
-                let r = biome_blend_image_vec[i * 4].get_pixel(x, y).0[0];
-                let g = biome_blend_image_vec[i * 4 + 1].get_pixel(x, y).0[0];
-                let b = biome_blend_image_vec[i * 4 + 2].get_pixel(x, y).0[0];
-                let a = biome_blend_image_vec[i * 4 + 3].get_pixel(x, y).0[0];
-                pixel_gray_vec.push(r);
-                pixel_gray_vec.push(g);
-                pixel_gray_vec.push(b);
-                pixel_gray_vec.push(a);
+
+    let thread_pool = AsyncComputeTaskPool::get();
+    let mut flat_sample = rgba_image.as_flat_samples_mut();
+    let mut image_slice = flat_sample.as_mut_slice();
+    image_slice.par_chunk_map_mut(
+        thread_pool,
+        (width * height * 4) as usize,
+        |index, chunk| {
+            info!("par chunk map chunk: {}", index);
+            for x in 0..width {
+                for y in 0..height {
+                    // 得到所有的gray。
+                    let r = biome_blend_image_vec[index * 4].get_pixel(x, y).0[0];
+                    let g = biome_blend_image_vec[index * 4 + 1].get_pixel(x, y).0[0];
+                    let b = biome_blend_image_vec[index * 4 + 2].get_pixel(x, y).0[0];
+                    let a = biome_blend_image_vec[index * 4 + 3].get_pixel(x, y).0[0];
+                    chunk[((x * height + y) * 4) as usize] = r;
+                    chunk[((x * height + y) * 4 + 1) as usize] = g;
+                    chunk[((x * height + y) * 4 + 2) as usize] = b;
+                    chunk[((x * height + y) * 4 + 3) as usize] = a;
+                }
             }
+        },
+    );
 
-            let sum = pixel_gray_vec.iter().fold(0u16, |last, x| last + *x as u16) as f32;
-
-            let mut iterator = pixel_gray_vec
-                .iter()
-                .map(|x| (*x as f32 / sum * 255.0) as u8);
-
-            (0..image_num).for_each(|i| {
-                let r = iterator.next().unwrap();
-                let g = iterator.next().unwrap();
-                let b = iterator.next().unwrap();
-                let a = iterator.next().unwrap();
-                let color = image::Rgba([r, g, b, a]);
-                rgba_image.put_pixel(x, y + i as u32 * height, color);
-            });
-            pixel_gray_vec.clear();
-        }
-    }
+    // info!("generate map value normalize");
 
     rgba_image
         .save(map_config.image_save_path.join("biome_array.png"))
@@ -1003,25 +992,15 @@ pub fn generate_biome_image(
         TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST;
     biome_render_image.sampler = ImageSampler::linear();
 
-    let handle = images.add(biome_render_image);
+    let mut blend_biome_render_image = biome_render_image.clone();
+    blend_biome_render_image.texture_descriptor.usage |= TextureUsages::STORAGE_BINDING;
+    let handle = images.add(blend_biome_render_image);
     map_images.biome_blend_map = handle;
 
-    all_biome_image_buffer
-        .save(map_config.image_save_path.join("biome_all.png"))
-        .unwrap();
-    let mut all_biome_image = Image::new(
-        Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        all_biome_image_buffer.into_raw(),
-        TextureFormat::R8Uint,
-        RenderAssetUsages::RENDER_WORLD,
-    );
-    all_biome_image.sampler = ImageSampler::nearest();
-    map_images.all_biome_map = images.add(all_biome_image);
+    let handle = images.add(biome_render_image);
+    map_images.biome_map = handle;
+
+    info!("generate map end");
 }
 
 pub fn draw_terrain_image(map: Res<TerrainMap>, map_config: Res<config::TerrainMapConfig>) {

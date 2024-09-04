@@ -60,7 +60,7 @@ impl Default for TerrainSetting {
             qef_solver: true,
             qef_solver_threshold: 0.1,
             qef_stddev: 0.1,
-            lod_octree_depth: 10,
+            lod_octree_depth: 9,
             camera_far_limit: true,
             base_visibility_range: 256.0,
             terrain_height_range: -128.0..=256.0,

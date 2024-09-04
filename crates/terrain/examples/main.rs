@@ -22,6 +22,7 @@ use bevy_mod_picking::{
     prelude::RaycastBackend,
     DefaultPickingPlugins,
 };
+use bevy_water::{WaterPlugin, WaterSettings};
 use dotenv::dotenv;
 use log_layers::LogLayersPlugin;
 // use oxidized_navigation::{
@@ -31,7 +32,7 @@ use log_layers::LogLayersPlugin;
 use terrain::{
     isosurface::csg::event::{CSGOperateApplyEvent, CSGOperateType, CSGPrimitive},
     lod::lod_gizmos::TerrainLodGizmosPlugin,
-    map::compute_height::TerrainHeightMap,
+    map::compute_height::TerrainMapTextures,
     TerrainObserver, TerrainSubsystemPlugin,
 };
 
@@ -83,6 +84,11 @@ pub fn main() {
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(TerrainLodGizmosPlugin)
     .add_plugins(NoCameraPlayerPlugin)
+    .insert_resource(WaterSettings {
+        height: 0.0,
+        ..default()
+    })
+    .add_plugins(WaterPlugin)
     .add_plugins(FpsOverlayPlugin {
         config: FpsOverlayConfig {
             text_config: TextStyle {
@@ -115,7 +121,7 @@ pub fn main() {
 fn startup(
     mut commands: Commands,
     // mut nav_mesh: ResMut<DrawNavMesh>,
-    terrain_height_map_image: Option<ResMut<TerrainHeightMap>>,
+    terrain_height_map_image: Option<ResMut<TerrainMapTextures>>,
 ) {
     commands.insert_resource(ClearColor(LinearRgba::new(0.3, 0.2, 0.1, 1.0).into()));
     commands.insert_resource(Msaa::Sample4);
@@ -193,7 +199,7 @@ fn startup(
                         custom_size: Some(Vec2::new(1024.0, 1024.0)),
                         ..default()
                     },
-                    texture: image.texture.clone(),
+                    texture: image.height_texture.clone(),
                     ..default()
                 });
             });

@@ -38,7 +38,7 @@ use crate::{
         },
     },
     map::{
-        compute_height::TerrainHeightMap,
+        compute_height::TerrainMapTextures,
         config::TerrainMapGpuConfig,
         topography::{MapFlatTerrainType, MapTerrainType},
         TerrainInfoMap,
@@ -305,7 +305,7 @@ fn prepare_main_bind_group(
     mut bind_groups: ResMut<TerrainChunkMainBindGroups>,
     mut dynamic_buffers: ResMut<TerrainChunkMainDynamicBuffers>,
     map_images: Res<TerrainInfoMap>,
-    height_map_images: Res<TerrainHeightMap>,
+    height_map_images: Res<TerrainMapTextures>,
     images: Res<RenderAssets<GpuImage>>,
 ) {
     let mut num = 0;
@@ -325,8 +325,8 @@ fn prepare_main_bind_group(
         render_device: &render_device,
         pipelines: &pipelines,
         dynamic_buffers: &dynamic_buffers,
-        height_map_image: images.get(height_map_images.texture.id()).unwrap(),
-        map_biome_image: images.get(map_images.all_biome_map.id()).unwrap(),
+        height_map_image: images.get(height_map_images.height_texture.id()).unwrap(),
+        map_biome_image: images.get(height_map_images.biome_texture.id()).unwrap(),
     };
     bind_groups.create_bind_groups(context);
 
@@ -429,7 +429,7 @@ fn map_and_read_buffer(
 
                 let mut mesh = Mesh::new(
                     PrimitiveTopology::TriangleList,
-                    RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
+                    RenderAssetUsages::RENDER_WORLD,
                 );
 
                 mesh.insert_attribute(
