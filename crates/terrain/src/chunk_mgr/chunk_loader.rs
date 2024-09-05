@@ -14,24 +14,14 @@ use crate::{
     TerrainObserver,
 };
 use bevy::{
-    math::{
-        bounding::{Aabb3d, BoundingVolume, IntersectsVolume},
-        Affine3A,
-    },
+    math::bounding::{Aabb3d, BoundingVolume, IntersectsVolume},
     prelude::*,
-    render::{
-        camera::CameraProjection,
-        primitives::{Aabb, Sphere},
-    },
+    render::{camera::CameraProjection, primitives::Aabb},
     utils::HashMap,
 };
 
 use super::TerrainChunkSystemSet;
 
-// 1. 只加载视锥体内的chunk，离开视锥并不删除。
-// 2. 每帧增加和删除的chunk进行队列缓存。
-// 3. 之后根据条件进行加载和删除。
-// 4. 删除前进行检测，如果在视锥体内，查看是否父类或者所有子类是否都已经加载了。
 #[derive(Debug, Default)]
 pub struct TerrainChunkLoaderPlugin;
 
@@ -43,7 +33,6 @@ impl Plugin for TerrainChunkLoaderPlugin {
             .add_systems(
                 Update,
                 (
-                    update_loaded_leaf_node_info,
                     update_loader_state,
                     to_load_chunk,
                     to_unload_chunk,
@@ -88,19 +77,29 @@ impl Hash for LeafNodeKey {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct LoadedNodeInfo {
     pub to_unload_wait_frame_count: usize,
+    pub leaf_node_key: LeafNodeKey,
+}
+
+impl LoadedNodeInfo {
+    pub fn new(leaf_node_key: LeafNodeKey) -> Self {
+        Self {
+            leaf_node_key,
+            to_unload_wait_frame_count: 0,
+        }
+    }
 }
 
 /// 需要保证最后删除，避免闪烁。
 /// 同时，如果有需要加载的，也应该加载。
 #[derive(Resource, Debug, Default)]
 pub struct TerrainChunkLoader {
+    pub loaded_leaf_node_map: HashMap<MortonCode, LoadedNodeInfo>,
+
     pub pending_load_leaf_node_map: HashMap<MortonCode, LeafNodeKey>,
     pub pending_unload_leaf_node_map: HashMap<MortonCode, LeafNodeKey>,
-
-    pub loaded_leaf_node_map: HashMap<MortonCode, LoadedNodeInfo>,
 
     pub pending_reload_leaf_node_map: HashMap<MortonCode, LeafNodeKey>,
 }
@@ -137,18 +136,9 @@ impl TerrainChunkLoader {
     }
 }
 
-fn update_loaded_leaf_node_info(mut loader: ResMut<TerrainChunkLoader>) {
-    loader
-        .loaded_leaf_node_map
-        .iter_mut()
-        .for_each(|(_, info)| {
-            info.to_unload_wait_frame_count += 1;
-        });
-}
-
 fn update_leaf_node_data(
     leaf_node_key: &mut LeafNodeKey,
-    frustums: &ObserverFrustums,
+    _frustums: &ObserverFrustums,
     global_transforms: &ObserverGlobalTransforms,
     terrain_setting: &Res<TerrainSetting>,
 ) {
@@ -159,26 +149,26 @@ fn update_leaf_node_data(
         is_in_height = true;
     }
 
-    let mut is_in_frustums = false;
-    for frustum in frustums.iter() {
-        let sphere = Sphere {
-            center: leaf_node_key.aabb.center,
-            radius: leaf_node_key.aabb.half_extents.length(),
-        };
-        // Do quick sphere-based frustum culling
-        if frustum.intersects_sphere(&sphere, terrain_setting.camera_far_limit) {
-            // Do more precise OBB-based frustum culling
-            if frustum.intersects_obb(
-                &leaf_node_key.aabb,
-                &Affine3A::IDENTITY,
-                true,
-                terrain_setting.camera_far_limit,
-            ) {
-                is_in_frustums = true;
-                break;
-            }
-        }
-    }
+    // let mut is_in_frustums = false;
+    // for frustum in frustums.iter() {
+    //     let sphere = Sphere {
+    //         center: leaf_node_key.aabb.center,
+    //         radius: leaf_node_key.aabb.half_extents.length(),
+    //     };
+    //     // Do quick sphere-based frustum culling
+    //     if frustum.intersects_sphere(&sphere, terrain_setting.camera_far_limit) {
+    //         // Do more precise OBB-based frustum culling
+    //         if frustum.intersects_obb(
+    //             &leaf_node_key.aabb,
+    //             &Affine3A::IDENTITY,
+    //             true,
+    //             terrain_setting.camera_far_limit,
+    //         ) {
+    //             is_in_frustums = true;
+    //             break;
+    //         }
+    //     }
+    // }
 
     let mut is_in_base_range = false;
     for global_transform in global_transforms.iter() {
@@ -193,7 +183,7 @@ fn update_leaf_node_data(
         }
     }
 
-    leaf_node_key.is_in_frustums = is_in_frustums;
+    leaf_node_key.is_in_frustums = false;
     leaf_node_key.is_in_height = is_in_height;
     leaf_node_key.is_in_base_range = is_in_base_range;
 }
@@ -213,47 +203,45 @@ pub fn update_loader_state(
         global_transforms.push(*global_transform);
     }
 
+    loader.pending_load_leaf_node_map.clear();
+    loader.pending_unload_leaf_node_map.clear();
+
+    let mut to_load_nodes = HashMap::new();
     for level in lod_octree.octree_levels.iter() {
-        // to add nodes
-        for node in level.get_added_nodes() {
-            let leaf_node_key = LeafNodeKey::from_lod_leaf_node(node);
-            loader.pending_unload_leaf_node_map.remove(&node.code);
-            loader
-                .pending_load_leaf_node_map
-                .insert(node.code, leaf_node_key);
-        }
+        for node in level.get_current().iter() {
+            let mut leaf_node_key = LeafNodeKey::from_lod_leaf_node(node);
+            update_leaf_node_data(
+                &mut leaf_node_key,
+                &frustums,
+                &global_transforms,
+                &terrain_setting,
+            );
 
-        // to remove nodes
-        for node in level.get_removed_nodes() {
-            let leaf_node_key = LeafNodeKey::from_lod_leaf_node(node);
-            loader.pending_load_leaf_node_map.remove(&node.code);
-            loader
-                .pending_unload_leaf_node_map
-                .insert(node.code, leaf_node_key);
-
-            if let Some(loaded_info) = loader.loaded_leaf_node_map.get_mut(&node.code) {
-                loaded_info.to_unload_wait_frame_count = 0;
+            if leaf_node_key.can_load() {
+                to_load_nodes.insert(node.code, leaf_node_key);
             }
         }
     }
 
-    for (_code, leaf_node_key) in loader.pending_load_leaf_node_map.iter_mut() {
-        update_leaf_node_data(
-            leaf_node_key,
-            &frustums,
-            &global_transforms,
-            &terrain_setting,
-        );
+    let mut to_unload_nodes = HashMap::new();
+    for (code, loaded_node) in loader.loaded_leaf_node_map.iter_mut() {
+        if to_load_nodes.contains_key(code) {
+            loaded_node.to_unload_wait_frame_count = 0;
+        } else {
+            loaded_node.to_unload_wait_frame_count += 1;
+            if loaded_node.to_unload_wait_frame_count > 3 {
+                to_unload_nodes.insert(*code, loaded_node.leaf_node_key);
+            }
+        }
     }
 
-    for (_code, leaf_node_key) in loader.pending_unload_leaf_node_map.iter_mut() {
-        update_leaf_node_data(
-            leaf_node_key,
-            &frustums,
-            &global_transforms,
-            &terrain_setting,
-        );
-    }
+    loader
+        .pending_load_leaf_node_map
+        .extend(to_load_nodes.iter());
+
+    loader
+        .pending_unload_leaf_node_map
+        .extend(to_unload_nodes.iter());
 
     for (_code, leaf_node_key) in loader.pending_reload_leaf_node_map.iter_mut() {
         update_leaf_node_data(
@@ -284,7 +272,7 @@ pub fn to_load_chunk(
     let to_load_nodes = loader
         .pending_load_leaf_node_map
         .iter()
-        .filter(|(_, key)| loader.is_loaded(&key.address).not() && key.can_load());
+        .filter(|(_, key)| loader.is_loaded(&key.address).not());
 
     to_load_nodes.for_each(|(code, _key)| {
         load_event.node_addresses.push(*code);
@@ -295,10 +283,10 @@ pub fn to_load_chunk(
     }
 
     for address in load_event.node_addresses.iter() {
-        loader.pending_load_leaf_node_map.remove(address);
+        let leaf_node_key = loader.pending_load_leaf_node_map.remove(address).unwrap();
         loader
             .loaded_leaf_node_map
-            .insert(*address, LoadedNodeInfo::default());
+            .insert(*address, LoadedNodeInfo::new(leaf_node_key));
     }
 
     *last_num = load_event.node_addresses.len();
@@ -322,21 +310,19 @@ pub fn to_unload_chunk(
     let to_unload_nodes = loader
         .pending_unload_leaf_node_map
         .iter()
-        .filter(|(_, key)| {
-            (loader.can_unload(&key.address) && key.can_load()) || key.can_load().not()
-        });
+        .filter(|(_, key)| (loader.can_unload(&key.address)));
 
     to_unload_nodes.for_each(|(code, _key)| {
         load_event.node_addresses.push(*code);
     });
 
-    if load_event.node_addresses.is_empty() {
-        return;
-    }
-
     for address in load_event.node_addresses.iter() {
         loader.pending_unload_leaf_node_map.remove(address);
         loader.loaded_leaf_node_map.remove(address);
+    }
+
+    if load_event.node_addresses.is_empty() {
+        return;
     }
 
     *last_num = load_event.node_addresses.len();
