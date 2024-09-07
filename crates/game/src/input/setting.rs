@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
 use atom_utils::input::DefaultInputMap;
-use bevy::{asset::Asset, prelude::*, reflect::Reflect};
+use bevy::{asset::Asset, math::VectorSpace, prelude::*, reflect::Reflect};
 use bevy_console::{clap::Parser, ConsoleCommand};
 use bevy_tnua::{
     builtins::{TnuaBuiltinJump, TnuaBuiltinWalk},
     controller::TnuaController,
 };
-use leafwing_input_manager::{
-    action_state::ActionState, input_map::InputMap, user_input::KeyboardVirtualDPad, Actionlike,
-};
+use leafwing_input_manager::prelude::*;
 use serde::{Deserialize, Serialize};
 use settings::{persist::PersistSettingEvent, setting_path::SettingsPath, Setting};
+
+use crate::unit::Player;
 
 #[derive(Resource, Serialize, Reflect, Deserialize, Debug, Asset, Clone, Setting)]
 pub struct PlayerInputSetting {
@@ -26,7 +26,7 @@ impl Default for PlayerInputSetting {
     }
 }
 
-#[derive(Debug, Actionlike, Serialize, Reflect, Deserialize, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Serialize, Reflect, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum PlayerAction {
     Move,
     Jump,
@@ -36,14 +36,19 @@ pub enum PlayerAction {
     Ability4,
 }
 
+impl Actionlike for PlayerAction {
+    fn input_control_kind(&self) -> InputControlKind {
+        match self {
+            PlayerAction::Move => InputControlKind::DualAxis,
+            _ => InputControlKind::Button,
+        }
+    }
+}
+
 impl DefaultInputMap<PlayerAction> for PlayerAction {
     fn default_input_map() -> InputMap<PlayerAction> {
-        let mut input_map = InputMap::new([(
-            PlayerAction::Move,
-            // Define a virtual D-pad using four arbitrary keys.
-            // You can also use GamepadVirtualDPad to create similar ones using gamepad buttons.
-            KeyboardVirtualDPad::new(KeyCode::KeyW, KeyCode::KeyS, KeyCode::KeyA, KeyCode::KeyD),
-        )]);
+        let mut input_map =
+            InputMap::default().with_dual_axis(PlayerAction::Move, KeyboardVirtualDPad::WASD);
 
         input_map.insert(PlayerAction::Jump, KeyCode::Space);
 
@@ -79,8 +84,11 @@ pub fn input_setting_persist_command(
 
 pub fn update_player_input(
     action: Query<&ActionState<PlayerAction>>,
+    player_query: Query<&GlobalTransform, With<Player>>,
     mut query: Query<&mut TnuaController>,
 ) {
+    let player_transform = player_query.get_single().unwrap();
+
     let Ok(mut controller) = query.get_single_mut() else {
         return;
     };
@@ -89,13 +97,12 @@ pub fn update_player_input(
         return;
     };
 
-    let velocity = player_action
-        .clamped_axis_pair(&PlayerAction::Move)
-        .map(|direction| Vec3::new(direction.x(), 0.0, direction.y()));
-
+    let axis_move = player_action.clamped_axis_pair(&PlayerAction::Move);
+    let velocity = Vec3::new(-axis_move.x, 0.0, axis_move.y).normalize_or_zero();
     controller.basis(TnuaBuiltinWalk {
-        desired_velocity: velocity.unwrap() * 3.7,
-        float_height: 1.5,
+        desired_velocity: velocity * 3.7,
+        desired_forward: player_transform.forward().as_vec3(),
+        float_height: 0.0,
         ..Default::default()
     });
 

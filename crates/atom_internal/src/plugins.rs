@@ -2,15 +2,17 @@ use atom_shader_lib::AtomShaderLibPluginGroups;
 use bevy::{
     app::{PluginGroup, PluginGroupBuilder},
     asset::AssetPlugin,
+    color::Color,
     core::{TaskPoolOptions, TaskPoolPlugin, TaskPoolThreadAssignmentPolicy},
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     log::LogPlugin,
+    text::TextStyle,
     utils::default,
     DefaultPlugins,
 };
 use bevy_console::ConsolePlugin;
 use bevy_debug_grid::DebugGridPlugin;
 use datatables::DataTablePlugin;
-use leafwing_input_manager::plugin::InputManagerSubsystemPlugin;
 use log_layers::{file_layer, LogLayersPlugin};
 use seldom_state::StateMachinePlugin;
 use settings::{SettingSourceConfig, SettingsPlugin};
@@ -32,12 +34,12 @@ impl PluginGroup for AtomDefaultPlugins {
         group = group
             .add(SettingsPlugin {
                 game_source_config: SettingSourceConfig {
-                    source_id: "config_terrain".into(),
-                    base_path: root_path.join("config/terrain"),
+                    source_id: "config".into(),
+                    base_path: root_path.join("config"),
                 },
                 user_source_config: SettingSourceConfig {
-                    source_id: "config_terrain".into(),
-                    base_path: root_path.join("config/terrain"),
+                    source_id: "config".into(),
+                    base_path: root_path.join("config"),
                 },
             })
             .add(LogLayersPlugin::default().add_layer(file_layer::file_layer))
@@ -67,12 +69,23 @@ impl PluginGroup for AtomDefaultPlugins {
                     }),
             )
             .add_group(AtomShaderLibPluginGroups)
-            .add(InputManagerSubsystemPlugin)
             .add(ConsolePlugin)
             .add(StateMachinePlugin)
             .add(DataTablePlugin)
-            .add(DebugGridPlugin::without_floor_grid())
-            .add(AppStatePlugin);
+            // .add(DebugGridPlugin::without_floor_grid())
+            .add(AppStatePlugin)
+            .add(FpsOverlayPlugin {
+                config: FpsOverlayConfig {
+                    text_config: TextStyle {
+                        // Here we define size of our overlay
+                        font_size: 50.0,
+                        // We can also change color of the overlay
+                        color: Color::srgb(0.0, 1.0, 0.0),
+                        // If we want, we can use a custom font
+                        font: default(),
+                    },
+                },
+            });
 
         group
     }

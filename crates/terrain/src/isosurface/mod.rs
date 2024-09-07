@@ -19,12 +19,6 @@ impl Plugin for IsosurfaceExtractionPlugin {
     }
 }
 
-#[derive(Debug, Reflect, SystemSet, PartialEq, Eq, Hash, Clone)]
-pub enum IsosurfaceSystemSet {
-    GenerateMainMesh,
-    GenerateSeamMesh,
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum IsosurfaceSide {
     Inside,

@@ -10,5 +10,4 @@ pub mod plugin;
 #[derive(SystemSet, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TerrainChunkSystemSet {
     UpdateLoader,
-    UpdateChunk,
 }

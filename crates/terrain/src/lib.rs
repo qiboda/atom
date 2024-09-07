@@ -41,7 +41,6 @@ impl Plugin for TerrainSubsystemPlugin {
                 (
                     TerrainSystemSet::UpdateLodOctree,
                     TerrainSystemSet::UpdateChunk,
-                    TerrainSystemSet::GenerateTerrain,
                 )
                     .chain()
                     .run_if(in_state(TerrainState::GenerateTerrainMesh)),
@@ -64,7 +63,6 @@ pub enum TerrainSystemSet {
     UpdateLodOctree,
     ApplyCSG,
     UpdateChunk,
-    GenerateTerrain,
 }
 
 #[derive(Component, Debug, Default)]

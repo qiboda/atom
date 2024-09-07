@@ -89,18 +89,6 @@ pub fn main() {
         ..default()
     })
     .add_plugins(WaterPlugin)
-    .add_plugins(FpsOverlayPlugin {
-        config: FpsOverlayConfig {
-            text_config: TextStyle {
-                // Here we define size of our overlay
-                font_size: 50.0,
-                // We can also change color of the overlay
-                color: Color::srgb(0.0, 1.0, 0.0),
-                // If we want, we can use a custom font
-                font: default(),
-            },
-        },
-    })
     .add_systems(Startup, startup)
     .add_systems(
         Update,
@@ -118,6 +106,9 @@ pub fn main() {
     })
     .run();
 }
+
+#[derive(Component)]
+struct PlayerCamera;
 
 fn startup(
     mut commands: Commands,
@@ -169,6 +160,7 @@ fn startup(
             ..Default::default()
         },
         FlyCam,
+        PlayerCamera,
         // TerrainObserver,
     ));
 
@@ -217,10 +209,11 @@ pub fn update_sprite_texture(
     }
 }
 
-pub fn update_terrain_observer(
+#[allow(clippy::type_complexity)]
+fn update_terrain_observer(
     input: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
-    query: Query<(Entity, Option<&TerrainObserver>), With<Camera>>,
+    query: Query<(Entity, Option<&TerrainObserver>), (With<Camera>, With<PlayerCamera>)>,
 ) {
     if input.just_pressed(KeyCode::KeyK) {
         for (entity, observer) in query.iter() {

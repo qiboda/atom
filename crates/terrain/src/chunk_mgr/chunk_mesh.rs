@@ -28,7 +28,7 @@ pub fn receive_terrain_chunk_mesh_data(
     )>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    forest_material: Option<Res<GrassEcologyMaterial>>,
+    grass_material: Option<Res<GrassEcologyMaterial>>,
 ) {
     loop {
         match receiver.try_recv() {
@@ -48,12 +48,13 @@ pub fn receive_terrain_chunk_mesh_data(
                             continue;
                         }
 
-                        if forest_material.is_none() {
-                            debug!("receive_terrain_chunk_mesh_data forest material is none");
+                        if grass_material.is_none() {
+                            warn!("receive_terrain_chunk_mesh_data grass material is none");
                             continue;
                         }
+                        info!("grass material: {:?}", grass_material);
 
-                        let forest_material = forest_material.as_ref().unwrap();
+                        let grass_material = grass_material.as_ref().unwrap();
 
                         let biomes = main_mesh.get_biomes();
 
@@ -62,14 +63,14 @@ pub fn receive_terrain_chunk_mesh_data(
                             lod: address.0.depth(),
                             debug_type: None,
                             // debug_type: None,
-                            base_color_texture: forest_material.base_color_texture.clone(),
+                            base_color_texture: grass_material.base_color_texture.clone(),
                             metallic: 0.0,
                             perceptual_roughness: 1.0,
-                            metallic_roughness_texture: forest_material
+                            metallic_roughness_texture: grass_material
                                 .metallic_roughness_texture
                                 .clone(),
-                            normal_map_texture: forest_material.normal_texture.clone(),
-                            occlusion_texture: forest_material.occlusion_texture.clone(),
+                            normal_map_texture: grass_material.normal_texture.clone(),
+                            occlusion_texture: grass_material.occlusion_texture.clone(),
                             cull_mode: Some(Face::Back),
                             double_sided: false,
                             unlit: false,
@@ -132,12 +133,12 @@ pub fn receive_terrain_chunk_mesh_data(
                             continue;
                         }
 
-                        if forest_material.is_none() {
-                            debug!("receive_terrain_chunk_mesh_data forest material is none");
+                        if grass_material.is_none() {
+                            debug!("receive_terrain_chunk_mesh_data grass material is none");
                             continue;
                         }
 
-                        let forest_material = forest_material.as_ref().unwrap();
+                        let grass_material = grass_material.as_ref().unwrap();
 
                         let biomes = seam_mesh_data.get_biomes();
 
@@ -146,14 +147,14 @@ pub fn receive_terrain_chunk_mesh_data(
                             lod: address.0.depth(),
                             debug_type: None,
                             // debug_type: None,
-                            base_color_texture: forest_material.base_color_texture.clone(),
+                            base_color_texture: grass_material.base_color_texture.clone(),
                             metallic: 0.0,
                             perceptual_roughness: 1.0,
-                            metallic_roughness_texture: forest_material
+                            metallic_roughness_texture: grass_material
                                 .metallic_roughness_texture
                                 .clone(),
-                            normal_map_texture: forest_material.normal_texture.clone(),
-                            occlusion_texture: forest_material.occlusion_texture.clone(),
+                            normal_map_texture: grass_material.normal_texture.clone(),
+                            occlusion_texture: grass_material.occlusion_texture.clone(),
                             cull_mode: Some(Face::Back),
                             double_sided: false,
                             unlit: false,

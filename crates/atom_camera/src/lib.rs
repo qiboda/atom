@@ -22,7 +22,8 @@ impl Plugin for CameraManagerPlugin {
         assert!(app.is_plugin_added::<TransformFollowPlugin>());
 
         app.add_plugins(InputManagerPlugin::<CameraAction>::default())
-            .add_plugins(SettingPlugin::<CameraSetting>::default())
+            // .add_plugins(SettingPlugin::<CameraSetting>::default())
+            .insert_resource(CameraSetting::default())
             .insert_resource(CameraTracker::new())
             .add_systems(Update, setting::zoom_camera);
     }

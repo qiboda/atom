@@ -359,7 +359,6 @@ fn map_and_read_buffer(
 
     let all_main_chunk_span = info_span!("all_main_chunk_map_async").entered();
 
-    #[allow(unused_variables)]
     let voxel_num_in_chunk = terrain_setting.get_voxel_num_in_chunk();
 
     main_buffers.map_async();
@@ -379,7 +378,6 @@ fn map_and_read_buffer(
 
     let all_main_chunk_read_span = info_span!("all_main_chunk_read").entered();
 
-    #[allow(unused_variables)]
     for (entity, state, address, lod, aabb) in query.iter_mut() {
         if state.contains(TerrainChunkState::CREATE_MAIN_MESH) {
             let _one_main_chunk_read = info_span!("one_main_chunk_read").entered();

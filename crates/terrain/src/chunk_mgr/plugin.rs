@@ -27,10 +27,7 @@ impl Plugin for TerrainChunkPlugin {
         app.init_resource::<TerrainChunkMapper>()
             .configure_sets(
                 Update,
-                (
-                    TerrainChunkSystemSet::UpdateLoader,
-                    TerrainChunkSystemSet::UpdateChunk,
-                )
+                (TerrainChunkSystemSet::UpdateLoader,)
                     .chain()
                     .in_set(TerrainSystemSet::UpdateChunk),
             )

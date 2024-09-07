@@ -11,3 +11,4 @@ serde = { workspace = true }
 
 settings = { path = "../settings" }
 atom_utils = { path = "../atom_utils" }
+atom_core = { path = "../atom_core" }

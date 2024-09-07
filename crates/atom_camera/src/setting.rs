@@ -3,6 +3,7 @@ use std::ops::DerefMut;
 use atom_utils::input::DefaultInputMap;
 use bevy::prelude::*;
 use bevy::reflect::Reflect;
+use leafwing_input_manager::InputControlKind;
 use leafwing_input_manager::{
     action_state::ActionState, input_map::InputMap, user_input::MouseScrollAxis, Actionlike,
 };
@@ -26,7 +27,7 @@ impl Default for CameraSetting {
     }
 }
 
-#[derive(Actionlike, Debug, Clone, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
 pub enum CameraAction {
     // 鼠标按住不松，拖动鼠标
     // Pan,
@@ -37,12 +38,22 @@ pub enum CameraAction {
     RightRotateY,
 }
 
+impl Actionlike for CameraAction {
+    fn input_control_kind(&self) -> leafwing_input_manager::InputControlKind {
+        match self {
+            CameraAction::Zoom => InputControlKind::Axis,
+            CameraAction::LeftRotateY => InputControlKind::Button,
+            CameraAction::RightRotateY => InputControlKind::Button,
+        }
+    }
+}
+
 impl DefaultInputMap<CameraAction> for CameraAction {
     fn default_input_map() -> InputMap<CameraAction> {
         let mut input_map = InputMap::default();
 
         // input_map.insert(CameraAction::Pan, MouseMove::default());
-        input_map.insert(CameraAction::Zoom, MouseScrollAxis::Y);
+        input_map.insert_axis(CameraAction::Zoom, MouseScrollAxis::Y);
         input_map.insert(CameraAction::LeftRotateY, KeyCode::KeyQ);
         input_map.insert(CameraAction::RightRotateY, KeyCode::KeyE);
 

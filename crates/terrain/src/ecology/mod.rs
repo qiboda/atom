@@ -82,6 +82,7 @@ fn startup(mut images: ResMut<Assets<Image>>, material: Res<GrassEcologyMaterial
             .as_ref()
             .map_or(AssetId::invalid(), |x| x.id()),
     ) {
+        info!("ao image is valid");
         image.reinterpret_stacked_2d_as_array(3);
     }
 }

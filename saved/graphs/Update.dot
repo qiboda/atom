@@ -7,71 +7,339 @@ digraph "" {
 	"nodesep"="0.15";
 	edge ["penwidth"="2"];
 	node ["shape"="box", "style"="filled"];
-	subgraph "clusternode_Set(9)" {
+	subgraph "clusternode_Set(2)" {
 		"style"="rounded,filled";
-		"label"="VisibleAreas";
-		"tooltip"="VisibleAreas";
+		"label"="Commands";
+		"tooltip"="Commands";
 		"fillcolor"="#ffffff44";
 		"fontcolor"="#ffffff";
 		"color"="#ffffff50";
 		"penwidth"="2";
-		"set_marker_node_Set(9)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
-		"node_System(9)" ["label"="add_terrain_visible_areas", "tooltip"="terrain::visible::visible_areas::add_terrain_visible_areas", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
-		"node_System(10)" ["label"="update_terrain_visible_areas", "tooltip"="terrain::visible::visible_areas::update_terrain_visible_areas", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
-		"node_System(11)" ["label"="remove_terrain_visible_areas", "tooltip"="terrain::visible::visible_areas::remove_terrain_visible_areas", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"set_marker_node_Set(2)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(1)" ["label"="clear_command", "tooltip"="bevy_console::commands::clear::clear_command", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(2)" ["label"="exit_command", "tooltip"="bevy_console::commands::exit::exit_command", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(3)" ["label"="help_command", "tooltip"="bevy_console::commands::help::help_command", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(17)" ["label"="terrain_lod_leaf_node_num_command", "tooltip"="terrain::lod::lod_octree::terrain_lod_leaf_node_num_command", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(48)" ["label"="input_setting_persist_command", "tooltip"="game::input::setting::input_setting_persist_command", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
 	}
 	
-	subgraph "clusternode_Set(10)" {
+	subgraph "clusternode_Set(6)" {
 		"style"="rounded,filled";
-		"label"="TerrainData";
-		"tooltip"="TerrainData";
+		"label"="ConsoleUI";
+		"tooltip"="ConsoleUI";
 		"fillcolor"="#ffffff44";
 		"fontcolor"="#ffffff";
 		"color"="#ffffff50";
 		"penwidth"="2";
-		"set_marker_node_Set(10)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
-		"node_System(12)" ["label"="update_visible_chunks", "tooltip"="terrain::terrain::terrain_data::update_visible_chunks", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
-		"node_System(13)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred", "fillcolor"="#b0d34a", "fontname"="Helvetica", "fontcolor"="#edf5d5", "color"="#d3e69c", "penwidth"="1"]
-		"node_System(14)" ["label"="update_visible_chunks_lod", "tooltip"="terrain::terrain::terrain_data::update_visible_chunks_lod", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"set_marker_node_Set(6)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(4)" ["label"="console_ui", "tooltip"="bevy_console::console::console_ui", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
 	}
 	
-	subgraph "clusternode_Set(11)" {
+	subgraph "clusternode_Set(8)" {
 		"style"="rounded,filled";
-		"label"="GenerateTerrain";
-		"tooltip"="GenerateTerrain";
+		"label"="PostCommands";
+		"tooltip"="PostCommands";
 		"fillcolor"="#ffffff44";
 		"fontcolor"="#ffffff";
 		"color"="#ffffff50";
 		"penwidth"="2";
-		"set_marker_node_Set(11)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
-		"node_System(15)" ["label"="dual_contour_build_octree", "tooltip"="terrain::terrain::isosurface::dc::dual_contour_build_octree", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
-		"node_System(16)" ["label"="dual_contour_meshing", "tooltip"="terrain::terrain::isosurface::dc::dual_contour_meshing", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
-		"node_System(17)" ["label"="dual_contouring_create_mesh", "tooltip"="terrain::terrain::isosurface::dc::dual_contouring_create_mesh", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
-		"node_System(18)" ["label"="dual_contouring_update_lod", "tooltip"="terrain::terrain::isosurface::dc::dual_contouring_update_lod", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"set_marker_node_Set(8)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(5)" ["label"="receive_console_line", "tooltip"="bevy_console::console::receive_console_line", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(19)" {
+		"style"="rounded,filled";
+		"label"="AnonymousSet(0)";
+		"tooltip"="AnonymousSet(0)";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(19)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		subgraph "clusternode_Set(20)" {
+			"style"="rounded,filled";
+			"label"="UpdateLodOctree";
+			"tooltip"="UpdateLodOctree";
+			"fillcolor"="#ffffff44";
+			"fontcolor"="#ffffff";
+			"color"="#ffffff50";
+			"penwidth"="2";
+			"set_marker_node_Set(20)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+			"node_System(16)" ["label"="update_terrain_lod_octree", "tooltip"="terrain::lod::lod_octree::update_terrain_lod_octree", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		}
+		
+		subgraph "clusternode_Set(21)" {
+			"style"="rounded,filled";
+			"label"="UpdateChunk";
+			"tooltip"="UpdateChunk";
+			"fillcolor"="#ffffff44";
+			"fontcolor"="#ffffff";
+			"color"="#ffffff50";
+			"penwidth"="2";
+			"set_marker_node_Set(21)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+			subgraph "clusternode_Set(28)" {
+				"style"="rounded,filled";
+				"label"="UpdateLoader";
+				"tooltip"="UpdateLoader";
+				"fillcolor"="#ffffff44";
+				"fontcolor"="#ffffff";
+				"color"="#ffffff50";
+				"penwidth"="2";
+				"set_marker_node_Set(28)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+				"node_System(20)" ["label"="update_loader_state", "tooltip"="terrain::chunk_mgr::chunk_loader::update_loader_state", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+				"node_System(21)" ["label"="to_load_chunk", "tooltip"="terrain::chunk_mgr::chunk_loader::to_load_chunk", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+				"node_System(22)" ["label"="to_unload_chunk", "tooltip"="terrain::chunk_mgr::chunk_loader::to_unload_chunk", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+				"node_System(23)" ["label"="to_reload_chunk", "tooltip"="terrain::chunk_mgr::chunk_loader::to_reload_chunk", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+			}
+			
+			subgraph "clusternode_Set(29)" {
+				"style"="rounded,filled";
+				"label"="UpdateChunk";
+				"tooltip"="UpdateChunk";
+				"fillcolor"="#ffffff44";
+				"fontcolor"="#ffffff";
+				"color"="#ffffff50";
+				"penwidth"="2";
+				"set_marker_node_Set(29)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+			}
+			
+		}
+		
+		subgraph "clusternode_Set(22)" {
+			"style"="rounded,filled";
+			"label"="GenerateTerrain";
+			"tooltip"="GenerateTerrain";
+			"fillcolor"="#ffffff44";
+			"fontcolor"="#ffffff";
+			"color"="#ffffff50";
+			"penwidth"="2";
+			"set_marker_node_Set(22)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		}
+		
+	}
+	
+	subgraph "clusternode_Set(26)" {
+		"style"="rounded,filled";
+		"label"="ApplyCSG";
+		"tooltip"="ApplyCSG";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(26)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(18)" ["label"="update_csg_operations_records", "tooltip"="terrain::isosurface::csg::event::update_csg_operations_records", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(19)" ["label"="read_csg_operation_apply_event", "tooltip"="terrain::isosurface::csg::event::read_csg_operation_apply_event", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(34)" {
+		"style"="rounded,filled";
+		"label"="LoadingStateSet(AssetLoading)";
+		"tooltip"="LoadingStateSet(AssetLoading)";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(34)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(24)" ["label"="run_loading_state<TerrainMaterialLoadState>", "tooltip"="bevy_asset_loader::loading_state::systems::run_loading_state<terrain::ecology::TerrainMaterialLoadState>", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(36)" {
+		"style"="rounded,filled";
+		"label"="AnonymousSet(1)";
+		"tooltip"="AnonymousSet(1)";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(36)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(25)" ["label"="create_terrain_map", "tooltip"="terrain::map::create_terrain_map", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(26)" ["label"="generate_heights", "tooltip"="terrain::map::generate_heights", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(27)" ["label"="determine_terrain_type_by_height", "tooltip"="terrain::map::determine_terrain_type_by_height", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(28)" ["label"="amount_of_precipitation", "tooltip"="terrain::map::amount_of_precipitation", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(29)" ["label"="generate_temperature", "tooltip"="terrain::map::generate_temperature", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(30)" ["label"="generate_base_humidity", "tooltip"="terrain::map::generate_base_humidity", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(31)" ["label"="determine_landform", "tooltip"="terrain::map::determine_landform", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(32)" ["label"="generate_map_image", "tooltip"="terrain::map::generate_map_image", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(33)" ["label"="generate_biome_image", "tooltip"="terrain::map::generate_biome_image", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(34)" ["label"="draw_terrain_image", "tooltip"="terrain::map::draw_terrain_image", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(35)" ["label"="draw_precipitation_image", "tooltip"="terrain::map::draw_precipitation_image", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(36)" ["label"="draw_base_humidity_image", "tooltip"="terrain::map::draw_base_humidity_image", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(37)" ["label"="draw_total_humidity_image", "tooltip"="terrain::map::draw_total_humidity_image", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(38)" ["label"="draw_temperature_image", "tooltip"="terrain::map::draw_temperature_image", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(39)" ["label"="draw_delaunay_triangle_image", "tooltip"="terrain::map::draw_delaunay_triangle_image", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		"node_System(40)" ["label"="to_generate_height_map", "tooltip"="terrain::map::to_generate_height_map", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(57)" {
+		"style"="rounded,filled";
+		"label"="TnuaSystemSet";
+		"tooltip"="TnuaSystemSet";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(57)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		subgraph "clusternode_Set(56)" {
+			"style"="rounded,filled";
+			"label"="Sensors";
+			"tooltip"="Sensors";
+			"fillcolor"="#ffffff44";
+			"fontcolor"="#ffffff";
+			"color"="#ffffff50";
+			"penwidth"="2";
+			"set_marker_node_Set(56)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+			"node_System(45)" ["label"="update_rigid_body_trackers_system", "tooltip"="bevy_tnua_avian3d::update_rigid_body_trackers_system", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+			"node_System(46)" ["label"="update_proximity_sensors_system", "tooltip"="bevy_tnua_avian3d::update_proximity_sensors_system", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		}
+		
+		subgraph "clusternode_Set(58)" {
+			"style"="rounded,filled";
+			"label"="SubservientSensors";
+			"tooltip"="SubservientSensors";
+			"fillcolor"="#ffffff44";
+			"fontcolor"="#ffffff";
+			"color"="#ffffff50";
+			"penwidth"="2";
+			"set_marker_node_Set(58)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		}
+		
+		subgraph "clusternode_Set(59)" {
+			"style"="rounded,filled";
+			"label"="TnuaUserControlsSystemSet";
+			"tooltip"="TnuaUserControlsSystemSet";
+			"fillcolor"="#ffffff44";
+			"fontcolor"="#ffffff";
+			"color"="#ffffff50";
+			"penwidth"="2";
+			"set_marker_node_Set(59)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		}
+		
+		subgraph "clusternode_Set(60)" {
+			"style"="rounded,filled";
+			"label"="Logic";
+			"tooltip"="Logic";
+			"fillcolor"="#ffffff44";
+			"fontcolor"="#ffffff";
+			"color"="#ffffff50";
+			"penwidth"="2";
+			"set_marker_node_Set(60)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+			"node_System(44)" ["label"="apply_controller_system", "tooltip"="bevy_tnua::controller::apply_controller_system", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		}
+		
+		subgraph "clusternode_Set(61)" {
+			"style"="rounded,filled";
+			"label"="Motors";
+			"tooltip"="Motors";
+			"fillcolor"="#ffffff44";
+			"fontcolor"="#ffffff";
+			"color"="#ffffff50";
+			"penwidth"="2";
+			"set_marker_node_Set(61)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+			"node_System(47)" ["label"="apply_motors_system", "tooltip"="bevy_tnua_avian3d::apply_motors_system", "fillcolor"="#eff1f3", "fontname"="Helvetica", "fontcolor"="#15191d", "color"="#b4bec7", "penwidth"="1"]
+		}
+		
+	}
+	
+	subgraph "clusternode_Set(63)" {
+		"style"="rounded,filled";
+		"label"="Prepare";
+		"tooltip"="Prepare";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(63)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+	}
+	
+	subgraph "clusternode_Set(64)" {
+		"style"="rounded,filled";
+		"label"="BroadPhase";
+		"tooltip"="BroadPhase";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(64)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
 	}
 	
 	"node_System(0)" ["label"="close_when_requested", "tooltip"="bevy_window::system::close_when_requested"]
-	"node_System(1)" ["label"="global_color_changed", "tooltip"="bevy_pbr::wireframe::global_color_changed"]
-	"node_System(2)" ["label"="wireframe_color_changed", "tooltip"="bevy_pbr::wireframe::wireframe_color_changed"]
-	"node_System(3)" ["label"="apply_wireframe_material", "tooltip"="bevy_pbr::wireframe::apply_wireframe_material"]
-	"node_System(4)" ["label"="apply_global_wireframe_material", "tooltip"="bevy_pbr::wireframe::apply_global_wireframe_material"]
-	"node_System(5)" ["label"="world_inspector_ui", "tooltip"="bevy_inspector_egui::quick::world_inspector_ui"]
-	"node_System(6)" ["label"="init_async_colliders", "tooltip"="bevy_xpbd_3d::plugins::collision::collider_backend::init_async_colliders"]
-	"node_System(7)" ["label"="init_async_scene_colliders", "tooltip"="bevy_xpbd_3d::plugins::collision::collider_backend::init_async_scene_colliders"]
-	"node_System(8)" ["label"="camera_movement", "tooltip"="terrain::camera::camera_movement"]
-	"node_System(19)" ["label"="diagnostic_system", "tooltip"="bevy_diagnostic::frame_time_diagnostics_plugin::FrameTimeDiagnosticsPlugin::diagnostic_system"]
-	"node_System(20)" ["label"="update_fps", "tooltip"="terrain::ui::update_fps"]
-	"node_System(21)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred"]
-	"node_System(22)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred"]
-	"node_System(23)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred"]
-	"node_System(3)" -> "node_System(4)" ["lhead"="", "ltail"="", "tooltip"="apply_wireframe_material → apply_global_wireframe_material", "color"="#eede00"]
-	"set_marker_node_Set(9)" -> "set_marker_node_Set(10)" ["lhead"="clusternode_Set(10)", "ltail"="clusternode_Set(9)", "tooltip"="VisibleAreas → TerrainData", "color"="#881877"]
-	"set_marker_node_Set(10)" -> "set_marker_node_Set(11)" ["lhead"="clusternode_Set(11)", "ltail"="clusternode_Set(10)", "tooltip"="TerrainData → GenerateTerrain", "color"="#00b0cc"]
-	"node_System(9)" -> "node_System(10)" ["lhead"="", "ltail"="", "tooltip"="add_terrain_visible_areas → update_terrain_visible_areas", "color"="#aa3a55"]
-	"node_System(10)" -> "node_System(11)" ["lhead"="", "ltail"="", "tooltip"="update_terrain_visible_areas → remove_terrain_visible_areas", "color"="#44d488"]
-	"node_System(12)" -> "node_System(13)" ["lhead"="", "ltail"="", "tooltip"="update_visible_chunks → apply_deferred", "color"="#0090cc"]
-	"node_System(13)" -> "node_System(14)" ["lhead"="", "ltail"="", "tooltip"="apply_deferred → update_visible_chunks_lod", "color"="#ee9e44"]
-	"node_System(15)" -> "node_System(16)" ["lhead"="", "ltail"="", "tooltip"="dual_contour_build_octree → dual_contour_meshing", "color"="#663699"]
-	"node_System(16)" -> "node_System(17)" ["lhead"="", "ltail"="", "tooltip"="dual_contour_meshing → dual_contouring_create_mesh", "color"="#3363bb"]
-	"node_System(17)" -> "node_System(18)" ["lhead"="", "ltail"="", "tooltip"="dual_contouring_create_mesh → dual_contouring_update_lod", "color"="#22c2bb"]
+	"node_System(6)" ["label"="despawn_children_upon_removal<Grid, GridChild>", "tooltip"="bevy_debug_grid::systems::despawn_children_upon_removal<bevy_debug_grid::Grid, bevy_debug_grid::GridChild>"]
+	"node_System(7)" ["label"="despawn_children_upon_removal<Grid, SubGridChild>", "tooltip"="bevy_debug_grid::systems::despawn_children_upon_removal<bevy_debug_grid::Grid, bevy_debug_grid::SubGridChild>"]
+	"node_System(8)" ["label"="despawn_children_upon_removal<Grid, GridAxisChild>", "tooltip"="bevy_debug_grid::systems::despawn_children_upon_removal<bevy_debug_grid::Grid, bevy_debug_grid::GridAxisChild>"]
+	"node_System(9)" ["label"="despawn_children_upon_removal<SubGrid, SubGridChild>", "tooltip"="bevy_debug_grid::systems::despawn_children_upon_removal<bevy_debug_grid::SubGrid, bevy_debug_grid::SubGridChild>"]
+	"node_System(10)" ["label"="despawn_children_upon_removal<GridAxis, GridAxisChild>", "tooltip"="bevy_debug_grid::systems::despawn_children_upon_removal<bevy_debug_grid::GridAxis, bevy_debug_grid::GridAxisChild>"]
+	"node_System(11)" ["label"="wait_load_startup_assets_over", "tooltip"="atom_internal::app_state::wait_load_startup_assets_over"]
+	"node_System(12)" ["label"="diagnostic_system", "tooltip"="bevy_diagnostic::frame_time_diagnostics_plugin::FrameTimeDiagnosticsPlugin::diagnostic_system"]
+	"node_System(13)" ["label"="customize_text", "tooltip"="bevy_dev_tools::fps_overlay::customize_text"]
+	"node_System(14)" ["label"="update_text", "tooltip"="bevy_dev_tools::fps_overlay::update_text"]
+	"node_System(15)" ["label"="update_follow", "tooltip"="atom_utils::follow::update_follow"]
+	"node_System(41)" ["label"="zoom_camera", "tooltip"="atom_camera::setting::zoom_camera"]
+	"node_System(42)" ["label"="init_collider_constructors", "tooltip"="avian3d::collision::collider::backend::init_collider_constructors"]
+	"node_System(43)" ["label"="init_collider_constructor_hierarchies", "tooltip"="avian3d::collision::collider::backend::init_collider_constructor_hierarchies"]
+	"node_System(49)" ["label"="update_player_input", "tooltip"="game::input::setting::update_player_input"]
+	"node_System(50)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred"]
+	"node_System(51)" ["label"="apply_deferred", "tooltip"="bevy_ecs::schedule::executor::apply_deferred"]
+	"set_marker_node_Set(6)" -> "set_marker_node_Set(2)" ["lhead"="clusternode_Set(2)", "ltail"="clusternode_Set(6)", "tooltip"="ConsoleUI → Commands", "color"="#eede00"]
+	"set_marker_node_Set(2)" -> "set_marker_node_Set(8)" ["lhead"="clusternode_Set(8)", "ltail"="clusternode_Set(2)", "tooltip"="Commands → PostCommands", "color"="#881877"]
+	"set_marker_node_Set(20)" -> "set_marker_node_Set(21)" ["lhead"="clusternode_Set(21)", "ltail"="clusternode_Set(20)", "tooltip"="UpdateLodOctree → UpdateChunk", "color"="#00b0cc"]
+	"set_marker_node_Set(21)" -> "set_marker_node_Set(22)" ["lhead"="clusternode_Set(22)", "ltail"="clusternode_Set(21)", "tooltip"="UpdateChunk → GenerateTerrain", "color"="#aa3a55"]
+	"set_marker_node_Set(28)" -> "set_marker_node_Set(29)" ["lhead"="clusternode_Set(29)", "ltail"="clusternode_Set(28)", "tooltip"="UpdateLoader → UpdateChunk", "color"="#44d488"]
+	"node_System(20)" -> "node_System(21)" ["lhead"="", "ltail"="", "tooltip"="update_loader_state → to_load_chunk", "color"="#0090cc"]
+	"node_System(21)" -> "node_System(22)" ["lhead"="", "ltail"="", "tooltip"="to_load_chunk → to_unload_chunk", "color"="#ee9e44"]
+	"node_System(22)" -> "node_System(23)" ["lhead"="", "ltail"="", "tooltip"="to_unload_chunk → to_reload_chunk", "color"="#663699"]
+	"node_System(25)" -> "node_System(26)" ["lhead"="", "ltail"="", "tooltip"="create_terrain_map → generate_heights", "color"="#3363bb"]
+	"node_System(26)" -> "node_System(27)" ["lhead"="", "ltail"="", "tooltip"="generate_heights → determine_terrain_type_by_height", "color"="#22c2bb"]
+	"node_System(27)" -> "node_System(28)" ["lhead"="", "ltail"="", "tooltip"="determine_terrain_type_by_height → amount_of_precipitation", "color"="#99d955"]
+	"node_System(27)" -> "node_System(29)" ["lhead"="", "ltail"="", "tooltip"="determine_terrain_type_by_height → generate_temperature", "color"="#eede00"]
+	"node_System(27)" -> "node_System(30)" ["lhead"="", "ltail"="", "tooltip"="determine_terrain_type_by_height → generate_base_humidity", "color"="#881877"]
+	"node_System(28)" -> "node_System(31)" ["lhead"="", "ltail"="", "tooltip"="amount_of_precipitation → determine_landform", "color"="#00b0cc"]
+	"node_System(29)" -> "node_System(31)" ["lhead"="", "ltail"="", "tooltip"="generate_temperature → determine_landform", "color"="#aa3a55"]
+	"node_System(30)" -> "node_System(31)" ["lhead"="", "ltail"="", "tooltip"="generate_base_humidity → determine_landform", "color"="#44d488"]
+	"node_System(31)" -> "node_System(32)" ["lhead"="", "ltail"="", "tooltip"="determine_landform → generate_map_image", "color"="#0090cc"]
+	"node_System(31)" -> "node_System(33)" ["lhead"="", "ltail"="", "tooltip"="determine_landform → generate_biome_image", "color"="#ee9e44"]
+	"node_System(31)" -> "node_System(34)" ["lhead"="", "ltail"="", "tooltip"="determine_landform → draw_terrain_image", "color"="#663699"]
+	"node_System(31)" -> "node_System(35)" ["lhead"="", "ltail"="", "tooltip"="determine_landform → draw_precipitation_image", "color"="#3363bb"]
+	"node_System(31)" -> "node_System(36)" ["lhead"="", "ltail"="", "tooltip"="determine_landform → draw_base_humidity_image", "color"="#22c2bb"]
+	"node_System(31)" -> "node_System(37)" ["lhead"="", "ltail"="", "tooltip"="determine_landform → draw_total_humidity_image", "color"="#99d955"]
+	"node_System(31)" -> "node_System(38)" ["lhead"="", "ltail"="", "tooltip"="determine_landform → draw_temperature_image", "color"="#eede00"]
+	"node_System(31)" -> "node_System(39)" ["lhead"="", "ltail"="", "tooltip"="determine_landform → draw_delaunay_triangle_image", "color"="#881877"]
+	"node_System(32)" -> "node_System(40)" ["lhead"="", "ltail"="", "tooltip"="generate_map_image → to_generate_height_map", "color"="#00b0cc"]
+	"node_System(33)" -> "node_System(40)" ["lhead"="", "ltail"="", "tooltip"="generate_biome_image → to_generate_height_map", "color"="#aa3a55"]
+	"node_System(34)" -> "node_System(40)" ["lhead"="", "ltail"="", "tooltip"="draw_terrain_image → to_generate_height_map", "color"="#44d488"]
+	"node_System(35)" -> "node_System(40)" ["lhead"="", "ltail"="", "tooltip"="draw_precipitation_image → to_generate_height_map", "color"="#0090cc"]
+	"node_System(36)" -> "node_System(40)" ["lhead"="", "ltail"="", "tooltip"="draw_base_humidity_image → to_generate_height_map", "color"="#ee9e44"]
+	"node_System(37)" -> "node_System(40)" ["lhead"="", "ltail"="", "tooltip"="draw_total_humidity_image → to_generate_height_map", "color"="#663699"]
+	"node_System(38)" -> "node_System(40)" ["lhead"="", "ltail"="", "tooltip"="draw_temperature_image → to_generate_height_map", "color"="#3363bb"]
+	"node_System(39)" -> "node_System(40)" ["lhead"="", "ltail"="", "tooltip"="draw_delaunay_triangle_image → to_generate_height_map", "color"="#22c2bb"]
+	"set_marker_node_Set(56)" -> "set_marker_node_Set(58)" ["lhead"="clusternode_Set(58)", "ltail"="clusternode_Set(56)", "tooltip"="Sensors → SubservientSensors", "color"="#99d955"]
+	"set_marker_node_Set(58)" -> "set_marker_node_Set(59)" ["lhead"="clusternode_Set(59)", "ltail"="clusternode_Set(58)", "tooltip"="SubservientSensors → TnuaUserControlsSystemSet", "color"="#eede00"]
+	"set_marker_node_Set(59)" -> "set_marker_node_Set(60)" ["lhead"="clusternode_Set(60)", "ltail"="clusternode_Set(59)", "tooltip"="TnuaUserControlsSystemSet → Logic", "color"="#881877"]
+	"set_marker_node_Set(60)" -> "set_marker_node_Set(61)" ["lhead"="clusternode_Set(61)", "ltail"="clusternode_Set(60)", "tooltip"="Logic → Motors", "color"="#00b0cc"]
+	"set_marker_node_Set(57)" -> "set_marker_node_Set(63)" ["lhead"="clusternode_Set(63)", "ltail"="clusternode_Set(57)", "tooltip"="TnuaSystemSet → Prepare", "color"="#aa3a55"]
+	"set_marker_node_Set(57)" -> "set_marker_node_Set(64)" ["lhead"="clusternode_Set(64)", "ltail"="clusternode_Set(57)", "tooltip"="TnuaSystemSet → BroadPhase", "color"="#44d488"]
+	"node_System(2)" -> "node_System(1)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="exit_command — clear_command"]
+	"node_System(3)" -> "node_System(1)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="help_command — clear_command"]
+	"node_System(3)" -> "node_System(2)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="help_command — exit_command"]
+	"node_System(14)" -> "node_System(13)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Text</td></tr></table>>, "labeltooltip"="update_text — customize_text"]
+	"node_System(16)" -> "node_System(17)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainLodOctree</td></tr></table>>, "labeltooltip"="update_terrain_lod_octree — terrain_lod_leaf_node_num_command"]
+	"node_System(17)" -> "node_System(1)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="terrain_lod_leaf_node_num_command — clear_command"]
+	"node_System(17)" -> "node_System(2)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="terrain_lod_leaf_node_num_command — exit_command"]
+	"node_System(17)" -> "node_System(3)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="terrain_lod_leaf_node_num_command — help_command"]
+	"node_System(17)" -> "node_System(48)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="terrain_lod_leaf_node_num_command — input_setting_persist_command"]
+	"node_System(18)" -> "node_System(16)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainLodOctree</td></tr></table>>, "labeltooltip"="update_csg_operations_records — update_terrain_lod_octree"]
+	"node_System(19)" -> "node_System(16)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainLodOctree</td></tr></table>>, "labeltooltip"="read_csg_operation_apply_event — update_terrain_lod_octree"]
+	"node_System(19)" -> "node_System(18)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">CSGOperationRecords</td></tr></table>>, "labeltooltip"="read_csg_operation_apply_event — update_csg_operations_records"]
+	"node_System(19)" -> "node_System(20)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainChunkLoader</td></tr></table>>, "labeltooltip"="read_csg_operation_apply_event — update_loader_state"]
+	"node_System(19)" -> "node_System(21)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainChunkLoader</td></tr></table>>, "labeltooltip"="read_csg_operation_apply_event — to_load_chunk"]
+	"node_System(19)" -> "node_System(22)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainChunkLoader</td></tr></table>>, "labeltooltip"="read_csg_operation_apply_event — to_unload_chunk"]
+	"node_System(19)" -> "node_System(23)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainChunkLoader</td></tr></table>>, "labeltooltip"="read_csg_operation_apply_event — to_reload_chunk"]
+	"node_System(20)" -> "node_System(41)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Projection</td></tr></table>>, "labeltooltip"="update_loader_state — zoom_camera"]
+	"node_System(29)" -> "node_System(28)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainMap</td></tr></table>>, "labeltooltip"="generate_temperature — amount_of_precipitation"]
+	"node_System(30)" -> "node_System(28)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainMap</td></tr></table>>, "labeltooltip"="generate_base_humidity — amount_of_precipitation"]
+	"node_System(30)" -> "node_System(29)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainMap</td></tr></table>>, "labeltooltip"="generate_base_humidity — generate_temperature"]
+	"node_System(32)" -> "node_System(33)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TerrainInfoMap</td></tr></table>>, "labeltooltip"="generate_map_image — generate_biome_image"]
+	"node_System(48)" -> "node_System(1)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="input_setting_persist_command — clear_command"]
+	"node_System(48)" -> "node_System(2)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="input_setting_persist_command — exit_command"]
+	"node_System(48)" -> "node_System(3)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">Events&lt;PrintConsoleLine&gt;</td></tr></table>>, "labeltooltip"="input_setting_persist_command — help_command"]
+	"node_System(49)" -> "node_System(44)" ["dir"="none", "constraint"="false", "color"="#c93526", "fontcolor"="#c93526", "label"=<<table border="0" cellborder="0"><tr><td bgcolor="#c6e6ff">TnuaController</td></tr></table>>, "labeltooltip"="update_player_input — apply_controller_system"]
 }

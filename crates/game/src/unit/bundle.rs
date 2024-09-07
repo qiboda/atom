@@ -36,7 +36,7 @@ impl Default for UnitBundle {
             name: Name::new("Unit"),
             collider_locked_axes: LockedAxes::ROTATION_LOCKED,
             tnua_controller: TnuaControllerBundle::default(),
-            tuna_sensor_shape: TnuaAvian3dSensorShape(Collider::cylinder(0.49, 0.0)),
+            tuna_sensor_shape: TnuaAvian3dSensorShape(Collider::capsule(0.5, 2.0)),
         }
     }
 }

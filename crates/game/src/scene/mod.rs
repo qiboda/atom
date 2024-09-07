@@ -7,9 +7,14 @@ use atom_utils::{
         TranslationLockedFreedom,
     },
 };
-use avian3d::{collision::Collider, prelude::RigidBody};
-use bevy::prelude::*;
+use bevy::{
+    core_pipeline::bloom::{BloomCompositeMode, BloomSettings},
+    pbr::{ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings},
+    prelude::*,
+};
+use bevy_atmosphere::plugin::AtmosphereCamera;
 use leafwing_input_manager::InputManagerBundle;
+use terrain::TerrainObserver;
 
 use crate::{
     input::setting::PlayerInputSetting,
@@ -28,27 +33,27 @@ pub fn init_scene(
     mut next_game_state: ResMut<NextState<GameState>>,
 ) {
     commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_translation(Vec3::new(0.0, -100.0, 100.0)),
+        directional_light: DirectionalLight {
+            color: Color::WHITE,
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            shadow_depth_bias: 0.0,
+            shadow_normal_bias: 0.0,
+        },
+        transform: Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 
-    let plane = Plane3d {
-        normal: Dir3::Y,
-        half_size: Vec2::splat(100.0),
-    };
-    let mesh = meshes.add(plane);
-
-    commands
-        .spawn(MaterialMeshBundle {
-            mesh,
-            material: materials.add(StandardMaterial::from_color(LinearRgba::gray(0.3))),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-            ..Default::default()
-        })
-        .insert((
-            RigidBody::Static,
-            Collider::trimesh_from_mesh(&plane.into()).unwrap(),
-        ));
+    commands.insert_resource(AmbientLight {
+        color: LinearRgba {
+            red: 1.0,
+            green: 1.0,
+            blue: 1.0,
+            alpha: 1.0,
+        }
+        .into(),
+        brightness: 1000.0,
+    });
 
     let player_entity = commands
         .spawn((
@@ -69,21 +74,35 @@ pub fn init_scene(
         ))
         .id();
 
+    // commands.spawn(Camera2dBundle::default());
+
     let camera_entity = commands
-        .spawn(Camera3dBundle {
-            transform: Transform::from_translation(Vec3::new(10.0, 10.0, 10.0))
-                .looking_at(Vec3::ZERO, Dir3::Y),
-            ..Default::default()
-        })
+        .spawn((
+            Camera3dBundle {
+                transform: Transform::from_translation(Vec3::new(0.0, -100.0, 0.0))
+                    .looking_at(Vec3::ZERO, Dir3::Y),
+                ..Default::default()
+            },
+            ScreenSpaceAmbientOcclusionSettings {
+                quality_level: ScreenSpaceAmbientOcclusionQualityLevel::High,
+            },
+            BloomSettings {
+                intensity: 0.0,
+                composite_mode: BloomCompositeMode::Additive,
+                ..Default::default()
+            },
+            AtmosphereCamera::default(),
+            TerrainObserver,
+        ))
         .insert((
             RelativeTransform(
-                Transform::from_translation(Vec3::new(10.0, 10.0, 10.0))
+                Transform::from_translation(Vec3::new(0.0, 10.0, -10.0))
                     .looking_at(Vec3::ZERO, Dir3::Y),
             ),
             RelativeTransformFreedom(TransformFreedom::Lock(TransformLockedFreedom {
                 locked_translation: Some(TranslationLockedFreedom {
                     locked_x: false,
-                    locked_y: true,
+                    locked_y: false,
                     locked_z: false,
                 }),
                 locked_rotation: Some(RotationLockedFreedom {

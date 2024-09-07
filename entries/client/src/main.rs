@@ -1,4 +1,5 @@
 use bevy::app::App;
+use dotenv::dotenv;
 use game::GamePlugin;
 
 #[cfg(feature = "debug_dump")]
@@ -71,6 +72,8 @@ fn debug_dump(app: &mut App) {
 }
 
 fn main() {
+    dotenv().ok();
+
     let mut app = App::new();
     app.add_plugins(GamePlugin);
 

@@ -67,7 +67,7 @@ bevy_asset_loader = { workspace = true }
 clap = { version = "4.5" }
 bevy_water = { version = "0.14" }
 
-encase = { version = "0.8" }
+encase = { version = "0.8.0" }
 
 paste = { workspace = true }
 
