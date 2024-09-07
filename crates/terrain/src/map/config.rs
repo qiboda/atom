@@ -54,6 +54,6 @@ pub fn extract_terrain_map_config(
     terrain_map_gpu_config.temperature_max = terrain_map_config.temperature_range.end as f32;
 
     let pixel_num = terrain_map_config.grid_num as u32 * terrain_map_config.grid_cell_size as u32;
-    terrain_map_gpu_config.terrain_height = terrain_setting.get_terrain_max_height();
+    terrain_map_gpu_config.terrain_height = 256.0; // terrain_setting.get_terrain_max_height();
     terrain_map_gpu_config.pixel_size = terrain_setting.get_terrain_size() / pixel_num as f32;
 }

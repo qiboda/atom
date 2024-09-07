@@ -1,6 +1,9 @@
 pub mod node;
 
-use std::sync::{Arc, RwLock};
+use std::{
+    ops::Not,
+    sync::{Arc, RwLock},
+};
 
 use bevy::{
     math::{bounding::Aabb3d, Vec3A},
@@ -11,7 +14,7 @@ use ndshape::Shape;
 
 use crate::{
     chunk_mgr::chunk::comp::TerrainChunkBorderVertices,
-    lod::morton_code::MortonCode,
+    lod::{morton_code::MortonCode, morton_code_neighbor::MortonCodeNeighbor},
     tables::{SubNodeIndex, VertexIndex},
     utils::OctreeUtil,
 };
@@ -218,6 +221,30 @@ impl Octree {
         }
 
         debug!("leaf octree.node_addresses len: {}", address_node_map.len());
+    }
+
+    pub fn build_children_nodes_by_clone(octree: &mut Octree) {
+        let max_depth = (octree.levels.len() as u8 - 1) as usize;
+
+        for depth in 0..max_depth {
+            let level = &octree.levels[depth];
+            let mut children = HashMap::new();
+            for (code, node) in level.address_node_map.iter() {
+                for (subnode_index, child_code) in code.children().unwrap().iter().enumerate() {
+                    let mut child_node = node.clone();
+                    child_node.address = *child_code;
+                    child_node.aabb = OctreeUtil::get_subnode_aabb(node.aabb, subnode_index as u8);
+                    children.insert(*child_code, child_node);
+                }
+            }
+
+            assert!(children.keys().all(|x| octree.levels[depth + 1]
+                .address_node_map
+                .contains_key(x)
+                .not()));
+
+            octree.levels[depth + 1].address_node_map.extend(children);
+        }
     }
 
     #[instrument(skip(octree))]

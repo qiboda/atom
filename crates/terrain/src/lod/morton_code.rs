@@ -92,22 +92,22 @@ impl MortonCode {
         let grid = self.decode();
         let grid = grid << 1;
         let grid_000: UVec3 = grid + UVec3::new(0, 0, 0);
-        let grid_001: UVec3 = grid + UVec3::new(0, 0, 1);
-        let grid_010: UVec3 = grid + UVec3::new(0, 1, 0);
-        let grid_011: UVec3 = grid + UVec3::new(0, 1, 1);
         let grid_100: UVec3 = grid + UVec3::new(1, 0, 0);
-        let grid_101: UVec3 = grid + UVec3::new(1, 0, 1);
+        let grid_010: UVec3 = grid + UVec3::new(0, 1, 0);
         let grid_110: UVec3 = grid + UVec3::new(1, 1, 0);
+        let grid_001: UVec3 = grid + UVec3::new(0, 0, 1);
+        let grid_101: UVec3 = grid + UVec3::new(1, 0, 1);
+        let grid_011: UVec3 = grid + UVec3::new(0, 1, 1);
         let grid_111: UVec3 = grid + UVec3::new(1, 1, 1);
 
         Some([
             MortonCode::encode(grid_000, self.depth() + 1),
-            MortonCode::encode(grid_001, self.depth() + 1),
-            MortonCode::encode(grid_010, self.depth() + 1),
-            MortonCode::encode(grid_011, self.depth() + 1),
             MortonCode::encode(grid_100, self.depth() + 1),
-            MortonCode::encode(grid_101, self.depth() + 1),
+            MortonCode::encode(grid_010, self.depth() + 1),
             MortonCode::encode(grid_110, self.depth() + 1),
+            MortonCode::encode(grid_001, self.depth() + 1),
+            MortonCode::encode(grid_101, self.depth() + 1),
+            MortonCode::encode(grid_011, self.depth() + 1),
             MortonCode::encode(grid_111, self.depth() + 1),
         ])
     }
