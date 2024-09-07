@@ -106,6 +106,7 @@ pub fn main() {
         Update,
         (
             update_terrain_observer,
+            update_sprite_texture,
             change_camera_speed,
             pointer_click_terrain,
         ),
@@ -203,6 +204,16 @@ fn startup(
                     ..default()
                 });
             });
+    }
+}
+
+pub fn update_sprite_texture(
+    terrain_height_map_image: ResMut<TerrainMapTextures>,
+    mut sprite: Query<&mut Handle<Image>, With<Sprite>>,
+) {
+    if terrain_height_map_image.is_changed() {
+        let mut sprite_texture = sprite.get_single_mut().unwrap();
+        *sprite_texture = terrain_height_map_image.height_texture.clone();
     }
 }
 

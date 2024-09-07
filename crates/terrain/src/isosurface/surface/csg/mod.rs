@@ -1,10 +1,10 @@
+pub mod arc_noise;
+pub mod aworley;
 pub mod csg_noise;
 pub mod csg_operators;
 pub mod csg_shapes;
 pub mod falloff_map;
 pub mod noise_cache;
-pub mod aworley;
-pub mod arc_noise;
 
 use std::fmt::Debug;
 

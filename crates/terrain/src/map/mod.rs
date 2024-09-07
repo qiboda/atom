@@ -21,12 +21,14 @@ use bevy::{
     tasks::{AsyncComputeTaskPool, ParallelSliceMut},
     utils::hashbrown::HashSet,
 };
-use config::{extract_terrain_map_config, TerrainMapGpuConfig};
+use config::{
+    extract_terrain_map_config, TerrainMapContext, TerrainMapGpuConfig, TerrainMapSetting,
+};
 use image::{ImageBuffer, Luma};
 use imageproc::drawing::{draw_line_segment_mut, draw_polygon_mut};
 use map_diagram::{shared_edge, MapPoint, TerrainMap};
-use project::project_saved_root_path;
 use rand::Rng;
+use settings::SettingPlugin;
 use topography::{
     MapFlatTerrainType, MapHillsLandform, MapMountainLandform, MapPlainLandform, MapTerrainType,
 };
@@ -61,60 +63,41 @@ pub struct TerrainMapPlugin;
 
 impl Plugin for TerrainMapPlugin {
     fn build(&self, app: &mut App) {
-        // image size is GRID_NUM * GRID_CELL_SIZE
-        const GRID_NUM: usize = 256;
-        const GRID_CELL_SIZE: f64 = 32.0;
-
-        let rng = rand_pcg::Pcg32::new(10020349, 102934719850918234);
-
-        let saved_root_path = project_saved_root_path();
-
-        app.insert_resource(config::TerrainMapConfig {
-            grid_num: GRID_NUM,
-            grid_cell_size: GRID_CELL_SIZE,
-            rng,
-            rand_point_num: 12,
-            rand_point_range: (GRID_NUM as f32 * 0.2) as usize..(GRID_NUM as f32 * 0.8) as usize,
-            rand_point_radius: 5..10,
-            rand_point_height: 0.5..1.0,
-            temperature_range: -40.0..40.0,
-            temperature_horizontal_range: -20.0..60.0,
-            temperature_altitude_range: -20.0..0.0,
-            max_base_humidity: 0.3,
-            image_save_path: saved_root_path.join("maps"),
-        })
-        .insert_resource(TerrainInfoMap::default())
-        .add_plugins(ExtractResourcePlugin::<TerrainInfoMap>::default())
-        .add_systems(
-            Update,
-            (
-                create_terrain_map,
-                generate_heights,
-                determine_terrain_type_by_height,
+        app.add_plugins(SettingPlugin::<TerrainMapSetting>::default())
+            .insert_resource(TerrainMapContext::new(1234))
+            .insert_resource(TerrainInfoMap::default())
+            .add_plugins(ExtractResourcePlugin::<TerrainInfoMap>::default())
+            .add_plugins(ExtractResourcePlugin::<TerrainMapSetting>::default())
+            .add_systems(
+                Update,
                 (
-                    amount_of_precipitation,
-                    generate_temperature,
-                    generate_base_humidity,
-                ),
-                determine_landform,
-                (
-                    generate_map_image,
-                    generate_biome_image,
-                    draw_terrain_image,
-                    draw_precipitation_image,
-                    draw_base_humidity_image,
-                    draw_total_humidity_image,
-                    draw_temperature_image,
-                    draw_delaunay_triangle_image,
-                ),
-                to_generate_height_map,
-            )
-                .chain()
-                .run_if(
-                    in_state(AppState::AppRunning)
-                        .and_then(in_state(TerrainState::GenerateTerrainInfoMap)),
-                ),
-        );
+                    create_terrain_map,
+                    generate_heights,
+                    determine_terrain_type_by_height,
+                    (
+                        amount_of_precipitation,
+                        generate_temperature,
+                        generate_base_humidity,
+                    ),
+                    determine_landform,
+                    (
+                        generate_map_image,
+                        generate_biome_image,
+                        draw_terrain_image,
+                        draw_precipitation_image,
+                        draw_base_humidity_image,
+                        draw_total_humidity_image,
+                        draw_temperature_image,
+                        draw_delaunay_triangle_image,
+                    ),
+                    to_generate_height_map,
+                )
+                    .chain()
+                    .run_if(
+                        in_state(AppState::AppRunning)
+                            .and_then(in_state(TerrainState::GenerateTerrainInfoMap)),
+                    ),
+            );
     }
 
     fn finish(&self, app: &mut App) {
@@ -130,7 +113,8 @@ impl Plugin for TerrainMapPlugin {
 
 pub fn create_terrain_map(
     mut commands: Commands,
-    mut map_config: ResMut<config::TerrainMapConfig>,
+    map_config: Res<config::TerrainMapSetting>,
+    mut map_context: ResMut<config::TerrainMapContext>,
 ) {
     let grid_num = map_config.grid_num;
     let grid_cell_size = map_config.grid_cell_size;
@@ -142,8 +126,8 @@ pub fn create_terrain_map(
 
         for i in 0..grid_num {
             for j in 0..grid_num {
-                let jitter_x = map_config.rng.gen_range(0.2..0.8) * grid_cell_size;
-                let jitter_y = map_config.rng.gen_range(0.2..0.8) * grid_cell_size;
+                let jitter_x = map_context.rng.gen_range(0.2..0.8) * grid_cell_size;
+                let jitter_y = map_context.rng.gen_range(0.2..0.8) * grid_cell_size;
                 let p = MapPoint::from_xy(
                     i as f64 * grid_cell_size + jitter_x,
                     j as f64 * grid_cell_size + jitter_y,
@@ -163,15 +147,22 @@ pub fn create_terrain_map(
 
 pub fn generate_heights(
     mut map: ResMut<TerrainMap>,
-    mut map_config: ResMut<config::TerrainMapConfig>,
+    map_config: Res<config::TerrainMapSetting>,
+    mut map_context: ResMut<config::TerrainMapContext>,
 ) {
     let mut parent_sites = vec![];
     let mut height_declines = vec![];
     for i in 0..map_config.rand_point_num {
         loop {
-            let rng_range = map_config.rand_point_range.clone();
-            let x = map_config.rng.gen_range(rng_range.clone());
-            let y = map_config.rng.gen_range(rng_range);
+            let rng_range = map_config.rand_point_range_percent.clone();
+            let x = map_context.rng.gen_range(
+                rng_range.start * map_config.grid_num as f32
+                    ..rng_range.end * map_config.grid_num as f32,
+            ) as usize;
+            let y = map_context.rng.gen_range(
+                rng_range.start * map_config.grid_num as f32
+                    ..rng_range.end * map_config.grid_num as f32,
+            ) as usize;
             // TODO 统一列主序还是行主序
             let index = x * map_config.grid_num + y;
 
@@ -180,7 +171,7 @@ pub fn generate_heights(
             }
 
             let height_rng_range = map_config.rand_point_height.clone();
-            let h = map_config.rng.gen_range(height_rng_range);
+            let h = map_context.rng.gen_range(height_rng_range);
             map.sites_info[index].height = h;
             map.sites_info[index].area_id = i;
 
@@ -188,7 +179,7 @@ pub fn generate_heights(
             parent_sites.push(index);
 
             let radius_rng_range = map_config.rand_point_radius.clone();
-            let r = map_config.rng.gen_range(radius_rng_range);
+            let r = map_context.rng.gen_range(radius_rng_range);
             height_declines.push(1.0 / r as f64);
 
             break;
@@ -212,7 +203,7 @@ pub fn generate_heights(
 
             let height_decline = height_declines[parent_site_info.area_id];
 
-            let height_adjust = map_config.rng.gen_range(
+            let height_adjust = map_context.rng.gen_range(
                 (-0.1 + 0.006 * count as f64).min(-0.02)..(0.1 - 0.006 * count as f64).max(0.01),
             );
             for neighbor_index in map.diagram.neighbors[*parent_index].clone() {
@@ -607,7 +598,7 @@ pub fn determine_terrain_type_by_height(mut map: ResMut<TerrainMap>) {
 
 pub fn generate_temperature(
     mut map: ResMut<TerrainMap>,
-    map_config: Res<config::TerrainMapConfig>,
+    map_config: Res<config::TerrainMapSetting>,
 ) {
     let temperature_range = map_config.temperature_range.clone();
     let temperature_altitude_range = map_config.temperature_altitude_range.clone();
@@ -674,7 +665,7 @@ fn select_neighbor_on_dir(
 
 pub fn generate_base_humidity(
     mut map: ResMut<TerrainMap>,
-    map_config: Res<config::TerrainMapConfig>,
+    map_config: Res<config::TerrainMapSetting>,
 ) {
     let base_humidity = map_config.max_base_humidity;
 
@@ -715,7 +706,8 @@ pub fn generate_base_humidity(
 
 pub fn amount_of_precipitation(
     mut map: ResMut<TerrainMap>,
-    mut map_config: ResMut<config::TerrainMapConfig>,
+    map_setting: Res<config::TerrainMapSetting>,
+    mut map_context: ResMut<config::TerrainMapContext>,
 ) {
     let beach = map
         .terrain_types
@@ -723,12 +715,12 @@ pub fn amount_of_precipitation(
         .unwrap()
         .clone();
 
-    let degree = map_config.rng.gen_range(0.0..360.0);
+    let degree = map_context.rng.gen_range(0.0..360.0);
     let wind_dir = Rot2::degrees(degree);
     let wind_dir = wind_dir.normalize();
     let dir = DVec2::new(wind_dir.cos as f64, wind_dir.sin as f64);
 
-    let default_precipitation = 1.0 - map_config.max_base_humidity;
+    let default_precipitation = 1.0 - map_setting.max_base_humidity;
 
     let mut clouds = SwapData::<Vec<usize>>::default();
     clouds.extend(beach.clone());
@@ -780,26 +772,26 @@ pub fn amount_of_precipitation(
 
 pub fn generate_map_image(
     map: Res<TerrainMap>,
-    map_config: Res<config::TerrainMapConfig>,
+    map_setting: Res<config::TerrainMapSetting>,
     mut map_images: ResMut<TerrainInfoMap>,
     mut images: ResMut<Assets<Image>>,
 ) {
     let mut terrain_map_image = image::Rgb32FImage::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     );
 
     let mut terrain_height_image = Some(ImageBuffer::<Luma<u16>, Vec<u16>>::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     ));
     let mut terrain_humidity_image = Some(ImageBuffer::<Luma<u16>, Vec<u16>>::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     ));
     let mut terrain_temperature_image = Some(ImageBuffer::<Luma<u16>, Vec<u16>>::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     ));
 
     for triangle_indices in map.diagram.delaunay.triangles.chunks_exact(3) {
@@ -868,8 +860,8 @@ pub fn generate_map_image(
                 image::Luma([(humidity * 65535.0) as u16]),
             );
 
-            let temperature_percent = (temperature as f64 - map_config.temperature_range.start)
-                / (map_config.temperature_range.end - map_config.temperature_range.start);
+            let temperature_percent = (temperature as f64 - map_setting.temperature_range.start)
+                / (map_setting.temperature_range.end - map_setting.temperature_range.start);
 
             terrain_temperature_image.as_mut().unwrap().put_pixel(
                 point.x,
@@ -888,18 +880,18 @@ pub fn generate_map_image(
     map_images.height_climate_map = images.add(image);
 
     if let Some(x) = terrain_height_image.as_ref() {
-        x.save(map_config.image_save_path.join("terrain map height.png"))
+        x.save(map_setting.image_save_path.join("terrain map height.png"))
             .unwrap();
     }
 
     if let Some(x) = terrain_humidity_image.as_ref() {
-        x.save(map_config.image_save_path.join("terrain map humidity.png"))
+        x.save(map_setting.image_save_path.join("terrain map humidity.png"))
             .unwrap();
     }
 
     if let Some(x) = terrain_temperature_image.as_ref() {
         x.save(
-            map_config
+            map_setting
                 .image_save_path
                 .join("terrain map temperature.png"),
         )
@@ -911,13 +903,13 @@ pub fn generate_map_image(
 
 pub fn generate_biome_image(
     map: Res<TerrainMap>,
-    map_config: Res<config::TerrainMapConfig>,
+    map_setting: Res<config::TerrainMapSetting>,
     mut map_images: ResMut<TerrainInfoMap>,
     mut images: ResMut<Assets<Image>>,
 ) {
     info!("generate map start");
-    let width = map_config.grid_num as u32 * map_config.grid_cell_size as u32;
-    let height = map_config.grid_num as u32 * map_config.grid_cell_size as u32;
+    let width = map_setting.grid_num as u32 * map_setting.grid_cell_size as u32;
+    let height = map_setting.grid_num as u32 * map_setting.grid_cell_size as u32;
 
     let biome_num = MapFlatTerrainType::MAX;
     let image_num = (biome_num + 3) / 4;
@@ -973,7 +965,7 @@ pub fn generate_biome_image(
     // info!("generate map value normalize");
 
     rgba_image
-        .save(map_config.image_save_path.join("biome_array.png"))
+        .save(map_setting.image_save_path.join("biome_array.png"))
         .unwrap();
 
     // get rgba 8 unsigned norm format line interpolation
@@ -1003,10 +995,10 @@ pub fn generate_biome_image(
     info!("generate map end");
 }
 
-pub fn draw_terrain_image(map: Res<TerrainMap>, map_config: Res<config::TerrainMapConfig>) {
+pub fn draw_terrain_image(map: Res<TerrainMap>, map_setting: Res<config::TerrainMapSetting>) {
     let mut image = image::ImageBuffer::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     );
 
     for (i, cell) in map.diagram.cells.iter().enumerate() {
@@ -1048,7 +1040,7 @@ pub fn draw_terrain_image(map: Res<TerrainMap>, map_config: Res<config::TerrainM
     for color in colors {
         let color = image::Rgba(color);
 
-        let index = x * map_config.grid_num + y;
+        let index = x * map_setting.grid_num + y;
         let cell = &map.diagram.cells[index];
         let points = cell
             .points()
@@ -1060,14 +1052,14 @@ pub fn draw_terrain_image(map: Res<TerrainMap>, map_config: Res<config::TerrainM
     }
 
     image
-        .save(map_config.image_save_path.join("terrain_type.png"))
+        .save(map_setting.image_save_path.join("terrain_type.png"))
         .unwrap();
 }
 
-pub fn draw_base_humidity_image(map: Res<TerrainMap>, map_config: Res<config::TerrainMapConfig>) {
+pub fn draw_base_humidity_image(map: Res<TerrainMap>, map_setting: Res<config::TerrainMapSetting>) {
     let mut image = image::ImageBuffer::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     );
 
     for (i, cell) in map.diagram.cells.iter().enumerate() {
@@ -1090,14 +1082,17 @@ pub fn draw_base_humidity_image(map: Res<TerrainMap>, map_config: Res<config::Te
     }
 
     image
-        .save(map_config.image_save_path.join("base_humidity.png"))
+        .save(map_setting.image_save_path.join("base_humidity.png"))
         .unwrap();
 }
 
-pub fn draw_total_humidity_image(map: Res<TerrainMap>, map_config: Res<config::TerrainMapConfig>) {
+pub fn draw_total_humidity_image(
+    map: Res<TerrainMap>,
+    map_setting: Res<config::TerrainMapSetting>,
+) {
     let mut image = image::ImageBuffer::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     );
 
     for (i, cell) in map.diagram.cells.iter().enumerate() {
@@ -1120,14 +1115,14 @@ pub fn draw_total_humidity_image(map: Res<TerrainMap>, map_config: Res<config::T
     }
 
     image
-        .save(map_config.image_save_path.join("total_humidity.png"))
+        .save(map_setting.image_save_path.join("total_humidity.png"))
         .unwrap();
 }
 
-pub fn draw_precipitation_image(map: Res<TerrainMap>, map_config: Res<config::TerrainMapConfig>) {
+pub fn draw_precipitation_image(map: Res<TerrainMap>, map_setting: Res<config::TerrainMapSetting>) {
     let mut image = image::ImageBuffer::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     );
 
     for (i, cell) in map.diagram.cells.iter().enumerate() {
@@ -1152,14 +1147,14 @@ pub fn draw_precipitation_image(map: Res<TerrainMap>, map_config: Res<config::Te
     }
 
     image
-        .save(map_config.image_save_path.join("precipitation.png"))
+        .save(map_setting.image_save_path.join("precipitation.png"))
         .unwrap();
 }
 
-pub fn draw_temperature_image(map: Res<TerrainMap>, map_config: Res<config::TerrainMapConfig>) {
+pub fn draw_temperature_image(map: Res<TerrainMap>, map_setting: Res<config::TerrainMapSetting>) {
     let mut image = image::ImageBuffer::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     );
 
     for (i, cell) in map.diagram.cells.iter().enumerate() {
@@ -1190,14 +1185,14 @@ pub fn draw_temperature_image(map: Res<TerrainMap>, map_config: Res<config::Terr
     }
 
     image
-        .save(map_config.image_save_path.join("temperature.png"))
+        .save(map_setting.image_save_path.join("temperature.png"))
         .unwrap();
 }
 
-fn draw_delaunay_triangle_image(map: Res<TerrainMap>, map_config: Res<config::TerrainMapConfig>) {
+fn draw_delaunay_triangle_image(map: Res<TerrainMap>, map_setting: Res<config::TerrainMapSetting>) {
     let mut image: ImageBuffer<image::Rgba<u8>, Vec<u8>> = image::ImageBuffer::new(
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
-        map_config.grid_num as u32 * map_config.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
+        map_setting.grid_num as u32 * map_setting.grid_cell_size as u32,
     );
 
     for triangle_indices in map.diagram.delaunay.triangles.chunks_exact(3) {
@@ -1226,7 +1221,7 @@ fn draw_delaunay_triangle_image(map: Res<TerrainMap>, map_config: Res<config::Te
     }
 
     image
-        .save(map_config.image_save_path.join("delaunay.png"))
+        .save(map_setting.image_save_path.join("delaunay.png"))
         .unwrap();
 }
 

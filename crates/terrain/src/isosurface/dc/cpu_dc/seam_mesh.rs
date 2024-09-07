@@ -23,7 +23,7 @@ use crate::{
         },
     },
     lod::morton_code::MortonCode,
-    setting::TerrainSetting,
+    setting::{StitchSeamScheme, TerrainSetting},
     tables::SubNodeIndex,
 };
 
@@ -137,46 +137,59 @@ pub(crate) fn create_seam_mesh(
             }
         }
 
-        debug!(
-            "chunk_min: {}, voxel num: {}, seam_leaf_nodes size: {} before octree build",
-            seam_chunk_min, seam_voxel_num, octree.get_nodes_num()
-        );
+        let mesh = match terrain_setting.stitch_seam_scheme {
+            StitchSeamScheme::DualContouring => {
+                debug!(
+                    "chunk_min: {}, voxel num: {}, seam_leaf_nodes size: {} before octree build",
+                    seam_chunk_min, seam_voxel_num, octree.get_nodes_num()
+                );
 
-        // Octree::build_bottom_up_from_leaf_nodes(&mut octree, seam_voxel_size);
-        Octree::build_children_nodes_by_clone(&mut octree);
-        debug!(
-            "chunk_min: {}, voxel num: {}, seam_leaf_nodes size: {} after octree build",
-            seam_chunk_min, seam_voxel_num, octree.get_nodes_num()
-        );
+                Octree::build_bottom_up_from_leaf_nodes(&mut octree, seam_voxel_size);
+                check_octree_nodes_relation!(&octree);
+                debug!(
+                    "chunk_min: {}, voxel num: {}, seam_leaf_nodes size: {} after octree build",
+                    seam_chunk_min, seam_voxel_num, octree.get_nodes_num()
+                );
 
-        // check_octree_nodes_relation!(&octree);
+                let mut default_visiter = DefaultDualContouringVisiter::default();
+                let octree = OctreeProxy {
+                    octree: &octree,
+                    is_seam: true,
+                    chunk_min: seam_chunk_min,
+                };
+                dual_contouring::dual_contouring(&octree, &mut default_visiter);
 
-        // let mut default_visiter = DefaultDualContouringVisiter::default();
-        // let octree = OctreeProxy {
-        //     octree: &octree,
-        //     is_seam: true,
-        //     chunk_min: seam_chunk_min,
-        // };
-        // dual_contouring::dual_contouring(&octree, &mut default_visiter);
+                debug!(
+                    "chunk_min: {}, seam mesh positions: {}, positions: {:?}",
+                    seam_chunk_min,
+                    default_visiter.positions.len(),
+                    default_visiter.positions
+                );
+                debug!(
+                    "chunk_min: {}, seam mesh indices: {}, indices: {:?}",
+                    seam_chunk_min,
+                    default_visiter.indices.len(),
+                    default_visiter.indices
+                );
 
-        // debug!(
-        //     "chunk_min: {}, seam mesh positions: {}, positions: {:?}",
-        //     seam_chunk_min,
-        //     default_visiter.positions.len(),
-        //     default_visiter.positions
-        // );
-        // debug!(
-        //     "chunk_min: {}, seam mesh indices: {}, indices: {:?}",
-        //     seam_chunk_min,
-        //     default_visiter.indices.len(),
-        //     default_visiter.indices
-        // );
+                default_visiter.to_render_mesh()
+            }
+            StitchSeamScheme::NeighborConnect => {
+                debug!(
+                    "chunk_min: {}, voxel num: {}, seam_leaf_nodes size: {} before octree build",
+                    seam_chunk_min, seam_voxel_num, octree.get_nodes_num()
+                );
+                Octree::build_children_nodes_by_clone(&mut octree);
+                debug!(
+                    "chunk_min: {}, voxel num: {}, seam_leaf_nodes size: {} after octree build",
+                    seam_chunk_min, seam_voxel_num, octree.get_nodes_num()
+                );
+                let seam_data = seam_connect(&mut octree);
+                debug!("seam mesh position len: {} indices len: {}", seam_data.positions.len(), seam_data.indices.len());
+                seam_data.to_render_mesh()
+            }
+        };
 
-        // let mesh = default_visiter.to_render_mesh();
-
-        let seam_data = seam_connect(&mut octree);
-        info!("seam mesh position len: {} indices len: {}", seam_data.positions.len(), seam_data.indices.len());
-        let mesh = seam_data.to_render_mesh();
         if mesh.indices().unwrap().is_empty() {
             return;
         }

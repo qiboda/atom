@@ -1,9 +1,7 @@
-struct TerrainMapHeightInfo {
-    terrain_size: f32,
-}
+#import terrain::map::map_type::TerrainMapInfo
 
 @group(0) @binding(0)
-var<uniform> terrain_map_info: TerrainMapHeightInfo;
+var<uniform> terrain_map_info: TerrainMapInfo;
 
 @group(0) @binding(1) 
 var biome_blend_array_texture: texture_2d_array<f32>;
@@ -13,13 +11,14 @@ var output_biome_blend_array_texture: texture_storage_2d_array<rgba8unorm, write
 // 8K texture : 8192 x 8192 
 // 8192 / 16 = 512, but max workgroup size is 256, so compute 4 pixel(2x2) on each workgroup
 @compute @workgroup_size(16, 16, 1)
-fn compute_terrain_height(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
+fn compute_terrain_map_biome(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
     let compressed_biome_blend_num = textureNumLayers(biome_blend_array_texture);
 
-    box_filter(vec2u(invocation_id.x * 2, invocation_id.y * 2), compressed_biome_blend_num);
-    box_filter(vec2u(invocation_id.x * 2 + 1, invocation_id.y * 2), compressed_biome_blend_num);
-    box_filter(vec2u(invocation_id.x * 2, invocation_id.y * 2 + 1), compressed_biome_blend_num);
-    box_filter(vec2u(invocation_id.x * 2 + 1, invocation_id.y * 2 + 1), compressed_biome_blend_num);
+    for (var i = 0u; i < terrain_map_info.pixel_num_per_kernel; i++) {
+        let x = i % 2u;
+        let y = i / 2u;
+        box_filter(vec2u(invocation_id.x * terrain_map_info.stride + x, invocation_id.y * terrain_map_info.stride + y), compressed_biome_blend_num);
+    }
 }
 
 fn box_filter(target_pixel_pos: vec2u, compressed_biome_blend_num: u32) {

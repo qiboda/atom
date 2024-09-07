@@ -14,7 +14,7 @@ use ndshape::Shape;
 
 use crate::{
     chunk_mgr::chunk::comp::TerrainChunkBorderVertices,
-    lod::{morton_code::MortonCode, morton_code_neighbor::MortonCodeNeighbor},
+    lod::morton_code::MortonCode,
     tables::{SubNodeIndex, VertexIndex},
     utils::OctreeUtil,
 };

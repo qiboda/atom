@@ -8,10 +8,10 @@ pub struct TerrainLodGizmosPlugin;
 impl Plugin for TerrainLodGizmosPlugin {
     fn build(&self, app: &mut App) {
         app.init_gizmo_group::<WorldCoordinateGizmos>()
-            .init_gizmo_group::<VoxelGizmos>()
-            .add_systems(Update, update_config)
-            .add_systems(Update, draw_world_coordinate_axes)
-            .add_systems(Update, draw_lod_octree_voxel);
+            .init_gizmo_group::<VoxelGizmos>();
+        // .add_systems(Update, update_config)
+        // .add_systems(Update, draw_world_coordinate_axes)
+        // .add_systems(Update, draw_lod_octree_voxel);
     }
 }
 
@@ -84,6 +84,7 @@ fn draw_lod_octree_voxel(
     }
 }
 
+#[allow(dead_code)]
 fn update_config(mut config_store: ResMut<GizmoConfigStore>) {
     for (_, config, _) in config_store.iter_mut() {
         config.depth_bias = 0.0;

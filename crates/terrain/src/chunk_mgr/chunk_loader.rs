@@ -143,8 +143,8 @@ fn update_leaf_node_data(
     terrain_setting: &Res<TerrainSetting>,
 ) {
     let mut is_in_height = false;
-    if leaf_node_key.aabb.max().y >= *terrain_setting.terrain_height_range.start()
-        && leaf_node_key.aabb.min().y <= *terrain_setting.terrain_height_range.end()
+    if leaf_node_key.aabb.max().y >= *terrain_setting.height_visibility_range.start()
+        && leaf_node_key.aabb.min().y <= *terrain_setting.height_visibility_range.end()
     {
         is_in_height = true;
     }
@@ -175,7 +175,7 @@ fn update_leaf_node_data(
         let translation = global_transform.translation();
         let observer_aabb = Aabb3d::new(
             translation,
-            Vec3::splat(terrain_setting.base_visibility_range),
+            Vec3::splat(terrain_setting.horizontal_visibility_range),
         );
         let aabb = Aabb3d::new(leaf_node_key.aabb.center, leaf_node_key.aabb.half_extents);
         if observer_aabb.intersects(&aabb) {

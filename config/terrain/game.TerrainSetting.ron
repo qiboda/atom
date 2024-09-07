@@ -6,9 +6,11 @@
     qef_stddev: 0.1,
     lod_octree_depth: 9,
     camera_far_limit: true,
-    base_visibility_range: 256.0,
-    terrain_height_range: (
+    horizontal_visibility_range: 256.0,
+    height_visibility_range: (
         start: -128.0,
         end: 256.0,
     ),
+    terrain_max_height: 256.0,
+    stitch_seam_scheme: NeighborConnect,
 )

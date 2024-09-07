@@ -34,7 +34,8 @@ pub struct TerrainSubsystemPlugin;
 
 impl Plugin for TerrainSubsystemPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SettingPlugin::<TerrainSetting>::default())
+        app
+        .add_plugins(SettingPlugin::<TerrainSetting>::default())
             .configure_sets(
                 Update,
                 (

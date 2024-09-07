@@ -41,7 +41,6 @@ use crate::{
         compute_height::TerrainMapTextures,
         config::TerrainMapGpuConfig,
         topography::{MapFlatTerrainType, MapTerrainType},
-        TerrainInfoMap,
     },
     materials::terrain_material::{BiomeColor, BIOME_VERTEX_ATTRIBUTE},
     setting::TerrainSetting,
@@ -304,7 +303,6 @@ fn prepare_main_bind_group(
     )>,
     mut bind_groups: ResMut<TerrainChunkMainBindGroups>,
     mut dynamic_buffers: ResMut<TerrainChunkMainDynamicBuffers>,
-    map_images: Res<TerrainInfoMap>,
     height_map_images: Res<TerrainMapTextures>,
     images: Res<RenderAssets<GpuImage>>,
 ) {
