@@ -9,7 +9,6 @@ resolver = "2"
 
 
 [workspace.dependencies]
-# lightyear = { version = "0.15.1", features = [] }
 
 bevy = { version = "0.14.2", features = [
     "file_watcher",
@@ -19,14 +18,29 @@ bevy = { version = "0.14.2", features = [
     "trace_tracy",
     "serialize",
 ] }
+
 bevy_asset_loader = { version = "0.21", features = [
     "2d",
     "3d",
     "standard_dynamic_assets",
 ] }
+
 bevy_asset_loader_derive = { version = "0.21" }
 bevy_atmosphere = { version = "0.10.0" }
 # bevy_mod_scripting_rune = { version = "0.6.0" }
+lightyear = { version = "^0.17", features = [
+    "avian3d",
+    "leafwing",
+    "webtransport",
+    "websocket",
+    "steam",
+    "zstd",
+    # "metrics",
+    # "trace",
+    # "mock_time",
+    # "big_messages"
+] }
+
 aery = { version = "0.7.3" }
 
 bevy_console = { git = "https://github.com/qiboda/bevy-console.git", branch = "atom_main" }
@@ -35,7 +49,7 @@ once_cell = "1.19.0"
 serde = { version = "1.0.210", features = ["derive"] }
 smallvec = { version = "1.13.2" }
 thiserror = { version = "1.0.61" }
-# big-brain = { git = "https://github.com/stargazing-dino/big-brain.git", branch = "update-14.0" }
+
 bitflags = { version = "2.6.0", features = ["serde"] }
 bevy-tnua = { version = "0.19.0", features = [] }
 bevy-tnua-avian3d = { version = "0.1.1" }
@@ -69,17 +83,29 @@ crossbeam-channel = { version = "0.5.13" }
 noise = { version = "0.9.0", features = ["images"] }
 image = { version = "0.25", features = ["jpeg", "png"] }
 bytemuck = { version = "1.16" }
+clap = { version = "4.5.8", features = ["derive"] }
 
 tracing = { version = "0.1.40", features = [] }
 wgpu-types = { version = "0.20.0" }
 wgpu = { version = "0.20.1" }
 
-avian3d = { version = "0.1.2" }
+avian3d = { version = "0.1.2", features = ["serialize"] }
 dotenv = { version = "0.15.0" }
 vleue_navigator = { version = "0.8.0" }
 
 num-traits = "0.2.14"
 paste = "1.0.15"
+
+rand = { version = "0.8.5" }
+
+# AI
+# utility ai
+# https://github.com/ItsDoot/bevy_observed_utility
+# big-brain = { git = "https://github.com/stargazing-dino/big-brain.git", branch = "update-14.0" }
+# goap
+# https://github.com/victorb/dogoap
+# htn
+# https://github.com/QueenOfSquiggles/bevy_htnp
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

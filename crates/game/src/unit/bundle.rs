@@ -3,15 +3,18 @@ use avian3d::{
     prelude::{LockedAxes, RigidBody},
 };
 use bevy::{
+    asset::Handle,
     core::Name,
-    pbr::{MaterialMeshBundle, StandardMaterial},
-    prelude::Bundle,
+    pbr::StandardMaterial,
+    prelude::{Bundle, Mesh},
 };
 use bevy_tnua::controller::TnuaControllerBundle;
 use bevy_tnua_avian3d::TnuaAvian3dSensorShape;
 
+use crate::network::bevy_bundle::{ClientSpatialBundle, ServerSpatialBundle};
+
 #[derive(Bundle)]
-pub struct UnitBundle {
+pub struct ClientUnitBundle {
     // ability_subsystem: AbilitySubsystemBundle,
     // attribute_set
     // mesh
@@ -19,7 +22,12 @@ pub struct UnitBundle {
     // transform?
     // animation
     pub name: Name,
-    pub mat_mesh: MaterialMeshBundle<StandardMaterial>,
+
+    pub mesh: Handle<Mesh>,
+    pub material: Handle<StandardMaterial>,
+
+    pub spatial_bundle: ClientSpatialBundle,
+
     pub rigid_body: RigidBody,
     pub collider: Collider,
     pub collider_locked_axes: LockedAxes,
@@ -27,16 +35,24 @@ pub struct UnitBundle {
     pub tuna_sensor_shape: TnuaAvian3dSensorShape,
 }
 
-impl Default for UnitBundle {
+impl Default for ClientUnitBundle {
     fn default() -> Self {
         Self {
-            mat_mesh: Default::default(),
             rigid_body: RigidBody::Dynamic,
             collider: Collider::capsule(0.5, 2.0),
             name: Name::new("Unit"),
             collider_locked_axes: LockedAxes::ROTATION_LOCKED,
+
             tnua_controller: TnuaControllerBundle::default(),
             tuna_sensor_shape: TnuaAvian3dSensorShape(Collider::capsule(0.5, 2.0)),
+            mesh: Handle::default(),
+            material: Handle::default(),
+            spatial_bundle: ClientSpatialBundle::default(),
         }
     }
+}
+
+#[derive(Bundle, Default)]
+pub struct ServerUnitBundle {
+    pub spatial_bundle: ServerSpatialBundle,
 }

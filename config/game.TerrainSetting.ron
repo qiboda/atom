@@ -4,7 +4,7 @@
     qef_solver: true,
     qef_solver_threshold: 0.1,
     qef_stddev: 0.1,
-    lod_octree_depth: 9,
+    lod_octree_depth: 6,
     camera_far_limit: true,
     horizontal_visibility_range: 256.0,
     height_visibility_range: (

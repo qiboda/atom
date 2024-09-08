@@ -10,3 +10,4 @@ leafwing-input-manager = { workspace = true }
 
 event-listener = "5.3.1"
 num-traits = { workspace = true }
+avian3d = { workspace = true }

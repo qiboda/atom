@@ -16,8 +16,14 @@ bevy-tnua-avian3d = { workspace = true }
 bevy_console = { workspace = true }
 leafwing-input-manager = { workspace = true }
 bevy_atmosphere = { workspace = true }
-clap = { version = "4.5" }
+clap = { workspace = true }
+lightyear = { workspace = true }
+rand = { workspace = true }
+bevy-inspector-egui = { version = "0.25" }
 
+bevy_screen_diagnostics = { version = "0.6.0" }
+
+network = { path = "../network" }
 atom_camera = { path = "../atom_camera" }
 atom_utils = { path = "../atom_utils" }
 atom_internal = { path = "../atom_internal" }

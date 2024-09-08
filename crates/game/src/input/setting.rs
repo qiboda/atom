@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use atom_utils::input::DefaultInputMap;
-use bevy::{asset::Asset, math::VectorSpace, prelude::*, reflect::Reflect};
+use bevy::{asset::Asset, prelude::*, reflect::Reflect};
 use bevy_console::{clap::Parser, ConsoleCommand};
 use bevy_tnua::{
     builtins::{TnuaBuiltinJump, TnuaBuiltinWalk},
     controller::TnuaController,
 };
 use leafwing_input_manager::prelude::*;
+use lightyear::prelude::client::Predicted;
 use serde::{Deserialize, Serialize};
 use settings::{persist::PersistSettingEvent, setting_path::SettingsPath, Setting};
 
@@ -26,7 +27,7 @@ impl Default for PlayerInputSetting {
     }
 }
 
-#[derive(Debug, Serialize, Reflect, Deserialize, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Serialize, Reflect, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PlayerAction {
     Move,
     Jump,
@@ -82,22 +83,29 @@ pub fn input_setting_persist_command(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn update_player_input(
-    action: Query<&ActionState<PlayerAction>>,
-    player_query: Query<&GlobalTransform, With<Player>>,
-    mut query: Query<&mut TnuaController>,
+    mut player_query: Query<
+        (
+            &mut TnuaController,
+            &ActionState<PlayerAction>,
+            &GlobalTransform,
+        ),
+        (With<Predicted>, With<Player>),
+    >,
 ) {
-    let player_transform = player_query.get_single().unwrap();
+    for (mut controller, player_action, player_transform) in player_query.iter_mut() {
+        apply_action_state_to_player_movement(&mut controller, player_action, player_transform);
+    }
+}
 
-    let Ok(mut controller) = query.get_single_mut() else {
-        return;
-    };
-
-    let Ok(player_action) = action.get_single() else {
-        return;
-    };
-
+pub(crate) fn apply_action_state_to_player_movement(
+    controller: &mut TnuaController,
+    player_action: &ActionState<PlayerAction>,
+    player_transform: &GlobalTransform,
+) {
     let axis_move = player_action.clamped_axis_pair(&PlayerAction::Move);
+
     let velocity = Vec3::new(-axis_move.x, 0.0, axis_move.y).normalize_or_zero();
     controller.basis(TnuaBuiltinWalk {
         desired_velocity: velocity * 3.7,

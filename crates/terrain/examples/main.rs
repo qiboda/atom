@@ -1,12 +1,10 @@
-use atom_internal::plugins::AtomDefaultPlugins;
+use atom_internal::plugins::AtomClientPlugins;
 use atom_renderdoc::RenderDocPlugin;
-use avian3d::PhysicsPlugins;
 use bevy::{
     core_pipeline::{
         bloom::{BloomCompositeMode, BloomSettings},
         tonemapping::Tonemapping,
     },
-    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     log::LogPlugin,
     pbr::{
         wireframe::WireframePlugin, ScreenSpaceAmbientOcclusionQualityLevel,
@@ -24,7 +22,7 @@ use bevy_mod_picking::{
 };
 use bevy_water::{WaterPlugin, WaterSettings};
 use dotenv::dotenv;
-use log_layers::LogLayersPlugin;
+use log_layers::{file_layer, LogLayersPlugin};
 // use oxidized_navigation::{
 //     debug_draw::{DrawNavMesh, OxidizedNavigationDebugDrawPlugin},
 //     NavMeshSettings, OxidizedNavigationPlugin,
@@ -40,9 +38,15 @@ pub fn main() {
     dotenv().ok();
 
     let mut app = App::new();
+    app.add_plugins(LogLayersPlugin);
+
+    LogLayersPlugin::add_layer(
+        &mut app,
+        file_layer::file_layer_with_filename("terrain".to_string()),
+    );
 
     app.add_plugins(
-        AtomDefaultPlugins
+        AtomClientPlugins
             .set(LogPlugin {
                 custom_layer: LogLayersPlugin::get_layer,
                 filter: "wgpu=error,naga=warn,terrain=info".to_string(),
@@ -73,10 +77,6 @@ pub fn main() {
         // backend in isolation.
         DefaultPickingPlugins.build().disable::<RaycastBackend>(),
     )
-    .add_plugins((
-        PhysicsPlugins::default(),
-        // PhysicsDebugPlugin::default()
-    ))
     // .insert_resource(DebugPickingMode::Normal)
     .add_plugins(RenderDocPlugin)
     .add_plugins(RenderDiagnosticsPlugin)

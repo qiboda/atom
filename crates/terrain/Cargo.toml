@@ -27,7 +27,7 @@ settings = { path = "../settings" }
 log_layers = { path = "../log_layers" }
 atom_shader_lib = { path = "../atom_shader_lib" }
 
-rand = "0.8.5"
+rand = { workspace = true }
 rand_distr = "0.4"
 rand_pcg = "0.3"
 fast_poisson = "1.0.0"
@@ -45,7 +45,6 @@ noise = { workspace = true }
 # bevy_rapier2d = "0.20.0"
 
 serde_json = "1.0.120"
-# bevy-inspector-egui = "0.23.4"
 bitflags = { workspace = true }
 bitfield-struct = "0.8.0"
 bytemuck = { workspace = true }
@@ -64,7 +63,7 @@ wgpu = { workspace = true }
 thiserror = { workspace = true }
 bevy_console = { workspace = true }
 bevy_asset_loader = { workspace = true }
-clap = { version = "4.5" }
+clap = { workspace = true }
 bevy_water = { version = "0.14" }
 
 encase = { version = "0.8.0" }

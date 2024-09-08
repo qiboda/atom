@@ -1,0 +1,1 @@
+cargo run --bin entry -- client --client-id 1

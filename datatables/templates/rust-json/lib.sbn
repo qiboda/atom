@@ -138,3 +138,19 @@ fn table_asset_loadeds<A: bevy::asset::Asset>(
         event_writer.send(TablesLoadedEvent { asset_handles });
     }
 }
+
+#[derive(Default)]
+pub struct TableProtocolPlugin;
+
+impl bevy::app::Plugin for TableProtocolPlugin {
+    fn build(&self, app: &mut bevy::prelude::App) {
+        use client::ComponentSyncMode;
+        use lightyear::prelude::*;
+        {{~ for table in __tables ~}}
+        {{~if table.is_union_index~}}
+        app.register_component::<{{table.name}}Row>(ChannelDirection::ServerToClient)
+            .add_prediction(ComponentSyncMode::Once);
+        {{~end~}}
+        {{~end~}}
+    }
+}

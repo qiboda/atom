@@ -28,8 +28,7 @@ use crossbeam_channel::{Receiver, Sender};
 
 use crate::{
     chunk_mgr::chunk::comp::{
-        TerrainChunkAabb, TerrainChunkAddress, TerrainChunkBorderVertices, TerrainChunkSeamLod,
-        TerrainChunkState,
+        TerrainChunkAabb, TerrainChunkAddress, TerrainChunkBorderVertices, TerrainChunkState,
     },
     isosurface::{
         csg::event::CSGOperationRecords,
@@ -338,7 +337,6 @@ fn map_and_read_buffer(
         Entity,
         &TerrainChunkState,
         &TerrainChunkAddress,
-        &TerrainChunkSeamLod,
         &TerrainChunkAabb,
     )>,
     main_buffers: Res<TerrainChunkMainDynamicBuffers>,
@@ -347,7 +345,7 @@ fn map_and_read_buffer(
     mut render_border_vertices: ResMut<TerrainChunkRenderBorderVertices>,
 ) {
     let mut num = 0;
-    for (_entity, state, _address, _lod, _aabb) in query.iter() {
+    for (_entity, state, _address, _aabb) in query.iter() {
         if state.contains(TerrainChunkState::CREATE_MAIN_MESH) {
             num += 1;
         }
@@ -378,7 +376,7 @@ fn map_and_read_buffer(
 
     let all_main_chunk_read_span = info_span!("all_main_chunk_read").entered();
 
-    for (entity, state, address, lod, aabb) in query.iter_mut() {
+    for (entity, state, address, aabb) in query.iter_mut() {
         if state.contains(TerrainChunkState::CREATE_MAIN_MESH) {
             let _one_main_chunk_read = info_span!("one_main_chunk_read").entered();
 

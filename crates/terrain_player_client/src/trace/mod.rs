@@ -2,7 +2,7 @@ pub mod terrain_tracing;
 
 use crate::order::{LineData, OrderType, TriangleData, VertexData};
 use bevy::{log::BoxedLayer, prelude::*, utils::tracing};
-use log_layers::LogLayerRes;
+use log_layers::LogLayerGuardRes;
 use project::project_saved_root_path;
 use serde_json::json;
 use terrain_core::chunk::coords::TerrainChunkCoord;
@@ -31,7 +31,7 @@ pub fn terrain_layer(app: &mut App) -> Option<BoxedLayer> {
 
     let mut log_layer_res = app
         .world_mut()
-        .get_resource_mut::<LogLayerRes>()
+        .get_resource_mut::<LogLayerGuardRes>()
         .expect("log layer res is None");
     log_layer_res.worker_guard_vec.push(terrain_worker_guard);
 

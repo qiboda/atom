@@ -329,20 +329,20 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'client'",
+            "name": "Debug executable 'entry'",
             "cargo": {
                 "args": [
                     "run",
-                    "--bin=client",
+                    "--bin=entry",
                     "--profile=dev",
-                    "--package=client"
+                    "--package=entry",
                 ],
                 "filter": {
-                    "name": "client",
+                    "name": "entry",
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["host-server", "-c", "0"],
             "env": {
                 "BEVY_ASSET_ROOT": "./",
                 "ATOM_SAVED_ROOT": "./saved",

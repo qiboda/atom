@@ -12,7 +12,6 @@ use atom_utils::follow::TransformFollowPlugin;
 use bevy::prelude::*;
 use leafwing_input_manager::plugin::InputManagerPlugin;
 use setting::{CameraAction, CameraSetting};
-use settings::SettingPlugin;
 
 #[derive(Debug, Default)]
 pub struct CameraManagerPlugin;

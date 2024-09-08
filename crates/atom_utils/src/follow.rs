@@ -1,6 +1,7 @@
 use std::ops::Not;
 
 use aery::prelude::*;
+use avian3d::prelude::PhysicsSet;
 use bevy::prelude::*;
 
 use crate::transform::TransformFreedom;
@@ -12,7 +13,12 @@ impl Plugin for TransformFollowPlugin {
     fn build(&self, app: &mut App) {
         app.register_relation::<Following>()
             .observe(trigger_set_followed)
-            .add_systems(Update, update_follow);
+            .add_systems(
+                PostUpdate,
+                update_follow
+                    .after(PhysicsSet::Sync)
+                    .before(TransformSystem::TransformPropagate),
+            );
     }
 }
 

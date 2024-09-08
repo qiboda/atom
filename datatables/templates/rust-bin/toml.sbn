@@ -9,6 +9,7 @@ edition = "2021"
 serde = {  workspace = true }
 serde_json ={ version = "1.0.x" }
 bitflags = { workspace = true }
+lightyear = { workspace = true }
 
 macros = {path = "../macros"}
 luban_lib = { path = "../../luban_lib" }

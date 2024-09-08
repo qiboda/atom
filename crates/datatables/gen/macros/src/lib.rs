@@ -35,6 +35,7 @@ pub fn enum_from_num(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let ty_name = &input.ident;
 
+
     let tokens = vec![
         format_ident!("i64"),
         format_ident!("i16"),
@@ -54,8 +55,7 @@ pub fn enum_from_num(input: TokenStream) -> TokenStream {
                 fn from(value: #tokens) -> Self {
                     (value as i32).into()
                 }
-            }
+            }            
         )*
-    }
-    .into()
+    }.into()
 }

@@ -47,6 +47,14 @@ pub fn project_asset_root_path() -> &'static PathBuf {
     })
 }
 
+pub fn project_config_root_path() -> &'static PathBuf {
+    static CELL: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+    CELL.get_or_init(|| {
+        let asset_path = std::env::var("ATOM_CONFiG_ROOT").unwrap();
+        fs::canonicalize(PathBuf::from(&asset_path)).unwrap()
+    })
+}
+
 pub fn project_processed_asset_root_path() -> &'static PathBuf {
     static CELL: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
     CELL.get_or_init(|| {

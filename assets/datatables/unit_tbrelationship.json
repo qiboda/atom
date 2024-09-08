@@ -1,0 +1,47 @@
+[
+  {
+    "active_camp": 1,
+    "passive_camp": 1,
+    "relationship_type": 0
+  },
+  {
+    "active_camp": 1,
+    "passive_camp": 2,
+    "relationship_type": 0
+  },
+  {
+    "active_camp": 1,
+    "passive_camp": 3,
+    "relationship_type": 2
+  },
+  {
+    "active_camp": 2,
+    "passive_camp": 1,
+    "relationship_type": 0
+  },
+  {
+    "active_camp": 2,
+    "passive_camp": 2,
+    "relationship_type": 1
+  },
+  {
+    "active_camp": 2,
+    "passive_camp": 3,
+    "relationship_type": 1
+  },
+  {
+    "active_camp": 3,
+    "passive_camp": 1,
+    "relationship_type": 0
+  },
+  {
+    "active_camp": 3,
+    "passive_camp": 2,
+    "relationship_type": 2
+  },
+  {
+    "active_camp": 3,
+    "passive_camp": 3,
+    "relationship_type": 1
+  }
+]

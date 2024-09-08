@@ -218,10 +218,17 @@ impl luban_lib::table::Table for {{name}} {
     type Value = {{value_type}};
 }
 pub type {{name}}Key = {{key_type}};
-#[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component)]
+#[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component, serde::Serialize, serde::Deserialize)]
 pub struct {{name}}Row {
     pub key: {{name}}Key,
+    #[serde(skip)]
     pub data: Option<{{value_type}}>,
+}
+
+impl PartialEq for {{name}}Row {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
 }
 
 impl {{name}}Row {
@@ -334,11 +341,19 @@ impl luban_lib::table::ListTable for {{name}} {}
 {{~if table.is_union_index~}}
 
 pub type {{name}}Key = ({{array.each table.index_list @index_type_name | array.join ', '}});
-#[derive(Debug, Default, bevy::reflect::Reflect, bevy::prelude::Component)]
+#[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component, serde::Serialize, serde::Deserialize)]
 pub struct {{name}}Row {
     pub key: {{name}}Key,
+    #[serde(skip)]
     pub data: Option<{{value_type}}>,
 }
+
+impl PartialEq for {{name}}Row {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
 impl luban_lib::table::MultiUnionIndexListTable for {{name}} {
     type Key = {{name}}Key;
     type List = Vec<{{value_type}}>;

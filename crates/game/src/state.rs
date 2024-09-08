@@ -1,7 +1,5 @@
-use atom_camera::setting::CameraSetting;
 use bevy::prelude::*;
 use datatables::TableLoadingState;
-use settings::load::{SettingLoadStage, SettingLoadStageWrap};
 
 #[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq, States)]
 pub enum GameState {

@@ -1,36 +1,33 @@
 use atom_shader_lib::AtomShaderLibPluginGroups;
+use avian3d::{sync::SyncPlugin, PhysicsPlugins};
 use bevy::{
-    app::{PluginGroup, PluginGroupBuilder},
+    app::{FixedUpdate, PluginGroup, PluginGroupBuilder, PostUpdate},
     asset::AssetPlugin,
-    color::Color,
     core::{TaskPoolOptions, TaskPoolPlugin, TaskPoolThreadAssignmentPolicy},
-    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     log::LogPlugin,
-    text::TextStyle,
-    utils::default,
+    prelude::*,
     DefaultPlugins,
 };
 use bevy_console::ConsolePlugin;
-use bevy_debug_grid::DebugGridPlugin;
 use datatables::DataTablePlugin;
-use log_layers::{file_layer, LogLayersPlugin};
+use log_layers::LogLayersPlugin;
 use seldom_state::StateMachinePlugin;
 use settings::{SettingSourceConfig, SettingsPlugin};
 
 use crate::app_state::AppStatePlugin;
 
 #[derive(Debug, Default)]
-pub struct AtomDefaultPlugins;
+pub struct AtomClientPlugins;
 
-impl PluginGroup for AtomDefaultPlugins {
+impl PluginGroup for AtomClientPlugins {
     fn build(self) -> PluginGroupBuilder {
-        let mut group = PluginGroupBuilder::start::<Self>();
-
         project::log_all_path();
 
         let root_path = project::project_root_path();
         let asset_root_path = project::project_asset_root_path();
         let processed_asset_root_path = project::project_processed_asset_root_path();
+
+        let mut group = PluginGroupBuilder::start::<Self>();
         group = group
             .add(SettingsPlugin {
                 game_source_config: SettingSourceConfig {
@@ -42,7 +39,6 @@ impl PluginGroup for AtomDefaultPlugins {
                     base_path: root_path.join("config"),
                 },
             })
-            .add(LogLayersPlugin::default().add_layer(file_layer::file_layer))
             .add_group(
                 DefaultPlugins
                     .set(LogPlugin {
@@ -68,25 +64,62 @@ impl PluginGroup for AtomDefaultPlugins {
                         ..default()
                     }),
             )
-            .add_group(AtomShaderLibPluginGroups)
             .add(ConsolePlugin)
             .add(StateMachinePlugin)
             .add(DataTablePlugin)
-            // .add(DebugGridPlugin::without_floor_grid())
             .add(AppStatePlugin)
-            .add(FpsOverlayPlugin {
-                config: FpsOverlayConfig {
-                    text_config: TextStyle {
-                        // Here we define size of our overlay
-                        font_size: 50.0,
-                        // We can also change color of the overlay
-                        color: Color::srgb(0.0, 1.0, 0.0),
-                        // If we want, we can use a custom font
-                        font: default(),
-                    },
-                },
-            });
+            .add_group(AtomShaderLibPluginGroups)
+            .add_group(
+                PhysicsPlugins::new(FixedUpdate)
+                    .build()
+                    .disable::<SyncPlugin>(),
+            )
+            .add(SyncPlugin::new(PostUpdate));
+        // .add(FpsOverlayPlugin {
+        //     config: FpsOverlayConfig {
+        //         text_config: TextStyle {
+        //             // Here we define size of our overlay
+        //             font_size: 50.0,
+        //             // We can also change color of the overlay
+        //             color: Color::srgb(0.0, 1.0, 0.0),
+        //             // If we want, we can use a custom font
+        //             font: default(),
+        //         },
+        //     },
+        // });
 
+        group
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct AtomServerPlugins;
+
+impl PluginGroup for AtomServerPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct AtomSharedPlugins;
+
+impl PluginGroup for AtomSharedPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct AtomHostServerPlugins;
+
+impl PluginGroup for AtomHostServerPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        let mut group = PluginGroupBuilder::start::<Self>();
+        group = group
+            .add_group(AtomSharedPlugins)
+            .add_group(AtomServerPlugins)
+            .add_group(AtomClientPlugins);
         group
     }
 }

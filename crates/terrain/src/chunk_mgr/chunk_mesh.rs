@@ -52,7 +52,7 @@ pub fn receive_terrain_chunk_mesh_data(
                             warn!("receive_terrain_chunk_mesh_data grass material is none");
                             continue;
                         }
-                        info!("grass material: {:?}", grass_material);
+                        // info!("grass material: {:?}", grass_material);
 
                         let grass_material = grass_material.as_ref().unwrap();
 

@@ -8,5 +8,5 @@
         <var name="revertable" type="bool" />
     </bean>
     <table name="TbAbility" value="Ability" readSchemaFromFile="true" mode="map" index="id"
-        input="ability.xlsx" />
+        input="20_ability.xlsx" />
 </module>
