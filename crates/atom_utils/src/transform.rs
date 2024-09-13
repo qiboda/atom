@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Reflect)]
 pub struct TranslationLockedFreedom {
     pub locked_x: bool,
     pub locked_y: bool,
@@ -17,7 +17,7 @@ impl TranslationLockedFreedom {
     }
 }
 
-#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Reflect)]
 pub struct RotationLockedFreedom {
     pub locked_pitch: bool,
     pub locked_yaw: bool,
@@ -34,7 +34,7 @@ impl RotationLockedFreedom {
     }
 }
 
-#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Reflect)]
 pub struct ScaleLockedFreedom {
     pub locked_x: bool,
     pub locked_y: bool,
@@ -51,14 +51,14 @@ impl ScaleLockedFreedom {
     }
 }
 
-#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Reflect)]
 pub struct TransformLockedFreedom {
     pub locked_translation: Option<TranslationLockedFreedom>,
     pub locked_rotation: Option<RotationLockedFreedom>,
     pub locked_scale: Option<ScaleLockedFreedom>,
 }
 
-#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Reflect)]
 pub enum TransformFreedom {
     #[default]
     None,

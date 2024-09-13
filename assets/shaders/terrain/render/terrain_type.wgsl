@@ -22,10 +22,6 @@ struct TerrainVertexOutput {
     @location(8) @interpolate(linear) biome_weights_f: vec4f,
 }
 
-struct TerrainFragmentOutput {
-    @location(0) color: vec4<f32>,
-}
-
 struct TerrainMaterial {
     lod: u32,
     perceptual_roughness: f32,

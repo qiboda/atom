@@ -3,6 +3,7 @@ use atom_renderdoc::RenderDocPlugin;
 use bevy::{
     core_pipeline::{
         bloom::{BloomCompositeMode, BloomSettings},
+        prepass::DepthPrepass,
         tonemapping::Tonemapping,
     },
     log::LogPlugin,
@@ -20,6 +21,7 @@ use bevy_mod_picking::{
     prelude::RaycastBackend,
     DefaultPickingPlugins,
 };
+use bevy_screen_diagnostics::{ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin};
 use bevy_water::{WaterPlugin, WaterSettings};
 use dotenv::dotenv;
 use log_layers::{file_layer, LogLayersPlugin};
@@ -78,14 +80,19 @@ pub fn main() {
         DefaultPickingPlugins.build().disable::<RaycastBackend>(),
     )
     // .insert_resource(DebugPickingMode::Normal)
+    .add_plugins(ScreenDiagnosticsPlugin::default())
+    .add_plugins(ScreenEntityDiagnosticsPlugin)
+    .add_plugins(ScreenFrameDiagnosticsPlugin)
     .add_plugins(RenderDocPlugin)
     .add_plugins(RenderDiagnosticsPlugin)
-    .add_plugins(WireframePlugin)
+    // .add_plugins(WireframePlugin)
     .add_plugins(TerrainSubsystemPlugin)
     .add_plugins(TerrainLodGizmosPlugin)
     .add_plugins(NoCameraPlayerPlugin)
     .insert_resource(WaterSettings {
-        height: 0.0,
+        height: -0.3,
+        amplitude: 1.0,
+        alpha_mode: AlphaMode::Blend,
         ..default()
     })
     .add_plugins(WaterPlugin)
@@ -125,7 +132,7 @@ fn startup(
             alpha: 1.0,
         }
         .into(),
-        brightness: 1000.0,
+        brightness: 3000.0,
     });
 
     commands.spawn(DirectionalLightBundle {
@@ -161,6 +168,7 @@ fn startup(
         },
         FlyCam,
         PlayerCamera,
+        // DepthPrepass,
         // TerrainObserver,
     ));
 

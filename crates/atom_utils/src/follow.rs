@@ -12,6 +12,8 @@ pub struct TransformFollowPlugin;
 impl Plugin for TransformFollowPlugin {
     fn build(&self, app: &mut App) {
         app.register_relation::<Following>()
+            .register_type::<RelativeTransform>()
+            .register_type::<RelativeTransformFreedom>()
             .observe(trigger_set_followed)
             .add_systems(
                 PostUpdate,
@@ -22,10 +24,10 @@ impl Plugin for TransformFollowPlugin {
     }
 }
 
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default, Reflect)]
 pub struct RelativeTransform(pub Transform);
 
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default, Reflect)]
 pub struct RelativeTransformFreedom(pub TransformFreedom);
 
 /// make a entity to follow another entity.

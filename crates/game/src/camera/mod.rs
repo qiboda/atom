@@ -79,7 +79,7 @@ fn attach_camera(
         .entity(camera_entity)
         .insert((
             RelativeTransform(
-                Transform::from_translation(Vec3::new(0.0, 10.0, -10.0))
+                Transform::from_translation(Vec3::new(0.0, 20.0, -10.0))
                     .looking_at(Vec3::ZERO, Dir3::Y),
             ),
             RelativeTransformFreedom(TransformFreedom::Lock(TransformLockedFreedom {

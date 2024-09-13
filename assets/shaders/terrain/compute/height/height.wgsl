@@ -9,14 +9,19 @@
 var<uniform> terrain_map_info: TerrainMapInfo;
 
 @group(0) @binding(1) 
-var biome_blend_array_texture: texture_2d_array<f32>;
+var base_height_texture: texture_2d<f32>;
 @group(0) @binding(2) 
+var base_height_texture_sampler: sampler;
+
+@group(0) @binding(3) 
+var biome_blend_array_texture: texture_2d_array<f32>;
+@group(0) @binding(4) 
 var biome_blend_array_texture_sampler: sampler;
 
 // range is [-1, 1]
-@group(0) @binding(3) 
+@group(0) @binding(5) 
 var height_storage_texture: texture_storage_2d<r32float, write>;
-@group(0) @binding(4) 
+@group(0) @binding(6) 
 var biome_storage_texture: texture_storage_2d<r8uint, write>;
 
 
@@ -79,6 +84,14 @@ fn compute_terrain_height_one_pixel(target_pixel_pos: vec2u, texture_size: vec2f
             biome_type = i * 4u + 3u;
         }
     }
+
+    let height = textureSampleLevel(base_height_texture, base_height_texture_sampler, uv, 0.0);
+
+    // if height.a > 0.0 {
+    //     final_height = mix(floor(height.r), height.r, height.a) / 4.0;
+    // } else {
+        final_height = floor(height.r) / 4.0;
+    // }
 
     textureStore(height_storage_texture, target_pixel_pos, vec4f(final_height));
     textureStore(biome_storage_texture, target_pixel_pos, vec4u(biome_type));

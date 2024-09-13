@@ -11,6 +11,20 @@ use settings::Setting;
 
 use crate::setting::TerrainSetting;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TerrainMapAreaHeightPointSetting {
+    pub rand_point_num: Range<usize>,
+    pub rand_point_radius: Range<usize>,
+    pub rand_point_height: Range<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TerrainMapAreaSetting {
+    pub rand_area_range_percent: Range<Vec2>,
+    pub rand_area_num: Range<usize>,
+    pub rand_area_radius: Range<usize>,
+}
+
 #[derive(
     Setting, Resource, Debug, Clone, Serialize, Deserialize, TypePath, Asset, ExtractResource,
 )]
@@ -18,11 +32,8 @@ pub struct TerrainMapSetting {
     pub grid_num: usize,
     pub grid_cell_size: f64,
 
-    pub rand_point_num: usize,
-    // (0.0 ~ 1.0)
-    pub rand_point_range_percent: Range<f32>,
-    pub rand_point_radius: Range<usize>,
-    pub rand_point_height: Range<f64>,
+    pub rand_area_setting: Vec<TerrainMapAreaSetting>,
+    pub rand_height_setting: TerrainMapAreaHeightPointSetting,
 
     // and max precipitation is 1.0 - max_base_humidity;
     pub max_base_humidity: f64,
@@ -47,10 +58,33 @@ impl Default for TerrainMapSetting {
         TerrainMapSetting {
             grid_num: GRID_NUM,
             grid_cell_size: GRID_CELL_SIZE,
-            rand_point_num: 12,
-            rand_point_range_percent: 0.2..0.8,
-            rand_point_radius: 5..10,
-            rand_point_height: 0.5..1.0,
+            rand_height_setting: TerrainMapAreaHeightPointSetting {
+                rand_point_radius: 3..6,
+                rand_point_height: 3.0..5.0,
+                rand_point_num: 20..30,
+            },
+            rand_area_setting: vec![
+                TerrainMapAreaSetting {
+                    rand_area_range_percent: Vec2::new(0.2, 0.2)..Vec2::new(0.4, 0.4),
+                    rand_area_radius: 100..200,
+                    rand_area_num: 5..10,
+                },
+                TerrainMapAreaSetting {
+                    rand_area_range_percent: Vec2::new(0.6, 0.6)..Vec2::new(0.8, 0.8),
+                    rand_area_radius: 100..200,
+                    rand_area_num: 5..10,
+                },
+                TerrainMapAreaSetting {
+                    rand_area_range_percent: Vec2::new(0.2, 0.6)..Vec2::new(0.4, 0.8),
+                    rand_area_radius: 100..200,
+                    rand_area_num: 5..10,
+                },
+                TerrainMapAreaSetting {
+                    rand_area_range_percent: Vec2::new(0.6, 0.2)..Vec2::new(0.8, 0.4),
+                    rand_area_radius: 100..200,
+                    rand_area_num: 5..10,
+                },
+            ],
             temperature_range: -40.0..40.0,
             temperature_horizontal_range: -20.0..60.0,
             temperature_altitude_range: -20.0..0.0,

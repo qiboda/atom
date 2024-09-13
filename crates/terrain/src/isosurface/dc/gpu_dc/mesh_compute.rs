@@ -448,6 +448,9 @@ fn map_and_read_buffer(
                         .collect::<Vec<u32>>(),
                 );
                 mesh.insert_indices(Indices::U32(indices));
+
+                // mesh.compute_normals();
+
                 // match mesh.generate_tangents() {
                 //     Ok(_) => {}
                 //     Err(e) => {

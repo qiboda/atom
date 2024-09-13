@@ -7019,6 +7019,7 @@ dependencies = [
  "bevy_debug_grid",
  "bevy_flycam",
  "bevy_mod_picking",
+ "bevy_screen_diagnostics",
  "bevy_water",
  "bitfield-struct",
  "bitflags 2.6.0",

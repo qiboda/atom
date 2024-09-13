@@ -4,13 +4,13 @@
     qef_solver: true,
     qef_solver_threshold: 0.1,
     qef_stddev: 0.1,
-    lod_octree_depth: 6,
+    lod_octree_depth: 8,
     camera_far_limit: true,
-    horizontal_visibility_range: 256.0,
+    horizontal_visibility_range: 32.0,
     height_visibility_range: (
-        start: -128.0,
-        end: 256.0,
+        start: -32.0,
+        end: 32.0,
     ),
-    terrain_max_height: 256.0,
+    terrain_max_height: 16.0,
     stitch_seam_scheme: NeighborConnect,
 )

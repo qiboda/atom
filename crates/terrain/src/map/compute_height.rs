@@ -12,7 +12,9 @@ use bevy::{
         Extract, Render, RenderApp, RenderSet,
     },
 };
-use binding_types::{sampler, texture_2d_array, texture_storage_2d_array, uniform_buffer};
+use binding_types::{
+    sampler, texture_2d, texture_2d_array, texture_storage_2d_array, uniform_buffer,
+};
 use crossbeam_channel::{Receiver, Sender};
 use std::{borrow::Cow, ops::Not};
 
@@ -194,6 +196,9 @@ fn prepare_bind_group(
         let biome_blend_image = gpu_images
             .get(&terrain_info_map_images.biome_blend_map)
             .unwrap();
+        let base_height_image = gpu_images
+            .get(&terrain_info_map_images.height_climate_map)
+            .unwrap();
 
         bind_group.filter_bind_group = Some(render_device.create_bind_group(
             None,
@@ -202,6 +207,7 @@ fn prepare_bind_group(
                 buffer.uniform_buffer.as_ref().unwrap().into_binding(),
                 &biome_image.texture_view,
                 &biome_blend_image.texture_view,
+                &base_height_image.texture_view,
             )),
         ));
     }
@@ -212,12 +218,17 @@ fn prepare_bind_group(
         let biome_blend_image = gpu_images
             .get(&terrain_info_map_images.biome_blend_map)
             .unwrap();
+        let base_height_image = gpu_images
+            .get(&terrain_info_map_images.height_climate_map)
+            .unwrap();
 
         bind_group.height_bind_group = Some(render_device.create_bind_group(
             None,
             &pipeline.height_bind_group_layout,
             &BindGroupEntries::sequential((
                 buffer.uniform_buffer.as_ref().unwrap().into_binding(),
+                &base_height_image.texture_view,
+                base_height_image.sampler.into_binding(),
                 &biome_blend_image.texture_view,
                 biome_blend_image.sampler.into_binding(),
                 &height_image.texture_view,
@@ -282,6 +293,8 @@ impl FromWorld for TerrainHeightMapPipeline {
                 ShaderStages::COMPUTE,
                 (
                     uniform_buffer::<TerrainMapInfo>(false),
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    sampler(SamplerBindingType::Filtering),
                     texture_2d_array(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
                     texture_storage_2d(TextureFormat::R32Float, StorageTextureAccess::WriteOnly),
@@ -301,6 +314,7 @@ impl FromWorld for TerrainHeightMapPipeline {
                         TextureFormat::Rgba8Unorm,
                         StorageTextureAccess::WriteOnly,
                     ),
+                    texture_storage_2d(TextureFormat::Rgba32Float, StorageTextureAccess::ReadWrite),
                 ),
             ),
         );

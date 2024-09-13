@@ -1,4 +1,6 @@
-use bevy::pbr::{MaterialPipeline, MaterialPipelineKey, StandardMaterialFlags};
+use std::ops::Not;
+
+use bevy::pbr::{MaterialPipeline, MaterialPipelineKey, MeshPipelineKey, StandardMaterialFlags};
 use bevy::prelude::*;
 use bevy::render::mesh::{MeshVertexAttribute, MeshVertexBufferLayoutRef};
 use bevy::render::render_asset::RenderAssets;
@@ -222,7 +224,15 @@ impl Material for TerrainMaterial {
         "shaders/terrain/render/terrain_vertex.wgsl".into()
     }
 
+    fn prepass_vertex_shader() -> ShaderRef {
+        "shaders/terrain/render/terrain_vertex.wgsl".into()
+    }
+
     fn fragment_shader() -> ShaderRef {
+        "shaders/terrain/render/terrain_fragment.wgsl".into()
+    }
+
+    fn prepass_fragment_shader() -> ShaderRef {
         "shaders/terrain/render/terrain_fragment.wgsl".into()
     }
 
@@ -234,22 +244,28 @@ impl Material for TerrainMaterial {
     ) -> Result<(), SpecializedMeshPipelineError> {
         descriptor.primitive.cull_mode = key.bind_group_data.cull_mode;
 
-        let fragment = descriptor.fragment.as_mut().unwrap();
-        if let Some(debug_type) = key.bind_group_data.debug_type {
-            match debug_type {
-                TerrainDebugType::Color => {
-                    fragment.shader_defs.push("COLOR_DEBUG".into());
-                }
-                TerrainDebugType::Normal => {
-                    fragment.shader_defs.push("NORMAL_DEBUG".into());
+        const PREPASS: MeshPipelineKey = MeshPipelineKey::DEPTH_PREPASS
+            .union(MeshPipelineKey::NORMAL_PREPASS)
+            .union(MeshPipelineKey::MOTION_VECTOR_PREPASS);
+        let is_prepass = !(key.mesh_key & PREPASS).is_empty();
+        if is_prepass.not() {
+            let fragment = descriptor.fragment.as_mut().unwrap();
+            if let Some(debug_type) = key.bind_group_data.debug_type {
+                match debug_type {
+                    TerrainDebugType::Color => {
+                        fragment.shader_defs.push("COLOR_DEBUG".into());
+                    }
+                    TerrainDebugType::Normal => {
+                        fragment.shader_defs.push("NORMAL_DEBUG".into());
+                    }
                 }
             }
-        }
 
-        if key.bind_group_data.normal_map {
-            fragment
-                .shader_defs
-                .push("STANDARD_MATERIAL_NORMAL_MAP".into());
+            if key.bind_group_data.normal_map {
+                fragment
+                    .shader_defs
+                    .push("STANDARD_MATERIAL_NORMAL_MAP".into());
+            }
         }
 
         let vertex_layout = layout.0.get_layout(&[

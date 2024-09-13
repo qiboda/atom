@@ -25,6 +25,7 @@ use leafwing_input_manager::prelude::ActionState;
 use lightyear::prelude::client::*;
 use lightyear::prelude::*;
 use lightyear::shared::replication::components::Controlled;
+use terrain::TerrainSubsystemPlugin;
 
 use crate::scene::init_scene;
 
@@ -44,7 +45,7 @@ impl Plugin for GameClientPlugin {
             .add_plugins(TransformFollowPlugin)
             .add_plugins(GameCameraPlugin)
             .insert_resource(PlayerInputSetting::default())
-            // .add_plugins(TerrainSubsystemPlugin)
+            .add_plugins(TerrainSubsystemPlugin)
             .add_plugins(AtmospherePlugin)
             .add_plugins((
                 TnuaControllerPlugin::new(FixedUpdate),

@@ -35,6 +35,8 @@ impl SeamConnectData {
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
         mesh.insert_attribute(BIOME_VERTEX_ATTRIBUTE, self.biomes);
         mesh.insert_indices(Indices::U32(self.indices));
+
+        // mesh.compute_normals();
         // match mesh.generate_tangents() {
         //     Ok(_) => {}
         //     Err(e) => {

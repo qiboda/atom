@@ -4,7 +4,7 @@
 #import trimap::triplanar::{calculate_triplanar_mapping, triplanar_normal_to_world, triplanar_normal_to_world_splatted, TriplanarMapping}
 
 #import terrain::biome::TerrainType_Max
-#import terrain::terrain_type::{TerrainVertexOutput, TerrainFragmentOutput}
+#import terrain::terrain_type::{TerrainVertexOutput}
 #import terrain::terrain_bind_groups:: {
     terrain_material,
     base_color_texture,
@@ -16,6 +16,12 @@
     occlusion_texture,
     occlusion_sampler,
 }
+
+#ifdef PREPASS_PIPELINE
+#import bevy_pbr::{prepass_io::{FragmentOutput}}
+#else
+#import bevy_pbr::{ forward_io::{FragmentOutput} }
+#endif
 
 // prepare a basic PbrInput from the vertex stage output, mesh binding and view binding
 fn pbr_input_from_vertex_output(
@@ -43,7 +49,7 @@ fn pbr_input_from_vertex_output(
     return pbr_input;
 }
 
-fn fragment_debug(out: ptr<function, TerrainFragmentOutput>) {
+fn fragment_debug(out: ptr<function, FragmentOutput>) {
 #ifdef COLOR_DEBUG
     let select_index = terrain_material.lod % 8;
     (*out).color = vec4<f32>(
@@ -57,10 +63,44 @@ fn fragment_debug(out: ptr<function, TerrainFragmentOutput>) {
 #endif 
 }
 
-fn apply_light(out: ptr<function, TerrainFragmentOutput>, pbr_input: PbrInput, is_unlit: bool) {
+#ifdef PREPASS_PIPELINE
+fn deferred_output(in: TerrainVertexOutput, pbr_input: PbrInput) -> FragmentOutput {
+    var out: FragmentOutput;
+
+#ifdef DEFERRED_PREPASS
+    // gbuffer
+    out.deferred = deferred_gbuffer_from_pbr_input(pbr_input);
+    // lighting pass id (used to determine which lighting shader to run for the fragment)
+    out.deferred_lighting_pass_id = pbr_input.material.deferred_lighting_pass_id;
+#endif
+
+    // normal if required
+#ifdef NORMAL_PREPASS
+    out.normal = vec4(in.world_normal * 0.5 + vec3(0.5), 1.0);
+#endif
+    // motion vectors if required
+#ifdef MOTION_VECTOR_PREPASS
+#ifdef MESHLET_MESH_MATERIAL_PASS
+    out.motion_vector = in.motion_vector;
+#else
+    out.motion_vector = calculate_motion_vector(in.world_position, in.previous_world_position);
+#endif
+#endif
+
+    return out;
+}
+#endif
+
+
+fn apply_light(
+    in: TerrainVertexOutput,
+    out: ptr<function, FragmentOutput>,
+    pbr_input: PbrInput,
+    is_unlit: bool
+) {
 #ifdef PREPASS_PIPELINE
     // write the gbuffer, lighting pass id, and optionally normal and motion_vector textures
-    *out = deferred_output(in, *pbr_input);
+    *out = deferred_output(in, pbr_input);
 #else
     if is_unlit {
         (*out).color = pbr_input.material.base_color;
@@ -199,8 +239,8 @@ fn sample_textures(pbr_input: ptr<function, PbrInput>, in: TerrainVertexOutput) 
 fn fragment(
     in: TerrainVertexOutput,
     @builtin(front_facing) is_front: bool,
-) -> TerrainFragmentOutput {
-    var out: TerrainFragmentOutput;
+) -> FragmentOutput {
+    var out: FragmentOutput;
 
     let double_sided = (terrain_material.flags & pbr_types::STANDARD_MATERIAL_FLAGS_DOUBLE_SIDED_BIT) != 0u;
 
@@ -209,7 +249,7 @@ fn fragment(
 
     sample_textures(&pbr_input, in);
 
-    apply_light(&out, pbr_input, false);
+    apply_light(in, &out, pbr_input, false);
     fragment_debug(&out);
     return out;
 }

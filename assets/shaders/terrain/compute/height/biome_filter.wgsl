@@ -8,6 +8,9 @@ var biome_blend_array_texture: texture_2d_array<f32>;
 @group(0) @binding(2) 
 var output_biome_blend_array_texture: texture_storage_2d_array<rgba8unorm, write>;
 
+@group(0) @binding(3) 
+var base_height_texture: texture_storage_2d<rgba32float, read_write>;
+
 // 8K texture : 8192 x 8192 
 // 8192 / 16 = 512, but max workgroup size is 256, so compute 4 pixel(2x2) on each workgroup
 @compute @workgroup_size(16, 16, 1)
@@ -22,7 +25,7 @@ fn compute_terrain_map_biome(@builtin(global_invocation_id) invocation_id: vec3<
 }
 
 fn box_filter(target_pixel_pos: vec2u, compressed_biome_blend_num: u32) {
-    let filter_size = 16;
+    let filter_size = 4;
 
     var colors = array<vec4f, 64>();
     var sum = 0.0;
@@ -42,4 +45,13 @@ fn box_filter(target_pixel_pos: vec2u, compressed_biome_blend_num: u32) {
         let color = colors[i] / sum;
         textureStore(output_biome_blend_array_texture, target_pixel_pos, i, color);
     }
+
+    // var color = vec4f(0.0, 0.0, 0.0, 0.0);
+    // for (var x = -filter_size; x < filter_size; x++) {
+    //     for (var y = -filter_size; y < filter_size; y++) {
+    //         color += textureLoad(base_height_texture, vec2i(target_pixel_pos) + vec2i(x, y));
+    //     }
+    // }
+    // color = color / f32(filter_size * filter_size * 4);
+    // textureStore(base_height_texture, target_pixel_pos, color);
 }

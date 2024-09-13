@@ -9,11 +9,10 @@ use voronator::{
 use bevy::math::DVec2;
 use bevy::utils::hashbrown::HashMap;
 
-use super::topography::MapTerrainType;
+use super::topography::{MapFlatTerrainType, MapTerrainType};
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct SiteInfo {
-    pub height: f64,
     // 降雨
     pub precipitation: f64,
     // 基础湿度, 总湿度等于基础湿度加上降雨
@@ -21,7 +20,28 @@ pub struct SiteInfo {
     pub temperature: f64,
     /// area id: 0 to n 等价到随机点的索引, 只对陆地起作用
     pub area_id: usize,
-    pub terrain_type: Option<MapTerrainType>,
+    pub area_weight: f64,
+    pub height_id: usize,
+    pub height: f64,
+    pub slope: bool,
+
+    pub terrain_type: Option<MapFlatTerrainType>,
+}
+
+impl Default for SiteInfo {
+    fn default() -> Self {
+        Self {
+            height: 0.0,
+            precipitation: 0.0,
+            base_humidity: 0.0,
+            temperature: 0.0,
+            area_id: usize::MAX,
+            area_weight: 0.0,
+            terrain_type: None,
+            height_id: usize::MAX,
+            slope: false,
+        }
+    }
 }
 
 impl SiteInfo {
@@ -35,7 +55,8 @@ pub struct TerrainMap {
     pub diagram: CentroidDiagram<MapPoint>,
     pub sites_info: Vec<SiteInfo>,
     pub terrain_types: HashMap<MapTerrainType, Vec<usize>>,
-    pub land_random_points: Vec<usize>,
+    pub area_random_points: Vec<usize>,
+    pub height_random_points: Vec<usize>,
 }
 
 pub(crate) fn shared_edge(
@@ -65,7 +86,8 @@ impl TerrainMap {
             sites_info: vec![SiteInfo::default(); site_len],
             diagram,
             terrain_types: HashMap::new(),
-            land_random_points: vec![],
+            area_random_points: vec![],
+            height_random_points: vec![],
         }
     }
 }
