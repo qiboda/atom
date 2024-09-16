@@ -59,6 +59,7 @@ impl HatredValue {
 /// 仇恨
 #[derive(Debug, Default, Component)]
 pub struct Hatred {
+    // TODO 改为最大堆，这样可以快速找到最大值。是否需要最小堆？
     pub hates: HashMap<Entity, HatredValue>,
     // 强制仇恨值为设置值。
     pub fixed_hates: HashMap<Entity, f32>,
@@ -184,24 +185,24 @@ pub fn sensing_hatred_system(
                 RelationShipType::Hostility => {
                     if let Some(vision) = vision {
                         if let Some(info) = vision.get_sensing_info(target_entity) {
-                            hate.sensing += (info.distane / vision.range) * SENSING_HATRED_MAX;
+                            hate.sensing += (info.distance / vision.range) * SENSING_HATRED_MAX;
                         }
                     }
                     if let Some(hearing) = hearing {
                         if let Some(info) = hearing.get_sensing_info(target_entity) {
-                            hate.sensing += (info.distane / hearing.range) * SENSING_HATRED_MAX;
+                            hate.sensing += (info.distance / hearing.range) * SENSING_HATRED_MAX;
                         }
                     }
                 }
                 RelationShipType::Friendly => {
                     if let Some(vision) = vision {
                         if let Some(info) = vision.get_sensing_info(target_entity) {
-                            hate.sensing -= (info.distane / vision.range) * SENSING_HATRED_MAX;
+                            hate.sensing -= (info.distance / vision.range) * SENSING_HATRED_MAX;
                         }
                     }
                     if let Some(hearing) = hearing {
                         if let Some(info) = hearing.get_sensing_info(target_entity) {
-                            hate.sensing -= (info.distane / hearing.range) * SENSING_HATRED_MAX;
+                            hate.sensing -= (info.distance / hearing.range) * SENSING_HATRED_MAX;
                         }
                     }
                 }

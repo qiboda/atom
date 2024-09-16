@@ -28,12 +28,12 @@ impl Plugin for SensingPlugin {
 
 #[derive(Debug, PartialEq)]
 pub struct SensingInfo {
-    pub distane: f32,
+    pub distance: f32,
 }
 
 impl Default for SensingInfo {
     fn default() -> Self {
-        Self { distane: 0.0 }
+        Self { distance: 0.0 }
     }
 }
 
@@ -94,7 +94,7 @@ fn vision_system(
             let distance = offset.length();
             let direction = offset.normalize();
             if vision.in_vision(distance, direction) {
-                vision.insert_sensing_entity(target_entity, SensingInfo { distane: distance });
+                vision.insert_sensing_entity(target_entity, SensingInfo { distance });
             }
         }
     }
@@ -138,7 +138,7 @@ fn hearing_system(
             let offset = transform.translation() - target_transform.translation();
             let distance = offset.length();
             if hearing.can_hearing(distance) {
-                hearing.insert_sensing_entity(target_entity, SensingInfo { distane: distance });
+                hearing.insert_sensing_entity(target_entity, SensingInfo { distance });
             }
         }
     }

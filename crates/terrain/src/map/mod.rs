@@ -3,7 +3,6 @@ pub mod config;
 
 use std::{f64::consts::PI, ops::Not};
 
-use atom_internal::app_state::AppState;
 use atom_utils::{
     math::{points_in_triangle, triangle_interpolation},
     swap_data::{SwapData, SwapDataTakeTrait, SwapDataTrait},
@@ -95,10 +94,7 @@ impl Plugin for TerrainMapPlugin {
                     to_generate_height_map,
                 )
                     .chain()
-                    .run_if(
-                        in_state(AppState::AppRunning)
-                            .and_then(in_state(TerrainState::GenerateTerrainInfoMap)),
-                    ),
+                    .run_if(in_state(TerrainState::GenerateTerrainInfoMap)),
             );
     }
 

@@ -1,4 +1,3 @@
-use atom_internal::app_state::AppState;
 use atom_shader_lib::shaders_plugin;
 use bevy::{
     prelude::*,
@@ -62,7 +61,7 @@ pub struct TerrainHeightMapPlugin;
 
 impl Plugin for TerrainHeightMapPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::AppRunning), create_map_image);
+        app.add_systems(OnEnter(TerrainState::GenerateHeightMap), create_map_image);
         app.insert_resource(TerrainMapTextures::default());
 
         app.add_plugins(ExtractResourcePlugin::<TerrainMapTextures>::default());

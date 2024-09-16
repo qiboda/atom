@@ -14,10 +14,12 @@
         "cSpell.words": [
             "Aabb",
             "Actionlike",
+            "Affector",
             "biplanar",
             "bitcast",
             "bitfield",
             "bytemuck",
+            "catmull",
             "chebyshev",
             "clipmap",
             "clippy",

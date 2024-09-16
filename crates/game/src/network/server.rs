@@ -15,11 +15,11 @@ use server::ServerCommands;
 
 use crate::{
     input::setting::{apply_action_state_to_player_movement, PlayerAction},
-    network::{bevy_bundle::ServerSpatialBundle, shared::REPLICATION_GROUP},
+    network::shared::REPLICATION_GROUP,
+    state::GameState,
     unit::{
-        bundle::ServerUnitBundle,
-        player::{BornLocation, PlayerId},
-        Player,
+        monster::ServerMonsterBundle,
+        player::{BornLocation, Player, PlayerId, ServerPlayerBundle},
     },
 };
 
@@ -28,7 +28,7 @@ pub struct GameServerPlugin;
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         // add our server-specific logic. Here we will just start listening for incoming connections
-        app.add_systems(Startup, start_server)
+        app.add_systems(OnEnter(GameState::InitGame), start_server)
             .add_systems(
                 PreUpdate,
                 // this system will replicate the inputs of a client to other clients
@@ -98,21 +98,39 @@ fn handle_connections(
 
         commands
             .spawn((
-                DisabledComponent::<Transform>::default(),
-                Name::new("Player".to_string() + client_id.to_string().as_str()),
-                Player,
-                table_row,
-                PlayerId(client_id),
-                BornLocation(location),
-                replicate,
-            ))
-            .insert(ServerUnitBundle {
-                spatial_bundle: ServerSpatialBundle {
-                    transform: Transform::from_translation(location),
-                    // TODO 同步Visibility组件
-                    visibility: Visibility::Visible,
+                ServerPlayerBundle {
+                    unit_bundle: default(),
+                    born_location: BornLocation(location),
+                    player_id: PlayerId(client_id),
+                    player: crate::unit::player::Player,
+                    tb_row: table_row,
                 },
-            });
+                replicate,
+                // DisabledComponent::<Transform>::default(),
+            ))
+            .insert(Transform::from_translation(location));
+
+        commands
+            .spawn((
+                ServerMonsterBundle {
+                    unit_bundle: Default::default(),
+                    monster: crate::unit::monster::Monster,
+                },
+                server::Replicate {
+                    sync: server::SyncTarget {
+                        prediction: NetworkTarget::All,
+                        interpolation: NetworkTarget::All,
+                    },
+                    controlled_by: server::ControlledBy {
+                        target: NetworkTarget::None,
+                        ..default()
+                    },
+                    ..default()
+                },
+            ))
+            .insert(Transform::from_translation(
+                location + Vec3::new(5.0, 2.0, 0.0),
+            ));
     }
 }
 

@@ -6,6 +6,7 @@ use bevy::pbr::wireframe::WireframeColor;
 use bevy::pbr::wireframe::Wireframe;
 
 use avian3d::prelude::*;
+use oxidized_navigation::NavMeshAffector;
 use wgpu::Face;
 
 use crate::ecology::category::forest::GrassEcologyMaterial;
@@ -92,6 +93,7 @@ pub fn receive_terrain_chunk_mesh_data(
                         entity_commands.insert((
                             Collider::trimesh_from_mesh(&main_mesh.mesh).unwrap(),
                             RigidBody::Static,
+                            NavMeshAffector,
                             CollisionLayers::new(
                                 PhysicalCollisionLayer::Terrain,
                                 [
@@ -176,6 +178,7 @@ pub fn receive_terrain_chunk_mesh_data(
                         entity_commands.insert((
                             Collider::trimesh_from_mesh(&seam_mesh_data.seam_mesh).unwrap(),
                             RigidBody::Static,
+                            NavMeshAffector,
                             CollisionLayers::new(
                                 PhysicalCollisionLayer::Terrain,
                                 [

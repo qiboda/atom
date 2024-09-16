@@ -2,17 +2,40 @@ use std::sync::Arc;
 
 use atom_utils::input::DefaultInputMap;
 use bevy::{asset::Asset, prelude::*, reflect::Reflect};
-use bevy_console::{clap::Parser, ConsoleCommand};
+use bevy_console::{clap::Parser, AddConsoleCommand, ConsoleCommand};
 use bevy_tnua::{
     builtins::{TnuaBuiltinJump, TnuaBuiltinWalk},
     controller::TnuaController,
+    TnuaUserControlsSystemSet,
 };
 use leafwing_input_manager::prelude::*;
 use lightyear::prelude::client::Predicted;
 use serde::{Deserialize, Serialize};
 use settings::{persist::PersistSettingEvent, setting_path::SettingsPath, Setting};
 
-use crate::unit::Player;
+use crate::{state::GameState, unit::player::Player};
+
+#[derive(Debug, Default)]
+pub struct PlayerInputPlugin;
+
+impl Plugin for PlayerInputPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            // .add_plugins(SettingPlugin::<PlayerInputSetting> {
+            //     paths: SettingsPath::default(),
+            // })
+            .insert_resource(PlayerInputSetting::default())
+            .add_systems(
+                FixedUpdate,
+                update_player_input
+                    .in_set(TnuaUserControlsSystemSet)
+                    .run_if(in_state(GameState::RunGame)),
+            )
+            .add_console_command::<PlayerInputSettingPersistCommand, _>(
+                input_setting_persist_command,
+            );
+    }
+}
 
 #[derive(Resource, Serialize, Reflect, Deserialize, Debug, Asset, Clone, Setting)]
 pub struct PlayerInputSetting {

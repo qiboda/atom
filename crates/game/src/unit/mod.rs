@@ -1,17 +1,49 @@
 use bevy::prelude::*;
-use serde::{Deserialize, Serialize};
+use lightyear::prelude::{
+    client::{ComponentSyncMode, Predicted},
+    AppComponentExt, ChannelDirection,
+};
+use monster::Monster;
+use npc::Npc;
+use player::{BornLocation, Player, PlayerId};
+
+use crate::ai::AiPlugin;
 
 pub mod attr_set;
-pub mod bundle;
+pub mod base;
+pub mod monster;
+pub mod npc;
 pub mod player;
 
-#[derive(Debug, Component, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Player;
-
-#[derive(Debug, Component, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Npc;
-
-#[derive(Debug, Component, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Monster;
-
 pub type UnitQueryFilter = Or<(With<Player>, With<Monster>, With<Npc>)>;
+pub type PredictedUnitQueryFilter = (With<Predicted>, UnitQueryFilter);
+
+#[derive(Default, Debug)]
+pub struct UnitPlugin;
+
+impl Plugin for UnitPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(AiPlugin);
+    }
+}
+
+pub(crate) struct UnitProtocolPlugin;
+
+impl Plugin for UnitProtocolPlugin {
+    fn build(&self, app: &mut App) {
+        // components
+        app.register_component::<PlayerId>(ChannelDirection::ServerToClient)
+            .add_prediction(ComponentSyncMode::Once)
+            .add_interpolation(ComponentSyncMode::Once);
+
+        app.register_component::<Player>(ChannelDirection::ServerToClient)
+            .add_prediction(ComponentSyncMode::Once);
+        app.register_component::<Npc>(ChannelDirection::ServerToClient)
+            .add_prediction(ComponentSyncMode::Once);
+        app.register_component::<Monster>(ChannelDirection::ServerToClient)
+            .add_prediction(ComponentSyncMode::Once);
+
+        app.register_component::<BornLocation>(ChannelDirection::ServerToClient)
+            .add_prediction(ComponentSyncMode::Once);
+    }
+}

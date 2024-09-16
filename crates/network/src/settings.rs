@@ -151,7 +151,8 @@ pub(crate) fn build_server_netcode_config(
     });
     let netcode_config = server::NetcodeConfig::default()
         .with_protocol_id(shared.protocol_id)
-        .with_key(shared.private_key);
+        .with_key(shared.private_key)
+        .with_client_timeout_secs(30);
     let io_config = server::IoConfig {
         transport: transport_config,
         conditioner,
@@ -252,7 +253,10 @@ pub(crate) fn build_client_netcode_config(
         private_key: shared.private_key,
         protocol_id: shared.protocol_id,
     };
-    let netcode_config = client::NetcodeConfig::default();
+    let netcode_config = client::NetcodeConfig {
+        client_timeout_secs: 30,
+        ..Default::default()
+    };
     let io_config = client::IoConfig {
         transport: transport_config,
         conditioner,

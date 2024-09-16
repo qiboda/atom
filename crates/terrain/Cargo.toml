@@ -53,7 +53,7 @@ crossbeam-channel = { workspace = true }
 
 bevy_async_task = { version = "0.2.0" }
 autoincrement = { workspace = true }
-# oxidized_navigation = { workspace = true }
+oxidized_navigation = { workspace = true }
 image = { workspace = true }
 imageproc = { version = "0.25" }
 

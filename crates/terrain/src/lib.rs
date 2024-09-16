@@ -34,8 +34,7 @@ pub struct TerrainSubsystemPlugin;
 
 impl Plugin for TerrainSubsystemPlugin {
     fn build(&self, app: &mut App) {
-        app
-        .add_plugins(SettingPlugin::<TerrainSetting>::default())
+        app.add_plugins(SettingPlugin::<TerrainSetting>::default())
             .configure_sets(
                 Update,
                 (
@@ -71,6 +70,8 @@ pub struct TerrainObserver;
 #[derive(Debug, Hash, PartialEq, Eq, Clone, States, Default)]
 pub enum TerrainState {
     #[default]
+    None,
+    LoadAssets,
     GenerateTerrainInfoMap,
     GenerateHeightMap,
     GenerateTerrainMesh,

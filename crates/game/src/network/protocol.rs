@@ -3,20 +3,17 @@ use bevy::{
     app::{App, Plugin},
     prelude::*,
 };
-use client::ComponentSyncMode;
+use client::{ComponentSyncMode, LerpFn};
 use datatables::TableProtocolPlugin;
 use lightyear::{
     prelude::*,
-    utils::avian3d::{position, rotation},
-};
-
-use crate::{
-    input::setting::PlayerAction,
-    unit::{
-        player::{BornLocation, PlayerId},
-        Monster, Npc, Player,
+    utils::{
+        avian3d::{position, rotation},
+        bevy::TransformLinearInterpolation,
     },
 };
+
+use crate::{input::setting::PlayerAction, unit::UnitProtocolPlugin};
 
 #[derive(Channel)]
 pub struct DefaultChannel;
@@ -37,6 +34,7 @@ pub(crate) struct ProtocolPlugin;
 impl Plugin for ProtocolPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(TableProtocolPlugin);
+        app.add_plugins(UnitProtocolPlugin);
 
         // messages
         app.register_message::<TestMessage>(ChannelDirection::Bidirectional);
@@ -45,28 +43,10 @@ impl Plugin for ProtocolPlugin {
         app.add_plugins(LeafwingInputPlugin::<PlayerAction>::default());
 
         // components
-        app.register_component::<PlayerId>(ChannelDirection::ServerToClient)
-            .add_prediction(ComponentSyncMode::Once)
-            .add_interpolation(ComponentSyncMode::Once);
-
-        app.register_component::<Player>(ChannelDirection::ServerToClient)
-            .add_prediction(ComponentSyncMode::Once);
-        app.register_component::<Npc>(ChannelDirection::ServerToClient)
-            .add_prediction(ComponentSyncMode::Once);
-        app.register_component::<Monster>(ChannelDirection::ServerToClient)
-            .add_prediction(ComponentSyncMode::Once);
-
-        // app.register_component::<Transform>(ChannelDirection::Bidirectional)
-        //     .add_prediction(ComponentSyncMode::Full)
-        //     .add_interpolation(ComponentSyncMode::Full)
-        //     .add_interpolation_fn(TransformLinearInterpolation::lerp);
-
-        app.register_component::<BornLocation>(ChannelDirection::ServerToClient)
-            .add_prediction(ComponentSyncMode::Once);
-
-        // app.register_component::<Visibility>(ChannelDirection::ServerToClient)
-        //     .add_prediction(ComponentSyncMode::Full)
-        //     .add_interpolation(ComponentSyncMode::Full);
+        app.register_component::<Transform>(ChannelDirection::Bidirectional)
+            .add_prediction(ComponentSyncMode::Full)
+            .add_interpolation(ComponentSyncMode::Full)
+            .add_interpolation_fn(TransformLinearInterpolation::lerp);
 
         {
             app.register_component::<Position>(ChannelDirection::ServerToClient)

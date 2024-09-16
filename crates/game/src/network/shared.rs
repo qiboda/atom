@@ -23,7 +23,7 @@ use lightyear::{
 };
 use network::shared::FIXED_TIMESTEP_HZ;
 
-use crate::unit::Player;
+use crate::unit::player::Player;
 
 use super::protocol::ProtocolPlugin;
 

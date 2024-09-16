@@ -14,8 +14,6 @@ use log_layers::LogLayersPlugin;
 use seldom_state::StateMachinePlugin;
 use settings::{SettingSourceConfig, SettingsPlugin};
 
-use crate::app_state::AppStatePlugin;
-
 #[derive(Debug, Default)]
 pub struct AtomClientPlugins;
 
@@ -67,7 +65,6 @@ impl PluginGroup for AtomClientPlugins {
             .add(ConsolePlugin)
             .add(StateMachinePlugin)
             .add(DataTablePlugin)
-            .add(AppStatePlugin)
             .add_group(AtomShaderLibPluginGroups)
             .add_group(
                 PhysicsPlugins::new(FixedUpdate)
