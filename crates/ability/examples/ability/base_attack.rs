@@ -57,19 +57,17 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
 
         // 创建节点
         let mut entry_node = StateEffectNodeBundle::<EffectNodeAbilityEntry>::default();
-        let entry_node_entity_cmd = commands.spawn_empty();
-        let entry_node_entity = entry_node_entity_cmd.id();
+        let entry_node_entity = commands.spawn_empty().id();
         entry_node.node_id = entry_node_entity.into();
-        context.insert_state_node(entry_node_entity_cmd.id());
-        context.set_entry_node(entry_node_entity_cmd.id());
+        context.insert_state_node(entry_node_entity);
+        context.set_entry_node(entry_node_entity);
 
         let mut timer_node = StateEffectNodeBundle::<EffectNodeTimer>::default();
-        let timer_node_entity_cmd = commands.spawn_empty();
-        let timer_node_entity = timer_node_entity_cmd.id();
+        let timer_node_entity = commands.spawn_empty().id();
         timer_node.node_id = timer_node_entity.into();
         context.insert_input_value(
             EffectNodeSlotPin {
-                node_id: timer_node_entity_cmd.id().into(),
+                node_id: timer_node_entity.into(),
                 slot: *timer_node
                     .state_node
                     .get_input_slot_pin_by_name(EffectNodeTimer::INPUT_SLOT_DURATION)
@@ -77,7 +75,7 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
             },
             EffectValue::F32(5.0).into(),
         );
-        context.insert_state_node(timer_node_entity_cmd.id());
+        context.insert_state_node(timer_node_entity);
 
         let log_node = EffectNodeLog::new();
         context.insert_input_value(
