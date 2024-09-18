@@ -3,6 +3,7 @@ use shader_plugin_macro::atom_shaders_plugin;
 
 mod gpu_test;
 pub mod shader_plugin_macro;
+pub mod shapes;
 
 #[derive(Default)]
 pub struct AtomShaderLibPluginGroups;

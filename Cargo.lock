@@ -7280,43 +7280,11 @@ dependencies = [
  "spade",
  "strum",
  "strum_macros",
- "terrain_core",
- "terrain_player_client",
  "thiserror",
  "tracing",
  "voronator",
  "wgpu",
  "wgpu-types",
-]
-
-[[package]]
-name = "terrain_core"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "project",
- "serde",
- "serde_json",
- "tracing-appender",
- "tracing-chrome",
- "tracing-error",
- "tracing-log",
- "tracing-subscriber",
- "tracing-tracy",
- "tracy-client",
-]
-
-[[package]]
-name = "terrain_player"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "clap",
- "serde",
- "serde_json",
- "terrain",
- "terrain_core",
- "terrain_player_client",
 ]
 
 [[package]]
@@ -7329,7 +7297,6 @@ dependencies = [
  "project",
  "serde",
  "serde_json",
- "terrain_core",
  "tracing-appender",
  "tracing-subscriber",
 ]
@@ -7565,17 +7532,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.72",
-]
-
-[[package]]
-name = "tracing-chrome"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf0a738ed5d6450a9fb96e86a23ad808de2b727fd1394585da5cdd6788ffe724"
-dependencies = [
- "serde_json",
- "tracing-core",
- "tracing-subscriber",
 ]
 
 [[package]]

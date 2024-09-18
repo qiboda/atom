@@ -1,11 +1,8 @@
 pub mod terrain_tracing;
 
-use crate::order::{LineData, OrderType, TriangleData, VertexData};
-use bevy::{log::BoxedLayer, prelude::*, utils::tracing};
+use bevy::{log::BoxedLayer, prelude::*};
 use log_layers::LogLayerGuardRes;
 use project::project_saved_root_path;
-use serde_json::json;
-use terrain_core::chunk::coords::TerrainChunkCoord;
 use terrain_tracing::TerrainLayer;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{EnvFilter, Layer};
@@ -72,50 +69,4 @@ macro_rules! terrain_trace {
     ($($arg:tt)+ ) => (
         bevy::utils::tracing::trace!(target: $crate::trace::TERRAIN_TRACE_TARGET, $($arg)+)
     );
-}
-
-pub fn terrain_chunk_trace_span(terrain_chunk_coord: &TerrainChunkCoord) -> tracing::Span {
-    let terrain_chunk_coord = serde_json::to_string(&json!(terrain_chunk_coord)).unwrap();
-    terrain_trace_span!("terrain_chunk_trace", terrain_chunk_coord)
-}
-
-pub fn terrain_trace_vertex(index: usize, location: Vec3) {
-    let order_type = OrderType::Vertex(VertexData { index, location });
-    let order_type = serde_json::to_string(&json!(order_type)).unwrap();
-    terrain_trace!(order_type);
-}
-
-pub fn terrain_trace_edge(start_index: usize, end_index: usize) {
-    let order_type = OrderType::Line(LineData {
-        start_index,
-        end_index,
-    });
-
-    let order_type = serde_json::to_string(&json!(order_type)).unwrap();
-    terrain_trace!(order_type);
-}
-
-pub fn terrain_trace_triangle(t1: usize, t2: usize, t3: usize) {
-    let order_type = OrderType::Triangle(TriangleData {
-        vertex_index_0: t1,
-        vertex_index_1: t2,
-        vertex_index_2: t3,
-    });
-    let order_type = serde_json::to_string(&json!(order_type)).unwrap();
-    terrain_trace!(order_type);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_terrain_trace() {
-        let order_type = OrderType::Vertex(VertexData {
-            index: 1,
-            location: Vec3::new(1.0, 2.0, 3.0),
-        });
-        let json = serde_json::to_string(&order_type).unwrap();
-        println!("{}", json);
-    }
 }

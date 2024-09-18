@@ -1,8 +1,4 @@
-use bevy::math::{
-    bounding::{Aabb3d, BoundingVolume},
-    Vec3A,
-};
-use terrain_core::chunk::coords::TerrainChunkCoord;
+use bevy::math::bounding::{Aabb3d, BoundingVolume};
 
 pub struct OctreeUtil;
 
@@ -58,17 +54,9 @@ impl OctreeUtil {
     }
 }
 
-pub struct TerrainChunkUtils;
-
-impl TerrainChunkUtils {
-    pub fn get_coord_from_location(chunk_size: f32, location: Vec3A) -> TerrainChunkCoord {
-        TerrainChunkCoord::from(location / chunk_size)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use bevy::math::Vec3;
+    use bevy::math::{Vec3, Vec3A};
 
     #[test]
     fn test_subnode_aabb() {

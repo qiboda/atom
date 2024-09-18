@@ -177,12 +177,9 @@ struct TerrainSpanFieldStorage(BTreeMap<String, serde_json::Value>);
 mod test {
     use bevy::{
         log::{debug_span, info_span},
-        math::Vec3,
         utils::tracing::{self},
     };
     use tracing_subscriber::layer::SubscriberExt;
-
-    use super::super::terrain_trace_vertex;
 
     use super::TerrainLayer;
 
@@ -214,15 +211,6 @@ mod test {
             let test = "saldfjlas";
             let test2 = "saldfjlas";
             tracing::info!(test, test2);
-        });
-    }
-
-    #[test]
-    fn test_terrain_layer_with_writer() {
-        let layer = TerrainLayer::new();
-        let subscriber = tracing_subscriber::registry().with(layer.with_pretty(true));
-        tracing::subscriber::with_default(subscriber, || {
-            terrain_trace_vertex(1, Vec3::ZERO);
         });
     }
 }

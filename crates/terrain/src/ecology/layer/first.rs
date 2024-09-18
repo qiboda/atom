@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use bevy::math::bounding::Aabb3d;
-use terrain_core::chunk::coords::TerrainChunkCoord;
 
 use crate::ecology::category::EcologyMaterial;
 
@@ -13,11 +12,7 @@ pub struct FirstLayer {
 }
 
 impl Sampler for FirstLayer {
-    fn sample(
-        &self,
-        _chunk_coord: TerrainChunkCoord,
-        _aabb: Aabb3d,
-    ) -> Option<Arc<dyn EcologyMaterial>> {
+    fn sample(&self, _aabb: Aabb3d) -> Option<Arc<dyn EcologyMaterial>> {
         Some(self.forest_material.clone())
     }
 }

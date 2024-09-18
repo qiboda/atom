@@ -3,7 +3,7 @@ use bevy::render::mesh::{MeshVertexBufferLayoutRef, PrimitiveTopology};
 use bevy::render::render_resource::PolygonMode;
 use bevy::{
     asset::Asset,
-    prelude::{Color, Material, Mesh},
+    prelude::{Material, Mesh},
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderType},
 };

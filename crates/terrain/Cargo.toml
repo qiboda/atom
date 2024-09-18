@@ -21,8 +21,6 @@ pqef = { path = "../pqef" }
 project = { path = "../project" }
 atom_internal = { path = "../atom_internal" }
 atom_utils = { path = "../atom_utils" }
-terrain_player_client = { path = "../terrain_player_client" }
-terrain_core = { path = "../terrain_core" }
 settings = { path = "../settings" }
 log_layers = { path = "../log_layers" }
 atom_shader_lib = { path = "../atom_shader_lib" }

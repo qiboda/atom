@@ -6,8 +6,6 @@ use bevy::{
     render::render_resource::{AsBindGroup, PolygonMode, ShaderType},
 };
 
-use crate::Line;
-
 use super::plugin::LINE_SHADER_HANDLE;
 
 #[derive(Debug, Clone, Copy, ShaderType)]
