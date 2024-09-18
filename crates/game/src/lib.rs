@@ -8,4 +8,3 @@ pub mod scene;
 pub mod state;
 pub mod unit;
 pub mod camera;
-pub mod spline_mesh;
