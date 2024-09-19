@@ -136,8 +136,7 @@ pub fn trigger_effect_graph_exec(
     );
 
     // NOTE: Ready exec pin must use "ready" name.
-    // TODO: 写重复了。。。。。只需要节点复制就足够了，实例复制没必要。。。。。
-    //      同样的，Effect Grahp state的设置也没有意义。
+    // TODO: Effect Graph state的设置也没有意义。
     // 以上有问题，如果技能需要还原，结束，中断等，多次技能使用同一个EffectGraph instance，
     // 会有问题。因为每个节点存储了多个状态，但是不知道应该还原，结束，中断哪些状态。
     if trigger.event().entry_exec_pin == "ready".into() {
@@ -279,15 +278,15 @@ pub fn trigger_clone_effect_graph_start(
         Some(new_graph_entity),
         &query_children,
     );
-    let mut old_new_entites = entity_tree_node.recursive_get_entities_map();
-    old_new_entites.remove(&graph_ref.get_entity());
+    let mut old_new_entities = entity_tree_node.recursive_get_entities_map();
+    old_new_entities.remove(&graph_ref.get_entity());
 
     let clone_entities = CloneEntityTreeCommand(Arc::new(entity_tree_node));
     commands.add(clone_entities);
     commands.trigger_targets(
         CloneEffectGraphEndEvent {
             destination_root_entity: new_graph_entity,
-            old_new_entities: old_new_entites,
+            old_new_entities,
         },
         new_graph_entity,
     );

@@ -12,6 +12,15 @@ use crate::{
     impl_effect_node_pin_group,
 };
 
+#[derive(Debug, Default)]
+pub struct EffectNodeSeqPlugin;
+
+impl Plugin for EffectNodeSeqPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<EffectNodeSeq>();
+    }
+}
+
 ///////////////////////// Node Component /////////////////////////
 
 #[derive(Debug, Default, Reflect)]

@@ -8,7 +8,12 @@ use ability::{
         event::{AbilityRemoveEvent, AbilityStartEvent},
     },
     buff::node::buff_entry::EffectNodeBuffEntryPlugin,
-    graph::{graph_map::EffectGraphBuilderMapExt, node::implement::timer::EffectNodeTimerPlugin},
+    graph::{
+        graph_map::EffectGraphBuilderMapExt,
+        node::implement::{
+            log::EffectNodeLogPlugin, seq::EffectNodeSeqPlugin, timer::EffectNodeTimerPlugin,
+        },
+    },
     AbilitySubsystemPlugin,
 };
 
@@ -26,11 +31,15 @@ use datatables::{
 struct Player;
 
 fn main() {
+    dotenv::dotenv().ok();
+
     let mut app = App::new();
     app.add_plugins(DefaultPlugins)
         .add_plugins(DataTablePlugin)
         .add_plugins(AbilitySubsystemPlugin)
         .add_plugins(EffectNodeTimerPlugin)
+        .add_plugins(EffectNodeLogPlugin)
+        .add_plugins(EffectNodeSeqPlugin)
         .add_plugins(EffectNodeBuffEntryPlugin)
         .register_effect_graph_builder::<EffectNodeGraphBaseAttack>()
         .add_systems(Update, create_ability)

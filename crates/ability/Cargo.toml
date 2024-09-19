@@ -21,6 +21,9 @@ paste = { workspace = true }
 uuid = "1.9.1"
 eval = "0.4.3"
 
+[dev-dependencies]
+dotenv = { workspace = true }
+
 [[example]]
 name = "ability"
 path = "examples/ability/main.rs"

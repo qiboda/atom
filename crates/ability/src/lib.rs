@@ -1,4 +1,4 @@
-use ability::plugin::AbilityPlugin;
+use ability::{node::ability_entry::EffectNodeAbilityEntryPlugin, plugin::AbilityPlugin};
 use bevy::app::{First, Plugin};
 use buff::plugin::BuffPlugin;
 use graph::{node::plugin::EffectNodePlugin, EffectGraphPlugin};
@@ -25,6 +25,7 @@ impl Plugin for AbilitySubsystemPlugin {
             .add_plugins(BuffPlugin)
             .add_plugins(EffectGraphPlugin)
             .add_plugins(EffectNodePlugin)
+            .add_plugins(EffectNodeAbilityEntryPlugin)
             .init_resource::<StateLayerTagRegistry>()
             .add_systems(First, init_state_layertag_registry);
     }

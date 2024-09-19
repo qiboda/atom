@@ -16,6 +16,15 @@ use crate::{
     impl_effect_node_pin_group,
 };
 
+#[derive(Debug, Default)]
+pub struct EffectNodeLogPlugin;
+
+impl Plugin for EffectNodeLogPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<EffectNodeLog>();
+    }
+}
+
 ///////////////////////// Node Component /////////////////////////
 
 #[derive(Debug, Default, Reflect)]

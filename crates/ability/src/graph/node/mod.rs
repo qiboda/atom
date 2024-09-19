@@ -39,7 +39,7 @@ pub trait StateEffectNode {}
 pub enum EffectNodeExecuteState {
     #[default]
     Idle,
-    Actived,
+    Active,
 }
 
 /// TODO: change uuid to asset id and entity to entity add asset id

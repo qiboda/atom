@@ -25,6 +25,7 @@ dependencies = [
  "atom_utils",
  "bevy",
  "datatables",
+ "dotenv",
  "eval",
  "layertag",
  "once_cell",

@@ -55,7 +55,6 @@ impl EffectGraphExecutor {
         context: &EffectGraphContext,
         instant_nodes: &Res<InstantEffectNodeMap>,
     ) {
-        self.push_node_output_pin(output_exec_pin);
         if let Some(next_input_exec_pins) = context.get_connected_output_exec_pins(&output_exec_pin)
         {
             for next_input_exec_pin in next_input_exec_pins {
@@ -111,7 +110,7 @@ fn execute_graph(
             if let Some(next_input_exec_pins) =
                 context.get_connected_output_exec_pins(&current).cloned()
             {
-                // info!("next_input_exec_pins: {:?}", next_input_exec_pins);
+                info!("next_input_exec_pins: {:?}", next_input_exec_pins);
                 for next_input_exec_pin in next_input_exec_pins {
                     match next_input_exec_pin.node_id {
                         EffectNodeId::Uuid(uuid) => {

@@ -65,9 +65,9 @@ fn trigger_effect_node_event(
         return;
     };
 
-    info!("trigger_node_event: entry {:?}", pin);
-
     if let Ok((mut node, mut state, parent)) = query.get_mut(entity) {
+        info!("trigger_node_event: timer {:?}", pin);
+
         if let Ok((context, mut executor)) = graph_query.get_mut(parent.get()) {
             if let EffectNodeTimer::INPUT_EXEC_START = pin.exec.name {
                 let duration_value = context.get_input_value_type_from_node::<&f32>(
@@ -81,7 +81,7 @@ fn trigger_effect_node_event(
                 }
 
                 if *state == EffectNodeExecuteState::Idle {
-                    *state = EffectNodeExecuteState::Actived;
+                    *state = EffectNodeExecuteState::Active;
                 }
 
                 executor.start_push_output_pin(

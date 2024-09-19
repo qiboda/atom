@@ -92,7 +92,7 @@ pub fn trigger_ability_ready(
 
 #[allow(clippy::type_complexity)]
 pub fn trigger_ability_start(
-    triger: Trigger<AbilityStartEvent>,
+    trigger: Trigger<AbilityStartEvent>,
     mut state_set_query: Query<&mut StateLayerTagContainer>,
     mut commands: Commands,
     ability_query: Query<
@@ -105,7 +105,7 @@ pub fn trigger_ability_start(
         With<Ability>,
     >,
 ) {
-    let ability_entity = triger.entity();
+    let ability_entity = trigger.entity();
 
     if let Ok((parent, state, added_tag, removed_tag)) = ability_query.get(ability_entity) {
         if *state == AbilityExecuteState::ToRemove {
@@ -134,11 +134,11 @@ pub fn trigger_ability_start(
 }
 
 pub fn trigger_ability_remove(
-    triger: Trigger<AbilityRemoveEvent>,
+    trigger: Trigger<AbilityRemoveEvent>,
     mut commands: Commands,
     mut ability_query: Query<&mut AbilityExecuteState, With<Ability>>,
 ) {
-    let ability_entity = triger.entity();
+    let ability_entity = trigger.entity();
     if let Ok(mut state) = ability_query.get_mut(ability_entity) {
         info!("trigger_ability_remove: {:?}", ability_entity);
         *state = AbilityExecuteState::ToRemove;
