@@ -1,22 +1,20 @@
 use bevy::prelude::*;
 use smallvec::SmallVec;
 
-/// translation or rotaion direction
-#[derive(Debug)]
+/// translation or rotation direction
+#[derive(Debug, Component)]
 pub enum DirectionVariant {
     Constant(Vec3),
     Curve(CubicBSpline<Vec3>),
 }
 
-/// translation or rotaion speed
-#[derive(Debug)]
+/// translation or rotation speed
+#[derive(Debug, Component)]
 pub enum SpeedVariant {
     // speed
     Constant(f32),
     // speed and accel
     Derivative(f32, f32),
-    // speed curve
-    Curve(CubicBSpline<f32>),
 }
 
 #[derive(Debug, Component)]
@@ -37,7 +35,7 @@ pub enum ProjectileMovementVariant {
 #[derive(Debug)]
 pub struct DirectionMovement {
     pub speed: SpeedVariant,
-    pub direction: Direction,
+    pub direction: Vec3,
 }
 
 /// 位置 -> 不适用重力。
