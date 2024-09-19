@@ -16,6 +16,7 @@ use server::ServerCommands;
 use crate::{
     input::setting::{apply_action_state_to_player_movement, PlayerAction},
     network::shared::REPLICATION_GROUP,
+    scene::SceneServerPlugin,
     state::GameState,
     unit::{
         monster::ServerMonsterBundle,
@@ -28,7 +29,8 @@ pub struct GameServerPlugin;
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         // add our server-specific logic. Here we will just start listening for incoming connections
-        app.add_systems(OnEnter(GameState::InitGame), start_server)
+        app.add_plugins(SceneServerPlugin)
+            .add_systems(OnEnter(GameState::InitGame), start_server)
             .add_systems(
                 PreUpdate,
                 // this system will replicate the inputs of a client to other clients

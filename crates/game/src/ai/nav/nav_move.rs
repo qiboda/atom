@@ -5,32 +5,59 @@ use bevy_landmass::{
     prelude::*,
 };
 use bevy_tnua::prelude::{TnuaBuiltinWalk, TnuaController};
-use oxidized_navigation::{debug_draw::DrawNavMesh, NavMeshSettings, OxidizedNavigationPlugin};
+use oxidized_navigation::{NavMeshSettings, OxidizedNavigationPlugin};
 
 use super::landmass_navmesh::{LandmassOxidizedNavigationPlugin, OxidizedArchipelago};
 
 pub const COMPUTED_COLLIDER: ColliderConstructor = ColliderConstructor::TrimeshFromMesh;
 
 #[derive(Debug, Default)]
-pub struct NavMovePlugin;
+pub struct NavMoveClientPlugin;
 
-impl Plugin for NavMovePlugin {
+impl Plugin for NavMoveClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(Landmass3dPlugin::default())
-            .add_plugins(Landmass3dDebugPlugin::default())
-            .add_plugins(LandmassOxidizedNavigationPlugin)
-            .insert_resource(EnableLandmassDebug(true))
-            .add_plugins(OxidizedNavigationPlugin::<Collider>::new(NavMeshSettings {
-                tile_width: 40,
-                ..NavMeshSettings::from_agent_and_bounds(0.5, 2.0, 10000.0, -256.0)
-            }))
-            // .insert_resource(DrawNavMesh(true))
-            .add_systems(Startup, setup)
-            .add_systems(
-                Update,
-                (update_agent_velocity, move_agent_by_velocity).chain(),
-            );
+        app.configure_sets(
+            Update,
+            (
+                NavMoveSystemSet::UpdateVelocity,
+                NavMoveSystemSet::MoveAgent,
+            )
+                .chain(),
+        )
+        .add_plugins(Landmass3dPlugin::default())
+        .add_plugins(Landmass3dDebugPlugin::default())
+        .add_plugins(LandmassOxidizedNavigationPlugin)
+        .insert_resource(EnableLandmassDebug(true))
+        .add_plugins(OxidizedNavigationPlugin::<Collider>::new(NavMeshSettings {
+            tile_width: 40,
+            ..NavMeshSettings::from_agent_and_bounds(0.5, 2.0, 10000.0, -256.0)
+        }))
+        // .insert_resource(DrawNavMesh(true))
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (move_agent_by_velocity).in_set(NavMoveSystemSet::MoveAgent),
+        );
     }
+}
+
+#[derive(Debug, Default)]
+pub struct NavMoveServerPlugin;
+
+impl Plugin for NavMoveServerPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            (update_agent_velocity).in_set(NavMoveSystemSet::UpdateVelocity),
+        );
+    }
+}
+
+#[derive(SystemSet, Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub enum NavMoveSystemSet {
+    #[default]
+    UpdateVelocity,
+    MoveAgent,
 }
 
 fn setup(mut commands: Commands) {

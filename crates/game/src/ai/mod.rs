@@ -1,5 +1,5 @@
 use bevy::app::{App, Plugin};
-use nav::nav_move::NavMovePlugin;
+use nav::nav_move::{NavMoveClientPlugin, NavMoveServerPlugin};
 
 pub mod brain;
 pub mod nav;
@@ -13,14 +13,23 @@ pub mod targets;
 ///
 /// 组队怪物，移动，攻击，逃跑等。
 ///
-
+///
 #[derive(Debug, Default)]
-pub struct AiPlugin;
+pub struct AiServerPlugin;
 
-impl Plugin for AiPlugin {
+impl Plugin for AiServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(targets::TargetsPlugin)
-            .add_plugins(brain::AiBrainPlugin)
-            .add_plugins(NavMovePlugin);
+            .add_plugins(NavMoveServerPlugin)
+            .add_plugins(brain::AiBrainPlugin);
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct AiClientPlugin;
+
+impl Plugin for AiClientPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(NavMoveClientPlugin);
     }
 }

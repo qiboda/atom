@@ -7,7 +7,7 @@ use monster::Monster;
 use npc::Npc;
 use player::{BornLocation, Player, PlayerId};
 
-use crate::ai::AiPlugin;
+use crate::ai::{AiClientPlugin, AiServerPlugin};
 
 pub mod attr_set;
 pub mod base;
@@ -19,11 +19,20 @@ pub type UnitQueryFilter = Or<(With<Player>, With<Monster>, With<Npc>)>;
 pub type PredictedUnitQueryFilter = (With<Predicted>, UnitQueryFilter);
 
 #[derive(Default, Debug)]
-pub struct UnitPlugin;
+pub struct UnitClientPlugin;
 
-impl Plugin for UnitPlugin {
+impl Plugin for UnitClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(AiPlugin);
+        app.add_plugins(AiClientPlugin);
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct UnitServerPlugin;
+
+impl Plugin for UnitServerPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(AiServerPlugin);
     }
 }
 

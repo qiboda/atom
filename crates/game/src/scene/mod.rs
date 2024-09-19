@@ -18,18 +18,27 @@ use crate::{
         base::{ClientUnitBundle, UNIT_HEIGHT, UNIT_RADIUS},
         monster::{ClientMonsterBundle, Monster},
         player::{BornLocation, ClientPlayerBundle, Player, PlayerId},
-        UnitPlugin,
+        UnitClientPlugin, UnitServerPlugin,
     },
 };
 
 #[derive(Default, Debug)]
-pub struct ScenePlugin;
+pub struct SceneClientPlugin;
 
-impl Plugin for ScenePlugin {
+impl Plugin for SceneClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(UnitPlugin)
+        app.add_plugins(UnitClientPlugin)
             .add_systems(OnEnter(GameState::InitGame), init_scene)
             .add_systems(Update, (handle_new_monster, handle_new_player));
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct SceneServerPlugin;
+
+impl Plugin for SceneServerPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(UnitServerPlugin);
     }
 }
 

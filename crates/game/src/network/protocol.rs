@@ -3,6 +3,7 @@ use bevy::{
     app::{App, Plugin},
     prelude::*,
 };
+use bevy_landmass::{coords::ThreeD, AgentDesiredVelocity, AgentDesiredVelocity3d, Velocity3d};
 use client::{ComponentSyncMode, LerpFn};
 use datatables::TableProtocolPlugin;
 use lightyear::{
@@ -43,12 +44,32 @@ impl Plugin for ProtocolPlugin {
         app.add_plugins(LeafwingInputPlugin::<PlayerAction>::default());
 
         // components
-        app.register_component::<Transform>(ChannelDirection::Bidirectional)
-            .add_prediction(ComponentSyncMode::Full)
-            .add_interpolation(ComponentSyncMode::Full)
-            .add_interpolation_fn(TransformLinearInterpolation::lerp);
+        // app.register_component::<Transform>(ChannelDirection::ServerToClient)
+        //     .add_prediction(ComponentSyncMode::Full)
+        //     .add_interpolation(ComponentSyncMode::Full)
+        //     .add_interpolation_fn(TransformLinearInterpolation::lerp);
 
         {
+            // landmass
+            app.register_component::<Velocity3d>(ChannelDirection::ServerToClient)
+                .add_prediction(ComponentSyncMode::Full)
+                .add_interpolation(ComponentSyncMode::Full)
+                .add_interpolation_fn(Velocity3dLinearInterpolation::lerp);
+
+            app.register_component::<AgentDesiredVelocity3d>(ChannelDirection::ServerToClient)
+                .add_prediction(ComponentSyncMode::Full)
+                .add_interpolation(ComponentSyncMode::Full)
+                .add_interpolation_fn(AgentDesiredVelocity3dLinearInterpolation::lerp);
+        }
+
+        // tnua 移动逻辑需要
+        // app.register_component::<GlobalTransform>(ChannelDirection::ServerToClient)
+        //     .add_prediction(ComponentSyncMode::Full)
+        //     .add_interpolation(ComponentSyncMode::Full)
+        //     .add_interpolation_fn(GlobalTransformLinearInterpolation::lerp);
+
+        {
+            // 物理模拟
             app.register_component::<Position>(ChannelDirection::ServerToClient)
                 .add_prediction(ComponentSyncMode::Full)
                 .add_interpolation(ComponentSyncMode::Full)
@@ -75,5 +96,38 @@ impl Plugin for ProtocolPlugin {
             mode: ChannelMode::OrderedReliable(ReliableSettings::default()),
             ..default()
         });
+    }
+}
+
+pub struct GlobalTransformLinearInterpolation;
+
+impl LerpFn<GlobalTransform> for GlobalTransformLinearInterpolation {
+    fn lerp(start: &GlobalTransform, other: &GlobalTransform, t: f32) -> GlobalTransform {
+        let start = start.compute_transform();
+        let other = other.compute_transform();
+        let transform = TransformLinearInterpolation::lerp(&start, &other, t);
+        transform.into()
+    }
+}
+
+pub struct Velocity3dLinearInterpolation;
+
+impl LerpFn<Velocity3d> for Velocity3dLinearInterpolation {
+    fn lerp(start: &Velocity3d, other: &Velocity3d, t: f32) -> Velocity3d {
+        Velocity3d {
+            velocity: start.velocity.lerp(other.velocity, t),
+        }
+    }
+}
+
+pub struct AgentDesiredVelocity3dLinearInterpolation;
+
+impl LerpFn<AgentDesiredVelocity3d> for AgentDesiredVelocity3dLinearInterpolation {
+    fn lerp(
+        start: &AgentDesiredVelocity3d,
+        other: &AgentDesiredVelocity3d,
+        t: f32,
+    ) -> AgentDesiredVelocity3d {
+        AgentDesiredVelocity::<ThreeD>::new(start.velocity().lerp(other.velocity(), t))
     }
 }

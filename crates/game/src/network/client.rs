@@ -2,7 +2,7 @@ use std::ops::Not;
 
 use crate::camera::GameCameraPlugin;
 use crate::input::setting::PlayerInputPlugin;
-use crate::scene::ScenePlugin;
+use crate::scene::SceneClientPlugin;
 use crate::state::{GameState, GameStatePlugin};
 use atom_utils::follow::TransformFollowPlugin;
 use avian3d::prelude::PhysicsDebugPlugin;
@@ -25,7 +25,7 @@ impl Plugin for GameClientPlugin {
             focused_mode: bevy::winit::UpdateMode::Continuous,
             unfocused_mode: bevy::winit::UpdateMode::Continuous,
         })
-        .add_plugins(ScenePlugin)
+        .add_plugins(SceneClientPlugin)
         .add_plugins(GameStatePlugin)
         .add_plugins(TerrainSubsystemPlugin)
         .add_plugins(AtmospherePlugin)
