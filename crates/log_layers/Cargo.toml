@@ -1,0 +1,16 @@
+[package]
+name = "log_layers"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { workspace = true }
+
+project = { path = "../project" }
+tracing-subscriber = { version = "0.3.18", features = [
+    "registry",
+    "env-filter",
+    "json",
+    "local-time",
+] }
+tracing-appender = { version = "0.2.3", features = [] }

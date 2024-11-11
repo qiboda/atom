@@ -1,0 +1,23 @@
+[package]
+name = "entry"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+debug_dump = ["bevy_mod_debugdump"]
+
+[dependencies]
+game = { path = "../../crates/game" }
+bevy = { workspace = true }
+dotenv = { workspace = true }
+network = { path = "../../crates/network" }
+
+clap = { workspace = true }
+
+project = { path = "../../crates/project" }
+
+bevy_mod_debugdump = { version = "0.11", optional = true }
+
+[dev-dependencies]

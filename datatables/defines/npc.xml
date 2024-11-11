@@ -1,0 +1,4 @@
+<module name="unit">
+    <table name="TbNpc" value="Npc" readSchemaFromFile="true" mode="map" index="id"
+        input="11_npc.xlsx" />
+</module>

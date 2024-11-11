@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "name": "瑞文",
+    "desc": "A",
+    "graph_class": "EffectNodeGraphBaseAttack",
+    "max_layer": 0,
+    "duration": 0,
+    "interval": 0,
+    "start_required_layertags": [
+      "A.D",
+      "A.B.C"
+    ],
+    "start_disabled_layertags": [
+      "A.D",
+      "A.B.C"
+    ],
+    "start_added_layertags": [
+      {
+        "raw_layertag": "A.D",
+        "revertable": true
+      },
+      {
+        "raw_layertag": "A.B.C",
+        "revertable": false
+      }
+    ],
+    "start_removed_layertags": [
+      {
+        "raw_layertag": "A.D",
+        "revertable": true
+      },
+      {
+        "raw_layertag": "A.B.C",
+        "revertable": false
+      }
+    ],
+    "abort_required_layertags": [
+      "A.D",
+      "A.B.C"
+    ],
+    "abort_disabled_layertags": [
+      "A.D",
+      "A.B.C"
+    ]
+  },
+  {
+    "id": 2,
+    "name": "沙发",
+    "desc": "B",
+    "graph_class": "",
+    "max_layer": 0,
+    "duration": 0,
+    "interval": 0,
+    "start_required_layertags": [],
+    "start_disabled_layertags": [],
+    "start_added_layertags": [],
+    "start_removed_layertags": [],
+    "abort_required_layertags": [],
+    "abort_disabled_layertags": []
+  },
+  {
+    "id": 3,
+    "name": "垃圾桶",
+    "desc": "C",
+    "graph_class": "",
+    "max_layer": 0,
+    "duration": 0,
+    "interval": 0,
+    "start_required_layertags": [
+      "A.D",
+      "A.B.C.E"
+    ],
+    "start_disabled_layertags": [
+      "A.D",
+      "A.B.C.E"
+    ],
+    "start_added_layertags": [
+      {
+        "raw_layertag": "A.D",
+        "revertable": true
+      },
+      {
+        "raw_layertag": "A.B.C",
+        "revertable": false
+      }
+    ],
+    "start_removed_layertags": [
+      {
+        "raw_layertag": "A.D",
+        "revertable": true
+      },
+      {
+        "raw_layertag": "A.B.C",
+        "revertable": false
+      }
+    ],
+    "abort_required_layertags": [
+      "A.D",
+      "A.B.C.E"
+    ],
+    "abort_disabled_layertags": [
+      "A.D",
+      "A.B.C.E"
+    ]
+  },
+  {
+    "id": 4,
+    "name": "诖误",
+    "desc": "desc",
+    "graph_class": "",
+    "max_layer": 0,
+    "duration": 0,
+    "interval": 0,
+    "start_required_layertags": [],
+    "start_disabled_layertags": [],
+    "start_added_layertags": [],
+    "start_removed_layertags": [],
+    "abort_required_layertags": [],
+    "abort_disabled_layertags": []
+  }
+]

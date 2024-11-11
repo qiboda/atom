@@ -1,0 +1,1 @@
+@REM cargo build -p terrain --no-default-features --features "cpu_seam"

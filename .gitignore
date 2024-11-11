@@ -1,6 +1,8 @@
 /target
-crates/terrain/target
-saved/graphs/*
-saved/logs/*
 wgpu_trace
 .idea
+saved/logs/
+saved/renderdoc
+tools/luban
+
+.VSCodeCounter/

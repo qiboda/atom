@@ -1,0 +1,90 @@
+(
+    grid_num: 256,
+    grid_cell_size: 32.0,
+    rand_area_setting: [
+        (
+            rand_area_range_percent: (
+                start: (0.2, 0.2),
+                end: (0.4, 0.4),
+            ),
+            rand_area_num: (
+                start: 5,
+                end: 10,
+            ),
+            rand_area_radius: (
+                start: 100,
+                end: 200,
+            ),
+        ),
+        (
+            rand_area_range_percent: (
+                start: (0.6, 0.6),
+                end: (0.8, 0.8),
+            ),
+            rand_area_num: (
+                start: 5,
+                end: 10,
+            ),
+            rand_area_radius: (
+                start: 100,
+                end: 200,
+            ),
+        ),
+        (
+            rand_area_range_percent: (
+                start: (0.2, 0.6),
+                end: (0.4, 0.8),
+            ),
+            rand_area_num: (
+                start: 5,
+                end: 10,
+            ),
+            rand_area_radius: (
+                start: 100,
+                end: 200,
+            ),
+        ),
+        (
+            rand_area_range_percent: (
+                start: (0.6, 0.2),
+                end: (0.8, 0.4),
+            ),
+            rand_area_num: (
+                start: 5,
+                end: 10,
+            ),
+            rand_area_radius: (
+                start: 100,
+                end: 200,
+            ),
+        ),
+    ],
+    rand_height_setting: (
+        rand_point_num: (
+            start: 20,
+            end: 30,
+        ),
+        rand_point_radius: (
+            start: 3,
+            end: 6,
+        ),
+        rand_point_height: (
+            start: 3.0,
+            end: 5.0,
+        ),
+    ),
+    max_base_humidity: 0.3,
+    temperature_range: (
+        start: -40.0,
+        end: 40.0,
+    ),
+    temperature_altitude_range: (
+        start: -20.0,
+        end: 0.0,
+    ),
+    temperature_horizontal_range: (
+        start: -20.0,
+        end: 60.0,
+    ),
+    image_save_path: "\\\\?\\E:\\atom\\saved\\maps",
+)

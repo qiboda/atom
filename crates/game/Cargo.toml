@@ -1,0 +1,39 @@
+[package]
+name = "game"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { workspace = true }
+smallvec = { workspace = true }
+serde = { workspace = true }
+aery = { workspace = true }
+big-brain = { workspace = true }
+bitflags = { workspace = true }
+avian3d = { workspace = true }
+bevy-tnua = { workspace = true }
+bevy-tnua-avian3d = { workspace = true }
+bevy_console = { workspace = true }
+leafwing-input-manager = { workspace = true }
+bevy_atmosphere = { workspace = true }
+clap = { workspace = true }
+lightyear = { workspace = true }
+rand = { workspace = true }
+bevy-inspector-egui = { version = "0.25" }
+bevy_landmass = { workspace = true }
+oxidized_navigation = { workspace = true }
+
+bevy_screen_diagnostics = { version = "0.6.0" }
+
+network = { path = "../network" }
+atom_camera = { path = "../atom_camera" }
+atom_utils = { path = "../atom_utils" }
+atom_internal = { path = "../atom_internal" }
+
+terrain = { path = "../terrain" }
+project = { path = "../project" }
+ability = { path = "../ability" }
+datatables = { path = "../datatables" }
+settings = { path = "../settings" }
+log_layers = { path = "../log_layers" }
+atom_core = { path = "../atom_core" }

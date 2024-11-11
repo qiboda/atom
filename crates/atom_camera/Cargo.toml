@@ -1,0 +1,14 @@
+[package]
+name = "atom_camera"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { workspace = true }
+aery = { workspace = true }
+leafwing-input-manager = { workspace = true }
+serde = { workspace = true }
+
+settings = { path = "../settings" }
+atom_utils = { path = "../atom_utils" }
+atom_core = { path = "../atom_core" }

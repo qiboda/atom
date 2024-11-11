@@ -1,0 +1,42 @@
+digraph "" {
+	"compound"="true";
+	"splines"="spline";
+	"rankdir"="LR";
+	"bgcolor"="#0d1117";
+	"fontname"="Helvetica";
+	"nodesep"="0.15";
+	edge ["penwidth"="2"];
+	node ["shape"="box", "style"="filled"];
+	subgraph "clusternode_Set(1)" {
+		"style"="rounded,filled";
+		"label"="EventUpdates";
+		"tooltip"="EventUpdates";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(1)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(0)" ["label"="event_update_system", "tooltip"="bevy_ecs::event::event_update_system", "fillcolor"="#b0d34a", "fontname"="Helvetica", "fontcolor"="#edf5d5", "color"="#d3e69c", "penwidth"="1"]
+	}
+	
+	subgraph "clusternode_Set(3)" {
+		"style"="rounded,filled";
+		"label"="TimeSystem";
+		"tooltip"="TimeSystem";
+		"fillcolor"="#ffffff44";
+		"fontcolor"="#ffffff";
+		"color"="#ffffff50";
+		"penwidth"="2";
+		"set_marker_node_Set(3)" ["style"="invis", "label"="", "height"="0", "shape"="point"]
+		"node_System(1)" ["label"="time_system", "tooltip"="bevy_time::time_system", "fillcolor"="#c7ddbd", "fontname"="Helvetica", "fontcolor"="#162111", "color"="#8dba79", "penwidth"="1"]
+	}
+	
+	"node_System(2)" ["label"="channel_to_event<PersistSettingEndEvent<PlayerInputSetting>>", "tooltip"="atom_utils::async_event::channel_to_event<settings::persist::PersistSettingEndEvent<game::input::setting::PlayerInputSetting>>"]
+	"node_System(3)" ["label"="channel_to_event<PersistSettingEndEvent<TerrainSetting>>", "tooltip"="atom_utils::async_event::channel_to_event<settings::persist::PersistSettingEndEvent<terrain::setting::TerrainSetting>>"]
+	"node_System(4)" ["label"="channel_to_event<PersistSettingEndEvent<TerrainMapSetting>>", "tooltip"="atom_utils::async_event::channel_to_event<settings::persist::PersistSettingEndEvent<terrain::map::config::TerrainMapSetting>>"]
+	"node_System(5)" ["label"="channel_to_event<PersistSettingEndEvent<CameraSetting>>", "tooltip"="atom_utils::async_event::channel_to_event<settings::persist::PersistSettingEndEvent<atom_camera::setting::CameraSetting>>"]
+	"node_System(0)" -> "node_System(2)" ["lhead"="", "ltail"="", "tooltip"="SystemTypeSet(ExclusiveFunctionSystem<fn(Local<Tick>), event_update_system>()) → channel_to_event<PersistSettingEndEvent<PlayerInputSetting>>", "color"="#eede00"]
+	"node_System(0)" -> "node_System(3)" ["lhead"="", "ltail"="", "tooltip"="SystemTypeSet(ExclusiveFunctionSystem<fn(Local<Tick>), event_update_system>()) → channel_to_event<PersistSettingEndEvent<TerrainSetting>>", "color"="#881877"]
+	"node_System(0)" -> "node_System(4)" ["lhead"="", "ltail"="", "tooltip"="SystemTypeSet(ExclusiveFunctionSystem<fn(Local<Tick>), event_update_system>()) → channel_to_event<PersistSettingEndEvent<TerrainMapSetting>>", "color"="#00b0cc"]
+	"node_System(0)" -> "node_System(5)" ["lhead"="", "ltail"="", "tooltip"="SystemTypeSet(ExclusiveFunctionSystem<fn(Local<Tick>), event_update_system>()) → channel_to_event<PersistSettingEndEvent<CameraSetting>>", "color"="#aa3a55"]
+}

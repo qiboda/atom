@@ -1,0 +1,42 @@
+({
+    "grass.color": Image (
+        path: "textures/terrain/grass/Grass_2K_Color_Array.png",
+        // array_texture_layers: 2
+    ),
+    "grass.metallic_roughness": Image (
+        path: "textures/terrain/grass/Grass_2K_Metallic_Roughness_Array.png",
+        // array_texture_layers: 2
+    ),
+    "grass.depth": Image (
+        path: "textures/terrain/grass/Grass_2K_Displacement_Array.png",
+        // array_texture_layers: 2
+    ),
+    "grass.ambient_occlusion": Image (
+        path: "textures/terrain/grass/Grass_2K_AmbientOcclusion_Array.png",
+        // array_texture_layers: 2
+    ),
+    "grass.normal_map": Image (
+        path: "textures/terrain/grass/Grass_2K_NormalGL_Array.png",
+        // array_texture_layers: 2
+    ),
+    "forest.color": Image (
+        path: "textures/terrain/forest/Bricks_2K_Color_Array.png",
+        // array_texture_layers: 2
+    ),
+    "forest.metallic_roughness": Image (
+        path: "textures/terrain/forest/Bricks_2K_Metallic_Roughness_Array.png",
+        // array_texture_layers: 2
+    ),
+    "forest.depth": Image (
+        path: "textures/terrain/forest/Bricks_2K_Displacement_Array.png",
+        // array_texture_layers: 2
+    ),
+    "forest.ambient_occlusion": Image (
+        path: "textures/terrain/forest/Bricks_2K_AmbientOcclusion_Array.png",
+        // array_texture_layers: 2
+    ),
+    "forest.normal_map": Image (
+        path: "textures/terrain/forest/Bricks_2K_NormalGL_Array.png",
+        // array_texture_layers: 2
+    ),
+})

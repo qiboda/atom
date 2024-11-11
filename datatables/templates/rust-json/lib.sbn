@@ -1,0 +1,156 @@
+﻿#![allow(warnings)]
+#![allow(clippy::all)]
+
+{{func to_snake_case(name)
+    name = regex.replace name "[A-Z]" "_$0"
+    name = string.downcase name
+    name = regex.replace name "^_" ""
+    ret name
+end}}
+
+
+pub mod prelude{
+    pub use crate::*;
+{{~ for ns in __ns ~}}
+    pub use {{ns}}::*;
+{{~end~}}
+}
+
+{{~ for ns in __ns ~}}
+use {{ns}}::*;
+{{~end~}}
+
+{{~ if __polymorphic_beans.count != 0 ~}}
+
+type AbstractBase = dyn std::any::Any + Sync + Send;
+
+pub trait GetBase<'a, T> {
+    fn get_base(&'a self) -> Result<T, LubanError>;
+}
+{{~end~}}
+
+#[derive(Debug)]
+pub enum LubanError {
+    Loader(String),
+    Table(String),
+    Bean(String),
+    Polymorphic(String),
+    Unknown(String),
+}
+
+impl std::error::Error for LubanError {}
+
+impl std::fmt::Display for LubanError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            LubanError::Loader(msg) |
+            LubanError::Table(msg) |
+            LubanError::Bean(msg) |
+            LubanError::Polymorphic(msg) |
+            LubanError::Unknown(msg) => msg,
+        })
+    }
+}
+    
+#[derive(Debug, thiserror::Error)]
+pub enum TableLoaderError {
+    #[error("serde json error: {0}")]
+    SerdeJsonError(#[from] serde_json::error::Error),
+    #[error("io error: {0}")]
+    IOError(#[from] std::io::Error),
+    #[error("luban error: {0}")]
+    LubanError(#[from] LubanError),
+}
+
+#[derive(Debug, bevy::prelude::Resource, Default)]
+pub struct Tables{
+{{~ for table in __tables ~}}
+    pub {{table.name | to_snake_case}}: bevy::asset::Handle<{{full_name table}}>,
+{{~end~}}
+    pub table_handle_map: bevy::utils::HashMap<std::any::TypeId, bevy::asset::UntypedHandle>,
+}
+
+impl Tables {
+    pub fn new<G: Clone + Send + Sync + 'static>(asset_server: bevy::prelude::Res<bevy::asset::AssetServer>, tables_path: std::path::PathBuf, guard: G) -> Tables {
+        let mut tables = Tables {
+{{~ for table in __tables ~}}
+            {{table.name | to_snake_case}}: asset_server.load_acquire(tables_path.join("{{table.output_data_file}}.json"), guard.clone()),
+{{~end~}}
+            table_handle_map: bevy::utils::HashMap::default(),
+        };
+
+{{~ for table in __tables ~}}
+        tables.table_handle_map.insert(std::any::TypeId::of::<{{full_name table}}>(), tables.{{table.name | to_snake_case}}.clone_weak().untyped());
+{{~end~}}
+
+        tables
+    }
+
+    pub fn get_table_handle<T: 'static + bevy::asset::Asset>(&self) -> Result<bevy::asset::Handle<T>, LubanError> {
+        self.table_handle_map
+            .get(&std::any::TypeId::of::<T>())
+            .map(|handle| handle.clone_weak().typed())
+            .ok_or(LubanError::Table(format!("table not found: {}", std::any::type_name::<T>())))
+    }
+}
+
+#[derive(Default)]
+pub struct TableAssetsPlugin;
+
+impl bevy::app::Plugin for TableAssetsPlugin {
+    fn build(&self, app: &mut bevy::app::App) {
+        use bevy::asset::AssetApp;
+        app
+            .add_event::<TablesLoadedEvent>()
+            {{~ for table in __tables ~}}
+            .init_asset_loader::<{{table.name}}Loader>()
+            .init_asset::<{{table.name}}>()
+            .add_systems(bevy::app::PreUpdate, table_asset_loadeds::<{{table.name}}>)
+            {{~end~}}
+            ;
+    }
+}
+
+#[derive(Debug, bevy::ecs::event::Event)]
+pub struct TablesLoadedEvent {
+    pub asset_handles: smallvec::SmallVec<[bevy::asset::UntypedHandle;1]>,
+}
+
+
+fn table_asset_loadeds<A: bevy::asset::Asset>(
+    mut event_reader: bevy::prelude::EventReader<bevy::asset::AssetEvent<A>>,
+    mut event_writer: bevy::prelude::EventWriter<TablesLoadedEvent>,
+    tables: bevy::prelude::Res<Tables>,
+    asset_server: bevy::prelude::Res<bevy::asset::AssetServer>,
+) {
+    let mut asset_handles = smallvec::SmallVec::<[bevy::asset::UntypedHandle;1]>::new();
+    for event in event_reader.read() {
+        if let bevy::asset::AssetEvent::<A>::Modified { id } = event {
+           if tables.table_handle_map.iter().all(|(k, v)| {
+                asset_server.get_load_state(v) == Some(bevy::asset::LoadState::Loaded)
+            }) {
+                let handle = asset_server.get_id_handle(*id).unwrap();
+                asset_handles.push(handle.untyped());
+            }
+        }
+    }
+    if asset_handles.len() > 0 {
+        event_writer.send(TablesLoadedEvent { asset_handles });
+    }
+}
+
+#[derive(Default)]
+pub struct TableProtocolPlugin;
+
+impl bevy::app::Plugin for TableProtocolPlugin {
+    fn build(&self, app: &mut bevy::prelude::App) {
+        use client::ComponentSyncMode;
+        use lightyear::prelude::*;
+        {{~ for table in __tables ~}}
+        {{~if table.is_union_index~}}
+        app.register_component::<{{table.name}}Row>(ChannelDirection::ServerToClient)
+            .add_prediction(ComponentSyncMode::Once);
+        {{~end~}}
+        {{~end~}}
+    }
+}

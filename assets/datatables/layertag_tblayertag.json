@@ -1,0 +1,22 @@
+[
+  {
+    "raw_layertag": "A.D",
+    "desc": "A",
+    "counter": true
+  },
+  {
+    "raw_layertag": "A.B.C",
+    "desc": "B",
+    "counter": false
+  },
+  {
+    "raw_layertag": "A.B.C.E",
+    "desc": "C",
+    "counter": true
+  },
+  {
+    "raw_layertag": "Hal.Doub.Heal",
+    "desc": "desc",
+    "counter": true
+  }
+]

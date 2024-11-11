@@ -1,0 +1,13 @@
+[package]
+name = "atom_shader_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { workspace = true }
+dotenv = { workspace = true }
+image = { workspace = true }
+
+paste = { workspace = true }
+
+project = { path = "../project" }

@@ -1,0 +1,8 @@
+<module name="unit">
+    <enum name="RelationShipType" flags="false" unique="true" comment="camp relationship">
+        <var name="None" value="0" />
+        <var name="Hostility" value="1" />
+        <var name="Friendly" value="2" />
+    </enum>
+    <table name="TbRelationShip" value="RelationShip" readSchemaFromFile="true"  mode="list" index="active_camp+passive_camp" input="relationship.xlsx"/>
+</module>

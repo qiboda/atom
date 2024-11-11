@@ -1,5 +1,6 @@
-[env]
-# force all crates use root assets folder
-BEVY_ASSET_ROOT = { value = "./", relative = true }
-
-ATOM_SAVED_ROOT = { value = "./saved", relative = true }
+# windows install rust-lld
+# # cargo install -f cargo-binutils
+# # rustup component add llvm-tools-preview
+# for Windows
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"

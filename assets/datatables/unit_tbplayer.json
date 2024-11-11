@@ -1,0 +1,34 @@
+[
+  {
+    "id": 10010001,
+    "name": "瑞文",
+    "desc": "A",
+    "camp": 1,
+    "capsule_radius": 0.5,
+    "capsule_height": 2
+  },
+  {
+    "id": 10010002,
+    "name": "沙发",
+    "desc": "B",
+    "camp": 2,
+    "capsule_radius": 0.5,
+    "capsule_height": 2
+  },
+  {
+    "id": 10010003,
+    "name": "垃圾桶",
+    "desc": "C",
+    "camp": 3,
+    "capsule_radius": 0.5,
+    "capsule_height": 2
+  },
+  {
+    "id": 10010004,
+    "name": "诖误",
+    "desc": "desc",
+    "camp": 1,
+    "capsule_radius": 0.5,
+    "capsule_height": 2
+  }
+]

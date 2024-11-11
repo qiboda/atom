@@ -1,15 +1,19 @@
-use bevy::prelude::{Commands, Entity};
+use std::fmt::Debug;
 
-use super::context::EffectGraphContext;
+use bevy::prelude::{Commands, Entity, ResMut};
+
+use super::context::InstantEffectNodeMap;
 
 /// all children node is graph nodes.
-pub trait EffectGraph: EffectGraphBuilder {}
+pub trait EffectGraph {}
 
-pub trait EffectGraphBuilder {
+pub trait EffectGraphBuilder: Debug + Sync + Send {
+    // TODO: move to another trait
+    fn get_effect_graph_name(&self) -> &'static str;
+
     fn build(
         &self,
         commands: &mut Commands,
-        effect_graph_context: &mut EffectGraphContext,
-        parent: Entity,
-    );
+        instant_map: &mut ResMut<InstantEffectNodeMap>,
+    ) -> Entity;
 }

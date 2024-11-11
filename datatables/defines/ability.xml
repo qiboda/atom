@@ -1,0 +1,12 @@
+<module name="effect">
+    <enum name="AbilityType" unique="true" comment="ability active or passive type">
+        <var name="Active" value="0" />
+        <var name="Passive" value="1" />
+    </enum>
+    <bean name="RevertableLayerTag" sep=";" comment="layertag than revertable">
+        <var name="raw_layertag" type="string#ref=layertag.TbLayerTag" />
+        <var name="revertable" type="bool" />
+    </bean>
+    <table name="TbAbility" value="Ability" readSchemaFromFile="true" mode="map" index="id"
+        input="20_ability.xlsx" />
+</module>

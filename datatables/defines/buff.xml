@@ -1,0 +1,3 @@
+<module name="effect">
+    <table name="TbBuff" value="Buff" readSchemaFromFile="true"  mode="map" index="id" input="21_buff.xlsx"/>
+</module>

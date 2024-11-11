@@ -1,17 +1,12 @@
-use bevy::prelude::{App, Plugin};
-
-pub mod container;
-/// layer state manager.
+pub mod builder;
+/// layer tag crate.
+/// tree data structure for layer tag
 ///
-/// support runtime add/remove any layer state.
-/// support any layer state with data.
+/// LayerTagContainer用于管理LayerTag.
+pub mod container_op;
+pub mod count_container;
+pub mod count_layertag;
 pub mod layertag;
 pub mod registry;
+pub mod single_container;
 pub mod tag;
-
-#[derive(Default)]
-pub struct LayerTagPlugin;
-
-impl Plugin for LayerTagPlugin {
-    fn build(&self, _app: &mut App) {}
-}

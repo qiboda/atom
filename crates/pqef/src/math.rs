@@ -26,7 +26,7 @@ pub(crate) fn trace_of_product(a: Mat3A, b: Mat3A) -> f32 {
     r
 }
 
-/// todo: to understand
+/// TODO: to understand
 /// p and q are 3x3 matrices
 /// and use p and q 2x2 matrices interference determinant to as interference value at non 2x2
 /// matrix row and column
@@ -121,4 +121,53 @@ pub(crate) fn cross_product_squared_transpose(v: Vec3A) -> Mat3A {
     m.y_axis.z = -b * c;
 
     m
+}
+
+// standard deviation
+pub fn standard_deviation(sampler: &[f32]) -> f32 {
+    variance(sampler).sqrt()
+}
+
+// variance
+pub fn variance(sampler: &[f32]) -> f32 {
+    let len = sampler.iter().len();
+    let mean = sampler.iter().sum::<f32>() / len as f32;
+
+    let mut sum = 0.0;
+    for sample in sampler.iter() {
+        sum += sample * sample;
+    }
+    sum / len as f32 - mean * mean
+}
+
+// covariance
+pub fn covariance(xs: &[f32], ys: &[f32]) -> f32 {
+    let x_len = xs.iter().len();
+    let x_mean = xs.iter().sum::<f32>() / x_len as f32;
+
+    let y_len = ys.iter().len();
+    let y_mean = ys.iter().sum::<f32>() / y_len as f32;
+
+    let xy_mean = xs.iter().zip(ys.iter()).map(|(x, y)| x * y).sum::<f32>() / x_len as f32;
+
+    xy_mean - x_mean * y_mean
+}
+
+// covariance matrix
+pub fn covariance_matrix(vec3: &[Vec3A]) -> Mat3A {
+    let xs: Vec<f32> = vec3.iter().map(|v| v.x).collect();
+    let ys: Vec<f32> = vec3.iter().map(|v| v.y).collect();
+    let zs: Vec<f32> = vec3.iter().map(|v| v.z).collect();
+
+    let xx = covariance(&xs, &xs);
+    let xy = covariance(&xs, &ys);
+    let xz = covariance(&xs, &zs);
+    let yy = covariance(&ys, &ys);
+    let yz = covariance(&ys, &zs);
+    let zz = covariance(&zs, &zs);
+    Mat3A {
+        x_axis: Vec3A::new(xx, xy, xz),
+        y_axis: Vec3A::new(xy, yy, yz),
+        z_axis: Vec3A::new(xz, yz, zz),
+    }
 }

@@ -9,41 +9,75 @@ edition = "2021"
 # feature "wgpu_trace", "trace_chrome", "dynamic_linking", "wayland", 
 # bevy_mod_debugdump = "0.7.0"
 bevy = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+# lightyear = { workspace = true }
+smallvec = { workspace = true }
+avian3d = { workspace = true }
 
-strum = { version = "0.25.0", features = ["derive", "strum_macros"] }
-strum_macros = "0.25.3"
+strum = { version = "0.26.3", features = ["derive", "strum_macros"] }
+strum_macros = "0.26.4"
 pqef = { path = "../pqef" }
+project = { path = "../project" }
+atom_internal = { path = "../atom_internal" }
+atom_utils = { path = "../atom_utils" }
+settings = { path = "../settings" }
+log_layers = { path = "../log_layers" }
+atom_shader_lib = { path = "../atom_shader_lib" }
 
-# noisy_bevy = { path = "../dep/noisy_bevy" }
-# simdnoise = { path = "../../../dep/rust-simd-noise" }
-# bevy_rapier3d = { path = "../dep/bevy_rapier/bevy_rapier3d" }
-# bevy-inspector-egui = "0.18.0"
-# bevy_editor_pls = "0.3.0"
-# bevy_mod_debugdump = { path = "../dep/bevy_mod_debugdump" }
-# bevy_terrain = { path = "../dep/bevy_terrain" }
-rand = "0.8.5"
-smallvec = "1.11.2"
-futures-lite = "2.0.1"
+rand = { workspace = true }
+rand_distr = "0.4"
+rand_pcg = "0.3"
+fast_poisson = "1.0.0"
+spade = { version = "2.12" }
+voronator = { version = "0.2" }
 
-noisy_bevy = "0.5.0"
+ndshape = { version = "0.3.0" }
 
-bevy_obj = "0.12.0"
+noise = { workspace = true }
 
-bevy_xpbd_3d = { version = "0.3.2", features = ["simd"] } # "debug-plugin"
-bevy_xpbd_derive = "0.1.0"
-bevy_replicon = "0.17.0"
+# bevy_obj = "0.13.0"
 
 # bevy_ecs_ldtk = "0.5.0"
 # bevy_ecs_tilemap = "0.9.0"
 # bevy_rapier2d = "0.20.0"
 
-tracing-subscriber = { version = "0.3.18", features = [
-    "registry",
-    "env-filter",
-] }
-tracing-chrome = { version = "0.7.1", optional = true }
-tracing-tracy = { version = "0.10.4", optional = true }
-tracing-log = "0.2.0"
-tracing-error = { version = "0.2.0", optional = true }
-tracy-client = { version = "0.16", optional = true }
-tracing-appender = "0.2.3"
+serde_json = "1.0.120"
+bitflags = { workspace = true }
+bitfield-struct = "0.8.0"
+bytemuck = { workspace = true }
+
+crossbeam-channel = { workspace = true }
+
+bevy_async_task = { version = "0.2.0" }
+autoincrement = { workspace = true }
+oxidized_navigation = { workspace = true }
+image = { workspace = true }
+imageproc = { version = "0.25" }
+
+num-traits = { workspace = true }
+wgpu-types = { workspace = true }
+wgpu = { workspace = true }
+thiserror = { workspace = true }
+bevy_console = { workspace = true }
+bevy_asset_loader = { workspace = true }
+clap = { workspace = true }
+bevy_water = { version = "0.14" }
+
+encase = { version = "0.8.0" }
+
+paste = { workspace = true }
+
+[dev-dependencies]
+bevy_debug_grid = { workspace = true }
+bevy_mod_picking = { workspace = true }
+bevy_flycam = { version = "0.14.0" }
+bevy-inspector-egui = { version = "0.25" }
+dotenv = { workspace = true }
+atom_renderdoc = { path = "../atom_renderdoc" }
+bevy_screen_diagnostics = { version = "0.6.0" }
+
+
+[features]
+# 默认是 cpu seam
+default = []

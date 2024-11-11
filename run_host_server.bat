@@ -1,0 +1,1 @@
+cargo run --bin entry --release -- host-server --client-id 0
