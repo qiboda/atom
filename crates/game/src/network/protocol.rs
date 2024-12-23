@@ -51,15 +51,16 @@ impl Plugin for ProtocolPlugin {
 
         {
             // landmass
-            app.register_component::<Velocity3d>(ChannelDirection::ServerToClient)
-                .add_prediction(ComponentSyncMode::Full)
-                .add_interpolation(ComponentSyncMode::Full)
-                .add_interpolation_fn(Velocity3dLinearInterpolation::lerp);
+            // TODO 接触注释
+            // app.register_component::<Velocity3d>(ChannelDirection::ServerToClient)
+            //     .add_prediction(ComponentSyncMode::Full)
+            //     .add_interpolation(ComponentSyncMode::Full)
+            //     .add_interpolation_fn(Velocity3dLinearInterpolation::lerp);
 
-            app.register_component::<AgentDesiredVelocity3d>(ChannelDirection::ServerToClient)
-                .add_prediction(ComponentSyncMode::Full)
-                .add_interpolation(ComponentSyncMode::Full)
-                .add_interpolation_fn(AgentDesiredVelocity3dLinearInterpolation::lerp);
+            // app.register_component::<AgentDesiredVelocity3d>(ChannelDirection::ServerToClient)
+            //     .add_prediction(ComponentSyncMode::Full)
+            //     .add_interpolation(ComponentSyncMode::Full)
+            //     .add_interpolation_fn(AgentDesiredVelocity3dLinearInterpolation::lerp);
         }
 
         // tnua 移动逻辑需要
@@ -128,6 +129,8 @@ impl LerpFn<AgentDesiredVelocity3d> for AgentDesiredVelocity3dLinearInterpolatio
         other: &AgentDesiredVelocity3d,
         t: f32,
     ) -> AgentDesiredVelocity3d {
-        AgentDesiredVelocity::<ThreeD>::new(start.velocity().lerp(other.velocity(), t))
+        // TODO 解除注释
+        // AgentDesiredVelocity::<ThreeD>::new(start.velocity().lerp(other.velocity(), t))
+        todo!();
     }
 }

@@ -18,7 +18,7 @@ datatables = { path = "../datatables" }
 atom_utils = { path = "../atom_utils" }
 
 paste = { workspace = true }
-uuid = "1.9.1"
+uuid = "1.11.0"
 eval = "0.4.3"
 
 [dev-dependencies]

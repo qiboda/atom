@@ -11,5 +11,5 @@ paste = { workspace = true }
 
 [dev-dependencies]
 dotenv = { workspace = true }
-bevy_flycam = { version = "0.14.0" }
+bevy_flycam = { version = "0.15.0" }
 bevy_screen_diagnostics = { version = "0.6.0" }

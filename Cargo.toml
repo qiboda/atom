@@ -10,7 +10,7 @@ resolver = "2"
 
 [workspace.dependencies]
 
-bevy = { version = "0.14.2", features = [
+bevy = { version = "0.15.0", features = [
     "file_watcher",
     "embedded_watcher",
     "bevy_dev_tools",
@@ -19,16 +19,16 @@ bevy = { version = "0.14.2", features = [
     "serialize",
 ] }
 
-bevy_asset_loader = { version = "0.21", features = [
+bevy_asset_loader = { version = "0.22", features = [
     "2d",
     "3d",
     "standard_dynamic_assets",
 ] }
 
-bevy_asset_loader_derive = { version = "0.21" }
-bevy_atmosphere = { version = "0.10.0" }
+bevy_asset_loader_derive = { version = "0.22" }
+bevy_atmosphere = { version = "0.12.2" }
 # bevy_mod_scripting_rune = { version = "0.6.0" }
-lightyear = { version = "^0.17", features = [
+lightyear = { version = "0.18.0", features = [
     "avian3d",
     "leafwing",
     "webtransport",
@@ -41,31 +41,30 @@ lightyear = { version = "^0.17", features = [
     # "big_messages"
 ] }
 
-aery = { version = "0.7.3" }
+aery = { version = "0.8.1" }
 
-bevy_console = { git = "https://github.com/qiboda/bevy-console.git", branch = "atom_main" }
 
-bevy_landmass = { path = "E:/landmass/crates/bevy_landmass" }
+bevy_landmass = { version = "0.8.0" }
 
-once_cell = "1.19.0"
-serde = { version = "1.0.210", features = ["derive"] }
+once_cell = "1.20.2"
+serde = { version = "1.0.216", features = ["derive"] }
 smallvec = { version = "1.13.2" }
-thiserror = { version = "1.0.61" }
+thiserror = { version = "2.0.9" }
 
 bitflags = { version = "2.6.0", features = ["serde"] }
-bevy-tnua = { version = "0.19.0", features = [] }
-bevy-tnua-avian3d = { version = "0.1.1" }
+bevy-tnua = { version = "0.21.0", features = [] }
+bevy-tnua-avian3d = { version = "0.2.0" }
 bevy_debug_grid = { version = "0.6.0" }
 # bevy-persistent
-big-brain = { version = "0.21.1" }
-seldom_state = { version = "0.11" }
+big-brain = { version = "0.22.0" }
+seldom_state = { version = "0.12" }
 # Bevy Hanabi
-oxidized_navigation = { path = "e:/oxidized_navigation", default-features = false, features = [
+oxidized_navigation = { path = "d:/oxidized_navigation", default-features = false, features = [
     "avian",
     "debug_draw",
 ] }
 # leafwing-input-manager = { git = "https://github.com/qiboda/leafwing-input-manager.git", branch = "atom_main" }
-leafwing-input-manager = { version = "0.15", features = [
+leafwing-input-manager = { version = "0.16", features = [
     "asset",
     "ui",
     "mouse",
@@ -77,25 +76,24 @@ leafwing-input-manager = { version = "0.15", features = [
 # bevy-trait-query = { path = "../../bevy-trait_query" }
 # bevy trait resource
 # bevy_enum_filter
-bevy_common_assets = { version = "0.11.0", features = ["toml"] }
-bevy_mod_picking = { version = "0.20", features = ["backend_avian"] }
+bevy_common_assets = { version = "0.12.0", features = ["toml"] }
 autoincrement = { version = "1.0" }
-crossbeam-channel = { version = "0.5.13" }
+crossbeam-channel = { version = "0.5.14" }
 
 noise = { version = "0.9.0", features = ["images"] }
 image = { version = "0.25", features = ["jpeg", "png"] }
-bytemuck = { version = "^1.18" }
-clap = { version = "^4.5.17", features = ["derive"] }
+bytemuck = { version = "1.21.0" }
+clap = { version = "^4.5.23", features = ["derive"] }
 
-tracing = { version = "0.1.40", features = [] }
-wgpu-types = { version = "0.20.0" }
-wgpu = { version = "0.20.1" }
+tracing = { version = "0.1.41", features = [] }
+wgpu-types = { version = "23.0.0" }
+wgpu = { version = "23.0.1" }
 
-avian3d = { version = "0.1.2", features = ["serialize"] }
+avian3d = { version = "0.2.0", features = ["serialize"] }
 dotenv = { version = "0.15.0" }
-vleue_navigator = { version = "0.8.0" }
+vleue_navigator = { version = "0.11.1" }
 
-num-traits = "0.2.14"
+num-traits = "0.2.19"
 paste = "1.0.15"
 
 rand = { version = "0.8.5" }

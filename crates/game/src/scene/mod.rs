@@ -1,6 +1,6 @@
 use avian3d::prelude::{Collider, RigidBody};
 use bevy::prelude::*;
-use bevy_landmass::{Agent, Agent3dBundle, ArchipelagoRef3d};
+use bevy_landmass::{Agent, Agent3dBundle, AgentSettings, ArchipelagoRef3d};
 use bevy_tnua_avian3d::TnuaAvian3dSensorShape;
 use datatables::{
     tables_system_param::TableReader,
@@ -58,31 +58,27 @@ fn init_scene(
 
     commands.spawn((
         Name::new("Plane"),
-        MaterialMeshBundle {
-            mesh,
-            material: materials.add(StandardMaterial {
-                base_color: Color::WHITE,
-                unlit: true,
-                ..Default::default()
-            }),
+        Mesh3d(mesh),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            unlit: true,
             ..Default::default()
-        },
+        })),
         RigidBody::Static,
         Collider::trimesh_from_mesh(&plane_mesh).unwrap(),
         NavMeshAffector,
     ));
 
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
+    commands.spawn((
+        DirectionalLight {
             color: Color::WHITE,
             illuminance: 10000.0,
             shadows_enabled: true,
             shadow_depth_bias: 0.0,
             shadow_normal_bias: 0.0,
         },
-        transform: Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..Default::default()
-    });
+        Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 
     commands.insert_resource(AmbientLight {
         color: LinearRgba {
@@ -124,27 +120,21 @@ fn handle_new_monster(
                     ..Default::default()
                 },
                 agent_bundle: Agent3dBundle {
-                    agent: Agent {
+                    agent: Agent::default(),
+                    archipelago_ref: ArchipelagoRef3d::new(archipelago_ref.archipelago_entity),
+                    settings: AgentSettings {
                         radius: UNIT_RADIUS,
-                        height: UNIT_RADIUS * 2.0 + UNIT_HEIGHT,
                         desired_speed: 3.7,
                         max_speed: 5.0,
                     },
-                    archipelago_ref: ArchipelagoRef3d::new(archipelago_ref.archipelago_entity),
-                    velocity: Default::default(),
-                    target: Default::default(),
-                    state: Default::default(),
-                    desired_velocity: Default::default(),
                 },
             },))
             .insert(Transform::from_translation(Vec3::new(0.0, 2.0, 0.0)))
             .with_children(|parent| {
-                parent.spawn(MaterialMeshBundle {
-                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-                    mesh: meshes.add(Mesh::from(Capsule3d::new(UNIT_RADIUS, UNIT_HEIGHT))),
-                    material: materials.add(StandardMaterial::from_color(LinearRgba::BLUE)),
-                    ..Default::default()
-                });
+                parent.spawn((
+                    Mesh3d(meshes.add(Mesh::from(Capsule3d::new(UNIT_RADIUS, UNIT_HEIGHT)))),
+                    MeshMaterial3d(materials.add(StandardMaterial::from_color(LinearRgba::BLUE))),
+                ));
             });
 
         build_ai_entity(&mut commands, monster_entity);
@@ -198,15 +188,13 @@ fn handle_new_player(
                 ..Default::default()
             },))
             .with_children(|parent| {
-                parent.spawn(MaterialMeshBundle {
-                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-                    mesh: meshes.add(Mesh::from(Capsule3d::new(
+                parent.spawn((
+                    Mesh3d(meshes.add(Mesh::from(Capsule3d::new(
                         table_row_data.capsule_radius,
                         table_row_data.capsule_height,
-                    ))),
-                    material: materials.add(StandardMaterial::from_color(LinearRgba::RED)),
-                    ..default()
-                });
+                    )))),
+                    MeshMaterial3d(materials.add(StandardMaterial::from_color(LinearRgba::RED))),
+                ));
             })
             .insert((Transform::from_translation(born_location.0),));
 

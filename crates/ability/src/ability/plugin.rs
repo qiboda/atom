@@ -30,12 +30,12 @@ impl Plugin for AbilityPlugin {
                 Last,
                 update_to_despawn_ability.after(update_to_despawn_effect_graph),
             )
-            .observe(trigger_ability_add)
-            .observe(trigger_ability_tickable)
-            .observe(trigger_ability_ready)
-            .observe(trigger_ability_start)
-            .observe(trigger_ability_remove)
-            .observe(trigger_ability_abort);
+            .add_observer(trigger_ability_add)
+            .add_observer(trigger_ability_tickable)
+            .add_observer(trigger_ability_ready)
+            .add_observer(trigger_ability_start)
+            .add_observer(trigger_ability_remove)
+            .add_observer(trigger_ability_abort);
     }
 }
 

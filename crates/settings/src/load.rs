@@ -21,11 +21,33 @@ where
     phantom: PhantomData<S>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct SettingLoadState {
     game: LoadState,
     user: LoadState,
 }
+
+impl SettingLoadState {
+    pub fn is_eq_game(&self, other: &Self) -> bool {
+        self.game.is_failed() == other.game.is_failed()
+            || self.game.is_loaded() == other.game.is_loaded()
+            || self.game.is_loading() == other.game.is_loading()
+    }
+
+    pub fn is_eq_user(&self, other: &Self) -> bool {
+        self.user.is_failed() == other.user.is_failed()
+            || self.user.is_loaded() == other.user.is_loaded()
+            || self.user.is_loading() == other.user.is_loading()
+    }
+}
+
+impl PartialEq for SettingLoadState {
+    fn eq(&self, other: &Self) -> bool {
+        self.is_eq_game(other) && self.is_eq_user(other)
+    }
+}
+
+impl Eq for SettingLoadState {}
 
 impl Default for SettingLoadState {
     fn default() -> Self {
@@ -199,7 +221,7 @@ pub(crate) fn refresh_final_settings<S>(
     });
 
     if let SettingLoadStage::Loading(loaded) = &load_stage.setting_load_stage {
-        if loaded.game == LoadState::Loaded && loaded.user == LoadState::Loaded {
+        if loaded.game.is_loaded() && loaded.user.is_loaded() {
             let game_asset = handle
                 .game_handle
                 .as_ref()

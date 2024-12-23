@@ -5,8 +5,8 @@ use atom_utils::{
     transform::*,
 };
 use bevy::{
-    core_pipeline::bloom::{BloomCompositeMode, BloomSettings},
-    pbr::{ScreenSpaceAmbientOcclusionQualityLevel, ScreenSpaceAmbientOcclusionSettings},
+    core_pipeline::bloom::{Bloom, BloomCompositeMode},
+    pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel},
     prelude::*,
 };
 use bevy_atmosphere::plugin::AtmosphereCamera;
@@ -23,7 +23,7 @@ impl Plugin for GameCameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(CameraManagerPlugin)
             .add_systems(Startup, init_camera)
-            .observe(attach_camera);
+            .add_observer(attach_camera);
     }
 }
 
@@ -34,16 +34,13 @@ fn init_camera(
 ) {
     let camera_entity = commands
         .spawn((
-            Camera3dBundle {
-                transform: Transform::from_translation(Vec3::new(0.0, -10.0, -10.0))
-                    // transform: Transform::from_translation(Vec3::new(-10.0, -10.0, -10.0))
-                    .looking_at(Vec3::ZERO, Dir3::Y),
-                ..Default::default()
-            },
-            ScreenSpaceAmbientOcclusionSettings {
+            Camera3d::default(),
+            Transform::from_translation(Vec3::new(0.0, -10.0, -10.0)),
+            ScreenSpaceAmbientOcclusion {
                 quality_level: ScreenSpaceAmbientOcclusionQualityLevel::High,
+                ..default()
             },
-            BloomSettings {
+            Bloom {
                 intensity: 0.0,
                 composite_mode: BloomCompositeMode::Additive,
                 ..Default::default()

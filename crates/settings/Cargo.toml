@@ -13,6 +13,6 @@ atom_utils = { path = "../atom_utils" }
 settings_derive = { path = "settings_derive" }
 
 project = { path = "../project" }
-toml = "0.8.14"
+toml = "0.8.19"
 serde_merge = "0.1.3"
 ron = "0.8.1"

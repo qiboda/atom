@@ -36,7 +36,7 @@ pub fn update_hit_time(
 ) {
     for mut hit_count in query.iter_mut() {
         for time_from_hit in hit_count.time_after_hit.iter_mut() {
-            *time_from_hit += time.delta_seconds();
+            *time_from_hit += time.delta_secs();
         }
     }
 }

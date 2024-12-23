@@ -1,16 +1,13 @@
 use avian3d::{
     collision::Collider,
-    parry::na::distance,
     prelude::{LockedAxes, RigidBody},
 };
 use bevy::{
-    asset::Handle,
     core::Name,
     math::Vec3,
-    pbr::StandardMaterial,
-    prelude::{Bundle, Mesh, SpatialBundle},
+    prelude::{Bundle, Transform, Visibility},
 };
-use bevy_tnua::{prelude::TnuaControllerBundle, TnuaProximitySensor};
+use bevy_tnua::prelude::TnuaController;
 use bevy_tnua_avian3d::TnuaAvian3dSensorShape;
 
 pub const UNIT_RADIUS: f32 = 0.5;
@@ -29,9 +26,10 @@ pub struct ClientUnitBundle {
     pub collider: Collider,
     pub collider_locked_axes: LockedAxes,
 
-    pub spatial_bundle: SpatialBundle,
+    pub transform: Transform,
+    pub visibility: Visibility,
 
-    pub tnua_controller: TnuaControllerBundle,
+    pub tnua_controller: TnuaController,
     pub tuna_sensor_shape: TnuaAvian3dSensorShape,
 }
 
@@ -42,12 +40,13 @@ impl Default for ClientUnitBundle {
             rigid_body: RigidBody::Dynamic,
             collider: Collider::capsule(UNIT_RADIUS, UNIT_HEIGHT),
             collider_locked_axes: LockedAxes::ROTATION_LOCKED,
-            spatial_bundle: SpatialBundle::default(),
             tnua_controller: Default::default(),
             tuna_sensor_shape: TnuaAvian3dSensorShape(Collider::capsule(
                 UNIT_RADIUS * 0.95,
                 UNIT_HEIGHT * 0.95,
             )),
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+            visibility: Visibility::Visible,
         }
     }
 }

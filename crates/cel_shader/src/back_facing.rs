@@ -26,6 +26,10 @@ impl Plugin for BackFacingPlugin {
     }
 }
 
+#[derive(Component, Debug, Reflect, Clone, Default)]
+#[reflect(Component, Default)]
+pub struct BackFacingMaterial3d(pub Handle<BackFacingMaterial>);
+
 #[derive(Default, AsBindGroup, TypePath, Debug, Clone, Asset)]
 pub struct BackFacingMaterial {
     #[uniform(0)]

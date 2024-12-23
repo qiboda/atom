@@ -155,6 +155,7 @@ impl FromWorld for TerrainChunkPipelines {
                     .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_vertices"),
+                zero_initialize_workgroup_memory: false,
             });
         let main_compute_indices_pipeline =
             pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
@@ -170,6 +171,7 @@ impl FromWorld for TerrainChunkPipelines {
                     .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_indices"),
+                zero_initialize_workgroup_memory: false,
             });
 
         let compute_voxel_vertex_values_pipeline =
@@ -186,6 +188,7 @@ impl FromWorld for TerrainChunkPipelines {
                     .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_voxel_vertices"),
+                zero_initialize_workgroup_memory: false,
             });
 
         let compute_voxel_cross_points_pipeline =
@@ -202,6 +205,7 @@ impl FromWorld for TerrainChunkPipelines {
                     .clone_weak(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_voxel_cross_points"),
+                zero_initialize_workgroup_memory: false,
             });
 
         TerrainChunkPipelines {

@@ -41,9 +41,9 @@ impl Plugin for TerrainChunkPlugin {
             .add_plugins(ExtractResourcePlugin::<TerrainChunkMapper>::default())
             .add_systems(PreUpdate, receive_terrain_chunk_mesh_data)
             .add_systems(PreUpdate, update_terrain_chunk_state)
-            .observe(trigger_chunk_unload_event)
-            .observe(trigger_chunk_reload_event)
-            .observe(trigger_chunk_load_event);
+            .add_observer(trigger_chunk_unload_event)
+            .add_observer(trigger_chunk_reload_event)
+            .add_observer(trigger_chunk_load_event);
     }
 }
 

@@ -1,3 +1,5 @@
+/// 废弃代码
+/// 留作copy用。
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{

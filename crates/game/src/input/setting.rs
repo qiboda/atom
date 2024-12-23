@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use atom_utils::input::DefaultInputMap;
 use bevy::{asset::Asset, prelude::*, reflect::Reflect};
-use bevy_console::{clap::Parser, AddConsoleCommand, ConsoleCommand};
 use bevy_tnua::{
     builtins::{TnuaBuiltinJump, TnuaBuiltinWalk},
     controller::TnuaController,
@@ -30,10 +29,10 @@ impl Plugin for PlayerInputPlugin {
                 update_player_input
                     .in_set(TnuaUserControlsSystemSet)
                     .run_if(in_state(GameState::RunGame)),
-            )
-            .add_console_command::<PlayerInputSettingPersistCommand, _>(
-                input_setting_persist_command,
             );
+        // .add_console_command::<PlayerInputSettingPersistCommand, _>(
+        //     input_setting_persist_command,
+        // );
     }
 }
 
@@ -72,7 +71,7 @@ impl Actionlike for PlayerAction {
 impl DefaultInputMap<PlayerAction> for PlayerAction {
     fn default_input_map() -> InputMap<PlayerAction> {
         let mut input_map =
-            InputMap::default().with_dual_axis(PlayerAction::Move, KeyboardVirtualDPad::WASD);
+            InputMap::default().with_dual_axis(PlayerAction::Move, VirtualDPad::wasd());
 
         input_map.insert(PlayerAction::Jump, KeyCode::Space);
 
@@ -86,25 +85,25 @@ impl DefaultInputMap<PlayerAction> for PlayerAction {
 }
 
 /// TODO: 以后支持泛型，由于clap的Parser不支持泛型，所以暂时只能用这种方式。
-#[derive(Parser, ConsoleCommand)]
-#[command(name = "input.setting.persist")]
-pub struct PlayerInputSettingPersistCommand;
+// #[derive(Parser, ConsoleCommand)]
+// #[command(name = "input.setting.persist")]
+// pub struct PlayerInputSettingPersistCommand;
 
-pub fn input_setting_persist_command(
-    mut persist: ConsoleCommand<PlayerInputSettingPersistCommand>,
-    mut event_writer: EventWriter<PersistSettingEvent<PlayerInputSetting>>,
-    input_setting: Res<PlayerInputSetting>,
-    input_setting_path: Res<SettingsPath<PlayerInputSetting>>,
-) {
-    if let Some(Ok(_cmd)) = persist.take() {
-        event_writer.send(PersistSettingEvent {
-            persist_path: input_setting_path.clone(),
-            data: Arc::new(input_setting.clone()),
-        });
+// pub fn input_setting_persist_command(
+//     mut persist: ConsoleCommand<PlayerInputSettingPersistCommand>,
+//     mut event_writer: EventWriter<PersistSettingEvent<PlayerInputSetting>>,
+//     input_setting: Res<PlayerInputSetting>,
+//     input_setting_path: Res<SettingsPath<PlayerInputSetting>>,
+// ) {
+//     if let Some(Ok(_cmd)) = persist.take() {
+//         event_writer.send(PersistSettingEvent {
+//             persist_path: input_setting_path.clone(),
+//             data: Arc::new(input_setting.clone()),
+//         });
 
-        persist.ok();
-    }
-}
+//         persist.ok();
+//     }
+// }
 
 #[allow(clippy::type_complexity)]
 pub fn update_player_input(
@@ -132,7 +131,7 @@ pub(crate) fn apply_action_state_to_player_movement(
     let velocity = Vec3::new(-axis_move.x, 0.0, axis_move.y).normalize_or_zero();
     controller.basis(TnuaBuiltinWalk {
         desired_velocity: velocity * 3.7,
-        desired_forward: player_transform.forward().as_vec3(),
+        desired_forward: Some(player_transform.forward()),
         float_height: 0.0,
         ..Default::default()
     });

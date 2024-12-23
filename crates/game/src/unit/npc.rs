@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_landmass::{Agent, Agent3dBundle, ArchipelagoRef3d};
+use bevy_landmass::{Agent, Agent3dBundle, AgentSettings, ArchipelagoRef3d};
 use lightyear::prelude::client::Predicted;
 use serde::{Deserialize, Serialize};
 
@@ -27,17 +27,13 @@ impl ClientNpcBundle {
         Self {
             unit_bundle: ClientUnitBundle::new(radius, height),
             agent_bundle: Agent3dBundle {
-                agent: Agent {
+                agent: Agent::default(),
+                archipelago_ref,
+                settings: AgentSettings {
                     radius,
-                    height,
                     desired_speed,
                     max_speed,
                 },
-                archipelago_ref,
-                velocity: Default::default(),
-                target: Default::default(),
-                state: Default::default(),
-                desired_velocity: Default::default(),
             },
         }
     }

@@ -16,8 +16,8 @@ exclude = ["/tests"]
 lightyear = { workspace = true }
 
 # utils
-anyhow = { version = "1.0.75", features = [] }
-async-compat = "0.2.3"
+anyhow = { version = "1.0.95", features = [] }
+async-compat = "0.2.4"
 cfg-if = "1.0.0"
 clap = { workspace = true }
 crossbeam-channel = { workspace = true }
@@ -26,4 +26,4 @@ serde = { workspace = true }
 
 # bevy
 bevy = { workspace = true }
-bevy-inspector-egui = "0.25"
+bevy-inspector-egui = "0.28"

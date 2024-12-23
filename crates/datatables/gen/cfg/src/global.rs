@@ -10,10 +10,37 @@
 
 use super::*;
 
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct Global {
+    /// 参数1
+    pub x1: i32,
+    /// 道具
+    pub x2: i32,
+    pub x3: i32,
+    pub x4: i32,
+    pub x5: i32,
+    pub x6: i32,
+    pub x7: Vec<i32>,
+}
+
+impl Global{
+    pub fn new(json: &serde_json::Value) -> Result<Global, LubanError> {
+        let x1 = (json["x1"].as_i64().unwrap() as i32);
+        let x2 = (json["x2"].as_i64().unwrap() as i32);
+        let x3 = (json["x3"].as_i64().unwrap() as i32);
+        let x4 = (json["x4"].as_i64().unwrap() as i32);
+        let x5 = (json["x5"].as_i64().unwrap() as i32);
+        let x6 = (json["x6"].as_i64().unwrap() as i32);
+        let x7 = json["x7"].as_array().unwrap().iter().map(|field| (field.as_i64().unwrap() as i32)).collect();
+        
+        Ok(Global { x1, x2, x3, x4, x5, x6, x7, })
+    }
+}
+
 
 #[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbGlobal {
-    pub data: std::sync::Arc<crate::Global>,
+    pub data: std::sync::Arc<crate::global::Global>,
 }
 
 impl TbGlobal {
@@ -21,13 +48,13 @@ impl TbGlobal {
         let json = json.as_array().unwrap();
         let n = json.len();
         if n != 1 { return Err(LubanError::Table(format!("table mode=one, but size != 1"))); }
-        let data = std::sync::Arc::new(crate::Global::new(&json[0])?);
+        let data = std::sync::Arc::new(crate::global::Global::new(&json[0])?);
         Ok(TbGlobal { data })
     }
 }
 
 impl luban_lib::table::Table for TbGlobal {
-    type Value = std::sync::Arc<crate::Global>;
+    type Value = std::sync::Arc<crate::global::Global>;
 }
 
 impl luban_lib::table::OneTable for TbGlobal {
@@ -47,11 +74,11 @@ impl bevy::asset::AssetLoader for TbGlobalLoader {
 
     type Error = TableLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut bevy::asset::io::Reader<'_>,
-        settings: &'a Self::Settings,
-        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn bevy::asset::io::Reader,
+        settings: &Self::Settings,
+        load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         bevy::log::info!("TbGlobalLoader loading start");
         let mut bytes = Vec::new();

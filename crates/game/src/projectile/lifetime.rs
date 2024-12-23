@@ -96,11 +96,11 @@ pub fn update_lifetime(
         match state {
             ProjectileState::Wait => continue,
             ProjectileState::Running => {
-                lifetime.lifetime += time.delta_seconds();
+                lifetime.lifetime += time.delta_secs();
             }
             ProjectileState::End => {
-                lifetime.lifetime += time.delta_seconds();
-                lifetime.time_after_end += time.delta_seconds();
+                lifetime.lifetime += time.delta_secs();
+                lifetime.time_after_end += time.delta_secs();
             }
         }
     }

@@ -28,6 +28,103 @@ impl From<i32> for AbilityType {
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]
+pub struct Ability {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 技能图类型名字
+    pub graph_class: String,
+    /// 类型
+    pub activation_type: crate::effect::AbilityType,
+    /// CD
+    pub cd: f32,
+    /// 技能启动需要的状态
+    pub start_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_disabled_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_added_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub start_removed_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub abort_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub abort_disabled_layertags: Vec<String>,
+}
+
+impl Ability{
+    pub fn new(json: &serde_json::Value) -> Result<Ability, LubanError> {
+        let id = (json["id"].as_i64().unwrap() as i32);
+        let name = json["name"].as_str().unwrap().to_string();
+        let desc = json["desc"].as_str().unwrap().to_string();
+        let graph_class = json["graph_class"].as_str().unwrap().to_string();
+        let activation_type = json["activation_type"].as_i64().unwrap().into();
+        let cd = (json["cd"].as_f64().unwrap() as f32);
+        let start_required_layertags = json["start_required_layertags"].as_array().unwrap().iter().map(|field| field.as_str().unwrap().to_string()).collect();
+        let start_disabled_layertags = json["start_disabled_layertags"].as_array().unwrap().iter().map(|field| field.as_str().unwrap().to_string()).collect();
+        let start_added_layertags = json["start_added_layertags"].as_array().unwrap().iter().map(|field| crate::effect::RevertableLayerTag::new(&field).unwrap()).collect();
+        let start_removed_layertags = json["start_removed_layertags"].as_array().unwrap().iter().map(|field| crate::effect::RevertableLayerTag::new(&field).unwrap()).collect();
+        let abort_required_layertags = json["abort_required_layertags"].as_array().unwrap().iter().map(|field| field.as_str().unwrap().to_string()).collect();
+        let abort_disabled_layertags = json["abort_disabled_layertags"].as_array().unwrap().iter().map(|field| field.as_str().unwrap().to_string()).collect();
+        
+        Ok(Ability { id, name, desc, graph_class, activation_type, cd, start_required_layertags, start_disabled_layertags, start_added_layertags, start_removed_layertags, abort_required_layertags, abort_disabled_layertags, })
+    }
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct Buff {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 技能图类型名字
+    pub graph_class: String,
+    /// 最大层数
+    pub max_layer: i32,
+    /// 时长
+    pub duration: f32,
+    /// 间隔
+    pub interval: f32,
+    /// 技能启动需要的状态
+    pub start_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_disabled_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub start_added_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub start_removed_layertags: Vec<crate::effect::RevertableLayerTag>,
+    /// 技能启动需要的状态
+    pub abort_required_layertags: Vec<String>,
+    /// 技能启动需要的状态
+    pub abort_disabled_layertags: Vec<String>,
+}
+
+impl Buff{
+    pub fn new(json: &serde_json::Value) -> Result<Buff, LubanError> {
+        let id = (json["id"].as_i64().unwrap() as i32);
+        let name = json["name"].as_str().unwrap().to_string();
+        let desc = json["desc"].as_str().unwrap().to_string();
+        let graph_class = json["graph_class"].as_str().unwrap().to_string();
+        let max_layer = (json["max_layer"].as_i64().unwrap() as i32);
+        let duration = (json["duration"].as_f64().unwrap() as f32);
+        let interval = (json["interval"].as_f64().unwrap() as f32);
+        let start_required_layertags = json["start_required_layertags"].as_array().unwrap().iter().map(|field| field.as_str().unwrap().to_string()).collect();
+        let start_disabled_layertags = json["start_disabled_layertags"].as_array().unwrap().iter().map(|field| field.as_str().unwrap().to_string()).collect();
+        let start_added_layertags = json["start_added_layertags"].as_array().unwrap().iter().map(|field| crate::effect::RevertableLayerTag::new(&field).unwrap()).collect();
+        let start_removed_layertags = json["start_removed_layertags"].as_array().unwrap().iter().map(|field| crate::effect::RevertableLayerTag::new(&field).unwrap()).collect();
+        let abort_required_layertags = json["abort_required_layertags"].as_array().unwrap().iter().map(|field| field.as_str().unwrap().to_string()).collect();
+        let abort_disabled_layertags = json["abort_disabled_layertags"].as_array().unwrap().iter().map(|field| field.as_str().unwrap().to_string()).collect();
+        
+        Ok(Buff { id, name, desc, graph_class, max_layer, duration, interval, start_required_layertags, start_disabled_layertags, start_added_layertags, start_removed_layertags, abort_required_layertags, abort_disabled_layertags, })
+    }
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct RevertableLayerTag {
     pub raw_layertag: String,
     pub revertable: bool,
@@ -45,17 +142,17 @@ impl RevertableLayerTag{
 
 #[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbAbility {
-    pub data_list: Vec<std::sync::Arc<crate::Ability>>,
-    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Ability>>,
+    pub data_list: Vec<std::sync::Arc<crate::effect::Ability>>,
+    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::effect::Ability>>,
 }
 
 impl TbAbility {
     pub fn new(json: &serde_json::Value) -> Result<TbAbility, LubanError> {
-        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Ability>> = Default::default();
-        let mut data_list: Vec<std::sync::Arc<crate::Ability>> = vec![];
+        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::effect::Ability>> = Default::default();
+        let mut data_list: Vec<std::sync::Arc<crate::effect::Ability>> = vec![];
 
         for x in json.as_array().unwrap() {
-            let row = std::sync::Arc::new(crate::Ability::new(&x)?);
+            let row = std::sync::Arc::new(crate::effect::Ability::new(&x)?);
             data_list.push(row.clone());
             data_map.insert(row.id.clone(), row.clone());
         }
@@ -63,27 +160,27 @@ impl TbAbility {
         Ok(TbAbility { data_map, data_list })
     }
 
-    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::Ability>> {
+    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::effect::Ability>> {
         self.data_map.get(key).map(|x| x.clone())
     }
 }
 
 impl std::ops::Index<i32> for TbAbility {
-    type Output = std::sync::Arc<crate::Ability>;
+    type Output = std::sync::Arc<crate::effect::Ability>;
 
     fn index(&self, index: i32) -> &Self::Output {
         &self.data_map.get(&index).unwrap()
     }
 }
 impl luban_lib::table::Table for TbAbility {
-    type Value = std::sync::Arc<crate::Ability>;
+    type Value = std::sync::Arc<crate::effect::Ability>;
 }
 pub type TbAbilityKey = i32;
 #[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component, serde::Serialize, serde::Deserialize)]
 pub struct TbAbilityRow {
     pub key: TbAbilityKey,
     #[serde(skip)]
-    pub data: Option<std::sync::Arc<crate::Ability>>,
+    pub data: Option<std::sync::Arc<crate::effect::Ability>>,
 }
 
 impl PartialEq for TbAbilityRow {
@@ -93,7 +190,7 @@ impl PartialEq for TbAbilityRow {
 }
 
 impl TbAbilityRow {
-    pub fn new(key: TbAbilityKey, data: Option<std::sync::Arc<crate::Ability>>) -> Self {
+    pub fn new(key: TbAbilityKey, data: Option<std::sync::Arc<crate::effect::Ability>>) -> Self {
         Self { key, data }
     }
 
@@ -105,15 +202,15 @@ impl TbAbilityRow {
         self.key = key;
     }
 
-    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::Ability>>) {
+    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::effect::Ability>>) {
         self.data = data;
     }
 
-    pub fn get_data(&self) -> Option<std::sync::Arc<crate::Ability>> {
+    pub fn get_data(&self) -> Option<std::sync::Arc<crate::effect::Ability>> {
         self.data.clone()
     }
 
-    pub fn data(&self) -> std::sync::Arc<crate::Ability> {
+    pub fn data(&self) -> std::sync::Arc<crate::effect::Ability> {
         self.data.clone().unwrap()
     }
 }
@@ -121,7 +218,7 @@ impl TbAbilityRow {
 
 impl luban_lib::table::MapTable for TbAbility {
     type Key = TbAbilityKey;
-    type List = Vec<std::sync::Arc<crate::Ability>>;
+    type List = Vec<std::sync::Arc<crate::effect::Ability>>;
     type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -148,11 +245,11 @@ impl bevy::asset::AssetLoader for TbAbilityLoader {
 
     type Error = TableLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut bevy::asset::io::Reader<'_>,
-        settings: &'a Self::Settings,
-        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn bevy::asset::io::Reader,
+        settings: &Self::Settings,
+        load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         bevy::log::info!("TbAbilityLoader loading start");
         let mut bytes = Vec::new();
@@ -172,17 +269,17 @@ impl bevy::asset::AssetLoader for TbAbilityLoader {
 
 #[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbBuff {
-    pub data_list: Vec<std::sync::Arc<crate::Buff>>,
-    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Buff>>,
+    pub data_list: Vec<std::sync::Arc<crate::effect::Buff>>,
+    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::effect::Buff>>,
 }
 
 impl TbBuff {
     pub fn new(json: &serde_json::Value) -> Result<TbBuff, LubanError> {
-        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Buff>> = Default::default();
-        let mut data_list: Vec<std::sync::Arc<crate::Buff>> = vec![];
+        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::effect::Buff>> = Default::default();
+        let mut data_list: Vec<std::sync::Arc<crate::effect::Buff>> = vec![];
 
         for x in json.as_array().unwrap() {
-            let row = std::sync::Arc::new(crate::Buff::new(&x)?);
+            let row = std::sync::Arc::new(crate::effect::Buff::new(&x)?);
             data_list.push(row.clone());
             data_map.insert(row.id.clone(), row.clone());
         }
@@ -190,27 +287,27 @@ impl TbBuff {
         Ok(TbBuff { data_map, data_list })
     }
 
-    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::Buff>> {
+    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::effect::Buff>> {
         self.data_map.get(key).map(|x| x.clone())
     }
 }
 
 impl std::ops::Index<i32> for TbBuff {
-    type Output = std::sync::Arc<crate::Buff>;
+    type Output = std::sync::Arc<crate::effect::Buff>;
 
     fn index(&self, index: i32) -> &Self::Output {
         &self.data_map.get(&index).unwrap()
     }
 }
 impl luban_lib::table::Table for TbBuff {
-    type Value = std::sync::Arc<crate::Buff>;
+    type Value = std::sync::Arc<crate::effect::Buff>;
 }
 pub type TbBuffKey = i32;
 #[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component, serde::Serialize, serde::Deserialize)]
 pub struct TbBuffRow {
     pub key: TbBuffKey,
     #[serde(skip)]
-    pub data: Option<std::sync::Arc<crate::Buff>>,
+    pub data: Option<std::sync::Arc<crate::effect::Buff>>,
 }
 
 impl PartialEq for TbBuffRow {
@@ -220,7 +317,7 @@ impl PartialEq for TbBuffRow {
 }
 
 impl TbBuffRow {
-    pub fn new(key: TbBuffKey, data: Option<std::sync::Arc<crate::Buff>>) -> Self {
+    pub fn new(key: TbBuffKey, data: Option<std::sync::Arc<crate::effect::Buff>>) -> Self {
         Self { key, data }
     }
 
@@ -232,15 +329,15 @@ impl TbBuffRow {
         self.key = key;
     }
 
-    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::Buff>>) {
+    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::effect::Buff>>) {
         self.data = data;
     }
 
-    pub fn get_data(&self) -> Option<std::sync::Arc<crate::Buff>> {
+    pub fn get_data(&self) -> Option<std::sync::Arc<crate::effect::Buff>> {
         self.data.clone()
     }
 
-    pub fn data(&self) -> std::sync::Arc<crate::Buff> {
+    pub fn data(&self) -> std::sync::Arc<crate::effect::Buff> {
         self.data.clone().unwrap()
     }
 }
@@ -248,7 +345,7 @@ impl TbBuffRow {
 
 impl luban_lib::table::MapTable for TbBuff {
     type Key = TbBuffKey;
-    type List = Vec<std::sync::Arc<crate::Buff>>;
+    type List = Vec<std::sync::Arc<crate::effect::Buff>>;
     type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -275,11 +372,11 @@ impl bevy::asset::AssetLoader for TbBuffLoader {
 
     type Error = TableLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut bevy::asset::io::Reader<'_>,
-        settings: &'a Self::Settings,
-        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn bevy::asset::io::Reader,
+        settings: &Self::Settings,
+        load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         bevy::log::info!("TbBuffLoader loading start");
         let mut bytes = Vec::new();

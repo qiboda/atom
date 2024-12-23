@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 bevy = { workspace = true }
 renderdoc = { version = "0.12.1" }
-sysinfo = { version = "0.30.3" }
+sysinfo = { version = "0.33.0" }

@@ -13,7 +13,7 @@ pub struct EffectNodeAbilityEntryPlugin;
 impl Plugin for EffectNodeAbilityEntryPlugin {
     fn build(&self, app: &mut App) {
         let world = app.world_mut();
-        let component_id = world.init_component::<EffectNodeAbilityEntry>();
+        let component_id = world.component_id::<EffectNodeAbilityEntry>().unwrap();
         let mut component_ids = world
             .get_resource_mut::<TypedComponentIds>()
             .expect("EffectNodePlugin should be added before this plugin");

@@ -35,6 +35,49 @@ impl From<i32> for EQuality {
 }
 
 #[derive(bevy::reflect::Reflect, Debug)]
+pub struct Item {
+    /// 这是id
+    pub id: i32,
+    /// 名字
+    pub name: String,
+    /// 描述
+    pub desc: String,
+    /// 价格
+    pub price: i32,
+    /// 引用当前表
+    pub upgrade_to_item_id: i32,
+    /// 过期时间
+    pub expire_time: Option<u64>,
+    /// 能否批量使用
+    pub batch_useable: bool,
+    /// 品质
+    pub quality: crate::item::EQuality,
+    /// 道具兑换配置
+    pub exchange_stream: crate::item::ItemExchange,
+    pub exchange_list: Vec<crate::item::ItemExchange>,
+    /// 道具兑换配置
+    pub exchange_column: crate::item::ItemExchange,
+}
+
+impl Item{
+    pub fn new(json: &serde_json::Value) -> Result<Item, LubanError> {
+        let id = (json["id"].as_i64().unwrap() as i32);
+        let name = json["name"].as_str().unwrap().to_string();
+        let desc = json["desc"].as_str().unwrap().to_string();
+        let price = (json["price"].as_i64().unwrap() as i32);
+        let upgrade_to_item_id = (json["upgrade_to_item_id"].as_i64().unwrap() as i32);
+        let mut expire_time = None; if let Some(value) = json.get("expire_time") { expire_time = Some((json["expire_time"].as_i64().unwrap() as u64)); }
+        let batch_useable = json["batch_useable"].as_bool().unwrap();
+        let quality = json["quality"].as_i64().unwrap().into();
+        let exchange_stream = crate::item::ItemExchange::new(&json["exchange_stream"])?;
+        let exchange_list = json["exchange_list"].as_array().unwrap().iter().map(|field| crate::item::ItemExchange::new(&field).unwrap()).collect();
+        let exchange_column = crate::item::ItemExchange::new(&json["exchange_column"])?;
+        
+        Ok(Item { id, name, desc, price, upgrade_to_item_id, expire_time, batch_useable, quality, exchange_stream, exchange_list, exchange_column, })
+    }
+}
+
+#[derive(bevy::reflect::Reflect, Debug)]
 pub struct ItemExchange {
     /// 道具id
     pub id: i32,
@@ -54,17 +97,17 @@ impl ItemExchange{
 
 #[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbItem {
-    pub data_list: Vec<std::sync::Arc<crate::Item>>,
-    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Item>>,
+    pub data_list: Vec<std::sync::Arc<crate::item::Item>>,
+    pub data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::item::Item>>,
 }
 
 impl TbItem {
     pub fn new(json: &serde_json::Value) -> Result<TbItem, LubanError> {
-        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::Item>> = Default::default();
-        let mut data_list: Vec<std::sync::Arc<crate::Item>> = vec![];
+        let mut data_map: bevy::utils::HashMap<i32, std::sync::Arc<crate::item::Item>> = Default::default();
+        let mut data_list: Vec<std::sync::Arc<crate::item::Item>> = vec![];
 
         for x in json.as_array().unwrap() {
-            let row = std::sync::Arc::new(crate::Item::new(&x)?);
+            let row = std::sync::Arc::new(crate::item::Item::new(&x)?);
             data_list.push(row.clone());
             data_map.insert(row.id.clone(), row.clone());
         }
@@ -72,27 +115,27 @@ impl TbItem {
         Ok(TbItem { data_map, data_list })
     }
 
-    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::Item>> {
+    pub fn get(&self, key: &i32) -> Option<std::sync::Arc<crate::item::Item>> {
         self.data_map.get(key).map(|x| x.clone())
     }
 }
 
 impl std::ops::Index<i32> for TbItem {
-    type Output = std::sync::Arc<crate::Item>;
+    type Output = std::sync::Arc<crate::item::Item>;
 
     fn index(&self, index: i32) -> &Self::Output {
         &self.data_map.get(&index).unwrap()
     }
 }
 impl luban_lib::table::Table for TbItem {
-    type Value = std::sync::Arc<crate::Item>;
+    type Value = std::sync::Arc<crate::item::Item>;
 }
 pub type TbItemKey = i32;
 #[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component, serde::Serialize, serde::Deserialize)]
 pub struct TbItemRow {
     pub key: TbItemKey,
     #[serde(skip)]
-    pub data: Option<std::sync::Arc<crate::Item>>,
+    pub data: Option<std::sync::Arc<crate::item::Item>>,
 }
 
 impl PartialEq for TbItemRow {
@@ -102,7 +145,7 @@ impl PartialEq for TbItemRow {
 }
 
 impl TbItemRow {
-    pub fn new(key: TbItemKey, data: Option<std::sync::Arc<crate::Item>>) -> Self {
+    pub fn new(key: TbItemKey, data: Option<std::sync::Arc<crate::item::Item>>) -> Self {
         Self { key, data }
     }
 
@@ -114,15 +157,15 @@ impl TbItemRow {
         self.key = key;
     }
 
-    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::Item>>) {
+    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::item::Item>>) {
         self.data = data;
     }
 
-    pub fn get_data(&self) -> Option<std::sync::Arc<crate::Item>> {
+    pub fn get_data(&self) -> Option<std::sync::Arc<crate::item::Item>> {
         self.data.clone()
     }
 
-    pub fn data(&self) -> std::sync::Arc<crate::Item> {
+    pub fn data(&self) -> std::sync::Arc<crate::item::Item> {
         self.data.clone().unwrap()
     }
 }
@@ -130,7 +173,7 @@ impl TbItemRow {
 
 impl luban_lib::table::MapTable for TbItem {
     type Key = TbItemKey;
-    type List = Vec<std::sync::Arc<crate::Item>>;
+    type List = Vec<std::sync::Arc<crate::item::Item>>;
     type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -157,11 +200,11 @@ impl bevy::asset::AssetLoader for TbItemLoader {
 
     type Error = TableLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut bevy::asset::io::Reader<'_>,
-        settings: &'a Self::Settings,
-        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn bevy::asset::io::Reader,
+        settings: &Self::Settings,
+        load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         bevy::log::info!("TbItemLoader loading start");
         let mut bytes = Vec::new();

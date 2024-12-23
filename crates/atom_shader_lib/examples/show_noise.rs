@@ -5,7 +5,7 @@ use bevy::{
     asset::{embedded_asset, io::AssetSourceId, AssetPath},
     prelude::*,
     render::render_resource::{AsBindGroup, ShaderRef},
-    sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle},
+    sprite::{Material2d, Material2dPlugin},
 };
 use dotenv::dotenv;
 
@@ -32,17 +32,15 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<CustomMaterial>>,
 ) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d);
 
     let window = windows.single();
     let size = window.resolution.size();
 
-    commands.spawn(MaterialMesh2dBundle {
-        mesh: meshes.add(Rectangle::new(size.x, size.y)).into(),
-        transform: Transform::default(),
-        material: materials.add(CustomMaterial {}),
-        ..default()
-    });
+    commands.spawn((
+        Mesh2d(meshes.add(Rectangle::new(size.x, size.y))),
+        MeshMaterial2d(materials.add(CustomMaterial {})),
+    ));
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]

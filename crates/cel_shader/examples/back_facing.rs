@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
-use cel_shader::back_facing::{BackFacingMaterial, BackFacingPlugin};
+use cel_shader::back_facing::{BackFacingMaterial, BackFacingMaterial3d, BackFacingPlugin};
 
 use dotenv::dotenv;
 
@@ -32,57 +32,47 @@ fn startup(
 
     // TODO 目前不支持材质排序，等支持后再处理
     commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(mesh),
-            material: std_materials.add(StandardMaterial {
-                base_color: LinearRgba::new(0.8, 0.7, 0.6, 0.7).into(),
-                alpha_mode: AlphaMode::Blend,
-                unlit: true,
-                ..Default::default()
-            }),
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(std_materials.add(StandardMaterial {
+            base_color: LinearRgba::new(0.8, 0.7, 0.6, 0.7).into(),
+            alpha_mode: AlphaMode::Blend,
+            unlit: true,
             ..Default::default()
-        },
-        back_facing_materials.add(BackFacingMaterial {
+        })),
+        BackFacingMaterial3d(back_facing_materials.add(BackFacingMaterial {
             stroke_color: LinearRgba::RED,
             stroke_width: 0.01,
-        }),
+        })),
     ));
 
     let mut mesh = Mesh::from(Sphere { radius: 2.0 });
     write_average_normal_to_tangent(&mut mesh);
 
     commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(mesh),
-            material: std_materials.add(StandardMaterial {
-                base_color: LinearRgba::new(0.8, 0.7, 0.6, 0.7).into(),
-                alpha_mode: AlphaMode::Blend,
-                unlit: true,
-                ..Default::default()
-            }),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0)),
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(std_materials.add(StandardMaterial {
+            base_color: LinearRgba::new(0.8, 0.7, 0.6, 0.7).into(),
+            alpha_mode: AlphaMode::Blend,
+            unlit: true,
             ..Default::default()
-        },
-        back_facing_materials.add(BackFacingMaterial {
+        })),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 5.0)),
+        BackFacingMaterial3d(back_facing_materials.add(BackFacingMaterial {
             stroke_color: LinearRgba::RED,
             stroke_width: 0.01,
-        }),
+        })),
     ));
 
     commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_translation(Vec3::new(0.0, 5.0, 5.0))
-                .looking_at(Vec3::ZERO, Vec3::Y),
-            ..Default::default()
-        },
+        Camera3d::default(),
+        Transform::from_translation(Vec3::new(0.0, 5.0, 5.0)).looking_at(Vec3::ZERO, Vec3::Y),
         FlyCam,
     ));
 
-    commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_translation(Vec3::new(8.0, 8.0, 8.0))
-            .looking_at(Vec3::ZERO, Vec3::Y),
-        ..Default::default()
-    });
+    commands.spawn((
+        DirectionalLight::default(),
+        Transform::from_translation(Vec3::new(8.0, 8.0, 8.0)).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 }
 
 fn write_average_normal_to_tangent(mesh: &mut Mesh) {

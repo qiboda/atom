@@ -1,4 +1,4 @@
-use avian3d::prelude::{LinearVelocity, Physics, Position, RigidBody, Rotation};
+use avian3d::prelude::{LinearVelocity, Position, RigidBody, Rotation};
 use bevy::{
     app::{Plugin, PostUpdate},
     color::palettes::css,
@@ -39,7 +39,7 @@ impl Plugin for GameSharedPlugin {
     fn build(&self, app: &mut bevy::app::App) {
         app.add_plugins(ProtocolPlugin)
             // physics
-            .insert_resource(Time::new_with(Physics::fixed_once_hz(FIXED_TIMESTEP_HZ)))
+            .insert_resource(Time::<Fixed>::from_hz(FIXED_TIMESTEP_HZ))
             // Screen Diagnostics
             .add_plugins(LogDiagnosticsPlugin {
                 filter: Some(vec![
@@ -48,15 +48,15 @@ impl Plugin for GameSharedPlugin {
                 ]),
                 ..default()
             })
-            .add_systems(Startup, setup_diagnostic)
-            .add_plugins(ScreenDiagnosticsPlugin::default())
-            .add_plugins(ScreenEntityDiagnosticsPlugin)
-            .add_plugins(ScreenFrameDiagnosticsPlugin)
+            // .add_systems(Startup, setup_diagnostic)
+            // .add_plugins(ScreenDiagnosticsPlugin::default())
+            // .add_plugins(ScreenEntityDiagnosticsPlugin)
+            // .add_plugins(ScreenFrameDiagnosticsPlugin)
             // Visual Interpolation
             .add_plugins(VisualInterpolationPlugin::<Position>::default())
             .add_plugins(VisualInterpolationPlugin::<Rotation>::default())
-            .observe(add_visual_interpolation_components::<Position>)
-            .observe(add_visual_interpolation_components::<Rotation>)
+            .add_observer(add_visual_interpolation_components::<Position>)
+            .add_observer(add_visual_interpolation_components::<Rotation>)
             // draw confirmed shadows
             .add_systems(
                 PostUpdate,
@@ -108,33 +108,33 @@ fn add_visual_interpolation_components<T: Component>(
         });
 }
 
-fn setup_diagnostic(mut onscreen: ResMut<ScreenDiagnostics>) {
-    onscreen
-        .add("RB".to_string(), PredictionDiagnosticsPlugin::ROLLBACKS)
-        .aggregate(Aggregate::Value)
-        .format(|v| format!("{v:.0}"));
-    onscreen
-        .add(
-            "RBt".to_string(),
-            PredictionDiagnosticsPlugin::ROLLBACK_TICKS,
-        )
-        .aggregate(Aggregate::Value)
-        .format(|v| format!("{v:.0}"));
-    onscreen
-        .add(
-            "RBd".to_string(),
-            PredictionDiagnosticsPlugin::ROLLBACK_DEPTH,
-        )
-        .aggregate(Aggregate::Value)
-        .format(|v| format!("{v:.1}"));
-    // screen diagnostics twitches due to layout change when a metric adds or removes
-    // a digit, so pad these metrics to 3 digits.
-    onscreen
-        .add("KB_in".to_string(), IoDiagnosticsPlugin::BYTES_IN)
-        .aggregate(Aggregate::Average)
-        .format(|v| format!("{v:0>3.0}"));
-    onscreen
-        .add("KB_out".to_string(), IoDiagnosticsPlugin::BYTES_OUT)
-        .aggregate(Aggregate::Average)
-        .format(|v| format!("{v:0>3.0}"));
-}
+// fn setup_diagnostic(mut onscreen: ResMut<ScreenDiagnostics>) {
+//     onscreen
+//         .add("RB".to_string(), PredictionDiagnosticsPlugin::ROLLBACKS)
+//         .aggregate(Aggregate::Value)
+//         .format(|v| format!("{v:.0}"));
+//     onscreen
+//         .add(
+//             "RBt".to_string(),
+//             PredictionDiagnosticsPlugin::ROLLBACK_TICKS,
+//         )
+//         .aggregate(Aggregate::Value)
+//         .format(|v| format!("{v:.0}"));
+//     onscreen
+//         .add(
+//             "RBd".to_string(),
+//             PredictionDiagnosticsPlugin::ROLLBACK_DEPTH,
+//         )
+//         .aggregate(Aggregate::Value)
+//         .format(|v| format!("{v:.1}"));
+//     // screen diagnostics twitches due to layout change when a metric adds or removes
+//     // a digit, so pad these metrics to 3 digits.
+//     onscreen
+//         .add("KB_in".to_string(), IoDiagnosticsPlugin::BYTES_IN)
+//         .aggregate(Aggregate::Average)
+//         .format(|v| format!("{v:0>3.0}"));
+//     onscreen
+//         .add("KB_out".to_string(), IoDiagnosticsPlugin::BYTES_OUT)
+//         .aggregate(Aggregate::Average)
+//         .format(|v| format!("{v:0>3.0}"));
+// }

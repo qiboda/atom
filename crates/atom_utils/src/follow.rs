@@ -14,7 +14,7 @@ impl Plugin for TransformFollowPlugin {
         app.register_relation::<Following>()
             .register_type::<RelativeTransform>()
             .register_type::<RelativeTransformFreedom>()
-            .observe(trigger_set_followed)
+            .add_observer(trigger_set_followed)
             .add_systems(
                 PostUpdate,
                 update_follow

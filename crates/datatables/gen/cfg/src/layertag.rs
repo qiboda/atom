@@ -10,20 +10,40 @@
 
 use super::*;
 
+#[derive(bevy::reflect::Reflect, Debug)]
+pub struct LayerTag {
+    /// layertag，以.作为分隔符
+    pub raw_layertag: String,
+    /// 描述
+    pub desc: String,
+    /// 是否计数
+    pub counter: bool,
+}
+
+impl LayerTag{
+    pub fn new(json: &serde_json::Value) -> Result<LayerTag, LubanError> {
+        let raw_layertag = json["raw_layertag"].as_str().unwrap().to_string();
+        let desc = json["desc"].as_str().unwrap().to_string();
+        let counter = json["counter"].as_bool().unwrap();
+        
+        Ok(LayerTag { raw_layertag, desc, counter, })
+    }
+}
+
 
 #[derive(Debug, bevy::reflect::Reflect, bevy::asset::Asset)]
 pub struct TbLayerTag {
-    pub data_list: Vec<std::sync::Arc<crate::LayerTag>>,
-    pub data_map: bevy::utils::HashMap<String, std::sync::Arc<crate::LayerTag>>,
+    pub data_list: Vec<std::sync::Arc<crate::layertag::LayerTag>>,
+    pub data_map: bevy::utils::HashMap<String, std::sync::Arc<crate::layertag::LayerTag>>,
 }
 
 impl TbLayerTag {
     pub fn new(json: &serde_json::Value) -> Result<TbLayerTag, LubanError> {
-        let mut data_map: bevy::utils::HashMap<String, std::sync::Arc<crate::LayerTag>> = Default::default();
-        let mut data_list: Vec<std::sync::Arc<crate::LayerTag>> = vec![];
+        let mut data_map: bevy::utils::HashMap<String, std::sync::Arc<crate::layertag::LayerTag>> = Default::default();
+        let mut data_list: Vec<std::sync::Arc<crate::layertag::LayerTag>> = vec![];
 
         for x in json.as_array().unwrap() {
-            let row = std::sync::Arc::new(crate::LayerTag::new(&x)?);
+            let row = std::sync::Arc::new(crate::layertag::LayerTag::new(&x)?);
             data_list.push(row.clone());
             data_map.insert(row.raw_layertag.clone(), row.clone());
         }
@@ -31,27 +51,27 @@ impl TbLayerTag {
         Ok(TbLayerTag { data_map, data_list })
     }
 
-    pub fn get(&self, key: &String) -> Option<std::sync::Arc<crate::LayerTag>> {
+    pub fn get(&self, key: &String) -> Option<std::sync::Arc<crate::layertag::LayerTag>> {
         self.data_map.get(key).map(|x| x.clone())
     }
 }
 
 impl std::ops::Index<String> for TbLayerTag {
-    type Output = std::sync::Arc<crate::LayerTag>;
+    type Output = std::sync::Arc<crate::layertag::LayerTag>;
 
     fn index(&self, index: String) -> &Self::Output {
         &self.data_map.get(&index).unwrap()
     }
 }
 impl luban_lib::table::Table for TbLayerTag {
-    type Value = std::sync::Arc<crate::LayerTag>;
+    type Value = std::sync::Arc<crate::layertag::LayerTag>;
 }
 pub type TbLayerTagKey = String;
 #[derive(Debug, Default, Clone, bevy::reflect::Reflect, bevy::prelude::Component, serde::Serialize, serde::Deserialize)]
 pub struct TbLayerTagRow {
     pub key: TbLayerTagKey,
     #[serde(skip)]
-    pub data: Option<std::sync::Arc<crate::LayerTag>>,
+    pub data: Option<std::sync::Arc<crate::layertag::LayerTag>>,
 }
 
 impl PartialEq for TbLayerTagRow {
@@ -61,7 +81,7 @@ impl PartialEq for TbLayerTagRow {
 }
 
 impl TbLayerTagRow {
-    pub fn new(key: TbLayerTagKey, data: Option<std::sync::Arc<crate::LayerTag>>) -> Self {
+    pub fn new(key: TbLayerTagKey, data: Option<std::sync::Arc<crate::layertag::LayerTag>>) -> Self {
         Self { key, data }
     }
 
@@ -73,15 +93,15 @@ impl TbLayerTagRow {
         self.key = key;
     }
 
-    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::LayerTag>>) {
+    pub fn set_data(&mut self, data: Option<std::sync::Arc<crate::layertag::LayerTag>>) {
         self.data = data;
     }
 
-    pub fn get_data(&self) -> Option<std::sync::Arc<crate::LayerTag>> {
+    pub fn get_data(&self) -> Option<std::sync::Arc<crate::layertag::LayerTag>> {
         self.data.clone()
     }
 
-    pub fn data(&self) -> std::sync::Arc<crate::LayerTag> {
+    pub fn data(&self) -> std::sync::Arc<crate::layertag::LayerTag> {
         self.data.clone().unwrap()
     }
 }
@@ -89,7 +109,7 @@ impl TbLayerTagRow {
 
 impl luban_lib::table::MapTable for TbLayerTag {
     type Key = TbLayerTagKey;
-    type List = Vec<std::sync::Arc<crate::LayerTag>>;
+    type List = Vec<std::sync::Arc<crate::layertag::LayerTag>>;
     type Map = bevy::utils::HashMap<Self::Key, Self::Value>;
 
     fn get_row(&self, key: &Self::Key) -> Option<Self::Value> {
@@ -116,11 +136,11 @@ impl bevy::asset::AssetLoader for TbLayerTagLoader {
 
     type Error = TableLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut bevy::asset::io::Reader<'_>,
-        settings: &'a Self::Settings,
-        load_context: &'a mut bevy::asset::LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn bevy::asset::io::Reader,
+        settings: &Self::Settings,
+        load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         bevy::log::info!("TbLayerTagLoader loading start");
         let mut bytes = Vec::new();

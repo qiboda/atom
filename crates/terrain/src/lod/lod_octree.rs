@@ -11,7 +11,6 @@ use bevy::{
     render::primitives::Frustum,
     utils::HashSet,
 };
-use bevy_console::{clap::Parser, AddConsoleCommand, ConsoleCommand};
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -38,9 +37,6 @@ impl Plugin for TerrainLodOctreePlugin {
                     //
                     .chain()
                     .in_set(TerrainSystemSet::UpdateLodOctree),
-            )
-            .add_console_command::<TerrainLodLeafNodeNumCommand, _>(
-                terrain_lod_leaf_node_num_command,
             );
     }
 }
@@ -365,23 +361,23 @@ fn can_divide(
     node.code.depth < max_depth
 }
 
-#[derive(Parser, ConsoleCommand)]
-#[command(name = "terrain.lod.octree.node_num")]
-pub struct TerrainLodLeafNodeNumCommand;
+// #[derive(Parser, ConsoleCommand)]
+// #[command(name = "terrain.lod.octree.node_num")]
+// pub struct TerrainLodLeafNodeNumCommand;
 
-fn terrain_lod_leaf_node_num_command(
-    mut persist: ConsoleCommand<TerrainLodLeafNodeNumCommand>,
-    lod_octree: Res<TerrainLodOctree>,
-) {
-    if let Some(Ok(_cmd)) = persist.take() {
-        lod_octree
-            .octree_levels
-            .iter()
-            .enumerate()
-            .for_each(|(i, level)| {
-                info!("level {}: {}", i, level.get_current().len());
-            });
+// fn terrain_lod_leaf_node_num_command(
+//     mut persist: ConsoleCommand<TerrainLodLeafNodeNumCommand>,
+//     lod_octree: Res<TerrainLodOctree>,
+// ) {
+//     if let Some(Ok(_cmd)) = persist.take() {
+//         lod_octree
+//             .octree_levels
+//             .iter()
+//             .enumerate()
+//             .for_each(|(i, level)| {
+//                 info!("level {}: {}", i, level.get_current().len());
+//             });
 
-        persist.ok();
-    }
-}
+//         persist.ok();
+//     }
+// }

@@ -15,9 +15,9 @@ impl Plugin for ProjectilePlugin {
         app.add_event::<ProjectileStartEvent>()
             .add_event::<ProjectileEndEvent>()
             .add_event::<ProjectileHitEvent>()
-            .observe(trigger_projectile_start)
-            .observe(trigger_projectile_end)
-            .observe(trigger_projectile_hit)
+            .add_observer(trigger_projectile_start)
+            .add_observer(trigger_projectile_end)
+            .add_observer(trigger_projectile_hit)
             .add_systems(FixedPreUpdate, (update_lifetime, update_hit_time))
             .add_systems(FixedPostUpdate, destroy_projectile);
     }

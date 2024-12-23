@@ -1,15 +1,14 @@
 use atom_shader_lib::shaders_plugin;
 use bevy::{
-    prelude::*,
-    render::{
+    image::ImageSampler, prelude::*, render::{
         extract_resource::{ExtractResource, ExtractResourcePlugin},
         render_asset::{RenderAssetUsages, RenderAssets},
         render_graph::{self, RenderGraph, RenderLabel},
         render_resource::{binding_types::texture_storage_2d, *},
         renderer::{RenderContext, RenderDevice, RenderQueue},
-        texture::{GpuImage, ImageSampler},
+        texture::GpuImage,
         Extract, Render, RenderApp, RenderSet,
-    },
+    }
 };
 use binding_types::{
     sampler, texture_2d, texture_2d_array, texture_storage_2d_array, uniform_buffer,
@@ -329,6 +328,7 @@ impl FromWorld for TerrainHeightMapPipeline {
                 shader: shaders.height_map_shader.clone(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_terrain_map_height"),
+                zero_initialize_workgroup_memory: false,
             });
 
         let pipeline_cache = world.resource::<PipelineCache>();
@@ -340,6 +340,7 @@ impl FromWorld for TerrainHeightMapPipeline {
                 shader: shaders.biome_filter_shader.clone(),
                 shader_defs: vec![],
                 entry_point: Cow::from("compute_terrain_map_biome"),
+                zero_initialize_workgroup_memory: false,
             });
 
         TerrainHeightMapPipeline {

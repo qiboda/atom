@@ -127,7 +127,7 @@ fn table_asset_loadeds<A: bevy::asset::Asset>(
     for event in event_reader.read() {
         if let bevy::asset::AssetEvent::<A>::Modified { id } = event {
            if tables.table_handle_map.iter().all(|(k, v)| {
-                asset_server.get_load_state(v) == Some(bevy::asset::LoadState::Loaded)
+                asset_server.is_loaded(v)
             }) {
                 let handle = asset_server.get_id_handle(*id).unwrap();
                 asset_handles.push(handle.untyped());

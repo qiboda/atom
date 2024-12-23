@@ -30,11 +30,11 @@ impl Plugin for BuffPlugin {
         .add_event::<BuffRemoveEvent>()
         .add_event::<BuffAbortEvent>()
         .add_event::<BuffTickableEvent>()
-        .observe(trigger_buff_on_add)
-        .observe(trigger_buff_remove)
-        .observe(trigger_buff_start)
-        .observe(trigger_buff_abort)
-        .observe(trigger_buff_tickable)
+        .add_observer(trigger_buff_on_add)
+        .add_observer(trigger_buff_remove)
+        .add_observer(trigger_buff_start)
+        .add_observer(trigger_buff_abort)
+        .add_observer(trigger_buff_tickable)
         .add_systems(
             Update,
             (update_buff_state, update_buff_tick_state)

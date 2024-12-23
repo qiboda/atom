@@ -282,7 +282,7 @@ pub fn trigger_clone_effect_graph_start(
     old_new_entities.remove(&graph_ref.get_entity());
 
     let clone_entities = CloneEntityTreeCommand(Arc::new(entity_tree_node));
-    commands.add(clone_entities);
+    commands.queue(clone_entities);
     commands.trigger_targets(
         CloneEffectGraphEndEvent {
             destination_root_entity: new_graph_entity,

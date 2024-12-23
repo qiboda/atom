@@ -1,5 +1,5 @@
 use atom_shader_lib::AtomShaderLibPluginGroups;
-use avian3d::{sync::SyncPlugin, PhysicsPlugins};
+use avian3d::{prelude::PhysicsPickingPlugin, sync::SyncPlugin, PhysicsPlugins};
 use bevy::{
     app::{FixedUpdate, PluginGroup, PluginGroupBuilder, PostUpdate},
     asset::AssetPlugin,
@@ -8,7 +8,6 @@ use bevy::{
     prelude::*,
     DefaultPlugins,
 };
-use bevy_console::ConsolePlugin;
 use datatables::DataTablePlugin;
 use log_layers::LogLayersPlugin;
 use seldom_state::StateMachinePlugin;
@@ -62,7 +61,6 @@ impl PluginGroup for AtomClientPlugins {
                         ..default()
                     }),
             )
-            .add(ConsolePlugin)
             .add(StateMachinePlugin)
             .add(DataTablePlugin)
             .add_group(AtomShaderLibPluginGroups)
@@ -71,6 +69,7 @@ impl PluginGroup for AtomClientPlugins {
                     .build()
                     .disable::<SyncPlugin>(),
             )
+            .add(PhysicsPickingPlugin)
             .add(SyncPlugin::new(PostUpdate));
         // .add(FpsOverlayPlugin {
         //     config: FpsOverlayConfig {

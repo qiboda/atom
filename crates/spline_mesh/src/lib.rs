@@ -1,4 +1,7 @@
-use bevy::{prelude::*, render::primitives::Aabb};
+use bevy::{
+    prelude::*,
+    render::{mesh::MeshAabb, primitives::Aabb},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SplineMeshFillType {
@@ -67,7 +70,7 @@ impl SplinePoints {
 
         let interval = 1.0 / segment_step as f32;
 
-        for segment in self.translate_cubic_curve.segments.iter() {
+        for segment in self.translate_cubic_curve.segments().iter() {
             let mut last_position = Vec3::ZERO;
             let mut length = 0.0;
             for i in 0..segment_step {
@@ -82,13 +85,13 @@ impl SplinePoints {
 
     pub fn generate_curve(&mut self) {
         let catmull_rom_spline = CubicCardinalSpline::new_catmull_rom(self.translation.clone());
-        self.translate_cubic_curve = catmull_rom_spline.to_curve();
+        self.translate_cubic_curve = catmull_rom_spline.to_curve().unwrap();
 
         let catmull_rom_spline = CubicCardinalSpline::new_catmull_rom(self.rotation.clone());
-        self.rotation_cubic_curve = catmull_rom_spline.to_curve();
+        self.rotation_cubic_curve = catmull_rom_spline.to_curve().unwrap();
 
         let catmull_rom_spline = CubicCardinalSpline::new_catmull_rom(self.scale.clone());
-        self.scale_cubic_curve = catmull_rom_spline.to_curve();
+        self.scale_cubic_curve = catmull_rom_spline.to_curve().unwrap();
     }
 }
 
@@ -161,7 +164,7 @@ impl SplineMesh {
                 for (index, _segment) in self
                     .spline_points
                     .translate_cubic_curve
-                    .segments
+                    .segments()
                     .iter()
                     .enumerate()
                 {
@@ -189,7 +192,7 @@ impl SplineMesh {
                 for (index, _segment) in self
                     .spline_points
                     .translate_cubic_curve
-                    .segments
+                    .segments()
                     .iter()
                     .enumerate()
                 {

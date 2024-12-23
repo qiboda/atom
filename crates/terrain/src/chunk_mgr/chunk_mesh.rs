@@ -105,13 +105,8 @@ pub fn receive_terrain_chunk_mesh_data(
 
                         let main_mesh_id = entity_commands
                             .insert((
-                                MaterialMeshBundle {
-                                    mesh: meshes.add(main_mesh.mesh),
-                                    material,
-                                    transform: Transform::from_translation(Vec3::splat(0.0)),
-                                    visibility: Visibility::Visible,
-                                    ..Default::default()
-                                },
+                                Mesh3d(meshes.add(main_mesh.mesh)),
+                                MeshMaterial3d(material),
                                 Wireframe,
                                 WireframeColor {
                                     color: LinearRgba::BLACK.into(),
@@ -190,13 +185,8 @@ pub fn receive_terrain_chunk_mesh_data(
 
                         let seam_mesh_id = entity_commands
                             .insert((
-                                MaterialMeshBundle {
-                                    mesh: meshes.add(seam_mesh_data.seam_mesh),
-                                    material,
-                                    transform: Transform::from_translation(Vec3::splat(0.0)),
-                                    visibility: Visibility::Visible,
-                                    ..Default::default()
-                                },
+                                Mesh3d(meshes.add(seam_mesh_data.seam_mesh)),
+                                MeshMaterial3d(material),
                                 Wireframe,
                                 WireframeColor {
                                     color: LinearRgba::WHITE.into(),

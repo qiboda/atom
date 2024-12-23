@@ -19,8 +19,8 @@ pub mod context;
 pub mod event;
 pub mod executor;
 pub mod graph_map;
-pub mod node;
 pub mod pin;
+pub mod node;
 pub mod state;
 
 #[derive(Debug, Default)]
@@ -56,12 +56,12 @@ impl Plugin for EffectGraphPlugin {
                 reset_effect_graph_state.in_set(EffectGraphUpdateSystemSet::UpdateState),
             )
             .add_systems(Last, update_to_despawn_effect_graph)
-            .observe(trigger_clone_effect_graph_start)
-            .observe(trigger_clone_effect_graph_end)
-            .observe(trigger_effect_graph_add)
-            .observe(trigger_effect_graph_exec)
-            .observe(trigger_effect_graph_tickable)
-            .observe(trigger_effect_graph_to_remove);
+            .add_observer(trigger_clone_effect_graph_start)
+            .add_observer(trigger_clone_effect_graph_end)
+            .add_observer(trigger_effect_graph_add)
+            .add_observer(trigger_effect_graph_exec)
+            .add_observer(trigger_effect_graph_tickable)
+            .add_observer(trigger_effect_graph_to_remove);
     }
 }
 

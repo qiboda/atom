@@ -13,13 +13,12 @@ bitflags = { workspace = true }
 avian3d = { workspace = true }
 bevy-tnua = { workspace = true }
 bevy-tnua-avian3d = { workspace = true }
-bevy_console = { workspace = true }
 leafwing-input-manager = { workspace = true }
 bevy_atmosphere = { workspace = true }
 clap = { workspace = true }
 lightyear = { workspace = true }
 rand = { workspace = true }
-bevy-inspector-egui = { version = "0.25" }
+bevy-inspector-egui = { version = "0.28" }
 bevy_landmass = { workspace = true }
 oxidized_navigation = { workspace = true }
 

@@ -109,7 +109,7 @@ impl EntityTreeNode {
                     EntityTreeNode::from_entity_recursive(commands, child, None, q_children)
                 })
                 .collect::<Vec<_>>(),
-            Err(QueryEntityError::QueryDoesNotMatch(_)) => vec![],
+            Err(QueryEntityError::QueryDoesNotMatch(..)) => vec![],
             Err(e) => panic!("{}", e),
         };
         EntityTreeNode {

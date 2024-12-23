@@ -13,7 +13,7 @@ pub struct EffectNodeBuffEntryPlugin;
 impl Plugin for EffectNodeBuffEntryPlugin {
     fn build(&self, app: &mut App) {
         let world = app.world_mut();
-        let component_id = world.init_component::<EffectNodeBuffEntry>();
+        let component_id = world.component_id::<EffectNodeBuffEntry>().unwrap();
         let mut component_ids = world
             .get_resource_mut::<TypedComponentIds>()
             .expect("EffectNodePlugin should be added before this plugin");

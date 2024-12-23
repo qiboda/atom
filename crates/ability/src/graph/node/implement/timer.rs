@@ -21,7 +21,7 @@ pub struct EffectNodeTimerPlugin;
 impl Plugin for EffectNodeTimerPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<EffectNodeTimer>()
-            .observe(trigger_effect_node_event)
+            .add_observer(trigger_effect_node_event)
             .add_systems(
                 Update,
                 update_timer.in_set(EffectGraphUpdateSystemSet::UpdateNode),
@@ -123,7 +123,7 @@ fn update_timer(
         }
 
         for state in node.states.iter_mut() {
-            state.elapse -= time.delta_seconds();
+            state.elapse -= time.delta_secs();
             if state.elapse <= 0.0 {
                 executor.start_push_output_pin(
                     EffectNodeExecPin {

@@ -15,7 +15,7 @@ pub struct ProjectileLineSpeedPlugin;
 
 impl Plugin for ProjectileLineSpeedPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(trigger_projectile_start)
+        app.add_observer(trigger_projectile_start)
             .add_systems(FixedUpdate, update_projectile_movement);
     }
 }
@@ -76,7 +76,7 @@ fn update_projectile_movement(
         match movement.speed {
             SpeedVariant::Constant(_speed) => {}
             SpeedVariant::Derivative(_, acceleration) => {
-                let delta_seconds = time.delta_seconds();
+                let delta_seconds = time.delta_secs();
                 let direction = movement.direction;
 
                 linear_velocity.0 += direction * acceleration * delta_seconds;

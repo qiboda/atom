@@ -1,27 +1,21 @@
 use atom_internal::plugins::AtomClientPlugins;
 use atom_renderdoc::RenderDocPlugin;
+use bevy::picking::events::{Click, Move, Pointer};
 use bevy::{
     core_pipeline::{
-        bloom::{BloomCompositeMode, BloomSettings},
-        prepass::DepthPrepass,
+        bloom::{Bloom, BloomCompositeMode},
         tonemapping::Tonemapping,
     },
     log::LogPlugin,
-    pbr::{
-        wireframe::WireframePlugin, ScreenSpaceAmbientOcclusionQualityLevel,
-        ScreenSpaceAmbientOcclusionSettings,
-    },
+    pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel},
     prelude::*,
     render::{camera::RenderTarget, diagnostic::RenderDiagnosticsPlugin},
     window::WindowRef,
 };
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
-use bevy_mod_picking::{
-    events::{Click, Move, Pointer},
-    prelude::RaycastBackend,
-    DefaultPickingPlugins,
+use bevy_screen_diagnostics::{
+    ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
 };
-use bevy_screen_diagnostics::{ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin};
 use bevy_water::{WaterPlugin, WaterSettings};
 use dotenv::dotenv;
 use log_layers::{file_layer, LogLayersPlugin};
@@ -71,18 +65,9 @@ pub fn main() {
     //     )),
     //     OxidizedNavigationDebugDrawPlugin,
     // ))
-    .add_plugins(
-        // We want to disable the raycast backend because it is enabled by default. All supplied
-        // backends are optional. In your app, you can disable the default features of the
-        // plugin and only enable the backends you want to use. Picking will still work if both
-        // backends are enabled, but that would mean we wouldn't be able to test the Avian
-        // backend in isolation.
-        DefaultPickingPlugins.build().disable::<RaycastBackend>(),
-    )
     // .insert_resource(DebugPickingMode::Normal)
-    .add_plugins(ScreenDiagnosticsPlugin::default())
-    .add_plugins(ScreenEntityDiagnosticsPlugin)
-    .add_plugins(ScreenFrameDiagnosticsPlugin)
+    // .add_plugins((ScreenDiagnosticsPlugin::default(),))
+    // .add_plugins((ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin))
     .add_plugins(RenderDocPlugin)
     .add_plugins(RenderDiagnosticsPlugin)
     // .add_plugins(WireframePlugin)
@@ -123,7 +108,6 @@ fn startup(
     terrain_height_map_image: Option<ResMut<TerrainMapTextures>>,
 ) {
     commands.insert_resource(ClearColor(LinearRgba::new(0.3, 0.2, 0.1, 1.0).into()));
-    commands.insert_resource(Msaa::Sample4);
     commands.insert_resource(AmbientLight {
         color: LinearRgba {
             red: 1.0,
@@ -135,33 +119,31 @@ fn startup(
         brightness: 3000.0,
     });
 
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
+    commands.spawn((
+        DirectionalLight {
             color: Color::WHITE,
             illuminance: 10000.0,
             shadows_enabled: true,
             shadow_depth_bias: 0.0,
             shadow_normal_bias: 0.0,
         },
-        transform: Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..Default::default()
-    });
+        Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 
     commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_xyz(8.0, -0.1, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
-            camera: Camera {
-                hdr: true,
-                order: 0,
-                ..default()
-            },
-            tonemapping: Tonemapping::TonyMcMapface,
+        Camera3d::default(),
+        Transform::from_xyz(8.0, -0.1, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Camera {
+            hdr: true,
+            order: 0,
             ..default()
         },
-        ScreenSpaceAmbientOcclusionSettings {
+        Tonemapping::TonyMcMapface,
+        ScreenSpaceAmbientOcclusion {
             quality_level: ScreenSpaceAmbientOcclusionQualityLevel::High,
+            ..default()
         },
-        BloomSettings {
+        Bloom {
             intensity: 0.0,
             composite_mode: BloomCompositeMode::Additive,
             ..Default::default()
@@ -182,38 +164,35 @@ fn startup(
             .id();
 
         let second_camera = commands
-            .spawn(Camera2dBundle {
-                camera: Camera {
+            .spawn((
+                Camera2d,
+                Camera {
                     target: RenderTarget::Window(WindowRef::Entity(second_window)),
                     ..default()
                 },
-                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
-                ..default()
-            })
+                Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
+            ))
             .id();
 
         commands
-            .spawn((NodeBundle::default(), TargetCamera(second_camera)))
+            .spawn((Node::default(), TargetCamera(second_camera)))
             .with_children(|parent| {
-                parent.spawn(SpriteBundle {
-                    sprite: Sprite {
-                        custom_size: Some(Vec2::new(1024.0, 1024.0)),
-                        ..default()
-                    },
-                    texture: image.height_texture.clone(),
+                parent.spawn((Sprite {
+                    custom_size: Some(Vec2::new(1024.0, 1024.0)),
+                    image: image.height_texture.clone(),
                     ..default()
-                });
+                },));
             });
     }
 }
 
 pub fn update_sprite_texture(
     terrain_height_map_image: ResMut<TerrainMapTextures>,
-    mut sprite: Query<&mut Handle<Image>, With<Sprite>>,
+    mut sprite: Query<&mut Sprite>,
 ) {
     if terrain_height_map_image.is_changed() {
         let mut sprite_texture = sprite.get_single_mut().unwrap();
-        *sprite_texture = terrain_height_map_image.height_texture.clone();
+        sprite_texture.image = terrain_height_map_image.height_texture.clone();
     }
 }
 

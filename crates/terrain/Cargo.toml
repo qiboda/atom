@@ -42,14 +42,14 @@ noise = { workspace = true }
 # bevy_ecs_tilemap = "0.9.0"
 # bevy_rapier2d = "0.20.0"
 
-serde_json = "1.0.120"
+serde_json = "1.0.134"
 bitflags = { workspace = true }
-bitfield-struct = "0.8.0"
+bitfield-struct = "0.10.0"
 bytemuck = { workspace = true }
 
 crossbeam-channel = { workspace = true }
 
-bevy_async_task = { version = "0.2.0" }
+bevy_async_task = { version = "0.4.0" }
 autoincrement = { workspace = true }
 oxidized_navigation = { workspace = true }
 image = { workspace = true }
@@ -59,20 +59,18 @@ num-traits = { workspace = true }
 wgpu-types = { workspace = true }
 wgpu = { workspace = true }
 thiserror = { workspace = true }
-bevy_console = { workspace = true }
 bevy_asset_loader = { workspace = true }
 clap = { workspace = true }
-bevy_water = { version = "0.14" }
+bevy_water = { version = "0.15" }
 
-encase = { version = "0.8.0" }
+encase = { version = "0.10.0" }
 
 paste = { workspace = true }
 
 [dev-dependencies]
 bevy_debug_grid = { workspace = true }
-bevy_mod_picking = { workspace = true }
-bevy_flycam = { version = "0.14.0" }
-bevy-inspector-egui = { version = "0.25" }
+bevy_flycam = { version = "0.15.0" }
+bevy-inspector-egui = { version = "0.28" }
 dotenv = { workspace = true }
 atom_renderdoc = { path = "../atom_renderdoc" }
 bevy_screen_diagnostics = { version = "0.6.0" }

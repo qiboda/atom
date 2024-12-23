@@ -62,7 +62,10 @@ pub enum NavMoveSystemSet {
 
 fn setup(mut commands: Commands) {
     let archipelago_entity = commands
-        .spawn((Archipelago3d::new(), OxidizedArchipelago))
+        .spawn((
+            Archipelago3d::new(AgentOptions::default_for_agent_radius(1.5)),
+            OxidizedArchipelago,
+        ))
         .id();
 
     commands.insert_resource(AgentArchipelagoRef { archipelago_entity });
@@ -102,7 +105,7 @@ fn move_agent_by_velocity(
 
         controller.basis(TnuaBuiltinWalk {
             desired_velocity: local_velocity,
-            desired_forward: global_transform.forward().as_vec3(),
+            desired_forward: Some(global_transform.forward()),
             float_height: 0.0,
             ..Default::default()
         });

@@ -2,15 +2,17 @@ use std::{collections::HashMap, sync::Arc};
 
 use bevy::{
     app::{Plugin, Update},
-    asset::{Assets, Handle},
+    asset::Assets,
     log::warn,
     math::{UVec2, Vec3},
     prelude::{
         App, Commands, Component, Deref, DerefMut, Entity, Event, EventReader, EventWriter,
-        IntoSystemConfigs, Query, Res, ResMut, Resource, TransformBundle, With,
+        IntoSystemConfigs, Query, Res, ResMut, Resource, With,
     },
 };
-use bevy_landmass::{ArchipelagoRef3d, Island, LandmassSystemSet, NavigationMesh3d};
+use bevy_landmass::{
+    ArchipelagoRef3d, Island, LandmassSystemSet, NavMeshHandle, NavMeshHandle3d, NavigationMesh3d,
+};
 use oxidized_navigation::tiles::NavMeshTile;
 
 /// The main plugin that updates the `landmass` archipelago using
@@ -113,9 +115,7 @@ impl UpdateTile {
                         // Ensure the island entity has no nav mesh on it. This may be
                         // redundant if the generation is spuriously incremented, however
                         // that should be infrequent so that should be fine.
-                        commands
-                            .entity(entity)
-                            .remove::<Handle<bevy_landmass::NavMesh3d>>();
+                        commands.entity(entity).remove::<NavMeshHandle3d>();
                     }
                     continue;
                 }
@@ -126,11 +126,7 @@ impl UpdateTile {
                 None => {
                     let archipelago = archipelago.single();
                     let entity = commands
-                        .spawn((
-                            TransformBundle::default(),
-                            Island,
-                            ArchipelagoRef3d::new(archipelago),
-                        ))
+                        .spawn((Island, ArchipelagoRef3d::new(archipelago)))
                         .id();
                     tile_to_entity.0.insert(*tile, entity);
                     entity
@@ -145,19 +141,17 @@ impl UpdateTile {
                     warn!("Failed to validate oxidized_navigation tile: {err:?}");
                     // Ensure the island has no nav mesh. The island may be brand new, so
                     // this may be redundant, but better to make sure.
-                    commands
-                        .entity(entity)
-                        .remove::<Handle<bevy_landmass::NavMesh3d>>();
+                    commands.entity(entity).remove::<NavMeshHandle3d>();
                     continue;
                 }
             };
 
-            commands
-                .entity(entity)
-                .insert(nav_meshes.add(bevy_landmass::NavMesh3d {
+            commands.entity(entity).insert(NavMeshHandle(nav_meshes.add(
+                bevy_landmass::NavMesh3d {
                     nav_mesh: Arc::new(valid_nav_mesh),
                     type_index_to_node_type: HashMap::new(),
-                }));
+                },
+            )));
         }
     }
 }

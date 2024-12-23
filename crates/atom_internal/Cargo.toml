@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 bevy = { workspace = true }
-bevy_console = { workspace = true }
 leafwing-input-manager = { workspace = true }
 seldom_state = { workspace = true }
 bevy_debug_grid = { workspace = true }

@@ -9,12 +9,12 @@ use atom_utils::{
 };
 use bevy::{
     app::Plugin,
+    image::ImageSampler,
     math::{DVec2, Rot2},
     prelude::*,
     render::{
         extract_resource::{ExtractResource, ExtractResourcePlugin},
         render_asset::RenderAssetUsages,
-        texture::ImageSampler,
         RenderApp,
     },
     tasks::{AsyncComputeTaskPool, ParallelSliceMut},
