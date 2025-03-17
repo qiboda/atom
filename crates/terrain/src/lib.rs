@@ -39,6 +39,7 @@ impl Plugin for TerrainSubsystemPlugin {
                 Update,
                 (
                     TerrainSystemSet::UpdateLodOctree,
+                    TerrainSystemSet::ApplyCSG,
                     TerrainSystemSet::UpdateChunk,
                 )
                     .chain()

@@ -1,6 +1,7 @@
 use std::ops::Not;
 
 use bevy::{math::bounding::BoundingVolume, prelude::*};
+use image::error;
 use ndshape::RuntimeShape;
 use strum::IntoEnumIterator;
 
@@ -61,9 +62,17 @@ fn get_seam_leaf_nodes(
         let node_coord = (voxel_aabb.min - current_chunk_aabb.min) / voxel_size;
 
         debug!(
-            "voxel_vertex: {:?}, voxel_aabb: {:?}, voxel_size: {}, up_depth: {}, node_coord: {}, node_depth: {}",
-            voxel_vertex, voxel_aabb, voxel_size, up_depth, node_coord, node_depth
+            "voxel_vertex: {:?}, voxel_aabb: {:?}, current_chunk_aabb: {:?}, voxel_size: {}, up_depth: {}, node_coord: {}, node_depth: {}",
+            voxel_vertex, voxel_aabb, current_chunk_aabb, voxel_size, up_depth, node_coord, node_depth
         );
+
+        assert!(voxel_aabb.min.x >= current_chunk_aabb.min.x);
+        assert!(voxel_aabb.min.y >= current_chunk_aabb.min.y);
+        assert!(voxel_aabb.min.z >= current_chunk_aabb.min.z);
+
+        assert!(voxel_aabb.max.x <= current_chunk_aabb.max.x);
+        assert!(voxel_aabb.max.y <= current_chunk_aabb.max.y);
+        assert!(voxel_aabb.max.z <= current_chunk_aabb.max.z);
 
         let node_address = MortonCode::encode(node_coord.as_uvec3(), node_depth);
         let mut node = Node::new(NodeType::Leaf, node_address);
@@ -124,6 +133,7 @@ pub(crate) fn create_seam_mesh(
                     terrain_chunk_mapper.get_chunk_entity(TerrainChunkAddress::new(node.code))
                 {
                     if let Some(border_vertices) = render_border_vertices.map.get(chunk_entity) {
+                        error!("border_vertices chunk entity: {:?}", chunk_entity);
                         get_seam_leaf_nodes(
                             &mut octree,
                             subnode_index,

@@ -978,6 +978,10 @@ pub fn generate_map_image(
     map_images.height_climate_map = images.add(image);
 
     if let Some(x) = terrain_height_image.as_ref() {
+        error!(
+            "save height image {:?}",
+            map_setting.image_save_path.join("terrain map height.png").to_str()
+        );
         x.save(map_setting.image_save_path.join("terrain map height.png"))
             .unwrap();
     }

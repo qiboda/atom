@@ -180,6 +180,7 @@ pub fn trigger_chunk_load_event(
         let value = terrain_chunk_mapper
             .data
             .insert(chunk_address, chunk_entity);
+        info!("chunk entity spawn: {:?}", chunk_entity);
         assert!(value.is_none());
     }
 }

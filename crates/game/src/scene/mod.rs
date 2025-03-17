@@ -50,7 +50,7 @@ fn init_scene(
     mut next_game_state: ResMut<NextState<GameState>>,
     mut terrain_state: ResMut<NextState<TerrainState>>,
 ) {
-    // terrain_state.set(TerrainState::LoadAssets);
+    terrain_state.set(TerrainState::LoadAssets);
 
     let plane_3d = Plane3d::new(Vec3::Y, Vec2::new(20.0, 20.0));
     let plane_mesh = Mesh::from(plane_3d);

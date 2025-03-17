@@ -6,10 +6,10 @@ use bevy::{
     prelude::*,
     time::Time,
 };
-use bevy_screen_diagnostics::{
-    Aggregate, ScreenDiagnostics, ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin,
-    ScreenFrameDiagnosticsPlugin,
-};
+// use bevy_screen_diagnostics::{
+//     Aggregate, ScreenDiagnostics, ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin,
+//     ScreenFrameDiagnosticsPlugin,
+// };
 use lightyear::{
     client::prediction::diagnostics::PredictionDiagnosticsPlugin,
     prelude::{

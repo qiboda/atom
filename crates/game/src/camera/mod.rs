@@ -45,6 +45,7 @@ fn init_camera(
                 composite_mode: BloomCompositeMode::Additive,
                 ..Default::default()
             },
+            Msaa::Off,
             AtmosphereCamera::default(),
             TerrainObserver,
             InputManagerBundle::with_map(camera_setting.camera_input_map.clone()),

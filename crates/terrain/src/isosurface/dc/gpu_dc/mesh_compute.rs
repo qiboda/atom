@@ -5,13 +5,7 @@ use bevy::{
     app::Plugin,
     prelude::*,
     render::{
-        mesh::{Indices, VertexAttributeValues},
-        render_asset::{RenderAssetUsages, RenderAssets},
-        render_graph::RenderGraph,
-        render_resource::Maintain,
-        renderer::{RenderDevice, RenderQueue},
-        texture::GpuImage,
-        Render, RenderApp, RenderSet,
+        mesh::{Indices, VertexAttributeValues}, render_asset::{RenderAssetUsages, RenderAssets}, render_graph::RenderGraph, render_resource::Maintain, renderer::{RenderDevice, RenderQueue}, sync_world::MainEntity, texture::GpuImage, Render, RenderApp, RenderSet
     },
     utils::{HashMap, HashSet},
 };
@@ -184,7 +178,8 @@ impl Plugin for TerrainChunkMeshComputePlugin {
                     .chain()
                     .after(RenderSet::Render)
                     .before(RenderSet::Cleanup),
-            );
+            )
+            .add_systems(Render, clean_data_only_render.in_set(RenderSet::Cleanup));
 
         let render_world = render_app.world_mut();
         let mesh_compute_node = TerrainChunkMeshComputeNode::from_world(render_world);
@@ -338,6 +333,7 @@ fn map_and_read_buffer(
         &TerrainChunkState,
         &TerrainChunkAddress,
         &TerrainChunkAabb,
+        &MainEntity,
     )>,
     main_buffers: Res<TerrainChunkMainDynamicBuffers>,
     sender: Res<TerrainChunkMeshDataRenderWorldSender>,
@@ -345,7 +341,7 @@ fn map_and_read_buffer(
     mut render_border_vertices: ResMut<TerrainChunkRenderBorderVertices>,
 ) {
     let mut num = 0;
-    for (_entity, state, _address, _aabb) in query.iter() {
+    for (_entity, state, _address, _aabb, _main_entity) in query.iter() {
         if state.contains(TerrainChunkState::CREATE_MAIN_MESH) {
             num += 1;
         }
@@ -376,7 +372,7 @@ fn map_and_read_buffer(
 
     let all_main_chunk_read_span = info_span!("all_main_chunk_read").entered();
 
-    for (entity, state, address, aabb) in query.iter_mut() {
+    for (entity, state, address, aabb, main_entity) in query.iter_mut() {
         if state.contains(TerrainChunkState::CREATE_MAIN_MESH) {
             let _one_main_chunk_read = info_span!("one_main_chunk_read").entered();
 
@@ -462,7 +458,7 @@ fn map_and_read_buffer(
                 let main_mesh_data = TerrainChunkMainMeshData { mesh };
                 match sender.send(TerrainChunkMeshData {
                     main_mesh_data: Some(main_mesh_data),
-                    entity,
+                    entity: main_entity.id(),
                     seam_mesh_data: None,
                 }) {
                     Ok(_) => {}
@@ -499,8 +495,9 @@ fn map_and_read_buffer(
                         })
                         .collect::<Vec<Aabb3d>>();
 
+                    info!("main entity: {:?}, render entity: {:?}", main_entity.id(), entity);
                     // TODO 只有添加没有删除，会导致内存占用过大。
-                    render_border_vertices.map.insert(entity, border_vertices);
+                    render_border_vertices.map.insert(main_entity.id(), border_vertices);
                 }
             }
         }
@@ -509,4 +506,8 @@ fn map_and_read_buffer(
     main_buffers.unmap();
 
     drop(all_main_chunk_read_span);
+}
+
+fn clean_data_only_render(mut render_border_vertices: ResMut<TerrainChunkRenderBorderVertices>) {
+    render_border_vertices.map.clear();
 }

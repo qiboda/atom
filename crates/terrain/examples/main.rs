@@ -13,9 +13,9 @@ use bevy::{
     window::WindowRef,
 };
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
-use bevy_screen_diagnostics::{
-    ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
-};
+// use bevy_screen_diagnostics::{
+//     ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
+// };
 use bevy_water::{WaterPlugin, WaterSettings};
 use dotenv::dotenv;
 use log_layers::{file_layer, LogLayersPlugin};

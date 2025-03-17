@@ -1,10 +1,10 @@
 (
     chunk_size: 16.0,
-    chunk_depth: 5,
+    chunk_depth: 2,
     qef_solver: true,
     qef_solver_threshold: 0.1,
     qef_stddev: 0.1,
-    lod_octree_depth: 8,
+    lod_octree_depth: 2,
     camera_far_limit: true,
     horizontal_visibility_range: 32.0,
     height_visibility_range: (

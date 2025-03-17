@@ -13,5 +13,5 @@ thiserror = { workspace = true }
 atom_utils = { path = "../atom_utils" }
 
 cfg = { path = "gen/cfg" }
-serde_json = { version = "1.0.134" }
+serde_json = { version = "1.0.137" }
 luban_lib = { path = "luban_lib" }
