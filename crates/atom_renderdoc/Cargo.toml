@@ -1,9 +1,9 @@
 [package]
 name = "atom_renderdoc"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
 renderdoc = { version = "0.12.1" }
-sysinfo = { version = "0.33.1" }
+sysinfo = { version = "0.36.1" }

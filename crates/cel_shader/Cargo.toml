@@ -1,7 +1,7 @@
 [package]
 name = "cel_shader"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
@@ -11,5 +11,5 @@ paste = { workspace = true }
 
 [dev-dependencies]
 dotenv = { workspace = true }
-bevy_flycam = { version = "0.15.0" }
+bevy_flycam = { version = "0.16.1" }
 # bevy_screen_diagnostics = { version = "0.6.0" }

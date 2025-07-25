@@ -1,7 +1,7 @@
 [package]
 name = "datatables"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,5 +13,5 @@ thiserror = { workspace = true }
 atom_utils = { path = "../atom_utils" }
 
 cfg = { path = "gen/cfg" }
-serde_json = { version = "1.0.137" }
+serde_json = { version = "1.0.141" }
 luban_lib = { path = "luban_lib" }

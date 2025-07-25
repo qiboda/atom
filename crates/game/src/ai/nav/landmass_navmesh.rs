@@ -13,7 +13,7 @@ use bevy::{
 use bevy_landmass::{
     ArchipelagoRef3d, Island, LandmassSystemSet, NavMeshHandle, NavMeshHandle3d, NavigationMesh3d,
 };
-use oxidized_navigation::tiles::NavMeshTile;
+// use oxidized_navigation::tiles::NavMeshTile;
 
 /// The main plugin that updates the `landmass` archipelago using
 /// `oxidized_navigation` navigation meshes.
