@@ -20,7 +20,11 @@ tracing = { version = "0.1", features = [
     "release_max_level_warn",
 ] }
 
-once_cell ={ version = "1.21" }
+# 辅助功能
+once_cell = { version = "1.21" }
+serde = { version = "1.0", features = ["derive"] }
+strum = { version = "0.27", features = ["derive"] }
+bitflags = { version = "2.10", features = ["serde"] }
 
 # Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.
 # In some cases they may still signal poor code quality however, so consider commenting out these lines.
