@@ -1,8 +1,9 @@
-pub mod observer;
 pub mod setting;
 
 use bevy::{prelude::*, render::extract_resource::ExtractResourcePlugin};
 use setting::TerrainSetting;
+
+use crate::chunks::plugin::TerrainChunkPlugin;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, States, Default)]
 pub enum TerrainState {
@@ -20,7 +21,7 @@ pub enum TerrainState {
 
 #[derive(Debug, Reflect, SystemSet, PartialEq, Eq, Hash, Clone)]
 pub enum TerrainSystems {
-    UpdateLodClipmap,
+    ChunkLoader,
     ApplyCSG,
     GenerateChunk,
 }
@@ -38,12 +39,13 @@ impl Plugin for TerrainPlugin {
         app.configure_sets(
             Update,
             (
-                TerrainSystems::UpdateLodClipmap,
+                TerrainSystems::ChunkLoader,
                 TerrainSystems::ApplyCSG,
                 TerrainSystems::GenerateChunk,
             )
-                .chain()
-                .run_if(in_state(TerrainState::GenerateTerrainMesh)),
+                .chain(), // .run_if(in_state(TerrainState::GenerateTerrainMesh)),
         );
+
+        app.add_plugins(TerrainChunkPlugin);
     }
 }

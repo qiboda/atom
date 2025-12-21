@@ -12,6 +12,8 @@ atom_core = { path = "../atom_core" }
 # 公共核心库
 bevy = { workspace = true }
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 strum = { workspace = true }
@@ -20,6 +22,10 @@ bitflags = { workspace = true }
 # 第三方依赖
 
 [dev-dependencies]
+
+[[example]]
+name = "chunk_loader"
+path = "examples/chunk_loader.rs"
 
 [features]
 # 默认是 cpu seam
