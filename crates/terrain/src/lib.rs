@@ -1,3 +1,3 @@
 pub mod chunks;
-pub mod tables;
+pub mod isosurface;
 pub mod terrain;

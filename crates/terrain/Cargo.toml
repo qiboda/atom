@@ -8,6 +8,8 @@ edition = "2024"
 [dependencies]
 # 项目依赖
 atom_core = { path = "../atom_core" }
+atom_shader_lib = { path = "../atom_shader_lib" }
+atom_render = { path = "../atom_render" }
 
 # 公共核心库
 bevy = { workspace = true }
@@ -18,6 +20,12 @@ log = { workspace = true }
 serde = { workspace = true }
 strum = { workspace = true }
 bitflags = { workspace = true }
+encase = { workspace = true }
+paste = { workspace = true }
+bytemuck = { workspace = true }
+crossbeam = { workspace = true }
+wgpu = { workspace = true }
+wgpu-types = { workspace = true }
 
 # 第三方依赖
 

@@ -17,7 +17,7 @@ use crate::{
 
 /// Chunk 加载请求消息
 #[derive(Message, Debug, Clone)]
-pub struct TerrainChunkLoadRequest {
+pub struct TerrainChunkLoadMsg {
     pub lod: u8,
     // lod0 coord
     pub coord: TerrainChunkCoord,
@@ -25,7 +25,7 @@ pub struct TerrainChunkLoadRequest {
 
 /// Chunk 卸载请求消息
 #[derive(Message, Debug, Clone)]
-pub struct TerrainChunkUnloadRequest {
+pub struct TerrainChunkUnloadMsg {
     pub lod: u8,
     // lod0 coord
     pub coord: TerrainChunkCoord,
@@ -76,10 +76,7 @@ pub struct TerrainLoadedChunks {
 
 impl TerrainLoadedChunks {
     /**
-     * 插入已加载的 chunk
-     * @param lod LOD 级别
-     * @param coord lod0的Chunk坐标
-     * @param entity Chunk 实体
+     * 插入已加载的 chunk。其中`coord`是 lod0的Chunk坐标
      */
     pub fn insert(&mut self, lod: u8, coord: TerrainChunkCoord, entity: Entity) {
         let lod_coord = coord.lod_bias_up(lod); // 获取对应的 LOD 级别
@@ -89,6 +86,9 @@ impl TerrainLoadedChunks {
             .insert(lod_coord, entity);
     }
 
+    /**
+     * `coord`是 lod0的Chunk坐标
+     */
     pub fn remove(&mut self, lod: u8, coord: &TerrainChunkCoord) -> Option<Entity> {
         let lod_coord = coord.lod_bias_up(lod); // 获取对应的 LOD 级别
         if let Some(lod_chunks) = self.lod_chunks.get_mut(&lod) {
@@ -97,6 +97,9 @@ impl TerrainLoadedChunks {
         None
     }
 
+    /**
+     * `coord`是 lod0的Chunk坐标
+     */
     pub fn contains(&self, lod: u8, coord: &TerrainChunkCoord) -> bool {
         let lod_coord = coord.lod_bias_up(lod); // 获取对应的 LOD 级别
         if let Some(lod_chunks) = self.lod_chunks.get(&lod) {
@@ -105,6 +108,9 @@ impl TerrainLoadedChunks {
         false
     }
 
+    /**
+     * `coord` is lod0 coord
+     */
     pub fn get(&self, lod: u8, coord: &TerrainChunkCoord) -> Option<Entity> {
         let lod_coord = coord.lod_bias_up(lod); // 获取对应的 LOD 级别
         if let Some(lod_chunks) = self.lod_chunks.get(&lod) {
@@ -156,8 +162,8 @@ pub fn update_clipmap_chunks(
     observers: Query<(&GlobalTransform, &TerrainObserverConfig), With<TerrainObserver>>,
     terrain_setting: Res<TerrainSetting>,
     mut loaded_chunks: ResMut<TerrainLoadedChunks>,
-    mut unload_requests: MessageWriter<TerrainChunkUnloadRequest>,
-    mut load_requests: MessageWriter<TerrainChunkLoadRequest>,
+    mut unload_requests: MessageWriter<TerrainChunkUnloadMsg>,
+    mut load_requests: MessageWriter<TerrainChunkLoadMsg>,
 ) {
     if observers.is_empty() {
         error!("没有找到任何 TerrainObserver，无法加载地形！");
@@ -277,7 +283,7 @@ pub fn update_clipmap_chunks(
             if let Some(entity) = loaded_lod_chunks.remove(&lod_coord) {
                 commands.entity(entity).despawn();
                 let coord = lod_coord.lod_bias_down(lod);
-                unload_requests.write(TerrainChunkUnloadRequest { lod, coord });
+                unload_requests.write(TerrainChunkUnloadMsg { lod, coord });
             }
         }
     }
@@ -304,7 +310,7 @@ pub fn update_clipmap_chunks(
 
         // 找出需要加载的 chunks
         for lod_coord in lod_chunks_to_load {
-            load_requests.write(TerrainChunkLoadRequest {
+            load_requests.write(TerrainChunkLoadMsg {
                 lod,
                 coord: lod_coord.lod_bias_down(lod),
             });
@@ -312,10 +318,11 @@ pub fn update_clipmap_chunks(
     }
 }
 
+/// TODO: 是否合并到 update_clipmap_chunks 中？
 /// 处理 chunk 加载请求（创建空实体，实际生成由其他系统处理）
 pub fn handle_chunk_load_requests(
     mut commands: Commands,
-    mut load_requests: MessageReader<TerrainChunkLoadRequest>,
+    mut load_requests: MessageReader<TerrainChunkLoadMsg>,
     mut loaded_chunks: ResMut<TerrainLoadedChunks>,
 ) {
     for request in load_requests.read() {
@@ -339,9 +346,10 @@ pub fn handle_chunk_load_requests(
     }
 }
 
+/// TODO: 是否合并到 update_clipmap_chunks 中？
 pub fn handle_chunk_unload_requests(
     mut commands: Commands,
-    mut unload_requests: MessageReader<TerrainChunkUnloadRequest>,
+    mut unload_requests: MessageReader<TerrainChunkUnloadMsg>,
     mut loaded_chunks: ResMut<TerrainLoadedChunks>,
 ) {
     for request in unload_requests.read() {
@@ -366,8 +374,8 @@ pub enum ChunkLoaderSystems {
 /// 添加 chunk loader 插件辅助函数
 pub fn add_chunk_loader_systems(app: &mut App) {
     app.init_resource::<TerrainLoadedChunks>()
-        .add_message::<TerrainChunkLoadRequest>()
-        .add_message::<TerrainChunkUnloadRequest>()
+        .add_message::<TerrainChunkLoadMsg>()
+        .add_message::<TerrainChunkUnloadMsg>()
         .configure_sets(
             Update,
             (

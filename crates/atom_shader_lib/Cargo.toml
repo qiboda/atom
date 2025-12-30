@@ -1,0 +1,17 @@
+[package]
+name = "atom_shader_lib"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+atom_core = { path = "../atom_core" }
+
+bevy = { workspace = true }
+paste = { workspace = true }
+
+[dev-dependencies]
+image = { workspace = true }
+imageproc = { workspace = true }
+
+[lints]
+workspace = true

@@ -26,6 +26,9 @@ pub struct TerrainSetting {
 #[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct TerrainChunkSetting {
     pub voxel_size: f32,
+    /**
+     * 单个chunk在每个维度上的体素数量
+     */
     pub voxel_count: u8,
 }
 
@@ -114,6 +117,10 @@ impl TerrainSetting {
 
     pub fn get_voxel_size_by_lod(&self, lod: u8) -> f32 {
         self.chunk_setting.voxel_size * 2u32.pow(lod as u32) as f32
+    }
+
+    pub fn get_voxel_count_in_chunk(&self) -> u32 {
+        self.chunk_setting.voxel_count as u32
     }
 
     pub fn is_in_height_range(&self, height: i32) -> bool {

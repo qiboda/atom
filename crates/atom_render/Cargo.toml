@@ -1,0 +1,15 @@
+[package]
+name = "atom_render"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+wgpu = { workspace = true }
+wgpu-types = { workspace = true }
+encase = { workspace = true }
+
+bytemuck ={ version = "1.14", features = ["derive"] }
+
+[lints]
+workspace = true

@@ -3,7 +3,7 @@ use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::prelude::*;
 use terrain::{
     chunks::loader::{
-        TerrainChunkLoadRequest, TerrainChunkUnloadRequest, TerrainLoadedChunks,
+        TerrainChunkLoadMsg, TerrainChunkUnloadMsg, TerrainLoadedChunks,
         observer::{TerrainObserver, TerrainObserverConfig},
     },
     terrain::{TerrainPlugin, TerrainSystems, setting::*},
@@ -60,8 +60,8 @@ fn setup(mut commands: Commands, mut terrain_setting: ResMut<TerrainSetting>) {
 
 // 日志系统：记录 chunk 加载/卸载事件
 fn log_chunk_events(
-    mut load_events: MessageReader<TerrainChunkLoadRequest>,
-    mut unload_events: MessageReader<TerrainChunkUnloadRequest>,
+    mut load_events: MessageReader<TerrainChunkLoadMsg>,
+    mut unload_events: MessageReader<TerrainChunkUnloadMsg>,
     loaded_chunks: Res<TerrainLoadedChunks>,
     terrain_setting: Res<TerrainSetting>,
     mut gizmos: Gizmos,

@@ -27,11 +27,23 @@ tracing-subscriber = { version = "0.3", features = [
 ] }
 tracing-appender = { version = "0.2" }
 
+wgpu = { version = "27.0" }
+wgpu-types = { version = "27.0" }
+encase = { version = "0.12" }
+bytemuck = { version = "1.24" }
+
 # 辅助功能
 once_cell = { version = "1.21" }
 serde = { version = "1.0", features = ["derive"] }
 strum = { version = "0.27", features = ["derive"] }
 bitflags = { version = "2.10", features = ["serde"] }
+paste = { version = "1.0" }
+
+# 主要是用于测试和示例
+image = { version = "0.25" }
+imageproc = { version = "0.25" }
+crossbeam = { version = "0.8.4" }
+
 
 # Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.
 # In some cases they may still signal poor code quality however, so consider commenting out these lines.
