@@ -343,9 +343,17 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "once_cell",
+ "time",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "atom_pqef"
+version = "0.1.0"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
@@ -368,6 +376,30 @@ dependencies = [
  "image",
  "imageproc",
  "paste",
+]
+
+[[package]]
+name = "atom_terrain"
+version = "0.1.0"
+dependencies = [
+ "atom_core",
+ "atom_pqef",
+ "atom_render",
+ "atom_shader_lib",
+ "bevy",
+ "bitflags 2.10.0",
+ "bytemuck",
+ "crossbeam",
+ "encase",
+ "log",
+ "paste",
+ "serde",
+ "strum",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "wgpu",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -5116,29 +5148,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "terrain"
-version = "0.1.0"
-dependencies = [
- "atom_core",
- "atom_render",
- "atom_shader_lib",
- "bevy",
- "bitflags 2.10.0",
- "bytemuck",
- "crossbeam",
- "encase",
- "log",
- "paste",
- "serde",
- "strum",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
- "wgpu",
- "wgpu-types",
 ]
 
 [[package]]

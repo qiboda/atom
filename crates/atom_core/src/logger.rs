@@ -27,10 +27,23 @@ fn file_layer(app: &mut App) -> Option<BoxedLayer> {
         worker_guard_vec: Vec::new(),
     });
 
-    let file_appender = tracing_appender::rolling::daily(
+    let ts = time::OffsetDateTime::now_local()
+        .expect("Failed to get local time")
+        .format(
+            &time::format_description::parse("[year]-[month]-[day]_[hour]-[minute]-[second]")
+                .expect("Failed to parse time format description"),
+        )
+        .unwrap_or_default();
+
+    let file_appender = tracing_appender::rolling::never(
         saved_path.join("logs"),
-        LOG_FILENAME.get().expect("LOG_FILENAME is not set"),
-    ); // This should be user configurable
+        format!(
+            "{}-{}.log",
+            LOG_FILENAME.get().expect("LOG_FILENAME is not set"),
+            ts
+        ),
+    );
+    // This should be user configurable
     let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);
     let file_fmt_layer = tracing_subscriber::fmt::Layer::default()
         .with_ansi(false) // disable terminal color escape sequences

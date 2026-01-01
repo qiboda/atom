@@ -7,16 +7,12 @@ use bevy::{
     render::extract_component::ExtractComponent,
 };
 
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, ExtractComponent, Clone, Debug, Default, Reflect)]
 #[require(Transform, Visibility)]
 pub struct TerrainChunk;
 
-#[derive(Debug, Default, Copy, Clone, Hash, Eq, PartialEq, Component)]
-pub struct TerrainChunkLod {
-    pub lod: u8,
-}
-
 #[derive(Debug, Default, Copy, Clone, Hash, Eq, PartialEq, Component, ExtractComponent)]
+#[require(TerrainChunk)]
 pub struct TerrainChunkCoord(IVec3);
 
 impl TerrainChunkCoord {
@@ -70,30 +66,6 @@ impl TerrainChunkCoord {
     pub fn chebyshev_distance_xz(&self, other: &TerrainChunkCoord) -> i32 {
         let delta = self.0 - other.0;
         delta.x.abs().max(delta.z.abs())
-    }
-
-    /**
-     * LOD 级别提升，精度下降
-     */
-    pub fn lod_bias_up(&self, lod: u8) -> TerrainChunkCoord {
-        let factor = 2i32.pow(lod as u32);
-        TerrainChunkCoord(IVec3::new(
-            (self.0.x as f32 / factor as f32).floor() as i32,
-            (self.0.y as f32 / factor as f32).floor() as i32,
-            (self.0.z as f32 / factor as f32).floor() as i32,
-        ))
-    }
-
-    /**
-     * LOD 级别降低，精度上升
-     */
-    pub fn lod_bias_down(&self, lod: u8) -> TerrainChunkCoord {
-        let factor = 2i32.pow(lod as u32);
-        TerrainChunkCoord(IVec3::new(
-            self.0.x * factor,
-            self.0.y * factor,
-            self.0.z * factor,
-        ))
     }
 }
 

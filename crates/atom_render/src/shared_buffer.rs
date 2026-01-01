@@ -23,6 +23,7 @@ pub struct SharedStorageBuffer<T: ShaderType> {
     scratch: DynamicStorageBuffer<Vec<u8>>,
     buffer: Option<Buffer>,
     label: Option<String>,
+    // 单个实例的 buffer 的大小
     stride: BufferSize,
     // 用于计算T的alignment
     alignment_value: AlignmentValue,

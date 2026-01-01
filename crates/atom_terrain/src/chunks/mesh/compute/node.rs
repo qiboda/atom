@@ -3,20 +3,20 @@ use bevy::{
     prelude::*,
     render::{
         render_graph::{self, RenderLabel},
-        render_resource::{ComputePassDescriptor, PipelineCache},
+        render_resource::{CachedPipelineState, ComputePassDescriptor, PipelineCache},
     },
 };
 
 use crate::{
     chunks::{
-        chunk::{TerrainChunkCoord, TerrainChunkLod},
-        mesh::{TerrainChunkMeshingState, compute::buffer::TerrainChunkMeshBuffers},
+        chunk::TerrainChunkCoord,
+        mesh::{components::TerrainChunkMeshingState, compute::buffer::TerrainChunkMeshBuffers},
     },
     terrain::setting::TerrainSetting,
 };
 
 use super::bind_group::TerrainChunkBindGroups;
-use super::{buffer::DynamicBufferBindingInfo, pipelines::TerrainChunkPipelines};
+use super::pipelines::TerrainChunkPipelines;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
 pub struct TerrainChunkMeshComputeLabel;
@@ -26,7 +26,6 @@ pub(crate) struct TerrainChunkMeshComputeNode {
         Entity,
         Read<TerrainChunkMeshingState>,
         Read<TerrainChunkCoord>,
-        Read<TerrainChunkLod>,
     )>,
     pub(crate) entities: Vec<Entity>,
 }
@@ -45,10 +44,8 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
         self.query.update_archetypes(world);
 
         self.entities.clear();
-        for (entity, state, _, _) in self.query.iter(world) {
-            if *state == TerrainChunkMeshingState::Meshing
-                || *state == TerrainChunkMeshingState::Seaming
-            {
+        for (entity, state, _) in self.query.iter(world) {
+            if *state == TerrainChunkMeshingState::Meshing {
                 self.entities.push(entity);
             }
         }
@@ -76,6 +73,62 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
         let main_bind_groups = world.resource::<TerrainChunkBindGroups>();
         let terrain_setting = world.resource::<TerrainSetting>();
 
+        // 提前检查所有需要的管道是否准备好
+        let Some(voxel_vertex_pipeline) =
+            pipeline_cache.get_compute_pipeline(pipelines.compute_voxel_vertex_values_pipeline)
+        else {
+            if let CachedPipelineState::Err(pipeline_cache_error) = pipeline_cache
+                .get_compute_pipeline_state(pipelines.compute_voxel_vertex_values_pipeline)
+            {
+                error!(
+                    "Failed to get voxel vertex compute pipeline: {:?}",
+                    pipeline_cache_error
+                );
+            }
+            return Ok(()); // 管道未准备好，跳过整个节点
+        };
+        let Some(cross_points_pipeline) =
+            pipeline_cache.get_compute_pipeline(pipelines.compute_voxel_cross_points_pipeline)
+        else {
+            if let CachedPipelineState::Err(pipeline_cache_error) = pipeline_cache
+                .get_compute_pipeline_state(pipelines.compute_voxel_cross_points_pipeline)
+            {
+                error!(
+                    "Failed to get voxel cross points compute pipeline: {:?}",
+                    pipeline_cache_error
+                );
+            }
+            return Ok(());
+        };
+
+        let Some(vertices_pipeline) =
+            pipeline_cache.get_compute_pipeline(pipelines.compute_vertices_pipeline)
+        else {
+            if let CachedPipelineState::Err(pipeline_cache_error) =
+                pipeline_cache.get_compute_pipeline_state(pipelines.compute_vertices_pipeline)
+            {
+                error!(
+                    "Failed to get mesh vertices compute pipeline: {:?}",
+                    pipeline_cache_error
+                );
+            }
+            return Ok(());
+        };
+
+        let Some(indices_pipeline) =
+            pipeline_cache.get_compute_pipeline(pipelines.compute_indices_pipeline)
+        else {
+            if let CachedPipelineState::Err(pipeline_cache_error) =
+                pipeline_cache.get_compute_pipeline_state(pipelines.compute_indices_pipeline)
+            {
+                error!(
+                    "Failed to get mesh indices compute pipeline: {:?}",
+                    pipeline_cache_error
+                );
+            }
+            return Ok(());
+        };
+
         {
             let _span = info_span!(
                 "TerrainChunkMeshComputeNode::run compute",
@@ -92,14 +145,17 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
             for entity in self.entities.iter() {
                 let _span = info_span!("TerrainChunkMeshComputeNode::run one").entered();
 
-                if let Ok((entity, state, coord, _lod)) = self.query.get_manual(world, *entity)
-                    && *state == TerrainChunkMeshingState::Meshing
-                {
+                if let Ok((entity, state, coord)) = self.query.get_manual(world, *entity) {
+                    assert!(*state == TerrainChunkMeshingState::Meshing);
+
                     let _span = info_span!("TerrainChunkMeshComputeNode::run one main").entered();
 
-                    debug!("main mesh node run: address: {:?}", coord);
-                    let voxel_num = terrain_setting.get_voxel_count_in_chunk();
-                    let workgroup_size = voxel_num / 4;
+                    debug!("main mesh node run: coord: {:?}", coord);
+                    let voxel_num = terrain_setting.get_voxel_count_in_compute();
+                    // 为什么除以4, 因为shader中是以4为一个workgroup来处理的。
+                    // TODO: 先用4看看效果，之后可以测试看看2怎么样。
+                    let voxel_vertex_or_edge_workgroup_size = (voxel_num + 1) / 4;
+                    let voxel_workgroup_size = voxel_num / 4;
 
                     let dynamic_offset_mesh = mesh_buffers.get_buffers_dynamic_offset(entity);
 
@@ -108,9 +164,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             info_span!("TerrainChunkMeshComputeNode::run one main voxel vertex")
                                 .entered();
 
-                        let pipeline = pipeline_cache
-                            .get_compute_pipeline(pipelines.compute_voxel_vertex_values_pipeline)
-                            .expect("Failed to get compute voxel vertex values pipeline");
                         pass.set_bind_group(
                             0,
                             main_bind_groups
@@ -119,11 +172,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 .expect("Failed to get main mesh bind group"),
                             dynamic_offset_mesh.as_slice(),
                         );
-                        pass.set_pipeline(pipeline);
+                        pass.set_pipeline(voxel_vertex_pipeline);
                         pass.dispatch_workgroups(
-                            workgroup_size + 1,
-                            workgroup_size + 1,
-                            workgroup_size + 1,
+                            voxel_vertex_or_edge_workgroup_size,
+                            voxel_vertex_or_edge_workgroup_size,
+                            voxel_vertex_or_edge_workgroup_size,
                         );
                     }
 
@@ -132,9 +185,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             "TerrainChunkMeshComputeNode::run one main voxel cross points"
                         )
                         .entered();
-                        let pipeline = pipeline_cache
-                            .get_compute_pipeline(pipelines.compute_voxel_cross_points_pipeline)
-                            .expect("Failed to get compute voxel cross points pipeline");
                         pass.set_bind_group(
                             0,
                             main_bind_groups
@@ -143,11 +193,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 .expect("Failed to get main mesh bind group"),
                             dynamic_offset_mesh.as_slice(),
                         );
-                        pass.set_pipeline(pipeline);
+                        pass.set_pipeline(cross_points_pipeline);
                         pass.dispatch_workgroups(
-                            workgroup_size + 1,
-                            workgroup_size + 1,
-                            workgroup_size + 1,
+                            voxel_vertex_or_edge_workgroup_size,
+                            voxel_vertex_or_edge_workgroup_size,
+                            voxel_vertex_or_edge_workgroup_size,
                         );
                     }
 
@@ -156,9 +206,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             info_span!("TerrainChunkMeshComputeNode::run one main mesh vertices")
                                 .entered();
 
-                        let pipeline = pipeline_cache
-                            .get_compute_pipeline(pipelines.compute_vertices_pipeline)
-                            .expect("Failed to get compute main vertices pipeline");
                         pass.set_bind_group(
                             0,
                             main_bind_groups
@@ -167,8 +214,12 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 .expect("Failed to get main mesh bind group"),
                             dynamic_offset_mesh.as_slice(),
                         );
-                        pass.set_pipeline(pipeline);
-                        pass.dispatch_workgroups(workgroup_size, workgroup_size, workgroup_size);
+                        pass.set_pipeline(vertices_pipeline);
+                        pass.dispatch_workgroups(
+                            voxel_workgroup_size,
+                            voxel_workgroup_size,
+                            voxel_workgroup_size,
+                        );
                     }
 
                     {
@@ -176,9 +227,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             info_span!("TerrainChunkMeshComputeNode::run one main mesh indices")
                                 .entered();
 
-                        let pipeline = pipeline_cache
-                            .get_compute_pipeline(pipelines.compute_indices_pipeline)
-                            .expect("Failed to get compute main indices pipeline");
                         pass.set_bind_group(
                             0,
                             main_bind_groups
@@ -187,8 +235,12 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 .expect("Failed to get main mesh bind group"),
                             dynamic_offset_mesh.as_slice(),
                         );
-                        pass.set_pipeline(pipeline);
-                        pass.dispatch_workgroups(workgroup_size, workgroup_size, workgroup_size);
+                        pass.set_pipeline(indices_pipeline);
+                        pass.dispatch_workgroups(
+                            voxel_workgroup_size,
+                            voxel_workgroup_size,
+                            voxel_workgroup_size,
+                        );
                     }
                 }
             }
@@ -201,50 +253,41 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
             )
             .entered();
 
-            let mut max_vertices_indices_count_binding_info = DynamicBufferBindingInfo::default();
-            let mut max_vertices_binding_info = DynamicBufferBindingInfo::default();
-            let mut max_indices_binding_info = DynamicBufferBindingInfo::default();
+            // 获取需要stage的右边界，并 stage buffer
+            let mut max_vertices_indices_count_right_offset = 0;
+            let mut max_vertices_right_offset = 0;
+            let mut max_indices_right_offset = 0;
             for (_, value) in mesh_buffers.terrain_chunk_buffer_bindings_map.iter() {
-                if max_vertices_indices_count_binding_info.offset
-                    < value.mesh_vertices_indices_count_buffer_binding.offset
-                    || (max_vertices_indices_count_binding_info.offset
-                        == value.mesh_vertices_indices_count_buffer_binding.offset
-                        && max_vertices_indices_count_binding_info.size
-                            < value.mesh_vertices_indices_count_buffer_binding.size)
+                if max_vertices_indices_count_right_offset
+                    < value
+                        .mesh_vertices_indices_count_buffer_binding
+                        .get_right_offset()
                 {
-                    max_vertices_indices_count_binding_info =
-                        value.mesh_vertices_indices_count_buffer_binding;
+                    max_vertices_indices_count_right_offset = value
+                        .mesh_vertices_indices_count_buffer_binding
+                        .get_right_offset();
                 }
-                if max_vertices_binding_info.offset < value.mesh_vertices_buffer_binding.offset
-                    || (max_vertices_binding_info.offset
-                        == value.mesh_vertices_buffer_binding.offset
-                        && max_vertices_binding_info.size < value.mesh_vertices_buffer_binding.size)
+                if max_vertices_right_offset < value.mesh_vertices_buffer_binding.get_right_offset()
                 {
-                    max_vertices_binding_info = value.mesh_vertices_buffer_binding;
+                    max_vertices_right_offset =
+                        value.mesh_vertices_buffer_binding.get_right_offset();
                 }
-                if max_indices_binding_info.offset < value.mesh_indices_buffer_binding.offset
-                    || (max_indices_binding_info.offset == value.mesh_indices_buffer_binding.offset
-                        && max_indices_binding_info.size < value.mesh_indices_buffer_binding.size)
-                {
-                    max_indices_binding_info = value.mesh_indices_buffer_binding;
+                if max_indices_right_offset < value.mesh_indices_buffer_binding.get_right_offset() {
+                    max_indices_right_offset = value.mesh_indices_buffer_binding.get_right_offset();
                 }
             }
 
             let command_encoder = render_context.command_encoder();
 
-            mesh_buffers.mesh_vertices_dynamic_buffer.stage_buffer(
-                command_encoder,
-                max_vertices_binding_info.get_right_offset(),
-            );
             mesh_buffers
-                .mesh_indices_dynamic_buffer
-                .stage_buffer(command_encoder, max_indices_binding_info.get_right_offset());
+                .mesh_vertices_buffer
+                .stage_buffer(command_encoder, max_vertices_right_offset);
             mesh_buffers
-                .mesh_vertices_indices_count_dynamic_buffer
-                .stage_buffer(
-                    command_encoder,
-                    max_vertices_indices_count_binding_info.get_right_offset(),
-                );
+                .mesh_indices_buffer
+                .stage_buffer(command_encoder, max_indices_right_offset);
+            mesh_buffers
+                .mesh_vertices_indices_count_buffer
+                .stage_buffer(command_encoder, max_vertices_indices_count_right_offset);
         }
 
         Ok(())

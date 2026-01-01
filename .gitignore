@@ -2,3 +2,4 @@
 /target
 # This file contains environment-specific configuration like linker settings
 .cargo/config.toml
+saved/logs/terrain-2026-01-01_20-44-19.log

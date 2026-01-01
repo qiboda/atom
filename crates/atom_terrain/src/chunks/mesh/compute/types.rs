@@ -1,3 +1,4 @@
+/// 这些类型需要和shader中的struct保持一致
 use bevy::{
     math::{UVec2, UVec4, Vec3, Vec4},
     render::render_resource::ShaderType,
@@ -7,17 +8,25 @@ use bytemuck::{Pod, Zeroable};
 use crate::isosurface::IsosurfaceSide;
 use bevy::prelude::*;
 
+/**
+ * 单个体素的边的相交点信息
+ */
 #[derive(ShaderType, Default, Clone, Copy, Debug)]
 pub struct VoxelEdgeCrossPoint {
-    // w is exist or not
+    // xyz是相交位置, w是是否存在
     pub cross_pos: Vec4,
-    // xyz is normal, w is material_index
+    // xyz是法线, w是材质索引
     pub normal_material_index: Vec4,
 }
 
+/**
+ * 存储了chunk的基本信息，用于compute shader中
+ * TODO: 可以考虑把可变的和不可变的拆分，减少更新数据量
+ */
 #[derive(ShaderType, Default)]
 pub struct TerrainChunkInfo {
-    // aabb的min 和 w作为chunk的size
+    // xyz: chunk的最小位置
+    // w作为chunk的size(没有用到。)
     pub chunk_min_location_size: Vec4,
     // unit: meter
     pub voxel_size: f32,
@@ -105,36 +114,55 @@ pub const INVALID_TERRAIN_CHUNK_CSG_OPERATION: TerrainChunkCSGOperation =
         operation_type: 10000,
     };
 
+/**
+ * 存储了compute shader计算得出的所在顶点的 isosurface 值。
+ */
 #[derive(ShaderType)]
 pub struct VoxelVertexValueVec {
     #[shader(size(runtime))]
     pub values: Vec<f32>,
 }
 
+/**
+ * 存储了compute shader计算得出的体素的所有边的相交点信息。
+ */
 #[derive(ShaderType)]
 pub struct VoxelEdgeCrossPointVec {
     #[shader(size(runtime))]
     pub cross_points: Vec<VoxelEdgeCrossPoint>,
 }
 
+/**
+ * 存储了compute shader计算得出的地形块的顶点信息
+ */
 #[derive(ShaderType)]
 pub struct TerrainChunkMeshVertexInfoVec {
     #[shader(size(runtime))]
     pub vertices: Vec<TerrainChunkVertexInfo>,
 }
 
+/**
+ * 存储了compute shader计算得出的地形块的索引信息
+ */
 #[derive(ShaderType)]
 pub struct TerrainChunkMeshIndicesVec {
     #[shader(size(runtime))]
     pub indices: Vec<u32>,
 }
 
+/**
+ * 体素索引对应的顶点索引
+ * 是一个映射关系，用于在生成索引时，快速找到对应的顶点
+ */
 #[derive(ShaderType)]
 pub struct TerrainChunkMeshVertexMapVec {
     #[shader(size(runtime))]
     pub vertex_map: Vec<u32>,
 }
 
+/**
+ * 存储了每个地形块的顶点和索引数量
+ */
 #[derive(ShaderType)]
 pub struct TerrainChunkVerticesIndicesCountVec {
     #[shader(size(runtime))]

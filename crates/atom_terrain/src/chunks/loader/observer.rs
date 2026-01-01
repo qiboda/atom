@@ -15,8 +15,7 @@ pub struct TerrainObserver;
 #[require(TerrainObserver)]
 pub struct TerrainObserverConfig {
     /// 观察者的地形加载范围，单位为chunk数量。以观察者为中心。
-    /// 如果没有设置，则使用摄像机的可视距离。
-    pub terrain_load_radius: Option<u32>,
+    pub terrain_load_radius: u32,
     /// 观察者的地形加载高度范围，单位为chunk数量。以观察者为中心。
     pub terrain_height_range: RangeInclusive<i32>,
 }
@@ -24,17 +23,14 @@ pub struct TerrainObserverConfig {
 impl Default for TerrainObserverConfig {
     fn default() -> Self {
         Self {
-            terrain_load_radius: None,
-            terrain_height_range: -4..=4,
+            terrain_load_radius: 2,
+            terrain_height_range: -2..=2,
         }
     }
 }
 
 impl TerrainObserverConfig {
-    pub fn new(
-        terrain_load_radius: Option<u32>,
-        terrain_height_range: RangeInclusive<i32>,
-    ) -> Self {
+    pub fn new(terrain_load_radius: u32, terrain_height_range: RangeInclusive<i32>) -> Self {
         Self {
             terrain_load_radius,
             terrain_height_range,

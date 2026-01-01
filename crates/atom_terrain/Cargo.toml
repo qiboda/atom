@@ -1,5 +1,5 @@
 [package]
-name = "terrain"
+name = "atom_terrain"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,6 +10,7 @@ edition = "2024"
 atom_core = { path = "../atom_core" }
 atom_shader_lib = { path = "../atom_shader_lib" }
 atom_render = { path = "../atom_render" }
+atom_pqef = { path = "../atom_pqef" }
 
 # 公共核心库
 bevy = { workspace = true }

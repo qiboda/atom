@@ -3,7 +3,7 @@ pub mod setting;
 use bevy::{prelude::*, render::extract_resource::ExtractResourcePlugin};
 use setting::TerrainSetting;
 
-use crate::chunks::plugin::TerrainChunkPlugin;
+use crate::chunks::TerrainChunkPlugin;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, States, Default)]
 pub enum TerrainState {

@@ -11,6 +11,7 @@ bevy = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
+time = { workspace = true }
 
 [lints]
 workspace = true
