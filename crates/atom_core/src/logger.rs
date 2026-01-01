@@ -35,14 +35,15 @@ fn file_layer(app: &mut App) -> Option<BoxedLayer> {
         )
         .unwrap_or_default();
 
-    let file_appender = tracing_appender::rolling::never(
-        saved_path.join("logs"),
-        format!(
-            "{}-{}.log",
-            LOG_FILENAME.get().expect("LOG_FILENAME is not set"),
-            ts
-        ),
-    );
+    let file_appender: tracing_appender::rolling::RollingFileAppender =
+        tracing_appender::rolling::never(
+            saved_path.join("logs"),
+            format!(
+                "{}-{}.log",
+                LOG_FILENAME.get().expect("LOG_FILENAME is not set"),
+                ts
+            ),
+        );
     // This should be user configurable
     let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);
     let file_fmt_layer = tracing_subscriber::fmt::Layer::default()
@@ -60,6 +61,11 @@ fn file_layer(app: &mut App) -> Option<BoxedLayer> {
     Some(file_fmt_layer.boxed())
 }
 
+/**
+ * `level` is the lowest global log level,
+ * if you want to set specific module log level, please set it in `filter` string,
+ * if you want to set global default log level, please set it in `filter` string like "info".
+ */
 pub fn atom_log_plugin(filter: String, level: Level, filename: &str) -> LogPlugin {
     LOG_FILENAME
         .set(filename.to_string())

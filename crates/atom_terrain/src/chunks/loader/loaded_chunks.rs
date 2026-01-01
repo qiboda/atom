@@ -15,7 +15,8 @@ pub struct TerrainChunkUnloadMsg {
 }
 
 /// 追踪已加载的 chunks
-#[derive(Resource, Default, Debug)]
+#[derive(Resource, Default, Debug, Reflect)]
+#[reflect(Resource)]
 pub struct TerrainLoadedChunks {
     chunks: HashMap<TerrainChunkCoord, Entity>,
 }

@@ -1,4 +1,5 @@
 use bevy::app::{PluginGroup, PluginGroupBuilder};
+use bevy::prelude::*;
 use shader_plugin_macro::atom_shaders_plugin;
 
 mod gpu_test;

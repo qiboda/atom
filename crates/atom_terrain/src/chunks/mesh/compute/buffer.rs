@@ -6,10 +6,11 @@ use bevy::{
     platform::collections::HashMap,
     prelude::*,
     render::{
-        render_resource::{BufferAddress, BufferSize, CommandEncoder, DynamicOffset, ShaderType},
+        render_resource::{BufferAddress, BufferSize, CommandEncoder, ShaderType},
         renderer::{RenderDevice, RenderQueue},
     },
 };
+use wgpu::DynamicOffset;
 
 use crate::{
     chunks::{
@@ -513,12 +514,22 @@ pub(crate) fn prepare_mesh_buffers(
     mesh_buffers.set_stride(&terrain_setting);
 
     let mut meshing_chunk_count = 0;
-    for (_entity, _coord, state) in query.iter() {
+    for (entity, _coord, state) in query.iter() {
         if *state != TerrainChunkMeshingState::Meshing {
             continue;
         }
 
         meshing_chunk_count += 1;
+
+        // 为每个正在网格化的 Chunk 准备缓冲区绑定信息
+        let mut buffer_bindings = TerrainChunkMeshBufferBindings::default();
+        let builder = TerrainChunkMeshBufferBindingsBuilder {
+            current_index: meshing_chunk_count,
+            terrain_setting: &terrain_setting,
+            mesh_buffers: &mesh_buffers,
+        };
+        buffer_bindings.rebuild_binding_size(builder);
+        mesh_buffers.insert_terrain_chunk_buffer_bindings(entity, buffer_bindings);
     }
 
     if meshing_chunk_count == 0 {
@@ -537,16 +548,6 @@ pub(crate) fn prepare_mesh_buffers(
         if state != &TerrainChunkMeshingState::Meshing {
             continue;
         }
-
-        // 为每个正在网格化的 Chunk 准备缓冲区绑定信息
-        let mut buffer_bindings = TerrainChunkMeshBufferBindings::default();
-        let builder = TerrainChunkMeshBufferBindingsBuilder {
-            current_index: meshing_chunk_count,
-            terrain_setting: &terrain_setting,
-            mesh_buffers: &mesh_buffers,
-        };
-        buffer_bindings.rebuild_binding_size(builder);
-        mesh_buffers.insert_terrain_chunk_buffer_bindings(entity, buffer_bindings);
 
         let context = TerrainChunkMeshBufferCreateContext {
             terrain_chunk_coord: *coord,

@@ -119,7 +119,7 @@ pub const INVALID_TERRAIN_CHUNK_CSG_OPERATION: TerrainChunkCSGOperation =
  */
 #[derive(ShaderType)]
 pub struct VoxelVertexValueVec {
-    #[shader(size(runtime))]
+    #[size(runtime)]
     pub values: Vec<f32>,
 }
 
@@ -128,7 +128,7 @@ pub struct VoxelVertexValueVec {
  */
 #[derive(ShaderType)]
 pub struct VoxelEdgeCrossPointVec {
-    #[shader(size(runtime))]
+    #[size(runtime)]
     pub cross_points: Vec<VoxelEdgeCrossPoint>,
 }
 
@@ -137,7 +137,7 @@ pub struct VoxelEdgeCrossPointVec {
  */
 #[derive(ShaderType)]
 pub struct TerrainChunkMeshVertexInfoVec {
-    #[shader(size(runtime))]
+    #[size(runtime)]
     pub vertices: Vec<TerrainChunkVertexInfo>,
 }
 
@@ -146,7 +146,7 @@ pub struct TerrainChunkMeshVertexInfoVec {
  */
 #[derive(ShaderType)]
 pub struct TerrainChunkMeshIndicesVec {
-    #[shader(size(runtime))]
+    #[size(runtime)]
     pub indices: Vec<u32>,
 }
 
@@ -156,7 +156,7 @@ pub struct TerrainChunkMeshIndicesVec {
  */
 #[derive(ShaderType)]
 pub struct TerrainChunkMeshVertexMapVec {
-    #[shader(size(runtime))]
+    #[size(runtime)]
     pub vertex_map: Vec<u32>,
 }
 
@@ -165,7 +165,7 @@ pub struct TerrainChunkMeshVertexMapVec {
  */
 #[derive(ShaderType)]
 pub struct TerrainChunkVerticesIndicesCountVec {
-    #[shader(size(runtime))]
+    #[size(runtime)]
     pub vertices_indices_count: Vec<TerrainChunkVerticesIndicesCount>,
 }
 

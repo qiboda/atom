@@ -1,16 +1,23 @@
 use atom_core::logger::atom_log_plugin;
 use atom_core::paths::ProjectPaths;
-use atom_pqef::QuadricPlugin;
-use atom_shader_lib::AtomShaderLibPluginGroups;
+use atom_renderdoc::RenderDocPlugin;
 use atom_terrain::{
     chunks::loader::{
-        TerrainChunkLoadMsg, TerrainChunkUnloadMsg, TerrainLoadedChunks,
+        TerrainLoadedChunks,
         observer::{TerrainObserver, TerrainObserverConfig},
     },
     terrain::{TerrainPlugin, TerrainSystems, setting::*},
 };
-use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
-use bevy::prelude::*;
+use bevy::{
+    diagnostic::{
+        FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin, SystemInformationDiagnosticsPlugin,
+    },
+    pbr::wireframe::WireframeConfig,
+    remote::{RemotePlugin, http::RemoteHttpPlugin},
+};
+use bevy::{pbr::wireframe::WireframePlugin, prelude::*};
+use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
+use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use tracing::Level;
 
 fn main() {
@@ -20,8 +27,8 @@ fn main() {
         .add_plugins(
             DefaultPlugins
                 .set(atom_log_plugin(
-                    "info,terrain=trace".to_owned(),
-                    Level::TRACE,
+                    "info,atom_terrain=trace".to_owned(),
+                    Level::DEBUG,
                     "terrain",
                 ))
                 .set(AssetPlugin {
@@ -32,12 +39,30 @@ fn main() {
                     ..default()
                 }),
         )
-        .add_plugins(QuadricPlugin)
-        .add_plugins(AtomShaderLibPluginGroups)
         .add_plugins(TerrainPlugin)
-        .add_plugins(FreeCameraPlugin)
+        // 诊断用途
+        .add_plugins(FrameTimeDiagnosticsPlugin::default())
+        .add_plugins(LogDiagnosticsPlugin::default())
+        .add_plugins(SystemInformationDiagnosticsPlugin)
+        .add_plugins(RemotePlugin::default())
+        .add_plugins(RemoteHttpPlugin::default())
+        .add_plugins(EguiPlugin::default())
+        .add_plugins(WorldInspectorPlugin::default())
+        .add_plugins(RenderDocPlugin)
+        .add_plugins(WireframePlugin::default())
+        // 摄像机插件
+        .add_plugins(NoCameraPlayerPlugin)
+        // .add_plugins(FreeCameraPlugin)
         .add_systems(Startup, setup)
-        .add_systems(Update, log_chunk_events.after(TerrainSystems::ChunkLoader));
+        .add_systems(
+            Update,
+            gizmos_loaded_chunk.after(TerrainSystems::ChunkLoader),
+        );
+
+    app.insert_resource(WireframeConfig {
+        global: true,
+        ..Default::default()
+    });
 
     app.run();
 }
@@ -52,37 +77,40 @@ fn setup(mut commands: Commands, mut terrain_setting: ResMut<TerrainSetting>) {
             far: 1000.0,
             ..Default::default()
         }),
-        Transform::from_xyz(50.0, 50.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(-10.0, 10.0, -10.0).looking_at(Vec3::ZERO, Vec3::Y),
         TerrainObserver,
         TerrainObserverConfig {
-            terrain_load_radius: 3,
-            terrain_height_range: -2..=2,
+            terrain_load_radius: 0,
+            terrain_height_range: -0..=0,
         },
-        FreeCamera {
-            ..Default::default()
-        },
+        FlyCam,
+        // FreeCamera {
+        //     ..Default::default()
+        // },
     ));
 
-    terrain_setting.size_setting.height_range = -2..=2;
+    terrain_setting.size_setting.height_range = -1..=1;
 
     info!("地形系统启动完成");
 }
 
-// 日志系统：记录 chunk 加载/卸载事件
-fn log_chunk_events(
-    mut load_events: MessageReader<TerrainChunkLoadMsg>,
-    mut unload_events: MessageReader<TerrainChunkUnloadMsg>,
+fn gizmos_loaded_chunk(
     loaded_chunks: Res<TerrainLoadedChunks>,
     terrain_setting: Res<TerrainSetting>,
     mut gizmos: Gizmos,
 ) {
-    for event in load_events.read() {
-        info!("加载 Chunk: {:?}", event.coord);
-    }
+    // info!(
+    //     "mesh_compute_vertices_shader id: {:?}",
+    //     mesh_compute_shaders.mesh_compute_vertices_shader.id()
+    // );
 
-    for event in unload_events.read() {
-        info!("卸载 Chunk: {:?}", event.coord);
-    }
+    // for event in load_events.read() {
+    //     info!("加载 Chunk: {:?}", event.coord);
+    // }
+
+    // for event in unload_events.read() {
+    //     info!("卸载 Chunk: {:?}", event.coord);
+    // }
 
     gizmos.axes(Transform::IDENTITY, 10.0);
 
@@ -100,6 +128,6 @@ fn log_chunk_events(
             1.0,
             chunk_size * 0.9,
         ));
-        gizmos.cube(transform, Color::linear_rgb(0.0, 1.0, 0.0));
+        gizmos.cuboid(transform, Color::linear_rgb(0.0, 1.0, 0.0));
     }
 }

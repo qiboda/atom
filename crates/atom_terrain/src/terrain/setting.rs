@@ -4,6 +4,7 @@ use bevy::{prelude::*, render::extract_resource::ExtractResource};
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize, Reflect, ExtractResource)]
+#[reflect(Resource)]
 pub struct TerrainSetting {
     /// chunk 设置
     pub chunk_setting: TerrainChunkSetting,

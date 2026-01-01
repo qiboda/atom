@@ -10,7 +10,7 @@ use bevy::{
 };
 
 #[derive(Default)]
-pub struct QuadricPlugin;
+pub struct AtomQuadricPlugin;
 
 #[derive(Debug, Resource)]
 pub struct QuadricShaders {
@@ -18,7 +18,7 @@ pub struct QuadricShaders {
     pub math_shader: Handle<Shader>,
 }
 
-impl Plugin for QuadricPlugin {
+impl Plugin for AtomQuadricPlugin {
     fn build(&self, app: &mut App) {
         let world = app.world();
         app.insert_resource(QuadricShaders {

@@ -8,10 +8,14 @@ use bevy::{
 };
 
 #[derive(Component, ExtractComponent, Clone, Debug, Default, Reflect)]
+#[reflect(Component)]
 #[require(Transform, Visibility)]
 pub struct TerrainChunk;
 
-#[derive(Debug, Default, Copy, Clone, Hash, Eq, PartialEq, Component, ExtractComponent)]
+#[derive(
+    Debug, Default, Copy, Clone, Hash, Eq, Reflect, PartialEq, Component, ExtractComponent,
+)]
+#[reflect(Component)]
 #[require(TerrainChunk)]
 pub struct TerrainChunkCoord(IVec3);
 

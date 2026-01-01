@@ -1,5 +1,6 @@
 use bevy::{
-    ecs::system::lifetimeless::Read,
+    diagnostic::FrameCount,
+    ecs::system::lifetimeless::{Read, Write},
     prelude::*,
     render::{
         render_graph::{self, RenderLabel},
@@ -10,7 +11,10 @@ use bevy::{
 use crate::{
     chunks::{
         chunk::TerrainChunkCoord,
-        mesh::{components::TerrainChunkMeshingState, compute::buffer::TerrainChunkMeshBuffers},
+        mesh::{
+            components::TerrainChunkMeshingState,
+            compute::{buffer::TerrainChunkMeshBuffers, mesh_compute::TerrainChunkComputeState},
+        },
     },
     terrain::setting::TerrainSetting,
 };
@@ -26,15 +30,16 @@ pub(crate) struct TerrainChunkMeshComputeNode {
         Entity,
         Read<TerrainChunkMeshingState>,
         Read<TerrainChunkCoord>,
+        Write<TerrainChunkComputeState>,
     )>,
-    pub(crate) entities: Vec<Entity>,
+    pub(crate) to_compute_entities: Vec<Entity>,
 }
 
 impl FromWorld for TerrainChunkMeshComputeNode {
     fn from_world(world: &mut World) -> Self {
         Self {
             query: QueryState::new(world),
-            entities: Vec::new(),
+            to_compute_entities: Vec::new(),
         }
     }
 }
@@ -43,38 +48,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
     fn update(&mut self, world: &mut World) {
         self.query.update_archetypes(world);
 
-        self.entities.clear();
-        for (entity, state, _) in self.query.iter(world) {
-            if *state == TerrainChunkMeshingState::Meshing {
-                self.entities.push(entity);
-            }
-        }
-    }
-
-    fn run<'w>(
-        &self,
-        _graph: &mut render_graph::RenderGraphContext,
-        render_context: &mut bevy::render::renderer::RenderContext<'w>,
-        world: &'w World,
-    ) -> Result<(), render_graph::NodeRunError> {
-        if self.entities.is_empty() {
-            return Ok(());
-        }
-
-        let _span = info_span!(
-            "TerrainChunkMeshComputeNode::run",
-            count = self.entities.len()
-        )
-        .entered();
-
         let pipeline_cache = world.resource::<PipelineCache>();
         let pipelines = world.resource::<TerrainChunkPipelines>();
-        let mesh_buffers = world.resource::<TerrainChunkMeshBuffers>();
-        let main_bind_groups = world.resource::<TerrainChunkBindGroups>();
-        let terrain_setting = world.resource::<TerrainSetting>();
 
         // 提前检查所有需要的管道是否准备好
-        let Some(voxel_vertex_pipeline) =
+        let Some(_voxel_vertex_pipeline) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_voxel_vertex_values_pipeline)
         else {
             if let CachedPipelineState::Err(pipeline_cache_error) = pipeline_cache
@@ -85,9 +63,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                     pipeline_cache_error
                 );
             }
-            return Ok(()); // 管道未准备好，跳过整个节点
+
+            warn!("Voxel vertex compute pipeline not ready yet.");
+            return; // 管道未准备好，跳过整个节点
         };
-        let Some(cross_points_pipeline) =
+        let Some(_cross_points_pipeline) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_voxel_cross_points_pipeline)
         else {
             if let CachedPipelineState::Err(pipeline_cache_error) = pipeline_cache
@@ -98,10 +78,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                     pipeline_cache_error
                 );
             }
-            return Ok(());
+            warn!("Voxel cross points compute pipeline not ready yet.");
+            return;
         };
 
-        let Some(vertices_pipeline) =
+        let Some(_vertices_pipeline) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_vertices_pipeline)
         else {
             if let CachedPipelineState::Err(pipeline_cache_error) =
@@ -112,10 +93,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                     pipeline_cache_error
                 );
             }
-            return Ok(());
+            warn!("Mesh vertices compute pipeline not ready yet.");
+            return;
         };
 
-        let Some(indices_pipeline) =
+        let Some(_indices_pipeline) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_indices_pipeline)
         else {
             if let CachedPipelineState::Err(pipeline_cache_error) =
@@ -126,13 +108,71 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                     pipeline_cache_error
                 );
             }
-            return Ok(());
+            warn!("Mesh indices compute pipeline not ready yet.");
+            return;
         };
+
+        let frame_count = world.resource::<FrameCount>().0;
+
+        self.to_compute_entities.clear();
+        for (entity, state, coord, mut compute_state) in self.query.iter_mut(world) {
+            info!(
+                "frame count: {} Terrain chunk mesh compute node check: entity: {:?}, coord: {:?}, state: {:?}, compute_state: {:?}",
+                frame_count, entity, coord, *state, *compute_state
+            );
+            if *state == TerrainChunkMeshingState::Meshing
+                && *compute_state == TerrainChunkComputeState::Computing
+            {
+                self.to_compute_entities.push(entity);
+                *compute_state = TerrainChunkComputeState::Sending;
+                debug!(
+                    "frame count: {} Terrain chunk {:?} coord: {:?} added to compute list.",
+                    frame_count, entity, coord
+                );
+            }
+        }
+    }
+
+    fn run<'w>(
+        &self,
+        _graph: &mut render_graph::RenderGraphContext,
+        render_context: &mut bevy::render::renderer::RenderContext<'w>,
+        world: &'w World,
+    ) -> Result<(), render_graph::NodeRunError> {
+        if self.to_compute_entities.is_empty() {
+            return Ok(());
+        }
+
+        let _span = info_span!(
+            "TerrainChunkMeshComputeNode::run",
+            count = self.to_compute_entities.len()
+        )
+        .entered();
+
+        let pipeline_cache = world.resource::<PipelineCache>();
+        let pipelines = world.resource::<TerrainChunkPipelines>();
+        let mesh_buffers = world.resource::<TerrainChunkMeshBuffers>();
+        let main_bind_groups = world.resource::<TerrainChunkBindGroups>();
+        let terrain_setting = world.resource::<TerrainSetting>();
+
+        // 提前检查所有需要的管道是否准备好
+        let voxel_vertex_pipeline = pipeline_cache
+            .get_compute_pipeline(pipelines.compute_voxel_vertex_values_pipeline)
+            .expect("Voxel vertex compute pipeline should be ready");
+        let cross_points_pipeline = pipeline_cache
+            .get_compute_pipeline(pipelines.compute_voxel_cross_points_pipeline)
+            .expect("Voxel cross points compute pipeline should be ready");
+        let vertices_pipeline = pipeline_cache
+            .get_compute_pipeline(pipelines.compute_vertices_pipeline)
+            .expect("Mesh vertices compute pipeline should be ready");
+        let indices_pipeline = pipeline_cache
+            .get_compute_pipeline(pipelines.compute_indices_pipeline)
+            .expect("Mesh indices compute pipeline should be ready");
 
         {
             let _span = info_span!(
                 "TerrainChunkMeshComputeNode::run compute",
-                count = self.entities.len()
+                count = self.to_compute_entities.len()
             )
             .entered();
 
@@ -142,20 +182,25 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                 timestamp_writes: None,
             });
 
-            for entity in self.entities.iter() {
+            for entity in self.to_compute_entities.iter() {
                 let _span = info_span!("TerrainChunkMeshComputeNode::run one").entered();
 
-                if let Ok((entity, state, coord)) = self.query.get_manual(world, *entity) {
+                if let Ok((entity, state, coord, _compute_state)) =
+                    self.query.get_manual(world, *entity)
+                {
                     assert!(*state == TerrainChunkMeshingState::Meshing);
 
                     let _span = info_span!("TerrainChunkMeshComputeNode::run one main").entered();
 
-                    debug!("main mesh node run: coord: {:?}", coord);
+                    debug!("terrain chunk mesh compute node run: coord: {:?}", coord);
+
                     let voxel_num = terrain_setting.get_voxel_count_in_compute();
-                    // 为什么除以4, 因为shader中是以4为一个workgroup来处理的。
                     // TODO: 先用4看看效果，之后可以测试看看2怎么样。
-                    let voxel_vertex_or_edge_workgroup_size = (voxel_num + 1) / 4;
-                    let voxel_workgroup_size = voxel_num / 4;
+                    let workspace_size_in_shader = 4;
+                    let voxel_vertex_or_edge_workgroup_size =
+                        ((voxel_num + 1) as f32 / workspace_size_in_shader as f32).ceil() as u32;
+                    let voxel_workgroup_size =
+                        (voxel_num as f32 / workspace_size_in_shader as f32).ceil() as u32;
 
                     let dynamic_offset_mesh = mesh_buffers.get_buffers_dynamic_offset(entity);
 
@@ -249,9 +294,11 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
         {
             let _span = info_span!(
                 "TerrainChunkMeshComputeNode::run stage all",
-                count = self.entities.len()
+                count = self.to_compute_entities.len()
             )
             .entered();
+
+            debug!("Staging all mesh buffers after compute shader execution.");
 
             // 获取需要stage的右边界，并 stage buffer
             let mut max_vertices_indices_count_right_offset = 0;

@@ -9,6 +9,7 @@ use crate::{
             loaded_chunks::{TerrainChunkLoadMsg, TerrainChunkUnloadMsg, TerrainLoadedChunks},
             observer::{TerrainObserver, TerrainObserverConfig},
         },
+        mesh::visual::TerrainChunkVisual,
     },
     terrain::setting::TerrainSetting,
 };
@@ -108,6 +109,9 @@ pub fn update_grid_chunks(
     // 卸载 chunks
     for coord in chunks_to_unload {
         if let Some(entity) = loaded_chunks.remove(&coord) {
+            commands
+                .entity(entity)
+                .despawn_related::<TerrainChunkVisual>();
             commands.entity(entity).despawn();
             unload_requests.write(TerrainChunkUnloadMsg { coord });
         }

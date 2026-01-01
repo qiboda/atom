@@ -11,6 +11,7 @@ atom_core = { path = "../atom_core" }
 atom_shader_lib = { path = "../atom_shader_lib" }
 atom_render = { path = "../atom_render" }
 atom_pqef = { path = "../atom_pqef" }
+atom_renderdoc = { path = "../atom_renderdoc" }
 
 # 公共核心库
 bevy = { workspace = true }
@@ -31,6 +32,8 @@ wgpu-types = { workspace = true }
 # 第三方依赖
 
 [dev-dependencies]
+bevy-inspector-egui = { version = "0.35" }
+bevy_flycam = { version = "0.17" }
 
 [[example]]
 name = "chunk_loader"

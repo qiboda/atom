@@ -51,6 +51,7 @@ macro_rules! shaders_plugin {
             impl bevy::app::Plugin for [<$module_name $shader_type ShadersPlugin>] {
                 fn build(&self, app: &mut bevy::prelude::App) {
                     use bevy::asset::DirectAssetAccessExt;
+                    app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<[<$module_name $shader_type Shaders>]>::default());
                     let world = app.world();
                     app.insert_resource(
                         shaders_plugin!(_init -> world, [<$module_name $shader_type Shaders>] ( $($member_name, $shaders_path),* ))
@@ -69,7 +70,8 @@ macro_rules! shaders_plugin {
     );
     // 参考了impl_extra!宏的实现
     (_construct -> $name:ident ( $($member_name: ident),* ) ) => (
-        #[derive(Debug, Default, bevy::prelude::Resource)]
+        #[derive(Debug, Default, Clone, bevy::prelude::Resource, bevy::prelude::Reflect,bevy::render::extract_resource::ExtractResource)]
+        #[reflect(Resource)]
         pub struct $name {
             $(
                 pub $member_name: bevy::asset::Handle<bevy::prelude::Shader>,
