@@ -48,6 +48,7 @@ pub fn update_grid_chunks(
 
     let chunk_size = terrain_setting.chunk_setting.get_chunk_size();
     let visibility_radius = observer_config.terrain_load_radius;
+    let margin = observer_config.margin;
 
     let height_range = get_terrain_height_range(&terrain_setting, observer_config);
 
@@ -55,33 +56,48 @@ pub fn update_grid_chunks(
     let observer_pos = observer_transform.translation();
 
     let observer_chunk_coord = TerrainChunkCoord::from_world_pos(observer_pos, chunk_size);
-    let aa_chunk_coord = observer_chunk_coord
-        - TerrainChunkCoord::new(visibility_radius as i32, 0, visibility_radius as i32);
-    let bb_chunk_coord = observer_chunk_coord
-        + TerrainChunkCoord::new(visibility_radius as i32, 0, visibility_radius as i32);
 
-    // 计算需要加载的 chunks
-    let mut desired_chunks: HashSet<TerrainChunkCoord> = HashSet::new();
-    for x in aa_chunk_coord.x()..=bb_chunk_coord.x() {
-        for z in aa_chunk_coord.z()..=bb_chunk_coord.z() {
+    // 加载范围：只使用 visibility_radius
+    let load_radius = visibility_radius as i32;
+    let load_aa_chunk_coord =
+        observer_chunk_coord - TerrainChunkCoord::new(load_radius, 0, load_radius);
+    let load_bb_chunk_coord =
+        observer_chunk_coord + TerrainChunkCoord::new(load_radius, 0, load_radius);
+
+    // 计算需要加载的 chunks（不考虑 margin）
+    let mut chunks_to_load: HashSet<TerrainChunkCoord> = HashSet::new();
+    for x in load_aa_chunk_coord.x()..=load_bb_chunk_coord.x() {
+        for z in load_aa_chunk_coord.z()..=load_bb_chunk_coord.z() {
             for dy in height_range.clone() {
                 let chunk_y = observer_chunk_coord.y() + dy;
                 let coord = TerrainChunkCoord::new(x, chunk_y, z);
-                desired_chunks.insert(coord);
+                chunks_to_load.insert(coord);
             }
         }
     }
 
     trace!(
         "Desired Chunks Count: {:?} -> {:?}",
-        desired_chunks.len(),
-        desired_chunks
+        chunks_to_load.len(),
+        chunks_to_load
     );
 
-    // 找出需要卸载的 chunks
+    // 卸载范围：使用 visibility_radius + margin，提供缓冲区
+    let unload_radius = (visibility_radius + margin) as i32;
+    let unload_aa_chunk_coord =
+        observer_chunk_coord - TerrainChunkCoord::new(unload_radius, 0, unload_radius);
+    let unload_bb_chunk_coord =
+        observer_chunk_coord + TerrainChunkCoord::new(unload_radius, 0, unload_radius);
+
+    // 找出需要卸载的 chunks（超出卸载范围的才卸载）
     let mut chunks_to_unload = Vec::new();
     for (coord, _entity) in loaded_chunks.iter() {
-        if !desired_chunks.contains(coord) {
+        // 检查是否超出卸载范围
+        if (coord.x() < unload_aa_chunk_coord.x() || coord.x() > unload_bb_chunk_coord.x())
+            || (coord.z() < unload_aa_chunk_coord.z() || coord.z() > unload_bb_chunk_coord.z())
+            || (coord.y() < observer_chunk_coord.y() + height_range.start()
+                || coord.y() > observer_chunk_coord.y() + height_range.end())
+        {
             chunks_to_unload.push(*coord);
         }
     }
@@ -93,17 +109,17 @@ pub fn update_grid_chunks(
     );
 
     // 找出需要加载的 chunks
-    let mut chunks_to_load = Vec::new();
-    for coord in desired_chunks {
+    let mut to_load_chunks = Vec::new();
+    for coord in chunks_to_load {
         if !loaded_chunks.contains(&coord) {
-            chunks_to_load.push(coord);
+            to_load_chunks.push(coord);
         }
     }
 
     trace!(
         "Chunks to Load Count: {:?} -> {:?}",
-        chunks_to_load.len(),
-        chunks_to_load
+        to_load_chunks.len(),
+        to_load_chunks
     );
 
     // 卸载 chunks
@@ -118,7 +134,7 @@ pub fn update_grid_chunks(
     }
 
     // 加载 chunks
-    for coord in chunks_to_load {
+    for coord in to_load_chunks {
         let entity = commands
             .spawn((TerrainChunk, coord, Name::new(format!("Chunk_{:?}", coord))))
             .id();

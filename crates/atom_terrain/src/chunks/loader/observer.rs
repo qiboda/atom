@@ -18,6 +18,8 @@ pub struct TerrainObserverConfig {
     pub terrain_load_radius: u32,
     /// 观察者的地形加载高度范围，单位为chunk数量。以观察者为中心。
     pub terrain_height_range: RangeInclusive<i32>,
+    /// 宽松边界，在实际加载范围之外额外加载的chunk数量，用于避免边界处的突然加载/卸载
+    pub margin: u32,
 }
 
 impl Default for TerrainObserverConfig {
@@ -25,6 +27,7 @@ impl Default for TerrainObserverConfig {
         Self {
             terrain_load_radius: 2,
             terrain_height_range: -2..=2,
+            margin: 1,
         }
     }
 }
@@ -34,6 +37,12 @@ impl TerrainObserverConfig {
         Self {
             terrain_load_radius,
             terrain_height_range,
+            margin: 1,
         }
+    }
+
+    pub fn with_margin(mut self, margin: u32) -> Self {
+        self.margin = margin;
+        self
     }
 }

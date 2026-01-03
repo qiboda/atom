@@ -82,6 +82,7 @@ fn setup(mut commands: Commands, mut terrain_setting: ResMut<TerrainSetting>) {
         TerrainObserverConfig {
             terrain_load_radius: 0,
             terrain_height_range: -0..=0,
+            margin: 1,
         },
         FlyCam,
         // FreeCamera {
