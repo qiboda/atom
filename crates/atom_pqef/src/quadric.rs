@@ -508,9 +508,55 @@ impl Mul<Quadric> for f32 {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use bevy::math::Vec3A;
+    use bevy::math::{Mat3A, Vec3A};
 
     use crate::{math::covariance_matrix, quadric::Quadric};
+
+    #[test]
+    fn test_point_quadric() {
+        let p = Vec3A::new(1.0, 2.0, 3.0);
+        let q = Quadric::point_quadric(p);
+        assert_eq!(q.a(), Mat3A::IDENTITY);
+        assert_eq!(q.b(), p);
+        assert_eq!(q.c, 0.0);
+    }
+
+    #[test]
+    fn test_plane_quadric_minimizer() {
+        // Combine three orthogonal plane quadrics to get a full-rank A matrix
+        // Intersection of x=1, y=5, z=0 should give minimizer near (1, 5, 0)
+        let q1 = Quadric::plane_quadric(Vec3A::new(0.0, 5.0, 0.0), Vec3A::new(0.0, 1.0, 0.0));
+        let q2 = Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        let q3 = Quadric::plane_quadric(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(0.0, 0.0, 1.0));
+        let q = q1 + q2 + q3;
+        let min = q.minimizer();
+        assert!(
+            (min.y - 5.0).abs() < 1e-4,
+            "minimizer y={}, expected 5.0",
+            min.y
+        );
+        assert!(
+            (min.x - 1.0).abs() < 1e-4,
+            "minimizer x={}, expected 1.0",
+            min.x
+        );
+    }
+
+    #[test]
+    fn test_plane_quadric_residual_at_minimizer() {
+        // Use three orthogonal planes through origin for full-rank system
+        let q1 = Quadric::plane_quadric(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        let q2 = Quadric::plane_quadric(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(0.0, 1.0, 0.0));
+        let q3 = Quadric::plane_quadric(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(0.0, 0.0, 1.0));
+        let q = q1 + q2 + q3;
+        let min = q.minimizer();
+        let err = q.residual_l2_error(min);
+        assert!(
+            err.abs() < 1e-6,
+            "residual at minimizer = {}, expected ~0",
+            err
+        );
+    }
 
     #[test]
     fn test_single_quadric() {
@@ -520,45 +566,66 @@ pub(crate) mod tests {
             0.1,
             0.1,
         );
-
         let pos = quadric.minimizer();
-        println!("pos: {}", pos);
         let error = quadric.residual_l2_error(pos);
-        println!("error: {}", error);
+        // minimizer should be near origin for a plane through origin
+        assert!(pos.length() < 0.5, "minimizer too far from origin: {}", pos);
+        assert!(error >= 0.0, "residual should be non-negative");
     }
 
     #[test]
-    fn test_two_quadric() {
-        let quadric_1 = Quadric::probabilistic_plane_quadric(
+    fn test_two_quadric_combination() {
+        let q1 = Quadric::probabilistic_plane_quadric(
             Vec3A::new(1.0, 0.0, 0.0),
             Vec3A::new(1.0, 0.0, 0.0),
             0.1,
             0.0,
         );
-
-        let pos = quadric_1.minimizer();
-        println!("pos: {}", pos);
-        let error = quadric_1.residual_l2_error(pos);
-        println!("error: {}", error);
-
-        let quadric_2 = Quadric::probabilistic_plane_quadric(
+        let q2 = Quadric::probabilistic_plane_quadric(
             Vec3A::new(0.0, 1.0, 0.0),
             Vec3A::new(0.0, 1.0, 0.0),
             0.0,
             0.1,
         );
+        let combined = q1 + q2;
+        let pos = combined.minimizer();
+        // Should be near (1, 1, 0) - intersection of x=1 and y=1 planes
+        assert!((pos.x - 1.0).abs() < 0.5, "x={}, expected ~1.0", pos.x);
+        assert!((pos.y - 1.0).abs() < 0.5, "y={}, expected ~1.0", pos.y);
+    }
 
-        let pos = quadric_2.minimizer();
-        println!("pos: {}", pos);
-        let error = quadric_2.residual_l2_error(pos);
-        println!("error: {}", error);
+    #[test]
+    fn test_quadric_arithmetic() {
+        let q = Quadric::point_quadric(Vec3A::new(1.0, 2.0, 3.0));
+        let neg_q = -q;
+        let zero = q + neg_q;
+        assert!(zero.a00.abs() < 1e-6);
+        assert!(zero.b0.abs() < 1e-6);
+        assert!(zero.c.abs() < 1e-6);
+    }
 
-        let quadric = quadric_1 + quadric_2;
+    #[test]
+    fn test_quadric_scalar_mul_div() {
+        let q = Quadric::point_quadric(Vec3A::new(1.0, 0.0, 0.0));
+        let q2 = q * 2.0;
+        let q_back = q2 / 2.0;
+        assert!((q_back.a00 - q.a00).abs() < 1e-6);
+        assert!((q_back.b0 - q.b0).abs() < 1e-6);
+    }
 
-        let pos = quadric.minimizer();
-        println!("pos: {}", pos);
-        let error = quadric.residual_l2_error(pos);
-        println!("error: {}", error);
+    #[test]
+    fn test_quadric_a_symmetry() {
+        let q = Quadric::probabilistic_plane_quadric(
+            Vec3A::new(1.0, 2.0, 3.0),
+            Vec3A::new(0.5, 0.5, 0.707).normalize(),
+            0.1,
+            0.1,
+        );
+        let a = q.a();
+        let cols = a.to_cols_array_2d();
+        assert!((cols[0][1] - cols[1][0]).abs() < 1e-6);
+        assert!((cols[0][2] - cols[2][0]).abs() < 1e-6);
+        assert!((cols[1][2] - cols[2][1]).abs() < 1e-6);
     }
 
     #[test]
@@ -571,8 +638,6 @@ pub(crate) mod tests {
         ];
         let pos_mat = covariance_matrix(&positions);
         let mean_pos = positions.iter().fold(Vec3A::ZERO, |acc, &x| acc + x) / 4.0;
-        println!("pos mat: {}", pos_mat);
-        println!("pos mean: {}", mean_pos);
 
         let normals = [
             Vec3A::new(1.0, 1.0, 0.2).normalize(),
@@ -583,15 +648,16 @@ pub(crate) mod tests {
         let normal_mat = covariance_matrix(&normals);
         let mean_normal: Vec3A =
             (normals.iter().fold(Vec3A::ZERO, |acc, &x| acc + x) / 4.0).normalize();
-        println!("normal mat: {}", normal_mat);
-        println!("normal mean: {}", mean_normal);
 
         let quadric =
             Quadric::probabilistic_plane_quadric_sigma(mean_pos, mean_normal, pos_mat, normal_mat);
-
         let pos = quadric.minimizer();
-        println!("pos: {}", pos);
         let error = quadric.residual_l2_error(pos);
-        println!("error: {}", error);
+        // Minimizer should exist and error should be non-negative
+        assert!(pos.is_finite(), "minimizer should be finite");
+        assert!(
+            error >= -1e-4,
+            "residual should be approximately non-negative"
+        );
     }
 }

@@ -69,3 +69,84 @@ impl LayerTagContainerCondition for LayerTagContainerConditionWithout {
             .all(|x| container.iter_layertag().any(|y| x.exact_match(y)).not())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{single_container::SingleLayerTagContainer, tag::Tag};
+
+    fn make_tag(name: &'static str) -> LayerTag {
+        LayerTag::new(vec![Tag::new(name)])
+    }
+
+    #[test]
+    fn test_op_add() {
+        let mut container = SingleLayerTagContainer::default();
+        let mut apply = SingleLayerTagContainer::default();
+        apply.add_layertag(make_tag("x"));
+        apply.add_layertag(make_tag("y"));
+
+        LayerTagContainerOpAdd.operate(&mut container, &apply);
+        assert!(container.exist_layertag(&make_tag("x")));
+        assert!(container.exist_layertag(&make_tag("y")));
+    }
+
+    #[test]
+    fn test_op_remove() {
+        let mut container = SingleLayerTagContainer::default();
+        container.add_layertag(make_tag("a"));
+        container.add_layertag(make_tag("b"));
+
+        let mut remove_set = SingleLayerTagContainer::default();
+        remove_set.add_layertag(make_tag("a"));
+
+        LayerTagContainerOpRemove.operate(&mut container, &remove_set);
+        assert!(!container.exist_layertag(&make_tag("a")));
+        assert!(container.exist_layertag(&make_tag("b")));
+    }
+
+    #[test]
+    fn test_condition_required_satisfied() {
+        let mut container = SingleLayerTagContainer::default();
+        container.add_layertag(make_tag("a"));
+        container.add_layertag(make_tag("b"));
+
+        let mut required = SingleLayerTagContainer::default();
+        required.add_layertag(make_tag("a"));
+
+        assert!(LayerTagContainerConditionRequired.condition(&container, &required));
+    }
+
+    #[test]
+    fn test_condition_required_not_satisfied() {
+        let mut container = SingleLayerTagContainer::default();
+        container.add_layertag(make_tag("a"));
+
+        let mut required = SingleLayerTagContainer::default();
+        required.add_layertag(make_tag("b"));
+
+        assert!(!LayerTagContainerConditionRequired.condition(&container, &required));
+    }
+
+    #[test]
+    fn test_condition_without_satisfied() {
+        let mut container = SingleLayerTagContainer::default();
+        container.add_layertag(make_tag("a"));
+
+        let mut without = SingleLayerTagContainer::default();
+        without.add_layertag(make_tag("b"));
+
+        assert!(LayerTagContainerConditionWithout.condition(&container, &without));
+    }
+
+    #[test]
+    fn test_condition_without_not_satisfied() {
+        let mut container = SingleLayerTagContainer::default();
+        container.add_layertag(make_tag("a"));
+
+        let mut without = SingleLayerTagContainer::default();
+        without.add_layertag(make_tag("a"));
+
+        assert!(!LayerTagContainerConditionWithout.condition(&container, &without));
+    }
+}

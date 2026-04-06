@@ -1133,3 +1133,112 @@ pub const EDGE_NODES_VERTICES: [[[SubNodeIndex; 2]; 4]; AxisType::COUNT] = [
         [SubNodeIndex::X1Y0Z0, SubNodeIndex::X1Y0Z1],
     ],
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use strum::IntoEnumIterator;
+
+    #[test]
+    fn test_edge_index_unique() {
+        let indices: Vec<usize> = EdgeIndex::iter().map(|e| e.to_index()).collect();
+        for i in 0..indices.len() {
+            for j in (i + 1)..indices.len() {
+                assert_ne!(indices[i], indices[j]);
+            }
+        }
+        assert_eq!(indices.len(), 12);
+    }
+
+    #[test]
+    fn test_vertex_index_unique() {
+        let indices: Vec<usize> = VertexIndex::iter().map(|v| v.to_index()).collect();
+        for i in 0..indices.len() {
+            for j in (i + 1)..indices.len() {
+                assert_ne!(indices[i], indices[j]);
+            }
+        }
+        assert_eq!(indices.len(), 8);
+    }
+
+    #[test]
+    fn test_face_index_unique() {
+        let indices: Vec<usize> = FaceIndex::iter().map(|f| f.to_index()).collect();
+        for i in 0..indices.len() {
+            for j in (i + 1)..indices.len() {
+                assert_ne!(indices[i], indices[j]);
+            }
+        }
+        assert_eq!(indices.len(), 6);
+    }
+
+    #[test]
+    fn test_vertex_from_array_roundtrip() {
+        for v in VertexIndex::iter() {
+            let arr = v.to_array();
+            let back = VertexIndex::from_array([arr[0] as usize, arr[1] as usize, arr[2] as usize]);
+            assert_eq!(back, Some(v), "roundtrip failed for {:?}", v);
+        }
+    }
+
+    #[test]
+    fn test_vertex_from_repr_roundtrip() {
+        for (i, v) in VertexIndex::iter().enumerate() {
+            assert_eq!(VertexIndex::from_repr(i), Some(v));
+        }
+        assert_eq!(VertexIndex::from_repr(8), None);
+    }
+
+    #[test]
+    fn test_twin_edge_involution() {
+        for (i, twin) in TWIN_EDGE_INDEX.iter().enumerate() {
+            let twin_of_twin = TWIN_EDGE_INDEX[twin.to_index()];
+            let original = EdgeIndex::iter().nth(i).expect("valid edge");
+            assert_eq!(
+                twin_of_twin.to_index(),
+                original.to_index(),
+                "twin of twin should equal original for edge {:?}",
+                original
+            );
+        }
+    }
+
+    #[test]
+    fn test_twin_vertex_involution() {
+        for (i, twin) in TWIN_VERTEX_INDEX.iter().enumerate() {
+            let twin_of_twin = TWIN_VERTEX_INDEX[twin.to_index()];
+            let original = VertexIndex::iter().nth(i).expect("valid vertex");
+            assert_eq!(
+                twin_of_twin.to_index(),
+                original.to_index(),
+                "twin of twin should equal original for vertex {:?}",
+                original
+            );
+        }
+    }
+
+    #[test]
+    fn test_twin_face_involution() {
+        for (i, twin) in TWIN_FACE_INDEX.iter().enumerate() {
+            let twin_of_twin = TWIN_FACE_INDEX[twin.to_index()];
+            let original = FaceIndex::iter().nth(i).expect("valid face");
+            assert_eq!(
+                twin_of_twin.to_index(),
+                original.to_index(),
+                "twin of twin should equal original for face {:?}",
+                original
+            );
+        }
+    }
+
+    #[test]
+    fn test_edge_vertex_pairs_distinct() {
+        for (i, pair) in EDGE_VERTEX_PAIRS.iter().enumerate() {
+            assert_ne!(
+                pair[0], pair[1],
+                "edge {} connects same vertex to itself",
+                i
+            );
+        }
+    }
+}

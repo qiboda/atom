@@ -128,3 +128,50 @@ impl TerrainSetting {
         horizontal_size as f32 * self.get_chunk_size()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_chunk_setting_default() {
+        let cs = TerrainChunkSetting::default();
+        assert_eq!(cs.voxel_size, 0.5);
+        assert_eq!(cs.voxel_count, 16);
+        assert_eq!(cs.get_chunk_size(), 8.0);
+    }
+
+    #[test]
+    fn test_terrain_setting_defaults() {
+        let ts = TerrainSetting::default();
+        assert_eq!(ts.get_voxel_count_in_chunk(), 16);
+        assert_eq!(ts.get_voxel_count_in_compute(), 17);
+        assert_eq!(ts.get_voxel_size(), 0.5);
+        assert_eq!(ts.get_chunk_size(), 8.0);
+    }
+
+    #[test]
+    fn test_height_range() {
+        let ts = TerrainSetting::default();
+        let range = ts.get_height_range_size();
+        assert_eq!(*range.start(), -64.0); // -8 * 8.0
+        assert_eq!(*range.end(), 128.0); // 16 * 8.0
+    }
+
+    #[test]
+    fn test_is_in_height_range() {
+        let ts = TerrainSetting::default();
+        assert!(ts.is_in_height_range(0));
+        assert!(ts.is_in_height_range(-8));
+        assert!(ts.is_in_height_range(16));
+        assert!(!ts.is_in_height_range(-9));
+        assert!(!ts.is_in_height_range(17));
+    }
+
+    #[test]
+    fn test_terrain_size() {
+        let ts = TerrainSetting::default();
+        // horizontal_range = 0..=512, so size = (512 - 0 + 1) * 8.0 = 4104.0
+        assert_eq!(ts.get_terrain_size(), 4104.0);
+    }
+}

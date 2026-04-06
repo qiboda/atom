@@ -381,7 +381,6 @@ version = "0.1.0"
 dependencies = [
  "atom_datatables",
  "atom_layertag",
- "atom_utils",
  "bevy",
  "dotenv",
  "eval",

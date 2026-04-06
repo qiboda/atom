@@ -60,3 +60,51 @@ impl SingleLayerTagContainer {
         condition.condition(self, rhs)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SingleLayerTagContainer;
+    use crate::{container_op::LayerTagContainer, layertag::LayerTag, tag::Tag};
+
+    #[test]
+    fn test_add_and_exist() {
+        let mut container = SingleLayerTagContainer::default();
+        let tag = LayerTag::new(vec![Tag::new("a"), Tag::new("b")]);
+        assert!(!container.exist_layertag(&tag));
+        container.add_layertag(tag.clone());
+        assert!(container.exist_layertag(&tag));
+    }
+
+    #[test]
+    fn test_add_idempotent() {
+        let mut container = SingleLayerTagContainer::default();
+        let tag = LayerTag::new(vec![Tag::new("x")]);
+        container.add_layertag(tag.clone());
+        container.add_layertag(tag.clone());
+        assert!(container.exist_layertag(&tag));
+        // Count via iter
+        assert_eq!(container.iter_layertag().count(), 1);
+    }
+
+    #[test]
+    fn test_remove() {
+        let mut container = SingleLayerTagContainer::default();
+        let tag = LayerTag::new(vec![Tag::new("a")]);
+        container.add_layertag(tag.clone());
+        container.remove_layertag(&tag);
+        assert!(!container.exist_layertag(&tag));
+    }
+
+    #[test]
+    fn test_multiple_tags() {
+        let mut container = SingleLayerTagContainer::default();
+        let tag1 = LayerTag::new(vec![Tag::new("a")]);
+        let tag2 = LayerTag::new(vec![Tag::new("b")]);
+        container.add_layertag(tag1.clone());
+        container.add_layertag(tag2.clone());
+        assert_eq!(container.iter_layertag().count(), 2);
+        container.remove_layertag(&tag1);
+        assert_eq!(container.iter_layertag().count(), 1);
+        assert!(container.exist_layertag(&tag2));
+    }
+}

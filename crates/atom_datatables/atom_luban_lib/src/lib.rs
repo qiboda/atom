@@ -7,6 +7,7 @@ pub mod prelude {
 
 use std::cell::UnsafeCell;
 
+#[derive(Debug)]
 pub struct ByteBuf {
     pub reader_index: usize,
     pub writer_index: usize,
@@ -334,3 +335,199 @@ impl PartialEq<Self> for ByteBuf {
 }
 
 impl Eq for ByteBuf {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_and_size() {
+        let buf = ByteBuf::new(vec![1, 2, 3]);
+        assert_eq!(buf.size(), 3);
+        assert_eq!(buf.reader_index, 0);
+        assert_eq!(buf.writer_index, 3);
+    }
+
+    #[test]
+    fn test_with_capacity() {
+        let buf = ByteBuf::with_capacity(32);
+        assert_eq!(buf.size(), 0);
+        assert!(buf.capacity() >= 32);
+    }
+
+    #[test]
+    fn test_copy_data() {
+        let buf = ByteBuf::new(vec![10, 20, 30]);
+        assert_eq!(buf.copy_data(), vec![10, 20, 30]);
+    }
+
+    #[test]
+    fn test_replace() {
+        let mut buf = ByteBuf::new(vec![1, 2, 3]);
+        buf.replace(vec![4, 5, 6, 7], 1, 3);
+        assert_eq!(buf.size(), 2);
+        assert_eq!(buf.copy_data(), vec![5, 6]);
+    }
+
+    #[test]
+    fn test_read_bool() {
+        let mut buf = ByteBuf::new(vec![0, 1, 255]);
+        assert!(!buf.read_bool());
+        assert!(buf.read_bool());
+        assert!(buf.read_bool());
+    }
+
+    #[test]
+    fn test_read_byte() {
+        let mut buf = ByteBuf::new(vec![0, 127, 255]);
+        assert_eq!(buf.read_byte(), 0);
+        assert_eq!(buf.read_byte(), 127);
+        assert_eq!(buf.read_byte(), 255);
+    }
+
+    #[test]
+    fn test_read_short_one_byte() {
+        // h < 0x80: single byte
+        let mut buf = ByteBuf::new(vec![0x7F]);
+        assert_eq!(buf.read_short(), 0x7F);
+    }
+
+    #[test]
+    fn test_read_short_two_bytes() {
+        // h in [0x80, 0xc0): two bytes, value = ((h & 0x3f) << 8) | byte2
+        // h=0x80, byte2=0x01 => ((0x80 & 0x3f) << 8) | 0x01 = 0x0001 = 1
+        let mut buf = ByteBuf::new(vec![0x80, 0x01]);
+        assert_eq!(buf.read_short(), 1);
+    }
+
+    #[test]
+    fn test_read_short_three_bytes() {
+        // h in [0xC0, 0xFF): three bytes, value = (byte2 << 8) | byte3
+        // h=0xC0, byte2=0x01, byte3=0x00 => (0x01 << 8) | 0x00 = 256
+        let mut buf = ByteBuf::new(vec![0xC0, 0x01, 0x00]);
+        assert_eq!(buf.read_short(), 256);
+    }
+
+    #[test]
+    fn test_read_uint_one_byte() {
+        let mut buf = ByteBuf::new(vec![0x00]);
+        assert_eq!(buf.read_uint(), 0);
+        let mut buf = ByteBuf::new(vec![0x7F]);
+        assert_eq!(buf.read_uint(), 127);
+    }
+
+    #[test]
+    fn test_read_uint_two_bytes() {
+        // h=0x80, byte2=0x00 => ((0x80 & 0x3F) << 8) | 0x00 = 0
+        let mut buf = ByteBuf::new(vec![0x80, 0x00]);
+        assert_eq!(buf.read_uint(), 0);
+        // h=0x80, byte2=0xFF => ((0x80 & 0x3F) << 8) | 0xFF = 255
+        let mut buf = ByteBuf::new(vec![0x80, 0xFF]);
+        assert_eq!(buf.read_uint(), 255);
+    }
+
+    #[test]
+    fn test_read_uint_five_bytes() {
+        // h >= 0xF0: 5 bytes
+        // h=0xF0, then 4 bytes for the value
+        let mut buf = ByteBuf::new(vec![0xF0, 0x00, 0x00, 0x01, 0x00]);
+        assert_eq!(buf.read_uint(), 256);
+    }
+
+    #[test]
+    fn test_read_int() {
+        let mut buf = ByteBuf::new(vec![0x01]);
+        assert_eq!(buf.read_int(), 1);
+    }
+
+    #[test]
+    fn test_read_ulong_one_byte() {
+        let mut buf = ByteBuf::new(vec![0x7F]);
+        assert_eq!(buf.read_ulong(), 127);
+    }
+
+    #[test]
+    fn test_read_ulong_two_bytes() {
+        let mut buf = ByteBuf::new(vec![0x80, 0x01]);
+        assert_eq!(buf.read_ulong(), 1);
+    }
+
+    #[test]
+    fn test_read_float() {
+        let val: f32 = 1.0;
+        let bytes = val.to_le_bytes();
+        let mut buf = ByteBuf::new(bytes.to_vec());
+        let read_val = buf.read_float();
+        assert_eq!(read_val, 1.0);
+    }
+
+    #[test]
+    fn test_read_float_negative() {
+        let val: f32 = -3.25;
+        let bytes = val.to_le_bytes();
+        let mut buf = ByteBuf::new(bytes.to_vec());
+        let read_val = buf.read_float();
+        assert!((read_val - (-3.25)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_read_double() {
+        let val: f64 = 1.23456789;
+        let bytes = val.to_le_bytes();
+        let mut buf = ByteBuf::new(bytes.to_vec());
+        let read_val = buf.read_double();
+        assert!((read_val - 1.23456789).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_read_string_empty() {
+        // size=0 => empty string
+        let mut buf = ByteBuf::new(vec![0x00]);
+        assert_eq!(buf.read_string(), "");
+    }
+
+    #[test]
+    fn test_read_string_nonempty() {
+        // size=5, then "hello"
+        let mut bytes = vec![0x05];
+        bytes.extend_from_slice(b"hello");
+        let mut buf = ByteBuf::new(bytes);
+        assert_eq!(buf.read_string(), "hello");
+    }
+
+    #[test]
+    fn test_partial_eq() {
+        let buf1 = ByteBuf::new(vec![1, 2, 3]);
+        let buf2 = ByteBuf::new(vec![1, 2, 3]);
+        assert_eq!(buf1, buf2);
+
+        let buf3 = ByteBuf::new(vec![1, 2, 4]);
+        assert_ne!(buf1, buf3);
+
+        let buf4 = ByteBuf::new(vec![1, 2]);
+        assert_ne!(buf1, buf4);
+    }
+
+    #[test]
+    #[should_panic(expected = "Not enough data")]
+    fn test_ensure_read_panic() {
+        let mut buf = ByteBuf::new(vec![1]);
+        buf.read_byte();
+        buf.read_byte(); // should panic
+    }
+
+    #[test]
+    fn test_sequential_reads() {
+        let bytes = vec![
+            1u8,  // read_bool -> true
+            42u8, // read_byte -> 42
+            0x05, // read_uint -> 5
+        ];
+
+        let mut buf = ByteBuf::new(bytes);
+        assert!(buf.read_bool());
+        assert_eq!(buf.read_byte(), 42);
+        assert_eq!(buf.read_uint(), 5);
+        assert_eq!(buf.size(), 0);
+    }
+}

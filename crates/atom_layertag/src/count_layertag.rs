@@ -54,3 +54,46 @@ impl CountLayerTag {
         self.counter = 0;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{layertag::LayerTag, tag::Tag};
+
+    #[test]
+    fn test_new_count_is_zero() {
+        let tag = LayerTag::new(vec![Tag::new("test")]);
+        let ct = CountLayerTag::new(tag);
+        assert_eq!(ct.count(), 0);
+    }
+
+    #[test]
+    fn test_increase_count() {
+        let tag = LayerTag::new(vec![Tag::new("test")]);
+        let mut ct = CountLayerTag::new(tag);
+        ct.increase_count();
+        assert_eq!(ct.count(), 1);
+        ct.increase_count();
+        assert_eq!(ct.count(), 2);
+    }
+
+    #[test]
+    fn test_decrease_count() {
+        let tag = LayerTag::new(vec![Tag::new("test")]);
+        let mut ct = CountLayerTag::new(tag);
+        ct.increase_count();
+        ct.increase_count();
+        ct.decrease_count();
+        assert_eq!(ct.count(), 1);
+    }
+
+    #[test]
+    fn test_reset_count() {
+        let tag = LayerTag::new(vec![Tag::new("test")]);
+        let mut ct = CountLayerTag::new(tag);
+        ct.increase_count();
+        ct.increase_count();
+        ct.reset_count();
+        assert_eq!(ct.count(), 0);
+    }
+}

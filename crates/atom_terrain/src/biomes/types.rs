@@ -43,3 +43,41 @@ impl BiomeType {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_biome_colors_unique() {
+        let biomes = [
+            BiomeType::Ocean,
+            BiomeType::Forest,
+            BiomeType::Desert,
+            BiomeType::Plains,
+            BiomeType::Mountains,
+            BiomeType::Swamp,
+        ];
+        let colors: Vec<_> = biomes.iter().map(|b| b.get_image_color()).collect();
+        // All colors should be unique
+        for i in 0..colors.len() {
+            for j in (i + 1)..colors.len() {
+                assert_ne!(
+                    colors[i], colors[j],
+                    "duplicate color for {:?} and {:?}",
+                    biomes[i], biomes[j]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_biome_forest_color() {
+        assert_eq!(BiomeType::Forest.get_image_color(), [34, 139, 34]);
+    }
+
+    #[test]
+    fn test_biome_ocean_color() {
+        assert_eq!(BiomeType::Ocean.get_image_color(), [70, 130, 180]);
+    }
+}

@@ -183,35 +183,104 @@ pub fn check_if_valid_triangle(
 mod tests {
     use bevy::math::Vec2;
 
-    use super::points_in_triangle;
+    use super::*;
 
     #[test]
-    fn test_range() {
-        let p0 = Vec2::new(513.679, 645.605);
-        let p1 = Vec2::new(513.683, 636.393);
-        let p2 = Vec2::new(507.004, 641.961);
-        let points = points_in_triangle(p0, p1, p2);
-        println!("{:?}", points);
+    fn test_point_in_triangle_inside() {
+        let p0 = Vec2::new(0.0, 0.0);
+        let p1 = Vec2::new(4.0, 0.0);
+        let p2 = Vec2::new(0.0, 4.0);
+        assert!(point_in_triangle(Vec2::new(1.0, 1.0), p0, p1, p2));
     }
 
     #[test]
-    fn test_triangle_interpolation() {
-        // p2(0)
-        // p0(0)  p1(1)
+    fn test_point_in_triangle_outside() {
+        let p0 = Vec2::new(0.0, 0.0);
+        let p1 = Vec2::new(4.0, 0.0);
+        let p2 = Vec2::new(0.0, 4.0);
+        assert!(!point_in_triangle(Vec2::new(3.0, 3.0), p0, p1, p2));
+    }
+
+    #[test]
+    fn test_point_in_triangle_vertex() {
+        let p0 = Vec2::new(0.0, 0.0);
+        let p1 = Vec2::new(4.0, 0.0);
+        let p2 = Vec2::new(0.0, 4.0);
+        // Test midpoint of edge, which is reliably on the boundary
+        assert!(point_in_triangle(Vec2::new(2.0, 2.0), p0, p1, p2));
+        assert!(point_in_triangle(Vec2::new(2.0, 0.0), p0, p1, p2));
+        assert!(point_in_triangle(Vec2::new(0.0, 2.0), p0, p1, p2));
+    }
+
+    #[test]
+    fn test_triangle_area_right_triangle() {
         let p0 = Vec2::new(0.0, 0.0);
         let p1 = Vec2::new(1.0, 0.0);
         let p2 = Vec2::new(0.0, 1.0);
+        let area = triangle_area(p0, p1, p2);
+        assert!((area - 0.5).abs() < 1e-5);
+    }
 
-        let v0 = 0.0;
-        let v1 = 1.0;
-        let v2 = 0.0;
+    #[test]
+    fn test_triangle_area_edge_345() {
+        // 3-4-5 right triangle: area = 0.5 * 3 * 4 = 6.0
+        let area = triangle_area_edge(3.0, 4.0, 5.0);
+        assert!((area - 6.0).abs() < 1e-4);
+    }
 
-        let p = Vec2::new(0.5, 0.5);
-        let result = super::triangle_interpolation(p, p0, p1, p2, v0, v1, v2);
+    #[test]
+    fn test_get_triangle_center() {
+        let p0 = Vec2::new(0.0, 0.0);
+        let p1 = Vec2::new(3.0, 0.0);
+        let p2 = Vec2::new(0.0, 3.0);
+        let center = get_triangle_center(p0, p1, p2);
+        assert!((center.x - 1.0).abs() < 1e-5);
+        assert!((center.y - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_check_if_valid_triangle() {
+        let p0 = Vec2::new(0.0, 0.0);
+        let p1 = Vec2::new(1.0, 0.0);
+        let p2 = Vec2::new(0.0, 1.0);
+        let (mut a, mut b, mut c) = (0.0, 0.0, 0.0);
+        assert!(check_if_valid_triangle(p0, p1, p2, &mut a, &mut b, &mut c));
+    }
+
+    #[test]
+    fn test_check_if_valid_triangle_collinear() {
+        let p0 = Vec2::new(0.0, 0.0);
+        let p1 = Vec2::new(1.0, 0.0);
+        let p2 = Vec2::new(2.0, 0.0);
+        let (mut a, mut b, mut c) = (0.0, 0.0, 0.0);
+        assert!(!check_if_valid_triangle(p0, p1, p2, &mut a, &mut b, &mut c));
+    }
+
+    #[test]
+    fn test_triangle_interpolation_at_vertex() {
+        let p0 = Vec2::new(0.0, 0.0);
+        let p1 = Vec2::new(1.0, 0.0);
+        let p2 = Vec2::new(0.0, 1.0);
+        let result = triangle_interpolation(p0, p0, p1, p2, 10.0, 20.0, 30.0);
+        assert!((result - 10.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_triangle_interpolation_at_midpoint() {
+        let p0 = Vec2::new(0.0, 0.0);
+        let p1 = Vec2::new(1.0, 0.0);
+        let p2 = Vec2::new(0.0, 1.0);
+        let result = triangle_interpolation(Vec2::new(0.5, 0.5), p0, p1, p2, 0.0, 1.0, 0.0);
         assert_eq!(result, 0.5);
+    }
 
-        let p = Vec2::new(0.0, 0.0);
-        let result = super::triangle_interpolation(p, p0, p1, p2, v0, v1, v2);
-        assert_eq!(result, 0.0);
+    #[test]
+    fn test_points_in_triangle_small() {
+        let pts = points_in_triangle(
+            Vec2::new(513.679, 645.605),
+            Vec2::new(513.683, 636.393),
+            Vec2::new(507.004, 641.961),
+        );
+        assert!(!pts.is_empty());
     }
 }

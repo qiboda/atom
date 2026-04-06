@@ -410,4 +410,35 @@ mod test {
             assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
         }
     }
+
+    #[test]
+    fn black_board_value_vec() {
+        let vec_val = EffectValue::Vec(vec![EffectValue::I32(1), EffectValue::I32(2)]);
+        let result: Result<&Vec<EffectValue>, _> = (&vec_val).try_into();
+        assert!(result.is_ok());
+        assert_eq!(result.expect("should be vec").len(), 2);
+    }
+
+    #[test]
+    fn black_board_value_wrong_type_error() {
+        let val = EffectValue::I32(42);
+        let result: Result<&f32, _> = (&val).try_into();
+        assert_eq!(result, Err("not f32"));
+
+        let result2: Result<&Cow<'static, str>, _> = (&val).try_into();
+        assert_eq!(result2, Err("not String"));
+    }
+
+    #[test]
+    fn black_board_value_all_numeric_types() {
+        assert!(EffectValue::I8(1).get::<&i8>().is_ok());
+        assert!(EffectValue::I16(2).get::<&i16>().is_ok());
+        assert!(EffectValue::I64(3).get::<&i64>().is_ok());
+        assert!(EffectValue::U8(4).get::<&u8>().is_ok());
+        assert!(EffectValue::U16(5).get::<&u16>().is_ok());
+        assert!(EffectValue::U32(6).get::<&u32>().is_ok());
+        assert!(EffectValue::U64(7).get::<&u64>().is_ok());
+        assert!(EffectValue::F32(8.0).get::<&f32>().is_ok());
+        assert!(EffectValue::F64(9.0).get::<&f64>().is_ok());
+    }
 }

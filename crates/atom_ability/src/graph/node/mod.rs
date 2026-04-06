@@ -116,3 +116,65 @@ impl Default for EffectNodeId {
 //         NEXT_ID.fetch_add(1, Ordering::Relaxed)
 //     }
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+
+    #[test]
+    fn test_effect_node_id_from_entity() {
+        let entity = Entity::from_bits(42);
+        let id = EffectNodeId::from(entity);
+        assert_eq!(id, EffectNodeId::Entity(entity));
+    }
+
+    #[test]
+    fn test_effect_node_id_try_into_entity() {
+        let entity = Entity::from_bits(42);
+        let id = EffectNodeId::Entity(entity);
+        let result: Result<Entity, _> = id.try_into();
+        assert_eq!(result, Ok(entity));
+    }
+
+    #[test]
+    fn test_effect_node_id_try_into_entity_fails_for_uuid() {
+        let id = EffectNodeId::Uuid(Uuid::nil());
+        let result: Result<Entity, _> = id.try_into();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_effect_node_id_from_uuid() {
+        let uuid = Uuid::new_v4();
+        let id = EffectNodeId::from(uuid);
+        let result: Result<Uuid, _> = id.try_into();
+        assert_eq!(result, Ok(uuid));
+    }
+
+    #[test]
+    fn test_effect_node_id_from_none_uuid() {
+        let id = EffectNodeId::from_uuid(None);
+        if let EffectNodeId::Uuid(u) = id {
+            assert!(u.is_nil());
+        } else {
+            panic!("expected Uuid variant");
+        }
+    }
+
+    #[test]
+    fn test_effect_node_id_from_none_entity() {
+        let id = EffectNodeId::from_entity(None);
+        assert_eq!(id, EffectNodeId::Entity(Entity::PLACEHOLDER));
+    }
+
+    #[test]
+    fn test_effect_node_id_default() {
+        let id = EffectNodeId::default();
+        if let EffectNodeId::Uuid(u) = id {
+            assert!(u.is_nil());
+        } else {
+            panic!("expected Uuid variant");
+        }
+    }
+}

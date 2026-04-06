@@ -1,6 +1,3 @@
-use std::sync::Arc;
-
-use atom_utils::clone_entities::{CloneEntityTreeCommand, EntityTreeNode};
 use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
 
 use crate::graph::pin::EffectNodeSlotPin;
@@ -289,33 +286,37 @@ pub fn trigger_effect_graph_add(
 pub fn trigger_clone_effect_graph_start(
     trigger: On<CloneEffectGraphStartEvent>,
     mut commands: Commands,
-    query_children: Query<&Children>,
 ) {
     let event = trigger.event();
     assert_ne!(trigger.observer(), Entity::PLACEHOLDER);
 
     let graph_ref = event.graph_ref;
     let new_graph_entity = event.destination_entity;
+    let source_entity = graph_ref.get_entity();
 
-    // clone all entity and component to effect graph.
-    let entity_tree_node = EntityTreeNode::from_entity_recursive(
-        &mut commands,
-        graph_ref.get_entity(),
-        Some(new_graph_entity),
-        &query_children,
-    );
-    let mut old_new_entities = entity_tree_node.recursive_get_entities_map();
-    old_new_entities.remove(&graph_ref.get_entity());
+    // 使用 Bevy 内置的 EntityCloner 递归克隆 entity 树
+    commands.queue(move |world: &mut World| {
+        use bevy::ecs::entity::EntityCloner;
 
-    let clone_entities = CloneEntityTreeCommand(Arc::new(entity_tree_node));
-    commands.queue(clone_entities);
-    commands.trigger(CloneEffectGraphEndEvent {
-        destination_root_entity: new_graph_entity,
-        old_new_entities,
-        new_graph_instance: new_graph_entity,
+        let mut mapper = EntityHashMap::<Entity>::new();
+        mapper.insert(source_entity, new_graph_entity);
+
+        let mut cloner = EntityCloner::build_opt_out(world);
+        cloner.linked_cloning(true);
+        let mut cloner = cloner.finish();
+        cloner.clone_entity_mapped(world, source_entity, &mut mapper);
+
+        let mut old_new_entities = mapper;
+        old_new_entities.remove(&source_entity);
+
+        world.trigger(CloneEffectGraphEndEvent {
+            destination_root_entity: new_graph_entity,
+            old_new_entities,
+            new_graph_instance: new_graph_entity,
+        });
+
+        info!("clone_effect_graph_start");
     });
-
-    info!("clone_effect_graph_start");
 }
 
 /// add to effect entity observer

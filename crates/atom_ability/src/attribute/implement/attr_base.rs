@@ -228,4 +228,65 @@ mod tests {
         assert_eq!(attr.get_value(ITEM_VALUE_LAYER), Some(2.0));
         assert_eq!(attr.get_value(BUFF_VALUE_LAYER), Some(3.0));
     }
+
+    #[test]
+    fn test_value_attribute_set_value() {
+        let mut attr = ValueAttribute::new(10.0, 0.0, 0.0);
+        assert_eq!(attr.get_final_value(), 10.0);
+        attr.set_value(ITEM_VALUE_LAYER, 5.0);
+        assert_eq!(attr.get_final_value(), 15.0);
+    }
+
+    #[test]
+    fn test_value_attribute_add_value() {
+        let mut attr = ValueAttribute::new(10.0, 0.0, 0.0);
+        attr.add_value(BUFF_VALUE_LAYER, 3.0);
+        assert_eq!(attr.get_final_value(), 13.0);
+    }
+
+    #[test]
+    fn test_value_percent_attribute_basic() {
+        let mut attr = ValuePercentAttribute::default();
+        attr.set_value(BASE_VALUE_LAYER, 100.0);
+        // final = 100 * (1+0) + 0 * (1+0) + 0 * (1+0) = 100
+        assert_eq!(attr.get_final_value(), 100.0);
+    }
+
+    #[test]
+    fn test_value_percent_attribute_with_percent() {
+        let mut attr = ValuePercentAttribute::default();
+        attr.set_value(BASE_VALUE_LAYER, 100.0);
+        attr.set_value(BASE_PERCENT_LAYER, 0.5);
+        // final = 100 * (1+0.5) + 0 + 0 = 150
+        assert_eq!(attr.get_final_value(), 150.0);
+    }
+
+    #[test]
+    fn test_value_percent_attribute_all_layers() {
+        let mut attr = ValuePercentAttribute::default();
+        attr.set_value(BASE_VALUE_LAYER, 100.0);
+        attr.set_value(BASE_PERCENT_LAYER, 0.1);
+        attr.set_value(ITEM_VALUE_LAYER, 50.0);
+        attr.set_value(ITEM_PERCENT_LAYER, 0.2);
+        attr.set_value(BUFF_VALUE_LAYER, 20.0);
+        attr.set_value(BUFF_PERCENT_LAYER, 0.5);
+        // final = 100*(1+0.1) + 50*(1+0.2) + 20*(1+0.5) = 110 + 60 + 30 = 200
+        assert_eq!(attr.get_final_value(), 200.0);
+    }
+
+    #[test]
+    fn test_value_percent_compute_error_value() {
+        let mut attr = ValuePercentAttribute::default();
+        attr.set_value(BASE_VALUE_LAYER, 100.0);
+        attr.set_value(BASE_PERCENT_LAYER, 0.5);
+        // comptue_error_value for BASE_VALUE_LAYER: error / (1 + 0.5) = error / 1.5
+        let err = attr.comptue_error_value(BASE_VALUE_LAYER, 15.0);
+        assert!((err - 10.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_get_value_unknown_layer() {
+        let attr = ValueAttribute::new(1.0, 2.0, 3.0);
+        assert_eq!(attr.get_value(NONE_LAYER), None);
+    }
 }

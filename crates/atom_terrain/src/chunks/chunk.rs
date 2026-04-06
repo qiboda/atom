@@ -94,3 +94,96 @@ impl Sub for TerrainChunkCoord {
         TerrainChunkCoord(self.0 - rhs.0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::math::Vec3;
+
+    #[test]
+    fn test_new_and_accessors() {
+        let coord = TerrainChunkCoord::new(1, -2, 3);
+        assert_eq!(coord.x(), 1);
+        assert_eq!(coord.y(), -2);
+        assert_eq!(coord.z(), 3);
+    }
+
+    #[test]
+    fn test_from_world_pos_origin() {
+        let coord = TerrainChunkCoord::from_world_pos(Vec3::new(4.0, 0.0, 4.0), 8.0);
+        assert_eq!(coord.x(), 0);
+        assert_eq!(coord.y(), 0);
+        assert_eq!(coord.z(), 0);
+    }
+
+    #[test]
+    fn test_from_world_pos_positive() {
+        let coord = TerrainChunkCoord::from_world_pos(Vec3::new(8.0, 8.0, 8.0), 8.0);
+        assert_eq!(coord.x(), 1);
+        assert_eq!(coord.y(), 1);
+        assert_eq!(coord.z(), 1);
+    }
+
+    #[test]
+    fn test_from_world_pos_negative() {
+        let coord = TerrainChunkCoord::from_world_pos(Vec3::new(-1.0, -1.0, -1.0), 8.0);
+        assert_eq!(coord.x(), -1);
+        assert_eq!(coord.y(), -1);
+        assert_eq!(coord.z(), -1);
+    }
+
+    #[test]
+    fn test_to_world_pos() {
+        let coord = TerrainChunkCoord::new(2, -1, 3);
+        let world = coord.to_world_pos(8.0);
+        assert_eq!(world.x, 16.0);
+        assert_eq!(world.y, -8.0);
+        assert_eq!(world.z, 24.0);
+    }
+
+    #[test]
+    fn test_chebyshev_distance() {
+        let a = TerrainChunkCoord::new(0, 0, 0);
+        let b = TerrainChunkCoord::new(3, 1, 2);
+        assert_eq!(a.chebyshev_distance(&b), 3);
+        assert_eq!(a.chebyshev_distance(&a), 0);
+    }
+
+    #[test]
+    fn test_chebyshev_distance_xz() {
+        let a = TerrainChunkCoord::new(0, 0, 0);
+        let b = TerrainChunkCoord::new(3, 100, 2);
+        assert_eq!(a.chebyshev_distance_xz(&b), 3); // ignores y
+    }
+
+    #[test]
+    fn test_add_sub() {
+        let a = TerrainChunkCoord::new(1, 2, 3);
+        let b = TerrainChunkCoord::new(4, 5, 6);
+        let sum = a + b;
+        assert_eq!(sum.x(), 5);
+        assert_eq!(sum.y(), 7);
+        assert_eq!(sum.z(), 9);
+
+        let diff = b - a;
+        assert_eq!(diff.x(), 3);
+        assert_eq!(diff.y(), 3);
+        assert_eq!(diff.z(), 3);
+    }
+
+    #[test]
+    fn test_as_array_and_ivec3() {
+        let coord = TerrainChunkCoord::new(1, 2, 3);
+        assert_eq!(coord.as_array_i32(), [1, 2, 3]);
+        assert_eq!(coord.as_ivec3(), IVec3::new(1, 2, 3));
+    }
+
+    #[test]
+    fn test_from_array() {
+        let arr = [7, 8, 9];
+        let coord = TerrainChunkCoord::from(&arr);
+        assert_eq!(coord.x(), 7);
+        assert_eq!(coord.y(), 8);
+        assert_eq!(coord.z(), 9);
+    }
+}

@@ -183,4 +183,45 @@ mod tests {
         let result = TerrainChunkVertexInfo::unpack_u32(value);
         assert_eq!(result, [1, 1, 0, 1]);
     }
+
+    #[test]
+    fn test_is_on_border() {
+        use bevy::math::{UVec2, UVec4, Vec4};
+        // Corner voxel at (0,0,0) - should be on border
+        let v = TerrainChunkVertexInfo {
+            vertex_location: Vec4::ZERO,
+            vertex_normal: Vec4::ZERO,
+            vertex_local_coord: UVec4::new(0, 0, 0, 0),
+            voxel_biome: UVec2::ZERO,
+            voxel_side: UVec2::ZERO,
+        };
+        assert!(v.is_on_border(16));
+
+        // Interior voxel at (8,8,8) - should NOT be on border
+        let v2 = TerrainChunkVertexInfo {
+            vertex_local_coord: UVec4::new(8, 8, 8, 0),
+            ..v
+        };
+        assert!(!v2.is_on_border(16));
+
+        // Edge voxel at (15,8,8) - should be on border (15 == 16-1)
+        let v3 = TerrainChunkVertexInfo {
+            vertex_local_coord: UVec4::new(15, 8, 8, 0),
+            ..v
+        };
+        assert!(v3.is_on_border(16));
+    }
+
+    #[test]
+    fn test_unpack_u32_zero() {
+        assert_eq!(TerrainChunkVertexInfo::unpack_u32(0), [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_unpack_u32_max() {
+        assert_eq!(
+            TerrainChunkVertexInfo::unpack_u32(0xFFFFFFFF),
+            [255, 255, 255, 255]
+        );
+    }
 }

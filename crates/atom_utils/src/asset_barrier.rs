@@ -112,3 +112,86 @@ impl AllAssetBarrier {
         self.barriers.remove(key);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+
+    fn noop_waker() -> Waker {
+        fn noop(_: *const ()) {}
+        fn clone(p: *const ()) -> RawWaker {
+            RawWaker::new(p, &VTABLE)
+        }
+        const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, noop, noop, noop);
+        unsafe { Waker::from_raw(RawWaker::new(std::ptr::null(), &VTABLE)) }
+    }
+
+    #[test]
+    fn test_barrier_guard_drop_completes() {
+        let (barrier, guard) = AssetBarrier::new();
+        let mut future = barrier.wait_async();
+        let waker = noop_waker();
+        let mut cx = Context::from_waker(&waker);
+
+        // With guard alive, future should be pending
+        assert_eq!(Pin::new(&mut future).poll(&mut cx), Poll::Pending);
+
+        // Drop the guard
+        drop(guard);
+
+        // Now future should be ready
+        assert_eq!(Pin::new(&mut future).poll(&mut cx), Poll::Ready(()));
+    }
+
+    #[test]
+    fn test_barrier_multiple_barriers() {
+        let mut all = AllAssetBarrier::default();
+        let (barrier1, _guard1) = all
+            .create_asset_barrier("a".to_string())
+            .expect("should create");
+        let (barrier2, _guard2) = all
+            .create_asset_barrier("b".to_string())
+            .expect("should create");
+
+        let mut future1 = barrier1.wait_async();
+        let mut future2 = barrier2.wait_async();
+        let waker = noop_waker();
+        let mut cx = Context::from_waker(&waker);
+
+        assert_eq!(Pin::new(&mut future1).poll(&mut cx), Poll::Pending);
+        assert_eq!(Pin::new(&mut future2).poll(&mut cx), Poll::Pending);
+
+        drop(_guard1);
+        assert_eq!(Pin::new(&mut future1).poll(&mut cx), Poll::Ready(()));
+        assert_eq!(Pin::new(&mut future2).poll(&mut cx), Poll::Pending);
+
+        drop(_guard2);
+        assert_eq!(Pin::new(&mut future2).poll(&mut cx), Poll::Ready(()));
+    }
+
+    #[test]
+    fn test_all_asset_barrier_create() {
+        let mut all = AllAssetBarrier::default();
+        let result = all.create_asset_barrier("test".to_string());
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_all_asset_barrier_duplicate_key() {
+        let mut all = AllAssetBarrier::default();
+        all.create_asset_barrier("key".to_string());
+        let result = all.create_asset_barrier("key".to_string());
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_all_asset_barrier_remove() {
+        let mut all = AllAssetBarrier::default();
+        all.create_asset_barrier("key".to_string());
+        all.remove_asset_barrier("key");
+        // After remove, can create again
+        let result = all.create_asset_barrier("key".to_string());
+        assert!(result.is_some());
+    }
+}

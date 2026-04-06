@@ -171,3 +171,87 @@ pub fn covariance_matrix(vec3: &[Vec3A]) -> Mat3A {
         z_axis: Vec3A::new(xz, yz, zz),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::math::{Mat3A, Vec3A};
+
+    #[test]
+    fn test_self_outer_product_symmetry() {
+        let v = Vec3A::new(1.0, 2.0, 3.0);
+        let m = self_outer_product(v);
+        // Check symmetry
+        let cols = m.to_cols_array_2d();
+        assert_eq!(cols[0][1], cols[1][0]);
+        assert_eq!(cols[0][2], cols[2][0]);
+        assert_eq!(cols[1][2], cols[2][1]);
+    }
+
+    #[test]
+    fn test_self_outer_product_diagonal() {
+        let v = Vec3A::new(2.0, 3.0, 4.0);
+        let m = self_outer_product(v);
+        assert_eq!(m.x_axis.x, 4.0); // 2*2
+        assert_eq!(m.y_axis.y, 9.0); // 3*3
+        assert_eq!(m.z_axis.z, 16.0); // 4*4
+    }
+
+    #[test]
+    fn test_trace_of_product_identity() {
+        let a = Mat3A::from_cols(
+            Vec3A::new(1.0, 2.0, 3.0),
+            Vec3A::new(4.0, 5.0, 6.0),
+            Vec3A::new(7.0, 8.0, 9.0),
+        );
+        // Tr(I * A) = Tr(A) = a00 + a11 + a22
+        let trace = trace_of_product(Mat3A::IDENTITY, a);
+        assert!((trace - (1.0 + 5.0 + 9.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_variance_known_data() {
+        let data = [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+        let var = variance(&data);
+        // mean = 5.0, variance = 4.0 (population)
+        assert!((var - 4.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_standard_deviation_known_data() {
+        let data = [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+        let sd = standard_deviation(&data);
+        assert!((sd - 2.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_covariance_identical() {
+        let data = [1.0, 2.0, 3.0, 4.0, 5.0];
+        let cov = covariance(&data, &data);
+        let var = variance(&data);
+        assert!((cov - var).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_covariance_matrix_symmetry() {
+        let vecs = [
+            Vec3A::new(1.0, 2.0, 3.0),
+            Vec3A::new(4.0, 5.0, 6.0),
+            Vec3A::new(7.0, 8.0, 9.0),
+        ];
+        let m = covariance_matrix(&vecs);
+        assert!((m.x_axis.y - m.y_axis.x).abs() < 1e-6);
+        assert!((m.x_axis.z - m.z_axis.x).abs() < 1e-6);
+        assert!((m.y_axis.z - m.z_axis.y).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_cross_product_squared_transpose_symmetry() {
+        let v = Vec3A::new(1.0, 2.0, 3.0);
+        let m = cross_product_squared_transpose(v);
+        let cols = m.to_cols_array_2d();
+        assert!((cols[0][1] - cols[1][0]).abs() < 1e-6);
+        assert!((cols[0][2] - cols[2][0]).abs() < 1e-6);
+        assert!((cols[1][2] - cols[2][1]).abs() < 1e-6);
+    }
+}

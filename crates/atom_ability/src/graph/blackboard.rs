@@ -386,124 +386,59 @@ impl<'a> TryFrom<&'a mut EffectValue> for &'a mut Vec<Entity> {
 //     }
 // }
 
-// test
-// #[cfg(test)]
-// mod test {
-//     use std::borrow::Cow;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::borrow::Cow;
 
-//     use bevy::{
-//         prelude::{AppTypeRegistry, World},
-//         reflect::{reflect_trait, Reflect},
-//     };
+    #[test]
+    fn test_effect_value_i32() {
+        let val = EffectValue::I32(42);
+        assert_eq!(val.get::<&i32>(), Ok(&42));
+    }
 
-//     use crate::graph::blackboard::BlackBoardValue;
+    #[test]
+    fn test_effect_value_f32() {
+        let val = EffectValue::F32(1.23);
+        let result: Result<&f32, _> = (&val).try_into();
+        assert_eq!(result, Ok(&1.23));
+    }
 
-//     use super::EffectValue;
+    #[test]
+    fn test_effect_value_string() {
+        let val = EffectValue::String("hello".into());
+        let result: Result<&Cow<'static, str>, _> = (&val).try_into();
+        assert_eq!(result, Ok(&Cow::<'static, str>::Owned("hello".into())));
+    }
 
-//   #[test]
-// fn black_board_value() {
-//     let bo = Box::new(32);
-//     let br = EffectValue::BoxReflect(bo);
-//     if let EffectValue::BoxReflect(v) = br {
-//         assert_eq!(32, *v.downcast_ref::<i32>().unwrap());
-//     }
-// }
+    #[test]
+    fn test_effect_value_wrong_type() {
+        let val = EffectValue::I32(42);
+        let result: Result<&f32, _> = (&val).try_into();
+        assert!(result.is_err());
+    }
 
-// #[test]
-// fn black_board_value_try_from() {
-//     let br_i32 = EffectValue::I32(100);
-//     assert_eq!((&br_i32).try_into(), Ok(&100i32));
+    #[test]
+    fn test_effect_value_get_mut() {
+        let mut val = EffectValue::I32(100);
+        *val.get_mut::<&mut i32>().expect("should be i32") = 200;
+        assert_eq!(val.get::<&i32>(), Ok(&200));
+    }
 
-//     let br_vec = EffectValue::Vec(vec![EffectValue::I32(100)]);
-//     if let Ok(vec_value) = TryInto::<&Vec<EffectValue>>::try_into(&br_vec) {
-//         for elem in vec_value {
-//             assert_eq!(elem.try_into(), Ok(&100));
-//         }
-//     }
+    #[test]
+    fn test_effect_value_all_integer_types() {
+        assert_eq!(EffectValue::I8(1).get::<&i8>(), Ok(&1i8));
+        assert_eq!(EffectValue::I16(2).get::<&i16>(), Ok(&2i16));
+        assert_eq!(EffectValue::I64(3).get::<&i64>(), Ok(&3i64));
+        assert_eq!(EffectValue::U8(4).get::<&u8>(), Ok(&4u8));
+        assert_eq!(EffectValue::U16(5).get::<&u16>(), Ok(&5u16));
+        assert_eq!(EffectValue::U32(6).get::<&u32>(), Ok(&6u32));
+        assert_eq!(EffectValue::U64(7).get::<&u64>(), Ok(&7u64));
+    }
 
-//     let br_str = EffectValue::String("bear".into());
-//     assert_eq!(
-//         (&br_str).try_into(),
-//         Ok(&Cow::<'static, str>::Owned("bear".into()))
-//     );
-
-//     let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
-//     let v = TryInto::<&Box<dyn Reflect>>::try_into(&br_box);
-//     if let Ok(v) = v {
-//         assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
-//     }
-// }
-
-// #[test]
-// fn black_board_get_trait() {
-//     let mut world = World::new();
-//     let registry = AppTypeRegistry::default();
-//     world.insert_resource(registry);
-
-//     // Normally in rust we would be out of luck at this point. Lets use our new reflection powers to
-//     // do something cool!
-//     #[derive(Reflect)]
-//     #[reflect(ATrait)]
-//     struct A {
-//         i: i32,
-//     }
-
-//     #[reflect_trait]
-//     trait ATrait {
-//         fn get_value(&self) -> i32;
-//     }
-
-//     impl ATrait for A {
-//         fn get_value(&self) -> i32 {
-//             self.i
-//         }
-//     }
-
-//     let br_box = EffectValue::BoxReflect(Box::new(A { i: 32 }));
-
-//     let type_registry = world.get_resource::<AppTypeRegistry>().unwrap();
-//     type_registry.write().register::<A>();
-
-//     let type_registry = type_registry.read();
-
-//     if let EffectValue::BoxReflect(v) = br_box {
-//         let reflect_a_trait = type_registry
-//             .get_type_data::<ReflectATrait>(v.type_id())
-//             .unwrap();
-
-//         let my_trait: &dyn ATrait = reflect_a_trait.get(&*v).unwrap();
-//         assert_eq!(my_trait.get_value(), 32);
-//         return;
-//     }
-//     panic!()
-// }
-
-// #[test]
-// fn black_board_rvalue_get() {
-//     let br_i32 = EffectValue::I32(100);
-//     assert_eq!(br_i32.get(), Ok(&100i32));
-
-//     let br_str = EffectValue::String("dog".into());
-//     assert_eq!(br_str.get(), Ok(&Cow::<'static, str>::Owned("dog".into())));
-
-//     let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
-//     let v = br_box.get::<&Box<dyn Reflect>>();
-//     if let Ok(v) = v {
-//         assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
-//     }
-
-//     let mut br_i32 = EffectValue::I32(100);
-//     assert_eq!(br_i32.get_mut(), Ok(&mut 100i32));
-//     *br_i32.get_mut::<&mut i32>().unwrap() = 200;
-//     assert_eq!(br_i32.get(), Ok(&200i32));
-
-//     let br_str = EffectValue::String("key".into());
-//     assert_eq!(br_str.get(), Ok(&Cow::<'static, str>::Owned("key".into())));
-
-//     let br_box = EffectValue::BoxReflect(Box::new(vec![32]));
-//     let v = br_box.get::<&Box<dyn Reflect>>();
-//     if let Ok(v) = v {
-//         assert_eq!(v.downcast_ref::<Vec<i32>>(), Some(&vec![32]));
-//     }
-// }
-// }
+    #[test]
+    fn test_effect_value_f64() {
+        let val = EffectValue::F64(9.876);
+        assert_eq!(val.get::<&f64>(), Ok(&9.876));
+    }
+}
