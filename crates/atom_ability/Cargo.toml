@@ -1,0 +1,32 @@
+[package]
+name = "atom_ability"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { workspace = true }
+# bevy-trait-query = "0.4.0"
+# bevy-trait-query-impl = "0.4.0"
+once_cell = { workspace = true }
+smallvec = { workspace = true }
+thiserror = { workspace = true }
+
+atom_layertag = { path = "../atom_layertag" }
+atom_datatables = { path = "../atom_datatables" }
+atom_utils = { path = "../atom_utils" }
+
+paste = { workspace = true }
+uuid = "1.19.0"
+eval = "0.4.3"
+
+[dev-dependencies]
+dotenv = { workspace = true }
+
+[lints]
+workspace = true
+
+[[example]]
+name = "ability"
+path = "examples/ability/main.rs"

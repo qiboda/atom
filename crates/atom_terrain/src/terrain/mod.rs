@@ -3,7 +3,7 @@ pub mod setting;
 use bevy::{prelude::*, render::extract_resource::ExtractResourcePlugin};
 use setting::TerrainSetting;
 
-use crate::chunks::TerrainChunkPlugin;
+use crate::{biomes::generator::TerrainRegionGeneratorPlugin, chunks::TerrainChunkPlugin};
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, States, Default)]
 pub enum TerrainState {
@@ -12,9 +12,7 @@ pub enum TerrainState {
     // 加载资源，如地形纹理等资产。
     LoadAssets,
     // 生成地形的大致基础信息
-    GenerateTerrainSketch,
-    // 生成地形的高度图。
-    GenerateHeightMap,
+    GenerateTerrainRegion,
     // 生成地形的Mesh
     GenerateTerrainMesh,
 }
@@ -27,7 +25,9 @@ pub enum TerrainSystems {
 }
 
 #[derive(Debug, Default)]
-pub struct TerrainPlugin;
+pub struct TerrainPlugin {
+    pub debug: bool,
+}
 
 impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
@@ -35,6 +35,7 @@ impl Plugin for TerrainPlugin {
             .add_plugins(ExtractResourcePlugin::<TerrainSetting>::default());
 
         app.init_state::<TerrainState>();
+        app.insert_state(TerrainState::GenerateTerrainRegion);
 
         app.configure_sets(
             Update,
@@ -43,9 +44,11 @@ impl Plugin for TerrainPlugin {
                 TerrainSystems::ApplyCSG,
                 TerrainSystems::GenerateChunk,
             )
-                .chain(), // .run_if(in_state(TerrainState::GenerateTerrainMesh)),
+                .chain()
+                .run_if(in_state(TerrainState::GenerateTerrainMesh)),
         );
 
         app.add_plugins(TerrainChunkPlugin);
+        app.add_plugins(TerrainRegionGeneratorPlugin { debug: self.debug });
     }
 }

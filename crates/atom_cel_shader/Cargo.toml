@@ -1,0 +1,18 @@
+[package]
+name = "atom_cel_shader"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+atom_shader_lib = { path = "../atom_shader_lib" }
+paste = { workspace = true }
+
+
+[dev-dependencies]
+dotenv = { workspace = true }
+bevy_flycam = { version = "0.18" }
+# bevy_screen_diagnostics = { version = "0.6.0" }
+
+[lints]
+workspace = true

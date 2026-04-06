@@ -187,7 +187,7 @@ fn map_and_read_buffer(
 
     {
         let _span = info_span!("mesh_chunk_render_device_poll").entered();
-        match render_device.poll(PollType::wait()) {
+        match render_device.poll(PollType::wait_indefinitely()) {
             Ok(s) => match s {
                 wgpu::PollStatus::QueueEmpty => {}
                 _ => {

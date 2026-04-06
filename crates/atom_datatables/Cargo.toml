@@ -1,0 +1,20 @@
+[package]
+name = "atom_datatables"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+
+[dependencies]
+bevy = { workspace = true }
+thiserror = { workspace = true }
+atom_utils = { path = "../atom_utils" }
+
+atom_cfg = { path = "gen/atom_cfg" }
+serde_json = { version = "1.0.145" }
+atom_luban_lib = { path = "atom_luban_lib" }
+
+[lints]
+workspace = true

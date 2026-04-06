@@ -2,6 +2,7 @@ pub mod channel;
 pub mod components;
 pub mod compute;
 mod handler;
+pub mod materials;
 pub mod tables;
 pub mod visual;
 

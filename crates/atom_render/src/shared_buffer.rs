@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, num::NonZeroU64};
+use std::marker::PhantomData;
 
 use bevy::render::{
     render_resource::{
@@ -333,7 +333,7 @@ impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
                 .write_buffer_with(
                     buffer,
                     0,
-                    NonZeroU64::new(buffer.size()).expect("Failed to create NonZeroU64"),
+                    BufferSize::new(buffer.size()).expect("Failed to create BufferSize"),
                 )
                 .expect("Failed to write buffer with queue");
             Some(DynamicUniformBufferWriter {
@@ -406,11 +406,11 @@ impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
 
 /// A writer that can be used to directly write elements into the target buffer.
 pub struct DynamicUniformBufferWriter<'a, T> {
-    buffer: encase::DynamicUniformBuffer<QueueWriteBufferViewWrapper<'a>>,
-    _marker: PhantomData<fn() -> T>,
+    buffer: encase::DynamicUniformBuffer<QueueWriteBufferViewWrapper>,
+    _marker: PhantomData<&'a T>,
 }
 
-impl<'a, T: ShaderType + WriteInto> DynamicUniformBufferWriter<'a, T> {
+impl<T: ShaderType + WriteInto> DynamicUniformBufferWriter<'_, T> {
     pub fn write(&mut self, value: &T) -> u32 {
         self.buffer
             .write(value)
@@ -420,14 +420,14 @@ impl<'a, T: ShaderType + WriteInto> DynamicUniformBufferWriter<'a, T> {
 
 /// A wrapper to work around the orphan rule so that [`wgpu::QueueWriteBufferView`] can  implement
 /// [`BufferMut`].
-struct QueueWriteBufferViewWrapper<'a> {
-    buffer_view: wgpu::QueueWriteBufferView<'a>,
+struct QueueWriteBufferViewWrapper {
+    buffer_view: wgpu::QueueWriteBufferView,
     // Must be kept separately and cannot be retrieved from buffer_view, as the read-only access will
     // invoke a panic.
     capacity: usize,
 }
 
-impl<'a> BufferMut for QueueWriteBufferViewWrapper<'a> {
+impl BufferMut for QueueWriteBufferViewWrapper {
     #[inline]
     fn capacity(&self) -> usize {
         self.capacity
@@ -435,12 +435,12 @@ impl<'a> BufferMut for QueueWriteBufferViewWrapper<'a> {
 
     #[inline]
     fn write<const N: usize>(&mut self, offset: usize, val: &[u8; N]) {
-        self.buffer_view.write(offset, val);
+        self.buffer_view[offset..offset + N].copy_from_slice(val);
     }
 
     #[inline]
     fn write_slice(&mut self, offset: usize, val: &[u8]) {
-        self.buffer_view.write_slice(offset, val);
+        self.buffer_view[offset..offset + val.len()].copy_from_slice(val);
     }
 }
 

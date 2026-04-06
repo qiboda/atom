@@ -1,0 +1,18 @@
+[package]
+name = "atom_cfg"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = {  workspace = true }
+serde_json ={ version = "1.0.x" }
+bitflags = { workspace = true }
+
+atom_macros = {path = "../atom_macros"}
+atom_luban_lib = { path = "../../atom_luban_lib" }
+
+bevy = { workspace = true }
+thiserror = { workspace = true }
+smallvec = { workspace = true }

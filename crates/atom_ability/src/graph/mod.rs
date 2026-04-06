@@ -1,0 +1,76 @@
+use bevy::{app::App, prelude::*, reflect::Reflect};
+use context::{EffectGraphContext, GraphRef, InstantEffectNodeMap};
+use event::{
+    trigger_clone_effect_graph_end, trigger_clone_effect_graph_start, trigger_effect_graph_add,
+    trigger_effect_graph_exec, trigger_effect_graph_tickable, trigger_effect_graph_to_remove,
+};
+use executor::EffectGraphExecutorPlugin;
+use graph_map::{EffectGraphBuilderMap, EffectGraphMap};
+use state::{EffectGraphState, EffectGraphTickState, update_to_despawn_effect_graph};
+
+use self::state::reset_effect_graph_state;
+
+pub mod blackboard;
+pub mod builder;
+pub mod bundle;
+pub mod context;
+pub mod event;
+pub mod executor;
+pub mod graph_map;
+pub mod node;
+pub mod pin;
+pub mod state;
+
+#[derive(Debug, Default)]
+pub struct EffectGraphPlugin;
+
+impl Plugin for EffectGraphPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(EffectGraphExecutorPlugin)
+            .configure_sets(
+                Update,
+                (
+                    EffectGraphUpdateSystems::Execute,
+                    EffectGraphUpdateSystems::UpdateNode,
+                    EffectGraphUpdateSystems::UpdateState,
+                )
+                    .chain(),
+            )
+            .register_type::<EffectGraphContext>()
+            .register_type::<EffectGraphState>()
+            .register_type::<EffectGraphTickState>()
+            .register_type::<GraphRef>()
+            .init_resource::<InstantEffectNodeMap>()
+            .init_resource::<EffectGraphMap>()
+            .init_resource::<EffectGraphBuilderMap>()
+            // .add_event::<CloneEffectGraphStartEvent>()
+            // .add_event::<CloneEffectGraphEndEvent>()
+            // .add_event::<EffectGraphAddEvent>()
+            // .add_event::<EffectGraphExecEvent>()
+            // .add_event::<EffectGraphRemoveEvent>()
+            // .add_event::<EffectGraphTickableEvent>()
+            .add_systems(
+                Update,
+                reset_effect_graph_state.in_set(EffectGraphUpdateSystems::UpdateState),
+            )
+            .add_systems(Last, update_to_despawn_effect_graph)
+            .add_observer(trigger_clone_effect_graph_start)
+            .add_observer(trigger_clone_effect_graph_end)
+            .add_observer(trigger_effect_graph_add)
+            .add_observer(trigger_effect_graph_exec)
+            .add_observer(trigger_effect_graph_tickable)
+            .add_observer(trigger_effect_graph_to_remove);
+    }
+}
+
+#[derive(Debug, Default, Component, Reflect, Clone, Copy)]
+#[reflect(Component)]
+pub struct EffectGraphOwner;
+
+#[derive(SystemSet, Debug, Default, Clone, Eq, PartialEq, Hash, Reflect)]
+pub enum EffectGraphUpdateSystems {
+    #[default]
+    Execute,
+    UpdateNode,
+    UpdateState,
+}

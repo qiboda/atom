@@ -39,7 +39,6 @@ fn main() {
                     ..default()
                 }),
         )
-        .add_plugins(TerrainPlugin)
         // 诊断用途
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(LogDiagnosticsPlugin::default())
@@ -50,8 +49,6 @@ fn main() {
         .add_plugins(WorldInspectorPlugin::default())
         .add_plugins(RenderDocPlugin)
         .add_plugins(WireframePlugin::default())
-        // 摄像机插件
-        .add_plugins(NoCameraPlayerPlugin)
         // .add_plugins(FreeCameraPlugin)
         .add_systems(Startup, setup)
         .add_systems(
@@ -59,6 +56,20 @@ fn main() {
             gizmos_loaded_chunk.after(TerrainSystems::ChunkLoader),
         );
 
+    // 摄像机插件
+    app.add_plugins(NoCameraPlayerPlugin);
+
+    // 地形插件
+    app.add_plugins(TerrainPlugin { debug: false });
+    app.insert_resource(TerrainSetting {
+        size_setting: TerrainSizeSetting {
+            height_range: -1..=1,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    // 全局显示线框
     app.insert_resource(WireframeConfig {
         global: true,
         ..Default::default()
@@ -67,7 +78,7 @@ fn main() {
     app.run();
 }
 
-fn setup(mut commands: Commands, mut terrain_setting: ResMut<TerrainSetting>) {
+fn setup(mut commands: Commands) {
     // 配置摄像机
     commands.spawn((
         Camera3d::default(),
@@ -89,8 +100,6 @@ fn setup(mut commands: Commands, mut terrain_setting: ResMut<TerrainSetting>) {
         //     ..Default::default()
         // },
     ));
-
-    terrain_setting.size_setting.height_range = -1..=1;
 
     info!("地形系统启动完成");
 }
@@ -129,6 +138,6 @@ fn gizmos_loaded_chunk(
             1.0,
             chunk_size * 0.9,
         ));
-        gizmos.cuboid(transform, Color::linear_rgb(0.0, 1.0, 0.0));
+        gizmos.cube(transform, Color::linear_rgb(0.0, 1.0, 0.0));
     }
 }

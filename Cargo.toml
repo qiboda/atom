@@ -1,9 +1,14 @@
 [workspace]
-members = ["crates/*"]
+members = [
+    "crates/*",
+    "crates/atom_datatables/gen/atom_cfg",
+    "crates/atom_datatables/gen/atom_macros",
+    "crates/atom_datatables/atom_luban_lib",
+]
 resolver = "3"
 
 [workspace.dependencies]
-bevy = { version = "0.17", features = [
+bevy = { version = "0.18", features = [
     "file_watcher",
     "embedded_watcher",
     "trace",
@@ -28,9 +33,9 @@ tracing-subscriber = { version = "0.3", features = [
 ] }
 tracing-appender = { version = "0.2" }
 
-wgpu = { version = "26.0" }
-wgpu-types = { version = "26.0" }
-encase = { version = "0.11" }
+wgpu = { version = "27.0" }
+wgpu-types = { version = "27.0" }
+encase = { version = "0.12" }
 
 
 # 辅助功能
@@ -41,11 +46,13 @@ strum = { version = "0.27", features = ["derive"] }
 bitflags = { version = "2.10", features = ["serde"] }
 paste = { version = "1.0" }
 time = { version = "0.3", features = ["formatting", "parsing"] }
-
-# 主要是用于测试和示例
 image = { version = "0.25" }
 imageproc = { version = "0.25" }
 crossbeam = { version = "0.8" }
+rand = { version = "0.9.2" }
+smallvec = { version = "1.15" }
+thiserror = { version = "2" }
+dotenv = { version = "0.15" }
 
 
 # Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.

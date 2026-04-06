@@ -70,11 +70,10 @@ macro_rules! shaders_plugin {
     );
     // 参考了impl_extra!宏的实现
     (_construct -> $name:ident ( $($member_name: ident),* ) ) => (
-        #[derive(Debug, Default, Clone, bevy::prelude::Resource, bevy::prelude::Reflect,bevy::render::extract_resource::ExtractResource)]
-        #[reflect(Resource)]
+        #[derive(Debug, Default, Clone, bevy::prelude::Resource, bevy::prelude::Reflect, bevy::render::extract_resource::ExtractResource)]
         pub struct $name {
             $(
-                pub $member_name: bevy::asset::Handle<bevy::prelude::Shader>,
+                pub $member_name: bevy::asset::Handle<bevy::shader::Shader>,
 
             )*
         }

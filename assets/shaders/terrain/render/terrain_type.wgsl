@@ -31,11 +31,4 @@ struct TerrainMaterial {
     reflectance: f32,
     attenuation_distance: f32,
     attenuation_color: vec4f,
-    biome_colors: array<TerrainBiomeColor, TerrainType_MAX>,
-}
-
-
-struct TerrainBiomeColor {
-    base_color: vec4f,
-    biome: u32,
 }
