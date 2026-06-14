@@ -1,0 +1,277 @@
+{
+  "main": {
+    "id": "5324373015726ba8",
+    "type": "split",
+    "children": [
+      {
+        "id": "4509724f8bf84da7",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e7a7b303c61786dc",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "机制/背包系统.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "背包系统"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "d6bb5582e7bd878d",
+    "type": "split",
+    "children": [
+      {
+        "id": "6d2eace9ee6d094a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "564371aac3a9b5bc",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "ce226d778159d058",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "cdd7f808bc3a0d60",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 455.5
+  },
+  "right": {
+    "id": "c33d9a0cd1e0a504",
+    "type": "split",
+    "children": [
+      {
+        "id": "476cb64c2eecc19f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "3c3b1a301dcadd53",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "机制/背包系统.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "背包系统 的反向链接列表"
+            }
+          },
+          {
+            "id": "b9cafccb9aee6249",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "美学/像素.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from 像素"
+            }
+          },
+          {
+            "id": "5191172d48bd552b",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "263958c19eefb225",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "美学/像素.md"
+              },
+              "icon": "lucide-list",
+              "title": "Outline of 像素"
+            }
+          },
+          {
+            "id": "d2b0cac9c86298d4",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "c306ec003ea32e8f",
+            "type": "leaf",
+            "state": {
+              "type": "calendar",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "插件不再活动"
+            }
+          },
+          {
+            "id": "9e32ed0a82960416",
+            "type": "leaf",
+            "state": {
+              "type": "git-history-view",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "插件不再活动"
+            }
+          },
+          {
+            "id": "2784a4d8e1fe496a",
+            "type": "leaf",
+            "state": {
+              "type": "advanced-tables-toolbar",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "插件不再活动"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 441.5
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "markdown-importer:打开 Markdown 格式转换器": false,
+      "obsidian-importer:Open Importer": false,
+      "obsidian-git:Open Git source control": false,
+      "obsidian-kanban:创建新看板": false,
+      "obsidian-excalidraw-plugin:新建绘图文件": false,
+      "table-editor-obsidian:Advanced Tables Toolbar": false,
+      "homepage:Open homepage": false,
+      "fuzzy-chinese-pinyin:FuzzySearch": false,
+      "obsidian-local-images-plus:Local Images Plus  0.15.9\r\nLocalize attachments (plugin folder)": false
+    }
+  },
+  "active": "e7a7b303c61786dc",
+  "lastOpenFiles": [
+    "机制/道具.md",
+    "机制/怪物.md",
+    "机制/关卡.md",
+    "机制/机制.md",
+    "机制/技能.md",
+    "机制/交互形式.md",
+    "机制/角色.md",
+    "机制/熟练度系统.md",
+    "机制/天气系统.md",
+    "美学/像素.md",
+    "美学/维度.md",
+    "美学/美学.md",
+    "美学/镜头.md",
+    "技术/地形/类型.md",
+    "技术/地形/流程.md",
+    "技术/地形/生态.md",
+    "技术/地形/随机地形.md",
+    "技术/地形/lod.md",
+    "技术/地形/attachmen/Clipmap 2024-02-01 00.41.40.excalidraw.md",
+    "技术/技术.md",
+    "技术/技能.md",
+    "Some Game.md",
+    "README.md",
+    "Home.md",
+    "表配置.md",
+    "名词.md",
+    "技术/attachmen",
+    "attachmen",
+    "技术/Ldtk/attachmen",
+    "技术/Ldtk",
+    "机制/attachmen",
+    "技术/地形/attachmen/attachmen",
+    "技术/地形/attachmen/Pasted image 20240907112150.png",
+    "技术/地形/attachmen/cd47f3d47be4c615a15526def7cf3729_MD5.jpeg",
+    "atom_doc/技术/AI/attachmen/e17405e4a060eca65207f383225bb0d8_MD5.jpg",
+    "atom_doc/技术/地形/attachmen/cd47f3d47be4c615a15526def7cf3729_MD5.jpeg",
+    "atom_doc/技术/AI/attachmen/137312a5a05b80eb37f9a5daed6fba2a_MD5.jpg",
+    "atom_doc/技术/AI/attachmen/11215219abed50042172fecaf02dca42_MD5.jpg",
+    "atom_doc/技术/地形/attachmen",
+    "atom_doc/技术/AI/attachmen",
+    "atom_doc/技术/Ability/attachmen",
+    "atom_doc/美学/attachmen",
+    "atom/技术/AI/attachmen/e17405e4a060eca65207f383225bb0d8_MD5.jpg",
+    "atom/技术/地形/attachmen/cd47f3d47be4c615a15526def7cf3729_MD5.jpeg",
+    "atom/技术/AI/attachmen/137312a5a05b80eb37f9a5daed6fba2a_MD5.jpg",
+    "atom/技术/AI/attachmen/11215219abed50042172fecaf02dca42_MD5.jpg",
+    "bevy/Untitled.canvas",
+    "Untitled.canvas",
+    "Untitled 7.canvas",
+    "Untitled 6.canvas",
+    "Untitled 5.canvas",
+    "Untitled 4.canvas",
+    "Untitled 3.canvas",
+    "Untitled 2.canvas",
+    "Untitled 1.canvas",
+    "未命名.canvas"
+  ]
+}

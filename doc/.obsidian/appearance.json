@@ -1,0 +1,10 @@
+{
+  "accentColor": "#00878a",
+  "theme": "obsidian",
+  "cssTheme": "Obsidian gruvbox",
+  "translucency": false,
+  "interfaceFontFamily": "Source Code Pro,新宋体,Microsoft YaHei",
+  "textFontFamily": "新宋体,SauceCodePro Nerd Font,Microsoft YaHei",
+  "monospaceFontFamily": "Microsoft YaHei,Source Code Pro,新宋体",
+  "baseFontSize": 19
+}
