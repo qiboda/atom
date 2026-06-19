@@ -92,7 +92,7 @@ fn setup(mut commands: Commands) {
         TerrainObserver,
         TerrainObserverConfig {
             terrain_load_radius: 0,
-            terrain_height_range: -0..=0,
+            terrain_height_range: -3..=3,
             margin: 1,
         },
         FlyCam,

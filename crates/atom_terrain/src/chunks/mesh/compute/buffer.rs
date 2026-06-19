@@ -297,7 +297,7 @@ impl TerrainChunkMeshBuffers {
 
             // 重置 chunk 信息
             self.terrain_chunk_info_buffer.push(&TerrainChunkInfo {
-                chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, 0.0),
+                chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, context.terrain_setting.get_terrain_size()),
                 voxel_size,
                 voxel_num,
                 qef_threshold: context.terrain_setting.qef_solver_threshold,

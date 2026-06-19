@@ -26,7 +26,7 @@ pub struct VoxelEdgeCrossPoint {
 #[derive(ShaderType, Default)]
 pub struct TerrainChunkInfo {
     // xyz: chunk的最小位置
-    // w作为chunk的size(没有用到。)
+    // w: terrain总大小（用于 biome UV 计算）
     pub chunk_min_location_size: Vec4,
     // unit: meter
     pub voxel_size: f32,
