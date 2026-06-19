@@ -17,8 +17,8 @@ bevy = { version = "0.18", features = [
     # "free_camera",
     "bevy_remote",
 ] }
-log = { version = "0.4", features = ["max_level_trace"] }
-tracing = { version = "0.1", features = ["max_level_trace"] }
+log = { version = "0.4", features = ["max_level_info"] }
+tracing = { version = "0.1", features = ["max_level_info"] }
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
     "fmt",

@@ -121,7 +121,7 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
 
         self.to_compute_entities.clear();
         for (entity, state, coord, mut compute_state) in self.query.iter_mut(world) {
-            info!(
+            debug!(
                 "frame count: {} Terrain chunk mesh compute node check: entity: {:?}, coord: {:?}, state: {:?}, compute_state: {:?}",
                 frame_count, entity, coord, *state, *compute_state
             );

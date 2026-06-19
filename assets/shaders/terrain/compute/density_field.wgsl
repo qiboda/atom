@@ -97,52 +97,29 @@ fn get_terrain_noise(location: vec3f) -> f32 {
     let biome_tex_size = vec2f(textureDimensions(biome_map_texture));
     // 2x2 邻域中心的 texel 坐标
     let tex_center = terrain_uv * biome_tex_size - 0.5;
-    let base = floor(tex_center);
-    let frac = fract(tex_center);
-    let max_coord = biome_tex_size - 1.0;
-
-    // 四个角的 texel 坐标，钳位防止越界
-    let t00 = vec2u(clamp(base + vec2f(0.0, 0.0), vec2f(0.0), max_coord));
-    let t01 = vec2u(clamp(base + vec2f(0.0, 1.0), vec2f(0.0), max_coord));
-    let t10 = vec2u(clamp(base + vec2f(1.0, 0.0), vec2f(0.0), max_coord));
-    let t11 = vec2u(clamp(base + vec2f(1.0, 1.0), vec2f(0.0), max_coord));
-
-    // 从纹理中采样四个角的 biome 类型
-    // Luma8 在 GPU 上归一化为 [0, 1]，乘以 255 恢复原始 u8 值
-    let b00 = textureLoad(biome_map_texture, t00, 0).x * 255.0;
-    let b01 = textureLoad(biome_map_texture, t01, 0).x * 255.0;
-    let b10 = textureLoad(biome_map_texture, t10, 0).x * 255.0;
-    let b11 = textureLoad(biome_map_texture, t11, 0).x * 255.0;
-
-    // 世界坐标处的噪声值（四个采样点共享）
-    let noise_val = open_simplex_3d_with_seed(location, 232u);
-
-    // 对四个角分别计算密度值（高度 - biome_height）
-    let d00 = location.y - biome_height(b00, noise_val);
-    let d01 = location.y - biome_height(b01, noise_val);
-    let d10 = location.y - biome_height(b10, noise_val);
-    let d11 = location.y - biome_height(b11, noise_val);
-
-    // 双线性混合四个角的密度值
-    let d0 = mix(d00, d01, frac.y);
-    let d1 = mix(d10, d11, frac.y);
-    return mix(d0, d1, frac.x);
+    let tex_base = vec2i(tex_center);
+    let fx = fract(tex_center.x);
+    let fy = fract(tex_center.y);
+    let t00 = textureLoad(biome_map_texture, tex_base + vec2i(0, 0), 0).x * 255.0;
+    let t10 = textureLoad(biome_map_texture, tex_base + vec2i(1, 0), 0).x * 255.0;
+    let t01 = textureLoad(biome_map_texture, tex_base + vec2i(0, 1), 0).x * 255.0;
+    let t11 = textureLoad(biome_map_texture, tex_base + vec2i(1, 1), 0).x * 255.0;
+    // 2D FBM 噪声（高度图风格，XZ 平面），多 octave 增加细节
+    let noise_val = open_simplex_2d_fbm_with_seed(location.xz, 232u, 3u, 0.003, 2.0, 0.5);
+    let h00 = biome_height(t00, noise_val);
+    let h10 = biome_height(t10, noise_val);
+    let h01 = biome_height(t01, noise_val);
+    let h11 = biome_height(t11, noise_val);
+    // 双线性混合 biome 密度值
+    let h0 = mix(h00, h10, fx);
+    let h1 = mix(h01, h11, fx);
+    let biome_height_val = mix(h0, h1, fy);
+    return location.y - biome_height_val;
 }
 
-// void value( float v00, float v01, float v10, float v11, vec2 u, out float t, out vec2 grad ) {  
-//     float a = v01 - v00;
-//     float b = v10 - v00;
-//     float c = v11 + v00 - v01 - v10;
-    
-//     t = v00 + a * u.x + b * u.y + c * u.x * u.y;
-    
-//     grad.x = a + c * u.y;
-//     grad.y = b + c * u.x;
-// }
-
-
-/// 根据世界坐标采样 biome 纹理，返回 biome 类型
+/// 单点 biome 查询（用于顶点属性）
 fn get_biome_type_by_location(location: vec3f) -> f32 {
+    // XZ 平面采样 biome 纹理
     let terrain_size = terrain_chunk_info.chunk_min_location_size.w;
     let terrain_uv = (location.xz + terrain_size * 0.5) / terrain_size;
     let biome_tex_size = vec2f(textureDimensions(biome_map_texture));
