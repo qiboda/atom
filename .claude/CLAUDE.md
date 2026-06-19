@@ -159,7 +159,7 @@ Cargo.toml                                       — Workspace 定义、依赖�
 rustfmt.toml                                     — Unix 换行、field init shorthand
 clippy.toml                                      — doc-valid-idents 白名单
 atom.code-workspace                              — VS Code 工作区配置
-TENSIONS.md                                       — 摩擦日志（GPU/数据/工具链/流程）
+.claude/TENSIONS.md                               — 摩擦日志（GPU/数据/工具链/流程）
 ```
 
 ## Build & Run
