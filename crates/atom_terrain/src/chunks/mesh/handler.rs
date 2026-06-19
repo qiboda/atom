@@ -7,6 +7,7 @@ use crate::{
         mesh::{
             channel::TerrainChunkMeshDataReceiver,
             components::TerrainChunkMeshingState,
+            materials::terrain_material::TerrainMaterial,
             visual::{TerrainChunkLogic, TerrainChunkMesh, TerrainChunkVisual},
         },
     },
@@ -26,9 +27,10 @@ pub fn receive_chunk_load_requests(
     for msg in load_events.read() {
         if let Some(entity) = chunks.get(&msg.coord) {
             let world_pos = msg.coord.to_world_pos(chunk_size);
-            commands
-                .entity(entity)
-                .insert((TerrainChunkMeshingState::Meshing, Transform::from_translation(world_pos)));
+            commands.entity(entity).insert((
+                TerrainChunkMeshingState::Meshing,
+                Transform::from_translation(world_pos),
+            ));
             debug!(
                 "frame count: {} Chunk {:?} load request received, set meshing state to Meshing",
                 frame_count.0, msg.coord
@@ -46,7 +48,7 @@ pub fn receive_chunk_mesh_data(
         With<TerrainChunk>,
     >,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<TerrainMaterial>>,
     frame_count: Res<FrameCount>,
 ) {
     while let Ok(mesh_data) = mesh_data_receiver.try_recv() {
@@ -60,12 +62,7 @@ pub fn receive_chunk_mesh_data(
             }
 
             let mesh_handle = meshes.add(mesh_data.mesh);
-
-            let material_handle = materials.add(StandardMaterial {
-                base_color: Color::WHITE,
-                perceptual_roughness: 1.0,
-                ..Default::default()
-            });
+            let material_handle = materials.add(TerrainMaterial::default());
 
             commands
                 .entity(mesh_data.chunk_entity)
