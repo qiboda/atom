@@ -92,10 +92,9 @@ fn biome_height(biome_type: f32, noise_val: f32) -> f32 {
 /// 根据世界坐标和 biome 纹理计算密度场值
 /// 对 biome 纹理 2x2 邻域采样，双线性混合密度值
 fn get_terrain_noise(location: vec3f) -> f32 {
-    let noise_val = open_simplex_3d_with_seed(location, 232u);
     let terrain_size = terrain_chunk_info.chunk_min_location_size.w;
     let terrain_uv = (location.xz + terrain_size * 0.5) / terrain_size;
-
+    let biome_tex_size = vec2f(textureDimensions(biome_map_texture));
     // 2x2 邻域中心的 texel 坐标
     let tex_center = terrain_uv * biome_tex_size - 0.5;
     let base = floor(tex_center);

@@ -27,11 +27,7 @@ use crate::{
     chunks::{
         chunk::TerrainChunkCoord,
         mesh::{
-            components::TerrainChunkMeshingState,
-            compute::{
-                mesh_compute::TerrainChunkComputeState,
-                types::TerrainChunkVerticesIndicesCount,
-            },
+            components::TerrainChunkMeshingState, compute::types::TerrainChunkVerticesIndicesCount,
         },
     },
     terrain::setting::TerrainSetting,
@@ -301,21 +297,24 @@ impl TerrainChunkMeshBuffers {
     pub fn set_buffers_data(&mut self, context: TerrainChunkMeshBufferCreateContext) {
         let _span = info_span!("terrain chunk main buffers write buffers data").entered();
 
-        // 使用全局体素配置
         let voxel_size = context.terrain_setting.get_voxel_size();
+        let chunk_size = context.terrain_setting.get_chunk_size();
         let voxel_num = context.terrain_setting.get_voxel_count_in_compute();
 
-        let chunk_size = context.terrain_setting.get_chunk_size();
         let chunk_min = context.terrain_chunk_coord.to_world_pos(chunk_size);
-        let terrain_size = context.terrain_setting.get_terrain_size();
-        info!("chunk {:?} terrain_size={:.1}, voxel_size={:.1}, voxel_num={}", chunk_min, terrain_size, voxel_size, voxel_num);
-        self.terrain_chunk_info_buffer.push(&TerrainChunkInfo {
-            chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, terrain_size),
-            voxel_size,
-            voxel_num,
-            qef_threshold: context.terrain_setting.qef_solver_threshold,
-            qef_stddev: context.terrain_setting.qef_stddev,
-        });
+
+        {
+            let _span = info_span!("terrain chunk main chunk info buffers write buffer").entered();
+
+            // 重置 chunk 信息
+            self.terrain_chunk_info_buffer.push(&TerrainChunkInfo {
+                chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, context.terrain_setting.get_terrain_size()),
+                voxel_size,
+                voxel_num,
+                qef_threshold: context.terrain_setting.qef_solver_threshold,
+                qef_stddev: context.terrain_setting.qef_stddev,
+            });
+        }
 
         {
             let _span =
@@ -430,8 +429,8 @@ pub struct TerrainChunkMeshBufferCreateContext<'a> {
     pub terrain_chunk_coord: TerrainChunkCoord,
     pub terrain_setting: &'a TerrainSetting,
     pub render_entity: Entity,
-    pub lod_level: u32,
 }
+
 pub struct TerrainChunkMeshBufferBindingsBuilder<'a> {
     pub current_index: usize,
 
@@ -513,56 +512,60 @@ impl TerrainChunkMeshBufferBindings {
         );
     }
 }
+
 pub(crate) fn prepare_mesh_buffers(
-    query: Query<(Entity, &TerrainChunkCoord, &TerrainChunkMeshingState, &TerrainChunkComputeState)>,
+    query: Query<(Entity, &TerrainChunkCoord, &TerrainChunkMeshingState)>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
     terrain_setting: Res<TerrainSetting>,
     mut mesh_buffers: ResMut<TerrainChunkMeshBuffers>,
 ) {
     mesh_buffers.clear();
+
     mesh_buffers.set_stride(&terrain_setting);
 
     let mut meshing_chunk_count = 0;
-    for (entity, _coord, state, compute_state) in query.iter() {
-        if *state != TerrainChunkMeshingState::Meshing
-            || *compute_state == TerrainChunkComputeState::Done
-        {
+    for (entity, _coord, state) in query.iter() {
+        if *state != TerrainChunkMeshingState::Meshing {
             continue;
         }
+
         meshing_chunk_count += 1;
-        let mut b = TerrainChunkMeshBufferBindings::default();
-        b.rebuild_binding_size(TerrainChunkMeshBufferBindingsBuilder {
+
+        // 为每个正在网格化的 Chunk 准备缓冲区绑定信息
+        let mut buffer_bindings = TerrainChunkMeshBufferBindings::default();
+        let builder = TerrainChunkMeshBufferBindingsBuilder {
             current_index: meshing_chunk_count,
             terrain_setting: &terrain_setting,
             mesh_buffers: &mesh_buffers,
-        });
-        mesh_buffers.insert_terrain_chunk_buffer_bindings(entity, b);
+        };
+        buffer_bindings.rebuild_binding_size(builder);
+        mesh_buffers.insert_terrain_chunk_buffer_bindings(entity, buffer_bindings);
     }
 
     if meshing_chunk_count == 0 {
         return;
     }
 
-    mesh_buffers.reserve_buffers(&TerrainChunkMeshBufferReserveContext {
+    let context = TerrainChunkMeshBufferReserveContext {
         render_device: &render_device,
         render_queue: &render_queue,
         terrain_setting: &terrain_setting,
         instance_num: meshing_chunk_count,
-    });
+    };
+    mesh_buffers.reserve_buffers(&context);
 
-    for (entity, coord, state, compute_state) in query.iter() {
-        if *state != TerrainChunkMeshingState::Meshing
-            || *compute_state == TerrainChunkComputeState::Done
-        {
+    for (entity, coord, state) in query.iter() {
+        if state != &TerrainChunkMeshingState::Meshing {
             continue;
         }
-        mesh_buffers.set_buffers_data(TerrainChunkMeshBufferCreateContext {
+
+        let context = TerrainChunkMeshBufferCreateContext {
             terrain_chunk_coord: *coord,
             terrain_setting: &terrain_setting,
             render_entity: entity,
-            lod_level: 0,
-        });
+        };
+        mesh_buffers.set_buffers_data(context);
     }
 
     mesh_buffers.write_dynamic_buffers(&render_device, &render_queue);
