@@ -169,6 +169,20 @@ pub struct TerrainChunkVerticesIndicesCountVec {
     pub vertices_indices_count: Vec<TerrainChunkVerticesIndicesCount>,
 }
 
+/// 传递给 GPU compute shader 的地图配置
+#[repr(C)]
+#[derive(ShaderType, Default, Clone, Copy, Debug, Pod, Zeroable)]
+pub struct TerrainMapConfig {
+    /// 地形的最大高度
+    pub terrain_height: f32,
+    /// 一个像素代表的地图大小（米）
+    pub pixel_size: f32,
+    /// 最小温度（摄氏度）
+    pub temperature_min: f32,
+    /// 最大温度（摄氏度）
+    pub temperature_max: f32,
+}
+
 #[cfg(test)]
 mod tests {
     use super::TerrainChunkVertexInfo;

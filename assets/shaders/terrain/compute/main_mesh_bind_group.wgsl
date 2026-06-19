@@ -30,15 +30,10 @@ var<storage, read_write> mesh_vertices_indices_count: TerrainChunkVerticesIndice
 // @group(1) @binding(1)
 // var<storage, read> csg_operations: array<TerrainChunkCSGOperation>;
 
-// @group(2) @binding(0)
-// var<uniform> map_config: TerrainMapConfig;
+@group(1) @binding(0)
+var<uniform> map_config: TerrainMapConfig;
 
-// @group(2) @binding(1)
-// var height_map_texture: texture_2d<f32>;
-// @group(2) @binding(2)
-// var height_map_sampler: sampler;
-
-// @group(2) @binding(3)
-// var biome_map_texture: texture_2d<u32>;
-// @group(2) @binding(4)
-// var biome_map_sampler: sampler;
+@group(1) @binding(1)
+var biome_map_texture: texture_2d<f32>;
+@group(1) @binding(2)
+var biome_map_sampler: sampler;

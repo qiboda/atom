@@ -139,19 +139,14 @@ fn compute_vertices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
     let v4 = u32(voxel_vertex_values[value_index_4] >= 0.0);
     let v5 = u32(voxel_vertex_values[value_index_5] >= 0.0);
     let v6 = u32(voxel_vertex_values[value_index_6] >= 0.0);
-    let v7 = u32(voxel_vertex_values[value_index_7] >= 0.0);
-    let side_0 = pack4xU8(vec4u(v0, v1, v2, v3));
-    let side_1 = pack4xU8(vec4u(v4, v5, v6, v7));
-    mesh_vertices[vertex_index].voxel_side = vec2u(side_0, side_1);
-
-    let voxel_biome_0 = get_biome_type_by_location(voxel_min_location + vec3f(0.0, 0.0, 0.0));
-    let voxel_biome_1 = get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, 0.0, 0.0));
-    let voxel_biome_2 = get_biome_type_by_location(voxel_min_location + vec3f(0.0, terrain_chunk_info.voxel_size, 0.0));
-    let voxel_biome_3 = get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size, 0.0));
-    let voxel_biome_4 = get_biome_type_by_location(voxel_min_location + vec3f(0.0, 0.0, terrain_chunk_info.voxel_size));
-    let voxel_biome_5 = get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, 0.0, terrain_chunk_info.voxel_size));
-    let voxel_biome_6 = get_biome_type_by_location(voxel_min_location + vec3f(0.0, terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size));
-    let voxel_biome_7 = get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size));
+    let voxel_biome_0 = u32(get_biome_type_by_location(voxel_min_location + vec3f(0.0, 0.0, 0.0)));
+    let voxel_biome_1 = u32(get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, 0.0, 0.0)));
+    let voxel_biome_2 = u32(get_biome_type_by_location(voxel_min_location + vec3f(0.0, terrain_chunk_info.voxel_size, 0.0)));
+    let voxel_biome_3 = u32(get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size, 0.0)));
+    let voxel_biome_4 = u32(get_biome_type_by_location(voxel_min_location + vec3f(0.0, 0.0, terrain_chunk_info.voxel_size)));
+    let voxel_biome_5 = u32(get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, 0.0, terrain_chunk_info.voxel_size)));
+    let voxel_biome_6 = u32(get_biome_type_by_location(voxel_min_location + vec3f(0.0, terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size)));
+    let voxel_biome_7 = u32(get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size)));
 
     let voxel_biome_00 = pack4xU8(vec4u(voxel_biome_0, voxel_biome_1, voxel_biome_2, voxel_biome_3));
     let voxel_biome_01 = pack4xU8(vec4u(voxel_biome_4, voxel_biome_5, voxel_biome_6, voxel_biome_7));

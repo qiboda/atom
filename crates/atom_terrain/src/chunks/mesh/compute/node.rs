@@ -217,6 +217,14 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 .expect("Failed to get main mesh bind group"),
                             dynamic_offset_mesh.as_slice(),
                         );
+                        pass.set_bind_group(
+                            1,
+                            main_bind_groups
+                                .map_bind_group
+                                .as_ref()
+                                .expect("Failed to get map bind group"),
+                            &[],
+                        );
                         pass.set_pipeline(voxel_vertex_pipeline);
                         pass.dispatch_workgroups(
                             voxel_vertex_or_edge_workgroup_size,
@@ -237,6 +245,14 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 .as_ref()
                                 .expect("Failed to get main mesh bind group"),
                             dynamic_offset_mesh.as_slice(),
+                        );
+                        pass.set_bind_group(
+                            1,
+                            main_bind_groups
+                                .map_bind_group
+                                .as_ref()
+                                .expect("Failed to get map bind group"),
+                            &[],
                         );
                         pass.set_pipeline(cross_points_pipeline);
                         pass.dispatch_workgroups(
@@ -259,6 +275,14 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 .expect("Failed to get main mesh bind group"),
                             dynamic_offset_mesh.as_slice(),
                         );
+                        pass.set_bind_group(
+                            1,
+                            main_bind_groups
+                                .map_bind_group
+                                .as_ref()
+                                .expect("Failed to get map bind group"),
+                            &[],
+                        );
                         pass.set_pipeline(vertices_pipeline);
                         pass.dispatch_workgroups(
                             voxel_workgroup_size,
@@ -279,6 +303,14 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                                 .as_ref()
                                 .expect("Failed to get main mesh bind group"),
                             dynamic_offset_mesh.as_slice(),
+                        );
+                        pass.set_bind_group(
+                            1,
+                            main_bind_groups
+                                .map_bind_group
+                                .as_ref()
+                                .expect("Failed to get map bind group"),
+                            &[],
                         );
                         pass.set_pipeline(indices_pipeline);
                         pass.dispatch_workgroups(

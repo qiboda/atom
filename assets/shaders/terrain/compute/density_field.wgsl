@@ -2,12 +2,9 @@
 
 // #import terrain::csg::csg_utils::apply_csg_operations
 #import terrain::main_mesh_bind_group::{ 
-    // csg_operations,
     map_config,
-    // height_map_texture,
-    // height_map_sampler,
-    // biome_map_sampler,
-    // biome_map_texture,
+    biome_map_texture,
+    biome_map_sampler,
     terrain_chunk_info
 }
 
@@ -64,36 +61,63 @@ fn sdf_stair_slope(p: vec3<f32>) -> f32 {
     return cube(sloped_p, step_box_size);
 }
 
+
+/// 根据 Rust BiomeType (0-5) 返回 biome 高度
+/// 0=海洋, 1=森林, 2=沙漠, 3=平原, 4=山地, 5=沼泽
+fn biome_height(biome_type: f32, noise_val: f32) -> f32 {
+    if biome_type == 0.0 {
+        return -0.4;                         // 海洋 — 平坦海床
+    } else if biome_type == 1.0 {
+        return 0.1 + noise_val * 2.0;        // 森林 — 起伏丘陵
+    } else if biome_type == 2.0 {
+        return 0.02 + abs(noise_val) * 3.0;  // 沙漠 — 沙丘
+    } else if biome_type == 3.0 {
+        return 0.05 + noise_val * 2.0;       // 平原 — 平缓起伏
+    } else if biome_type == 4.0 {
+        return 0.5 + noise_val * 10.0;       // 山地 — 高峰
+    } else if biome_type == 5.0 {
+        return 0.02 + noise_val * 1.5;       // 沼泽 — 低平
+    }
+    return 0.0;  // 默认
+}
+/// 根据世界坐标和 biome 纹理计算密度场值
+/// 对 biome 纹理 2x2 邻域采样，双线性混合密度值
 fn get_terrain_noise(location: vec3f) -> f32 {
-    // let density_value = plane(location, vec3f(0.0, 1.0, 1.0), -1.0);
-    // let loc = location + vec3f(6.0, 6.0, 6.0);
-    // let density_value = cube(loc, vec3f(14.0, 14.0, 14.0));
+    let terrain_size = terrain_chunk_info.chunk_min_location_size.w;
+    let terrain_uv = (location.xz + terrain_size * 0.5) / terrain_size;
+    let biome_tex_size = vec2f(textureDimensions(biome_map_texture));
 
-    // let pos = location.xz / map_config.pixel_size;
+    // 2x2 邻域中心的 texel 坐标
+    let tex_center = terrain_uv * biome_tex_size - 0.5;
+    let base = floor(tex_center);
+    let frac = fract(tex_center);
+    let max_coord = biome_tex_size - 1.0;
 
-    // let height_humidity_temperature = textureSampleLevel(map_height_climate_texture, map_height_climate_sampler, pos, 0.0).xyz;
+    // 四个角的 texel 坐标，钳位防止越界
+    let t00 = vec2u(clamp(base + vec2f(0.0, 0.0), vec2f(0.0), max_coord));
+    let t01 = vec2u(clamp(base + vec2f(0.0, 1.0), vec2f(0.0), max_coord));
+    let t10 = vec2u(clamp(base + vec2f(1.0, 0.0), vec2f(0.0), max_coord));
+    let t11 = vec2u(clamp(base + vec2f(1.0, 1.0), vec2f(0.0), max_coord));
 
-    // let terrain_size = terrain_chunk_info.chunk_min_location_size.w;
-    // let terrain_uv = (location.xz + terrain_size * 0.5) / terrain_size;
-    // let height = textureSampleLevel(height_map_texture, height_map_sampler, terrain_uv, 0.0).x * map_config.terrain_height;
+    // 从纹理中采样四个角的 biome 类型
+    let b00 = textureLoad(biome_map_texture, t00, 0).x;
+    let b01 = textureLoad(biome_map_texture, t01, 0).x;
+    let b10 = textureLoad(biome_map_texture, t10, 0).x;
+    let b11 = textureLoad(biome_map_texture, t11, 0).x;
 
-    // var density_value = location.y - height;
-    var density_value = location.y;
+    // 世界坐标处的噪声值（四个采样点共享）
+    let noise_val = open_simplex_3d_with_seed(location, 232u);
 
-    // let height_comp = textureGather(0, height_map_texture, height_map_sampler, terrain_uv);
-    // let max_height = max(max(height_comp.x, height_comp.y), max(height_comp.z, height_comp.w));
-    // let min_height = min(min(height_comp.x, height_comp.y), min(height_comp.z, height_comp.w));
-    // if max_height - min_height > 0.2 && location.y < max_height * map_config.terrain_height && location.y > min_height * map_config.terrain_height {
-    //     // let offset = open_simplex_3d_with_seed(location, 232u) * 2.0;
-    //     let offset_x = open_simplex_2d_fbm_with_seed(location.xy, 232u, 1u, 1.0, 0.2, 1.0) * 1.0;
-    //     // let offset_z = open_simplex_2d_fbm_with_seed(location.zy, 232u, 1u, 1.0, 0.2, 1.0) * 1.0;
-    //     density_value += max(offset_x, 0.0);
-    // }
+    // 对四个角分别计算密度值（高度 - biome_height）
+    let d00 = location.y - biome_height(b00, noise_val);
+    let d01 = location.y - biome_height(b01, noise_val);
+    let d10 = location.y - biome_height(b10, noise_val);
+    let d11 = location.y - biome_height(b11, noise_val);
 
-    // return sdf_stair_slope(location);
-
-    // return apply_csg_operations(location, density_value);
-    return density_value - 5.0f;
+    // 双线性混合四个角的密度值
+    let d0 = mix(d00, d01, frac.y);
+    let d1 = mix(d10, d11, frac.y);
+    return mix(d0, d1, frac.x);
 }
 
 // void value( float v00, float v01, float v10, float v11, vec2 u, out float t, out vec2 grad ) {  
@@ -108,25 +132,11 @@ fn get_terrain_noise(location: vec3f) -> f32 {
 // }
 
 
-fn get_biome_type_by_location(location: vec3f) -> u32 {
-    // let terrain_size = terrain_chunk_info.chunk_min_location_size.w;
-    // let terrain_uv = (location.xz + terrain_size * 0.5) / terrain_size;
-
-    // let height = textureSampleLevel(height_map_texture, height_map_sampler, terrain_uv, 0.0).x * map_config.terrain_height;
-    // let biome_size = vec2f(textureDimensions(biome_map_texture));
-    // var map_biome = textureLoad(biome_map_texture, vec2u(terrain_uv * biome_size), 0).x;
-
-    // // let coord = vec2u(biome_size * terrain_uv);
-
-    // // let chunk_size = terrain_chunk_info.voxel_size * f32(terrain_chunk_info.voxel_num);
-    // // let chunk_uv = (location.xz + vec2f(chunk_size, chunk_size) * 0.5) / chunk_size;
-
-    // var biome = select(map_biome, TerrainType_Ocean, map_biome == 255u);
-    // biome = select(TerrainType_Underground, biome, location.y >= height);
-    // return biome;
-    if (location.y < 0.0) {
-        return 0;
-    } else {
-        return 1;
-    }
+/// 根据世界坐标采样 biome 纹理，返回 biome 类型
+fn get_biome_type_by_location(location: vec3f) -> f32 {
+    let terrain_size = terrain_chunk_info.chunk_min_location_size.w;
+    let terrain_uv = (location.xz + terrain_size * 0.5) / terrain_size;
+    let biome_tex_size = vec2f(textureDimensions(biome_map_texture));
+    let tex_coord = clamp(terrain_uv * biome_tex_size, vec2f(0.0), biome_tex_size - 1.0);
+    return textureLoad(biome_map_texture, vec2u(tex_coord), 0).x;
 }

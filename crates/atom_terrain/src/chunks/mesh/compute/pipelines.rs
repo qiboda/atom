@@ -6,15 +6,17 @@ use bevy::{
     render::{
         render_resource::{
             BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntries,
-            CachedComputePipelineId, ComputePipelineDescriptor, PipelineCache, ShaderStages,
-            binding_types::{storage_buffer, uniform_buffer},
+            CachedComputePipelineId, ComputePipelineDescriptor, PipelineCache,
+            SamplerBindingType, ShaderStages, TextureSampleType,
+            binding_types::{sampler, storage_buffer, texture_2d, uniform_buffer},
         },
         renderer::RenderDevice,
     },
 };
 
 use super::types::{
-    TerrainChunkInfo, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VoxelEdgeCrossPoint,
+    TerrainChunkInfo, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount,
+    TerrainMapConfig, VoxelEdgeCrossPoint,
 };
 
 shaders_plugin!(
@@ -51,8 +53,7 @@ shaders_plugin!(
 #[derive(Resource)]
 pub struct TerrainChunkPipelines {
     pub compute_bind_group_layout: BindGroupLayout,
-    // pub compute_csg_bind_group_layout: BindGroupLayout,
-    // pub compute_map_bind_group_layout: BindGroupLayout,
+    pub compute_map_bind_group_layout: BindGroupLayout,
     pub compute_voxel_vertex_values_pipeline: CachedComputePipelineId,
     pub compute_voxel_cross_points_pipeline: CachedComputePipelineId,
     pub compute_vertices_pipeline: CachedComputePipelineId,
@@ -107,30 +108,29 @@ pub fn setup_terrain_chunk_pipelines(
     //     ),
     // );
 
-    // let compute_map_bind_group_layout_desc = BindGroupLayoutDescriptor::new(
-    //     "terrain chunk mesh map bind group layout",
-    //     &BindGroupLayoutEntries::sequential(
-    //         ShaderStages::COMPUTE,
-    //         (
-    //             // uniform_buffer::<TerrainSketchGpuConfig>(false),
-    //             // height map texture
-    //             texture_2d(TextureSampleType::Float { filterable: true }),
-    //             // height map sampler
-    //             sampler(SamplerBindingType::Filtering),
-    //             // biome map texture
-    //             texture_2d(TextureSampleType::Uint),
-    //             // biome map sampler
-    //             sampler(SamplerBindingType::NonFiltering),
-    //         ),
-    //     ),
-    // );
+    let compute_map_bind_group_layout_desc = BindGroupLayoutDescriptor::new(
+        "terrain chunk mesh map bind group layout",
+        &BindGroupLayoutEntries::sequential(
+            ShaderStages::COMPUTE,
+            (
+                uniform_buffer::<TerrainMapConfig>(false),
+                texture_2d(TextureSampleType::Float { filterable: false }),
+                sampler(SamplerBindingType::NonFiltering),
+            ),
+        ),
+    );
+
+    let compute_map_bind_group_layout = render_device.create_bind_group_layout(
+        compute_map_bind_group_layout_desc.label.as_ref(),
+        &compute_map_bind_group_layout_desc.entries,
+    );
 
     // create pipeline
 
     let compute_vertices_pipeline =
         pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
             label: Some("terrain chunk compute vertices pipeline".into()),
-            layout: vec![compute_bind_group_layout_desc.clone()],
+            layout: vec![compute_bind_group_layout_desc.clone(), compute_map_bind_group_layout_desc.clone()],
             push_constant_ranges: Vec::new(),
             shader: mesh_compute_shaders.mesh_compute_vertices_shader.clone(),
             shader_defs: vec![],
@@ -140,7 +140,7 @@ pub fn setup_terrain_chunk_pipelines(
     let compute_indices_pipeline =
         pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
             label: Some("terrain chunk compute indices pipeline".into()),
-            layout: vec![compute_bind_group_layout_desc.clone()],
+            layout: vec![compute_bind_group_layout_desc.clone(), compute_map_bind_group_layout_desc.clone()],
             push_constant_ranges: Vec::new(),
             shader: mesh_compute_shaders.mesh_compute_indices_shader.clone(),
             shader_defs: vec![],
@@ -151,7 +151,7 @@ pub fn setup_terrain_chunk_pipelines(
     let compute_voxel_vertex_values_pipeline =
         pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
             label: Some("terrain chunk voxel vertex values pipeline".into()),
-            layout: vec![compute_bind_group_layout_desc.clone()],
+            layout: vec![compute_bind_group_layout_desc.clone(), compute_map_bind_group_layout_desc.clone()],
             push_constant_ranges: Vec::new(),
             shader: mesh_compute_shaders
                 .mesh_compute_voxel_vertex_values_shader
@@ -164,7 +164,7 @@ pub fn setup_terrain_chunk_pipelines(
     let compute_voxel_cross_points_pipeline =
         pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
             label: Some("terrain chunk voxel cross points pipeline".into()),
-            layout: vec![compute_bind_group_layout_desc.clone()],
+            layout: vec![compute_bind_group_layout_desc.clone(), compute_map_bind_group_layout_desc.clone()],
             push_constant_ranges: Vec::new(),
             shader: mesh_compute_shaders
                 .mesh_compute_voxel_cross_points_shader
@@ -184,14 +184,7 @@ pub fn setup_terrain_chunk_pipelines(
 
     let pipelines = TerrainChunkPipelines {
         compute_bind_group_layout,
-        // compute_csg_bind_group_layout: render_device.create_bind_group_layout(
-        //     Some(compute_csg_bind_group_layout_desc.label.as_ref()),
-        //     compute_csg_bind_group_layout_desc.entries.as_slice(),
-        // ),
-        // compute_map_bind_group_layout: render_device.create_bind_group_layout(
-        //     Some(compute_map_bind_group_layout_desc.label.as_ref()),
-        //     compute_map_bind_group_layout_desc.entries.as_slice(),
-        // ),
+        compute_map_bind_group_layout,
         compute_voxel_vertex_values_pipeline,
         compute_voxel_cross_points_pipeline,
         compute_vertices_pipeline,
