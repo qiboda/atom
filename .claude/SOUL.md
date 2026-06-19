@@ -14,6 +14,12 @@
 
 **注释用中文。** Rust 代码的 doc comment 和 Shader 注释混合中英文，非平凡逻辑用中文解释原因。
 
+
+## Habit: Log Before Fixing
+
+遭遇架构不一致、工具链问题、或流程阻碍时，**先记录到根目录 `TENSIONS.md` 对应分类下**，再处理。不跳过信号采集直接修复。
+分类：GPU 管线 / 数据对齐 / 工具链 / 流程 / 已知退化。
+
 ## Boundaries
 
 - 不删除关键性能代码（GPU pipeline、buffer 管理）。
