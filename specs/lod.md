@@ -1,17 +1,25 @@
 # Spec: 地形 LOD
 
 > Phase 4 · 规划中
+> 依赖: Phase 3 (材质系统完成)
+
+## 现状
+
+- `TerrainMaterialUniform` 已有 `lod: u32` 字段
+- Chunk 系统基于 `TerrainChunkCoord` 索引
+- Mesh compute 管线已在 GPU 端运行
+- `TerrainSetting` 控制 voxel_size, voxel_count, terrain_size
 
 ## 目标
 
-远距离 Chunk 使用更粗粒度的 mesh，支撑更大可视范围而不增加 GPU 负担。
+远距离 Chunk 使用更粗粒度的 mesh，支撑更大可视范围。
 
 ## 规则
 
-LOD 层级由 Chunk 到相机的距离决定：
+LOD 层级由 Chunk 到相机距离决定：
 
-| 距离范围 | Voxel 大小 | Chunk 分辨率 |
-|---------|-----------|-------------|
+| 距离 | Voxel 大小 | Chunk 分辨率 |
+|------|-----------|-------------|
 | 0-64m | 0.5m (base) | 16³ |
 | 64-128m | 1.0m (2×) | 8³ |
 | 128-256m | 2.0m (4×) | 4³ |
@@ -19,7 +27,7 @@ LOD 层级由 Chunk 到相机的距离决定：
 
 ## Chunk 接缝
 
-相邻不同 LOD 之间的接缝必须无缝。方案：外扩一个 voxel 计算，确保边界顶点位于 shared edge 上。已有 `doc/_archive/技术/地形/随机地形.md` 中的经验可参考。
+相邻不同 LOD 的接缝必须无缝。利用现有 17³ 计算网格（外扩一个 voxel）确保边界顶点在 shared edge 上。
 
 ## 验收
 
@@ -29,5 +37,6 @@ LOD 层级由 Chunk 到相机的距离决定：
 
 ## 约束
 
-- LOD 切换仅在 Chunk 重新 mesh 时发生（加载卸载边界）
+- LOD 切换在 Chunk 重新 mesh 时触发
+- 复用 `TerrainMaterialUniform.lod` 字段
 - Compute shader 需支持可变分辨率

@@ -1,14 +1,24 @@
 # Spec: Biome 驱动材质
 
 > Phase 3 · 规划中
+> 依赖: Phase 2 (biome 密度场集成完成)
+
+## 现状
+
+- `TerrainMaterial` 已实现标准 Bevy `Material` trait (`crates/atom_terrain/src/chunks/mesh/materials/terrain_material.rs`)
+- `BIOME_VERTEX_ATTRIBUTE` 已定义: `MeshVertexAttribute "biome" index 100, VertexFormat::Uint32`
+- `TerrainMaterialUniform` 已有字段: `lod, roughness, metallic, flags, reflectance, attenuation_distance, attenuation_color`
+- `TerrainMaterialPlugin` 已注册 `MaterialPlugin::<TerrainMaterial>`
+- TerrainMaterialShader 已有 shader handles: `triplanar, biplanar, terrain_material`
+- Planar shaders 已存在: `triplanar.wgsl`, `biplanar.wgsl`
 
 ## 目标
 
-根据 biome 类型为地形顶点赋予材质，不同 biome 有不同外观。
+根据 biome 类型为顶点赋予不同材质参数，不同 biome 有不同外观。利用已有的 `BIOME_VERTEX_ATTRIBUTE` 在 render shader 中根据 biome 混合。
 
 ## 规则
 
-每 biome 一个材质定义，渲染时根据顶点 biome 权重混合。
+每 biome 一组 PBR 参数，渲染时根据顶点 biome_vertex_attribute 选择/混合。
 
 | Biome | 主色 | 粗糙度 | 金属度 |
 |-------|------|--------|--------|
@@ -19,15 +29,15 @@
 | Mountains | 灰白 | 0.8 | 0.1 |
 | Swamp | 暗绿棕 | 0.92 | 0.0 |
 
-顶点权重混合: `albedo = Σ(w_i * mat_i.albedo)`，其中 w_i 是该顶点周边 8 个 voxel 角的 biome 类型比例。
+在 `terrain_type.wgsl` render shader 中读取 `biome` vertex attribute，设置对应的 roughness/metallic/albedo。
 
 ## 验收
 
 - 不同 biome 有不同颜色和 PBR 参数
-- 边界处颜色平滑过渡
-- 不增加 draw call
+- 利用已存在的 `BIOME_VERTEX_ATTRIBUTE` 传递 biome 信息
 
 ## 约束
 
-- 只改 render shader，不改 compute pipeline
-- 用已存在的 TerrainMaterial 扩展，不引入新材质系统
+- 只改 render shader + TerrainMaterial::specialize()，不改 compute pipeline
+- 复用已存在的 `MaterialPlugin::<TerrainMaterial>` 和 planar shaders
+- `TerrainMaterialUniform` 的 roughness/metallic 字段可复用

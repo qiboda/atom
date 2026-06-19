@@ -26,55 +26,121 @@
 
 ## 通用模式
 
-### ECS 依赖注入
+### ECS 状态与阶段驱动
 
 ```rust
-// Resource 注入
-app.insert_resource(MyResource::default());
+// TerrainState 驱动阶段转换
+#[derive(States)]
+enum TerrainState { None, LoadAssets, GenerateTerrainRegion, GenerateTerrainMesh }
 
-// 自定义 SystemParam
-fn my_system(reader: TableReader<TbItem>, barrier: AllAssetBarrier) { .. }
+// TerrainSystems 链式执行
+#[derive(SystemSet)]
+enum TerrainSystems { ChunkLoader, ApplyCSG, GenerateChunk }
 
-// ExtractResource — 渲染世界同步
+app.configure_sets(Update, (
+    TerrainSystems::ChunkLoader,
+    TerrainSystems::ApplyCSG,
+    TerrainSystems::GenerateChunk,
+).chain().run_if(in_state(TerrainState::GenerateTerrainMesh)));
+```
+
+### 渲染世界同步
+
+```rust
+// ExtractResource — Resource 同步到渲染世界
 #[derive(Resource, Clone, ExtractResource)]
 struct TerrainSetting { .. }
+app.add_plugins(ExtractResourcePlugin::<TerrainSetting>::default());
+
+// ExtractComponent — Component 同步到渲染世界
+#[derive(Component, ExtractComponent)]
+struct TerrainChunk;
+app.add_plugins(ExtractComponentPlugin::<TerrainChunk>::default());
+
+// crossbeam channel — 渲染→主世界 Mesh 数据传输
+let (s, r) = crossbeam::channel::unbounded();
+app.insert_resource(TerrainChunkMeshDataReceiver(r));
+// render world 持有 Sender, main world 持有 Receiver
+```
+
+### 自定义 SystemParam
+
+```rust
+fn my_system(reader: TableReader<TbItem>, barrier: AllAssetBarrier) { .. }
+```
+
+### Shader 资源管理
+
+通过 `shaders_plugin!` 宏自动生成 Shader 加载 Plugin 和 Resource:
+
+```rust
+// 通用形式 (自定义模块前缀)
+shaders_plugin!(
+    Terrain, Material,
+    (
+        triplanar_shader -> "shaders/terrain/planar/triplanar.wgsl",
+        biplanar_shader -> "shaders/terrain/planar/biplanar.wgsl",
+    )
+);
+// 生成: TerrainMaterialShaders Resource + TerrainMaterialShadersPlugin Plugin
+
+```
+
+Shader 路径相对于 `assets/`。Shader 修改后 `file_watcher` 自动热重载，不需要重启。
+
+### Material (标准 Bevy Material trait)
+
+```rust
+#[derive(AsBindGroup, Clone, Asset, TypePath)]
+#[bind_group_data(TerrainMaterialKey)]
+#[uniform(0, TerrainMaterialUniform)]
+pub struct TerrainMaterial { .. }
+
+impl Material for TerrainMaterial {
+    fn fragment_shader() -> ShaderRef {
+        "shaders/terrain/render/terrain_type.wgsl".into()
+    }
+    fn vertex_shader() -> ShaderRef { ShaderRef::Default }
+    // specialize, alpha_mode, ...
+}
+
+app.add_plugins(MaterialPlugin::<TerrainMaterial>::default());
 ```
 
 ### GPU Buffer 生命周期
 
 ```rust
-// atom_render 显式管理
-let mut buf: SharedStorageBuffer<T> = ..;
+use atom_render::shared_buffer::SharedStorageBuffer;
+
+// 基础用法
+let mut buf = SharedStorageBuffer::<MyType>::new(alignment);
 buf.reserve(count);   // 分配
 buf.write(&data);     // 写入
-buf.push();           // 提交
+buf.push();           // 提交到 GPU
 buf.clear();          // 重置
+
+// 分级上传 (Staging)
+use atom_render::staged_buffer::SharedStagedBuffer;
+let mut staged = SharedStagedBuffer::<MyType>::new(alignment);
+staged.write(&data);           // 写入 CPU staging buffer
+staged.flush(render_queue);    // 提交到 GPU
+let gpu_buf: &SharedStorageBuffer<MyType> = staged.get_gpu_buffer();
 ```
-
-### Shader 资源管理
-
-通过 `atom_shader_lib` 宏自动生成 Shader 加载 Plugin:
-
-```rust
-atom_shaders_plugin!(
-    MyShadersPlugin,
-    "noise/core/fbm.wgsl" -> fbm,
-    "noise/core/open_simplex.wgsl" -> open_simplex,
-);
-// 生成 MyShadersPlugin: Plugin (自动 load_asset + insert_resource)
-// 生成 MyShaders Resource: { fbm: Handle<Shader>, open_simplex: Handle<Shader> }
-```
-
-Shader 路径相对于 `assets/shaders/`。Shader 修改后 `file_watcher` 自动热重载，不需要重启。
 
 ### LayerTag 分层标签
 
 ```rust
-let tag = LayerTag::new("ability.stun.fire");
+use atom_layertag::builder::LayerTagBuilder;
 
-tag.exact_match(&other);      // 完全相等
-tag.partial_match(&other);    // 前缀匹配 (a.b 匹配 a.b.c)
-tag.same_prefix(&other);      // 同前缀
+let tag = LayerTagBuilder::new()
+    .add_tag(Tag::new("ability"))
+    .add_tag(Tag::new("stun"))
+    .add_tag(Tag::new("fire"))
+    .build_single();
+
+tag.exact_match(&other);      // 完全相等 (a.b.c == a.b.c)
+tag.partial_match(&other);    // 前缀匹配 (a.b 匹配 a.b.c, a.b.c.d 等)
+tag.same_prefix(&other);      // 同前缀迭代器
 
 // 两种容器 (均为 Bevy Component)
 SingleLayerTagContainer  // HashSet<LayerTag> — 去重语义
@@ -86,12 +152,55 @@ LayerTag 需先通过 `LayerTagRegistry` 注册才能使用。配置表 `TbLayer
 ### 数据表访问
 
 ```rust
+// TableReader<T> 按 key 查询
 fn read_table(reader: TableReader<TbItem>) {
-    let item: Arc<Item> = reader.get_row("item_id")?; // MapTable 按键查询
+    let item: Arc<Item> = reader.get_row("item_id")?;
 }
 ```
 
-数据表加载流程: `DataTablePlugin` → `Wait` → `Loading` → `Loaded` → `TablesLoadedEvent`。
+加载流程: `DataTablePlugin` → `TableLoadingState::Wait` → `Loading` → `Loaded` → `TablesLoadedEvent` (Message)。
+`AllAssetBarrier` 管理命名 barrier，`TablesBarrierStatus` 跟踪表加载状态。
+
+### TerrainSetting
+
+```rust
+#[derive(Resource, Clone, ExtractResource)]
+pub struct TerrainSetting {
+    pub chunk_setting: TerrainChunkSetting,  // { voxel_size, voxel_count }
+    pub size_setting: TerrainSizeSetting,    // { height_range, horizontal_range }
+    pub qef_solver: bool,
+    pub qef_solver_threshold: f32,
+    pub qef_stddev: f32,
+}
+
+// Getters
+setting.get_voxel_count_in_chunk()    // -> u32
+setting.get_voxel_count_in_compute()  // -> u32 (chunk 缝合边界多 1)
+setting.get_chunk_size()              // -> f32 (世界单位)
+setting.get_voxel_size()              // -> f32
+setting.get_terrain_size()            // -> f32
+setting.get_height_range_size()       // -> RangeInclusive<f32>
+```
+
+### atom_ability (EffectGraph 系统)
+
+```rust
+// 子模块: graph/, ability/, buff/, attribute/, stateset/
+// AbilitySubsystemPlugin 聚合所有子插件
+
+app.add_plugins(AbilitySubsystemPlugin);
+// 内部注册: AbilityPlugin, BuffPlugin, EffectGraphPlugin,
+//           EffectNodePlugin, EffectNodeAbilityEntryPlugin
+
+// 核心概念
+// EffectGraph: 节点图执行引擎 (blackboard, context, events, executor)
+// StateLayerTagRegistry: LayerTag 状态注册表 (由 TbLayerTag 配置表初始化)
+// StateSet: 运行时状态集合
+
+// 典型用法
+AbilityBundle::new(ability_row, &state_registry);  // 从配置行构建
+BuffBundle::new(buff_row, &state_registry);
+```
 
 ### 异步模式
 
