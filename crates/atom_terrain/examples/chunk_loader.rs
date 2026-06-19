@@ -96,9 +96,15 @@ fn setup(mut commands: Commands) {
             margin: 1,
         },
         FlyCam,
-        // FreeCamera {
-        //     ..Default::default()
-        // },
+    ));
+
+    // 光源
+    commands.spawn((
+        DirectionalLight {
+            illuminance: 10000.0,
+            ..default()
+        },
+        Transform::from_xyz(50.0, 50.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
     info!("地形系统启动完成");

@@ -111,6 +111,9 @@ fn apply_light(
 }
 
 fn compute_color(in: TerrainVertexOutput) -> vec4f {
+    // DEBUG: 强制返回红色，验证 mesh 是否渲染
+    return vec4f(1.0, 0.0, 0.0, 1.0);
+
     var color = vec4<f32>(0.0);
     color += terrain_material.biome_colors[0].base_color * in.biome_weights_a.x;
     color += terrain_material.biome_colors[1].base_color * in.biome_weights_a.y;

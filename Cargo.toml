@@ -84,13 +84,8 @@ debug-assertions = false
 
 [profile.release]
 # Compile the entire crate as one unit.
-# Slows compile times, marginal improvements.
 codegen-units = 1
-# Do a second optimization pass over the entire program, including dependencies.
-# Slows compile times, marginal improvements.
+# 跨 crate 二次优化
 lto = "thin"
-
-# Release 优化 + debug 符号，崩溃时有完整堆栈
-[profile.release-debug]
-inherits = "release"
+# 崩溃时输出完整堆栈
 debug = 1
