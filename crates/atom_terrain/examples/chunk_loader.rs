@@ -71,7 +71,7 @@ fn main() {
 
     // 全局显示线框
     app.insert_resource(WireframeConfig {
-        global: true,
+        global: false,
         ..Default::default()
     });
 
@@ -106,7 +106,6 @@ fn setup(mut commands: Commands) {
         },
         Transform::from_xyz(50.0, 50.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-
     info!("地形系统启动完成");
 }
 

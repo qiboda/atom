@@ -280,7 +280,6 @@ impl Material for TerrainMaterial {
             Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
             BIOME_VERTEX_ATTRIBUTE.at_shader_location(2),
         ])?;
-        descriptor.vertex.buffers = vec![vertex_layout];
         Ok(())
     }
 }

@@ -17,15 +17,8 @@ bevy = { version = "0.18", features = [
     # "free_camera",
     "bevy_remote",
 ] }
-# Set max log levels. This helps avoid unwanted low-severity log spam, which can affect performance.
-log = { version = "0.4", features = [
-    # "max_level_debug",
-    "release_max_level_warn",
-] }
-tracing = { version = "0.1", features = [
-    # "max_level_debug",
-    "release_max_level_warn",
-] }
+log = { version = "0.4", features = ["max_level_trace"] }
+tracing = { version = "0.1", features = ["max_level_trace"] }
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
     "fmt",
