@@ -17,6 +17,7 @@ use crate::{
         components::TerrainChunkMeshingState,
         compute::mesh_compute::TerrainChunkMeshComputePlugin,
         handler::{receive_chunk_load_requests, receive_chunk_mesh_data},
+        materials::TerrainMaterialPlugin,
     },
     terrain::TerrainSystems,
 };
@@ -46,7 +47,7 @@ impl Plugin for TerrainChunkMeshingPlugin {
         // 因为数据是在渲染的最后发送的，因此在主线程中接收数据的系统放在 First 阶段，衔接比较紧。
         .add_systems(First, (receive_chunk_mesh_data).chain());
 
-        // 渲染子系统
         app.add_plugins(TerrainChunkMeshComputePlugin);
+        app.add_plugins(TerrainMaterialPlugin);
     }
 }
