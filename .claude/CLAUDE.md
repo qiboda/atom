@@ -124,7 +124,6 @@ impl From<bool> for IsosurfaceSide  // true → Outside, false → Inside
 | `atom_shader_lib` | `shaders_plugin!` 宏加载 Shader + 调试形状渲染 (`shapes/`) + GPU 数值测试 (`gpu_test/`) |
 | `atom_cel_shader` | 赛璐璐材质 + 背面描边 (`CelMaterial`, `BackFacingMaterial` — 标准 Material trait) |
 | `atom_ability` | EffectGraph 技能系统 (`graph/`, `effect/`, `buff/`, `ability/`, `attribute/`, `stateset/`)，含 `StateLayerTagRegistry`, `StateSet`, 节点图+黑板+上下文 |
-| `atom_ability_editor` | 技能编辑器 |
 | `atom_datatables` | Luban 数据表系统 (状态机 `Wait→Loading→Loaded`, `AllAssetBarrier`+`AsyncComputeTaskPool` 异步加载, `TableReader` SystemParam) |
 | `atom_layertag` | 分层标签系统 (`LayerTag` 点分隔路径, `exact_match()`/`partial_match()`/`same_prefix()`, `LayerTagBuilder`, `LayerTagRegistry`) |
 | `atom_math` | 三角形数学工具（重心坐标、光栅化） |
