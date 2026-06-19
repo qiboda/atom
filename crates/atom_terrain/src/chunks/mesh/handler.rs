@@ -1,28 +1,34 @@
 use bevy::{diagnostic::FrameCount, prelude::*};
 
-use crate::chunks::{
-    chunk::{TerrainChunk, TerrainChunkCoord},
-    loader::{TerrainChunkLoadMsg, TerrainLoadedChunks},
-    mesh::{
-        channel::TerrainChunkMeshDataReceiver,
-        components::TerrainChunkMeshingState,
-        visual::{TerrainChunkLogic, TerrainChunkMesh, TerrainChunkVisual},
+use crate::{
+    chunks::{
+        chunk::{TerrainChunk, TerrainChunkCoord},
+        loader::{TerrainChunkLoadMsg, TerrainLoadedChunks},
+        mesh::{
+            channel::TerrainChunkMeshDataReceiver,
+            components::TerrainChunkMeshingState,
+            visual::{TerrainChunkLogic, TerrainChunkMesh, TerrainChunkVisual},
+        },
     },
+    terrain::setting::TerrainSetting,
 };
 
 /// 接收 chunk 加载请求，初始化网格状态
 /// 通常不需要处理卸载请求，会自动卸载所有关联的实体
 pub fn receive_chunk_load_requests(
     mut commands: Commands,
+    terrain_setting: Res<TerrainSetting>,
     mut load_events: MessageReader<TerrainChunkLoadMsg>,
     chunks: Res<TerrainLoadedChunks>,
     frame_count: Res<FrameCount>,
 ) {
+    let chunk_size = terrain_setting.get_chunk_size();
     for msg in load_events.read() {
         if let Some(entity) = chunks.get(&msg.coord) {
+            let world_pos = msg.coord.to_world_pos(chunk_size);
             commands
                 .entity(entity)
-                .insert((TerrainChunkMeshingState::Meshing,));
+                .insert((TerrainChunkMeshingState::Meshing, Transform::from_translation(world_pos)));
             debug!(
                 "frame count: {} Chunk {:?} load request received, set meshing state to Meshing",
                 frame_count.0, msg.coord

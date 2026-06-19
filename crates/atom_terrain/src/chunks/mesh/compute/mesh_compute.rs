@@ -23,23 +23,27 @@ use bevy::{
     },
 };
 
-use crate::chunks::{
-    chunk::{TerrainChunk, TerrainChunkCoord},
-    mesh::{
-        channel::{TerrainChunkMeshData, TerrainChunkMeshDataSender},
-        components::TerrainChunkMeshingState,
-        compute::{
-            bind_group::{TerrainChunkBindGroups, prepare_mesh_bind_group},
-            buffer::{TerrainChunkMeshBuffers, prepare_mesh_buffers},
-            node::{TerrainChunkMeshComputeLabel, TerrainChunkMeshComputeNode},
-            pipelines::{
-                TerrainChunkDensityFieldComputeShadersPlugin, TerrainChunkMeshComputeShadersPlugin,
-                TerrainChunkVoxelComputeShadersPlugin, setup_terrain_chunk_pipelines,
+use crate::{
+    chunks::{
+        chunk::{TerrainChunk, TerrainChunkCoord},
+        mesh::{
+            channel::{TerrainChunkMeshData, TerrainChunkMeshDataSender},
+            components::TerrainChunkMeshingState,
+            compute::{
+                bind_group::{TerrainChunkBindGroups, prepare_mesh_bind_group},
+                buffer::{TerrainChunkMeshBuffers, prepare_mesh_buffers},
+                types::{TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount},
             },
-            types::TerrainChunkVertexInfo,
+            materials::terrain_material::BIOME_VERTEX_ATTRIBUTE,
         },
-        materials::terrain_material::BIOME_VERTEX_ATTRIBUTE,
     },
+    terrain::setting::TerrainSetting,
+};
+
+use super::node::{TerrainChunkMeshComputeLabel, TerrainChunkMeshComputeNode};
+use super::pipelines::{
+    setup_terrain_chunk_pipelines, TerrainChunkDensityFieldComputeShadersPlugin,
+    TerrainChunkMeshComputeShadersPlugin, TerrainChunkVoxelComputeShadersPlugin,
 };
 
 // bitflags::bitflags! {
@@ -169,6 +173,7 @@ fn update_terrain_chunk_compute_state(
 
 fn map_and_read_buffer(
     render_device: Res<RenderDevice>,
+    terrain_setting: Res<TerrainSetting>,
     mut query: Query<(
         Entity,
         &TerrainChunkMeshingState,
@@ -273,7 +278,7 @@ fn map_and_read_buffer(
                 Mesh::ATTRIBUTE_POSITION,
                 vertices
                     .iter()
-                    .map(|x| x.vertex_location.xyz())
+                    .map(|x| x.vertex_location.xyz() * terrain_setting.get_voxel_size())
                     .collect::<Vec<Vec3>>(),
             );
             mesh.insert_attribute(
