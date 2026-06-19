@@ -7,7 +7,6 @@ use crate::{
         mesh::{
             channel::TerrainChunkMeshDataReceiver,
             components::TerrainChunkMeshingState,
-            materials::terrain_material::TerrainMaterial,
             visual::{TerrainChunkLogic, TerrainChunkMesh, TerrainChunkVisual},
         },
     },
@@ -48,40 +47,32 @@ pub fn receive_chunk_mesh_data(
         With<TerrainChunk>,
     >,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<TerrainMaterial>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     frame_count: Res<FrameCount>,
 ) {
     while let Ok(mesh_data) = mesh_data_receiver.try_recv() {
         if let Ok((chunk_coord, visual)) = chunk_coords_query.get(mesh_data.chunk_entity) {
             if visual.is_some() {
-                error!(
-                    "frame count: {} Entity: {:?} Chunk {:?} already has a visual entity, skipping mesh data application",
-                    frame_count.0, mesh_data.chunk_entity, *chunk_coord
-                );
+                error!("frame count: {} Entity: {:?} Chunk {:?} already has a visual", frame_count.0, mesh_data.chunk_entity, *chunk_coord);
                 continue;
             }
-
             let mesh_handle = meshes.add(mesh_data.mesh);
-            let material_handle = materials.add(TerrainMaterial::default());
-
-            commands
-                .entity(mesh_data.chunk_entity)
+            let material_handle = materials.add(StandardMaterial {
+                base_color: Color::WHITE,
+                perceptual_roughness: 1.0,
+                ..Default::default()
+            });
+            commands.entity(mesh_data.chunk_entity)
                 .insert(TerrainChunkMeshingState::Idle)
                 .with_related::<TerrainChunkLogic>((
-                    Name::new(format!("Terrain Chunk Mesh_{:?}", *chunk_coord)),
+                    Name::new(format!("Chunk Mesh_{:?}", *chunk_coord)),
                     Mesh3d(mesh_handle),
                     MeshMaterial3d(material_handle),
                     TerrainChunkMesh,
                 ));
-            info!(
-                "frame count: {} Chunk {:?} mesh data received and visual entity created.",
-                frame_count.0, *chunk_coord
-            );
+            info!("frame count: {} Chunk {:?} mesh received", frame_count.0, *chunk_coord);
         } else {
-            error!(
-                "frame count: {} Received mesh data for unknown chunk entity: {:?}, maybe it was unloaded before mesh creation.",
-                frame_count.0, mesh_data.chunk_entity
-            );
+            error!("frame count: {} Unknown chunk {:?}", frame_count.0, mesh_data.chunk_entity);
         }
     }
 }
