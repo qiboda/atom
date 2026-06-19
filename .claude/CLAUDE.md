@@ -86,7 +86,7 @@ Pipeline: `generate_centroid_diagram` → `generate_area_data` → `generate_bio
 ```rust
 TerrainSetting {
     chunk_setting: TerrainChunkSetting { voxel_size: 0.5, voxel_count: 16 },  // chunk = 8m
-    size_setting: TerrainSizeSetting { height_range: -8..=16, horizontal_range: 0..=512 },
+    size_setting: TerrainSizeSetting { height_range: -8..=16, horizontal_range: 0..=511 },
     qef_solver: true, qef_solver_threshold: 0.1, qef_stddev: 0.1,
 }
 ```

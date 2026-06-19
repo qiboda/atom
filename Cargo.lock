@@ -392,13 +392,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atom_ability_editor"
-version = "0.1.0"
-dependencies = [
- "bevy",
-]
-
-[[package]]
 name = "atom_cel_shader"
 version = "0.1.0"
 dependencies = [

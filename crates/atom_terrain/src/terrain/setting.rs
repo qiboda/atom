@@ -57,7 +57,7 @@ impl Default for TerrainSizeSetting {
     fn default() -> Self {
         Self {
             height_range: -8..=16,
-            horizontal_range: 0..=512,
+            horizontal_range: 0..=511,
         }
     }
 }
@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn test_terrain_size() {
         let ts = TerrainSetting::default();
-        // horizontal_range = 0..=512, so size = (512 - 0 + 1) * 8.0 = 4104.0
-        assert_eq!(ts.get_terrain_size(), 4104.0);
+        // horizontal_range = 0..=511, so size = 512 * 8.0 = 4096.0
+        assert_eq!(ts.get_terrain_size(), 4096.0);
     }
 }
