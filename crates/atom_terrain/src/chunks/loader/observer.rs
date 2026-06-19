@@ -10,6 +10,11 @@ use bevy::prelude::*;
 /// - `terrain_height_range`：垂直加载范围（相对于观察者 chunk Y 的偏移）
 /// - `margin`：卸载宽松边界，防止边界抖动
 
+/// 地形观察者标记组件。挂载于摄像机实体上，驱动 chunk 动态加载。
+#[derive(Component, Debug, Default)]
+#[require(Transform)]
+pub struct TerrainObserver;
+
 #[derive(Component, Debug)]
 #[require(TerrainObserver)]
 pub struct TerrainObserverConfig {
