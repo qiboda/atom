@@ -1,3 +1,8 @@
+/// QEF 顶点计算（第三 pass — Marching Cubes）。
+///
+/// 对每个体素收集 12 条边的交叉点数据，构建立方 QEF 矩阵，
+/// 通过 `quadric_minimizer` 求顶点位置，写入 `mesh_vertices` 缓冲区，
+/// 原子递增 `vertices_indices_count.vertices_count`。
 #import quadric::{Quadric, quadric_default, probabilistic_plane_quadric, quadric_minimizer, quadric_add_quadric, quadric_residual_l2_error}
 #import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR, VOXEL_MATERIAL_TABLE}
 

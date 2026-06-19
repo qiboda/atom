@@ -1,3 +1,13 @@
+/// 地形 chunk 的 GPU compute 网格生成。
+///
+/// 四 pass compute pipeline：
+/// 1. `compute_voxel_vertices`  — 计算每个 grid 点的密度场值
+/// 2. `compute_voxel_cross_points` — 边交叉点二分查找
+/// 3. `compute_vertices` — QEF 顶点计算 + Marching Cubes
+/// 4. `compute_indices` — 三角形索引生成
+///
+/// `map_and_read_buffer` 在 compute 完成后从 GPU 读回顶点/索引，创建 Mesh 并通过 channel 发送。
+/// `update_terrain_chunk_compute_state` 跟踪 Meshing→Computing→Done 状态转换。
 use atom_pqef::AtomQuadricPlugin;
 use atom_shader_lib::AtomShaderLibPluginGroups;
 use bevy::{

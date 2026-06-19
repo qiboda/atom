@@ -1,3 +1,12 @@
+/// 密度场计算。
+///
+/// 使用 biome 纹理驱动的程序化地形生成：
+/// 1. 世界坐标 → UV（terrain_size 来自 TerrainChunkInfo.w）
+/// 2. 2×2 邻域采样 biome 类型（Luma8 → ×255 恢复 u8）
+/// 3. 双线性混合四个角的 `location.y - biome_height(biome, noise)`
+///
+/// biome_height：6 种 biome（海洋/森林/沙漠/平原/山地/沼泽），各有不同高度函数。
+/// get_biome_type_by_location：单点 biome 查询（用于顶点材质属性）。
 #define_import_path terrain::density_field
 
 // #import terrain::csg::csg_utils::apply_csg_operations

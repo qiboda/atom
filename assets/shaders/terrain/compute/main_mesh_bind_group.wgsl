@@ -1,3 +1,9 @@
+/// Compute shader bind group 布局定义。
+///
+/// @group(0)：terrain_chunk_info uniform + 存储 buffer（密度值、交叉点、顶点、索引等）
+/// @group(1)：map_config uniform + biome_map_texture + sampler
+///
+/// 四个 compute pass 共用 @group(0)，后三个 pass 额外绑定 @group(1) 用于 biome 查询。
 #define_import_path terrain::main_mesh_bind_group
 
 #import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, TerrainMapConfig}

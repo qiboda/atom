@@ -1,3 +1,8 @@
+/// 三角形索引生成（第四 pass — Marching Cubes 索引表）。
+///
+/// 根据每个体素 8 个顶点的密度值符号（≥0 为外部），
+/// 查 Marching Cubes 256 项索引表生成三角形索引，
+/// 原子递增 `vertices_indices_count.indices_count`。
 #import terrain::voxel_utils::{get_voxel_vertex_index, get_voxel_index}
 
 #import terrain::main_mesh_bind_group::{

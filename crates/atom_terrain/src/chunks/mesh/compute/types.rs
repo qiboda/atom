@@ -1,3 +1,10 @@
+/// GPU compute 与 CPU 之间共享的数据类型定义。
+///
+/// 所有 `#[derive(ShaderType)]` 结构体都需要与 WGSL shader 中的对应类型保持布局一致。
+/// 关键类型：
+/// - `TerrainChunkInfo`：chunk 坐标/size/体素参数 → WGSL `TerrainChunkInfo`
+/// - `TerrainChunkVerticesIndicesCount`：GPU 原子计数器读回
+/// - `TerrainMapConfig`：biome 地图参数（高度/像素分辨率/温度）
 /// 这些类型需要和shader中的struct保持一致
 use bevy::{
     math::{UVec2, UVec4, Vec3, Vec4},

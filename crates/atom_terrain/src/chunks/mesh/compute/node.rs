@@ -1,3 +1,8 @@
+/// Render Graph compute node。
+///
+/// `TerrainChunkMeshComputeNode::run` 对每个 `Meshing` 状态的 chunk
+/// 依次 dispatch 四个 compute pass，完成后标记 `Computing→Done`。
+/// Pipeline 未就绪时 skip 当前 pass（等待异步编译）。
 use bevy::{
     diagnostic::FrameCount,
     ecs::system::lifetimeless::{Read, Write},

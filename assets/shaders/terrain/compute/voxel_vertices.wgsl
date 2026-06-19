@@ -1,3 +1,7 @@
+/// 体素顶点密度值计算（第一 pass）。
+///
+/// 对 (voxel_num+1)^3 个 grid 点，调用 `get_terrain_noise` 计算密度值，
+/// 写入 `voxel_vertex_values` 数组供后续 pass 使用。
 /// 计算体素顶点的密度值以及
 #import terrain::voxel_type::{TerrainChunkInfo}
 #import terrain::density_field::get_terrain_noise

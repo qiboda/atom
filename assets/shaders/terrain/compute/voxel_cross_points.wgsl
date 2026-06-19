@@ -1,3 +1,8 @@
+/// 体素边交叉点计算。
+///
+/// 对每个 grid 点，沿 X/Y/Z 三条边检查密度值符号变化，
+/// 若符号不同则二分查找 (8 迭代) 找到 isosurface 交叉点位置 + 法线。
+/// 无交叉的边写入 cross_location.w=0（被顶点 shader 跳过）。
 /// 计算体素顶点的密度值以及
 #import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, VOXEL_MATERIAL_AIR_INDEX}
 #import terrain::voxel_utils::{get_voxel_vertex_index, get_voxel_edge_index, get_voxel_material_type_index, central_gradient}

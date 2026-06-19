@@ -2,14 +2,13 @@ use std::ops::RangeInclusive;
 
 use bevy::prelude::*;
 
-/**
- * 观察者组件，标记实体为地形观察者。
- * 这主要用于实现地形的动态加载和卸载。
- * 目前假定总是挂在摄像机上，因为使用了摄像机的Frustum进行可见性判断。
- */
-#[derive(Component, Debug, Default)]
-#[require(Transform)]
-pub struct TerrainObserver;
+/// 地形观察者组件。
+///
+/// `TerrainObserver` 标记实体为地形加载中心（通常是摄像机）。
+/// `TerrainObserverConfig` 控制加载范围：
+/// - `terrain_load_radius`：水平加载半径（chunk 单位）
+/// - `terrain_height_range`：垂直加载范围（相对于观察者 chunk Y 的偏移）
+/// - `margin`：卸载宽松边界，防止边界抖动
 
 #[derive(Component, Debug)]
 #[require(TerrainObserver)]

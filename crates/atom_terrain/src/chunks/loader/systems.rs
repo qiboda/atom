@@ -1,3 +1,11 @@
+/// 地形 chunk 加载/卸载系统。
+///
+/// 核心逻辑：以 TerrainObserver（通常挂在摄像机上）为中心，
+/// 在 `terrain_load_radius` 水平范围 + `terrain_height_range` 垂直范围内加载 chunk，
+/// 在 `margin` 扩容后的范围外卸载 chunk。
+///
+/// - `get_terrain_height_range`：全局 height_range 与 observer 配置的交集
+/// - `update_grid_chunks`：每帧计算需要加载/卸载的 chunk 列表并发送消息
 use std::ops::RangeInclusive;
 
 use bevy::{platform::collections::HashSet, prelude::*};

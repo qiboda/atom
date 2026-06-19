@@ -1,3 +1,14 @@
+/// GPU compute 缓冲区管理。
+///
+/// 为每个 chunk entity 分配一组 GPU buffer，包括：
+/// - 密度场值 buffer（`voxel_vertex_values`）
+/// - 边交叉点 buffer（`voxel_cross_points`）
+/// - 顶点/索引/顶点映射 buffer
+/// - 计数器 buffer（`vertices_indices_count`）
+/// - uniform buffer（`terrain_chunk_info`）
+///
+/// `set_buffers_data` 在 chunk 加载时填充初始数据（坐标、size、计数器归零）。
+/// `reserve_buffers` 预分配 buffer slot。
 use atom_render::{
     shared_buffer::{SharedStorageBuffer, SharedUniformBuffer},
     staged_buffer::SharedStagedBuffer,
