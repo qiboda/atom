@@ -322,7 +322,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                 }
             }
         }
-
         {
             let _span = info_span!(
                 "TerrainChunkMeshComputeNode::run stage all",

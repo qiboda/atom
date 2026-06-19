@@ -58,6 +58,9 @@ pub enum TerrainChunkComputeState {
     Done,
 }
 
+
+
+
 #[derive(Debug, Default)]
 pub struct TerrainChunkMeshComputePlugin;
 
@@ -107,7 +110,6 @@ impl Plugin for TerrainChunkMeshComputePlugin {
                 Render,
                 map_and_read_buffer.in_set(RenderSystems::PostCleanup),
             );
-
         let render_world = render_app.world_mut();
         let mesh_compute_node = TerrainChunkMeshComputeNode::from_world(render_world);
 
@@ -170,7 +172,8 @@ fn map_and_read_buffer(
     let mut chunk_meshing_count = 0;
     for (_entity, state, _coord, compute_state, _main_entity) in query.iter() {
         if *state == TerrainChunkMeshingState::Meshing
-            && *compute_state == TerrainChunkComputeState::Sending
+            && (*compute_state == TerrainChunkComputeState::Sending
+                || *compute_state == TerrainChunkComputeState::Computing)
         {
             chunk_meshing_count += 1;
         }

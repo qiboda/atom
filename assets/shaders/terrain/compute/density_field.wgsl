@@ -100,10 +100,11 @@ fn get_terrain_noise(location: vec3f) -> f32 {
     let t11 = vec2u(clamp(base + vec2f(1.0, 1.0), vec2f(0.0), max_coord));
 
     // 从纹理中采样四个角的 biome 类型
-    let b00 = textureLoad(biome_map_texture, t00, 0).x;
-    let b01 = textureLoad(biome_map_texture, t01, 0).x;
-    let b10 = textureLoad(biome_map_texture, t10, 0).x;
-    let b11 = textureLoad(biome_map_texture, t11, 0).x;
+    // Luma8 在 GPU 上归一化为 [0, 1]，乘以 255 恢复原始 u8 值
+    let b00 = textureLoad(biome_map_texture, t00, 0).x * 255.0;
+    let b01 = textureLoad(biome_map_texture, t01, 0).x * 255.0;
+    let b10 = textureLoad(biome_map_texture, t10, 0).x * 255.0;
+    let b11 = textureLoad(biome_map_texture, t11, 0).x * 255.0;
 
     // 世界坐标处的噪声值（四个采样点共享）
     let noise_val = open_simplex_3d_with_seed(location, 232u);
@@ -138,5 +139,5 @@ fn get_biome_type_by_location(location: vec3f) -> f32 {
     let terrain_uv = (location.xz + terrain_size * 0.5) / terrain_size;
     let biome_tex_size = vec2f(textureDimensions(biome_map_texture));
     let tex_coord = clamp(terrain_uv * biome_tex_size, vec2f(0.0), biome_tex_size - 1.0);
-    return textureLoad(biome_map_texture, vec2u(tex_coord), 0).x;
+    return textureLoad(biome_map_texture, vec2u(tex_coord), 0).x * 255.0;
 }
