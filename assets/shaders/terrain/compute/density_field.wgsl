@@ -104,11 +104,9 @@ fn get_terrain_noise(location: vec3f) -> f32 {
     let t10 = textureLoad(biome_map_texture, tex_base + vec2i(1, 0), 0).x * 255.0;
     let t01 = textureLoad(biome_map_texture, tex_base + vec2i(0, 1), 0).x * 255.0;
     let t11 = textureLoad(biome_map_texture, tex_base + vec2i(1, 1), 0).x * 255.0;
-    // 2D FBM 噪声（高度图风格，XZ 平面），多 octave 增加细节
-    let noise_val = open_simplex_2d_fbm_with_seed(location.xz, 232u, 3u, 0.003, 2.0, 0.5);
+    // 2D FBM 噪声（高度图风格，XZ 平面），频率 0.08 在 chunk 尺度可见
+    let noise_val = open_simplex_2d_fbm_with_seed(location.xz, 232u, 3u, 0.08, 2.0, 0.5);
     let h00 = biome_height(t00, noise_val);
-    let h10 = biome_height(t10, noise_val);
-    let h01 = biome_height(t01, noise_val);
     let h11 = biome_height(t11, noise_val);
     // 双线性混合 biome 密度值
     let h0 = mix(h00, h10, fx);
