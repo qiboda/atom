@@ -1,8 +1,3 @@
-/// Render Graph compute node。
-///
-/// `TerrainChunkMeshComputeNode::run` 对每个 `Meshing` 状态的 chunk
-/// 依次 dispatch 四个 compute pass，完成后标记 `Computing→Done`。
-/// Pipeline 未就绪时 skip 当前 pass（等待异步编译）。
 use bevy::{
     diagnostic::FrameCount,
     ecs::system::lifetimeless::{Read, Write},
@@ -54,79 +49,71 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
         self.query.update_archetypes(world);
 
         let frame_count = world.resource::<FrameCount>().0;
+        warn!("NODE_UPDATE_START frame {}", frame_count);
+
         let Some(pipelines) = world.get_resource::<TerrainChunkPipelines>() else {
+            warn!("No TerrainChunkPipelines yet");
             return;
         };
         let pipeline_cache = world.resource::<PipelineCache>();
 
-        let Some(_voxel_vertex_pipeline) =
+        let Some(_voxel_vertex) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_voxel_vertex_values_pipeline)
         else {
             warn!("Voxel vertex compute pipeline not ready yet.");
             return;
         };
 
-        let Some(_cross_points_pipeline) =
+        let Some(_cross_points) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_voxel_cross_points_pipeline)
         else {
-            if let CachedPipelineState::Err(pipeline_cache_error) =
-                pipeline_cache
-                    .get_compute_pipeline_state(pipelines.compute_voxel_cross_points_pipeline)
+            if let CachedPipelineState::Err(e) =
+                pipeline_cache.get_compute_pipeline_state(pipelines.compute_voxel_cross_points_pipeline)
             {
-                error!(
-                    "Failed to get voxel cross points compute pipeline: {:?}",
-                    pipeline_cache_error
-                );
+                error!("Failed to get voxel cross points: {:?}", e);
             }
-            warn!("Voxel cross points compute pipeline not ready yet.");
+            warn!("Voxel cross points pipeline not ready yet.");
             return;
         };
 
-        let Some(_vertices_pipeline) =
+        let Some(_vertices) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_vertices_pipeline)
         else {
-            if let CachedPipelineState::Err(pipeline_cache_error) =
+            if let CachedPipelineState::Err(e) =
                 pipeline_cache.get_compute_pipeline_state(pipelines.compute_vertices_pipeline)
             {
-                error!(
-                    "Failed to get mesh vertices compute pipeline: {:?}",
-                    pipeline_cache_error
-                );
+                error!("Failed to get mesh vertices: {:?}", e);
             }
-            warn!("Mesh vertices compute pipeline not ready yet.");
+            warn!("Mesh vertices pipeline not ready yet.");
             return;
         };
 
-        let Some(_indices_pipeline) =
+        let Some(_indices) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_indices_pipeline)
         else {
-            if let CachedPipelineState::Err(pipeline_cache_error) =
+            if let CachedPipelineState::Err(e) =
                 pipeline_cache.get_compute_pipeline_state(pipelines.compute_indices_pipeline)
             {
-                error!(
-                    "Failed to get mesh indices compute pipeline: {:?}",
-                    pipeline_cache_error
-                );
+                error!("Failed to get mesh indices: {:?}", e);
             }
-            warn!("Mesh indices compute pipeline not ready yet.");
+            warn!("Mesh indices pipeline not ready yet.");
             return;
         };
+
+        warn!("NODE_UPDATE_PIPELINES_READY frame {}", frame_count);
 
         self.to_compute_entities.clear();
         for (entity, state, coord, mut compute_state) in self.query.iter_mut(world) {
-            info!(
-                "frame count: {} Terrain chunk mesh compute node check: entity: {:?}, coord: {:?}, state: {:?}, compute_state: {:?}",
-                frame_count, entity, coord, *state, *compute_state
+            warn!(
+                "NODE_UPDATE: entity {:?} coord {:?} state {:?} compute {:?}",
+                entity, coord, *state, *compute_state
             );
             if *state == TerrainChunkMeshingState::Meshing
                 && *compute_state == TerrainChunkComputeState::Computing
             {
                 self.to_compute_entities.push(entity);
                 *compute_state = TerrainChunkComputeState::Sending;
-                debug!(
-                    "frame count: {} Terrain chunk {:?} coord: {:?} added to compute list.",
-                    frame_count, entity, coord
-                );
+                warn!("NODE_TO_COMPUTE: coord {:?}", coord);
             }
         }
     }
@@ -141,12 +128,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
             return Ok(());
         }
 
-        let _span = info_span!(
-            "TerrainChunkMeshComputeNode::run",
-            count = self.to_compute_entities.len()
-        )
-        .entered();
-
         let pipeline_cache = world.resource::<PipelineCache>();
         let pipelines = world.resource::<TerrainChunkPipelines>();
         let mesh_buffers = world.resource::<TerrainChunkMeshBuffers>();
@@ -155,119 +136,55 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
 
         let voxel_vertex_pipeline = pipeline_cache
             .get_compute_pipeline(pipelines.compute_voxel_vertex_values_pipeline)
-            .expect("Voxel vertex compute pipeline should be ready");
+            .expect("Voxel vertex pipeline should be ready");
         let cross_points_pipeline = pipeline_cache
             .get_compute_pipeline(pipelines.compute_voxel_cross_points_pipeline)
-            .expect("Voxel cross points compute pipeline should be ready");
+            .expect("Cross points pipeline should be ready");
         let vertices_pipeline = pipeline_cache
             .get_compute_pipeline(pipelines.compute_vertices_pipeline)
-            .expect("Mesh vertices compute pipeline should be ready");
+            .expect("Vertices pipeline should be ready");
         let indices_pipeline = pipeline_cache
             .get_compute_pipeline(pipelines.compute_indices_pipeline)
-            .expect("Mesh indices compute pipeline should be ready");
+            .expect("Indices pipeline should be ready");
 
-        {
-            let _span = info_span!(
-                "TerrainChunkMeshComputeNode::run compute",
-                count = self.to_compute_entities.len()
-            )
-            .entered();
+        let command_encoder = render_context.command_encoder();
+        let mut pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: "terrain chunk mesh compute pass".into(),
+            timestamp_writes: None,
+        });
 
-            let command_encoder = render_context.command_encoder();
-            let mut pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: "terrain chunk mesh compute pass".into(),
-                timestamp_writes: None,
-            });
+        for entity in self.to_compute_entities.iter() {
+            if let Ok((entity, state, coord, _compute_state)) =
+                self.query.get_manual(world, *entity)
+            {
+                assert!(*state == TerrainChunkMeshingState::Meshing);
+                warn!("COMPUTE_STARTED: coord {:?}", coord);
 
-            for entity in self.to_compute_entities.iter() {
-                let _span = info_span!("TerrainChunkMeshComputeNode::run one").entered();
+                let voxel_num = terrain_setting.get_voxel_count_in_compute();
+                let ws = 4u32;
+                let edge_wg = ((voxel_num + 1) as f32 / ws as f32).ceil() as u32;
+                let voxel_wg = (voxel_num as f32 / ws as f32).ceil() as u32;
 
-                if let Ok((entity, state, coord, _compute_state)) =
-                    self.query.get_manual(world, *entity)
-                {
-                    assert!(*state == TerrainChunkMeshingState::Meshing);
+                let offsets = mesh_buffers.get_buffers_dynamic_offset(entity);
 
-                    let _span = info_span!("TerrainChunkMeshComputeNode::run one main").entered();
+                pass.set_bind_group(0,
+                    main_bind_groups.main_mesh_bind_group.as_ref().expect("no main bind group"),
+                    offsets.as_slice());
+                pass.set_bind_group(1,
+                    main_bind_groups.map_bind_group.as_ref().expect("no map bind group"),
+                    &[]);
 
-                    debug!("terrain chunk mesh compute node run: coord: {:?}", coord);
+                pass.set_pipeline(voxel_vertex_pipeline);
+                pass.dispatch_workgroups(edge_wg, edge_wg, edge_wg);
 
-                    let voxel_num = terrain_setting.get_voxel_count_in_compute();
-                    let workspace_size_in_shader = 4;
-                    let voxel_vertex_or_edge_workgroup_size =
-                        ((voxel_num + 1) as f32 / workspace_size_in_shader as f32).ceil() as u32;
-                    let voxel_workgroup_size =
-                        (voxel_num as f32 / workspace_size_in_shader as f32).ceil() as u32;
+                pass.set_pipeline(cross_points_pipeline);
+                pass.dispatch_workgroups(edge_wg, edge_wg, edge_wg);
 
-                    let dynamic_offset_mesh = mesh_buffers.get_buffers_dynamic_offset(entity);
+                pass.set_pipeline(vertices_pipeline);
+                pass.dispatch_workgroups(voxel_wg, voxel_wg, voxel_wg);
 
-                    {
-                        let _span =
-                            info_span!("TerrainChunkMeshComputeNode::run one main voxel vertex")
-                                .entered();
-
-                        pass.set_bind_group(
-                            0,
-                            main_bind_groups
-                                .main_mesh_bind_group
-                                .as_ref()
-                                .expect("Failed to get main mesh bind group"),
-                            dynamic_offset_mesh.as_slice(),
-                        );
-                        pass.set_bind_group(
-                            1,
-                            main_bind_groups
-                                .map_bind_group
-                                .as_ref()
-                                .expect("Failed to get map bind group"),
-                            &[],
-                        );
-                        pass.set_pipeline(voxel_vertex_pipeline);
-                        pass.dispatch_workgroups(
-                            voxel_vertex_or_edge_workgroup_size,
-                            voxel_vertex_or_edge_workgroup_size,
-                            voxel_vertex_or_edge_workgroup_size,
-                        );
-                    }
-
-                    {
-                        let _span = info_span!(
-                            "TerrainChunkMeshComputeNode::run one main voxel cross points"
-                        )
-                        .entered();
-                        pass.set_pipeline(cross_points_pipeline);
-                        pass.dispatch_workgroups(
-                            voxel_vertex_or_edge_workgroup_size,
-                            voxel_vertex_or_edge_workgroup_size,
-                            voxel_vertex_or_edge_workgroup_size,
-                        );
-                    }
-
-                    {
-                        let _span = info_span!(
-                            "TerrainChunkMeshComputeNode::run one main mesh vertices"
-                        )
-                        .entered();
-                        pass.set_pipeline(vertices_pipeline);
-                        pass.dispatch_workgroups(
-                            voxel_workgroup_size,
-                            voxel_workgroup_size,
-                            voxel_workgroup_size,
-                        );
-                    }
-
-                    {
-                        let _span = info_span!(
-                            "TerrainChunkMeshComputeNode::run one main mesh indices"
-                        )
-                        .entered();
-                        pass.set_pipeline(indices_pipeline);
-                        pass.dispatch_workgroups(
-                            voxel_workgroup_size,
-                            voxel_workgroup_size,
-                            voxel_workgroup_size,
-                        );
-                    }
-                }
+                pass.set_pipeline(indices_pipeline);
+                pass.dispatch_workgroups(voxel_wg, voxel_wg, voxel_wg);
             }
         }
 
