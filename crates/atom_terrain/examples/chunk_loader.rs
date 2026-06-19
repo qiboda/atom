@@ -63,7 +63,7 @@ fn main() {
     app.add_plugins(TerrainPlugin { debug: false });
     app.insert_resource(TerrainSetting {
         size_setting: TerrainSizeSetting {
-            height_range: -1..=1,
+            height_range: -8..=8,
             ..Default::default()
         },
         ..Default::default()
@@ -92,7 +92,7 @@ fn setup(mut commands: Commands) {
         TerrainObserver,
         TerrainObserverConfig {
             terrain_load_radius: 0,
-            terrain_height_range: -3..=3,
+            terrain_height_range: -8..=8,
             margin: 1,
         },
         FlyCam,

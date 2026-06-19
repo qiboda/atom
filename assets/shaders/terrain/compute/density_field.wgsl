@@ -75,19 +75,19 @@ fn sdf_stair_slope(p: vec3<f32>) -> f32 {
 /// 0=海洋, 1=森林, 2=沙漠, 3=平原, 4=山地, 5=沼泽
 fn biome_height(biome_type: f32, noise_val: f32) -> f32 {
     if biome_type == 0.0 {
-        return -0.4;                         // 海洋 — 平坦海床
+        return -3.0;                          // 海洋 — 深海沟
     } else if biome_type == 1.0 {
-        return 0.1 + noise_val * 2.0;        // 森林 — 起伏丘陵
+        return 4.0 + noise_val * 10.0;        // 森林 — 起伏群山
     } else if biome_type == 2.0 {
-        return 0.02 + abs(noise_val) * 3.0;  // 沙漠 — 沙丘
+        return 2.0 + abs(noise_val) * 12.0;   // 沙漠 — 高沙丘
     } else if biome_type == 3.0 {
-        return 0.05 + noise_val * 2.0;       // 平原 — 平缓起伏
+        return 3.0 + noise_val * 8.0;         // 平原 — 丘陵
     } else if biome_type == 4.0 {
-        return 0.5 + noise_val * 10.0;       // 山地 — 高峰
+        return 6.0 + noise_val * 35.0;        // 山地 — 险峰
     } else if biome_type == 5.0 {
-        return 0.02 + noise_val * 1.5;       // 沼泽 — 低平
+        return 1.0 + noise_val * 5.0;         // 沼泽 — 低湿
     }
-    return 0.0;  // 默认
+    return 0.0;
 }
 /// 根据世界坐标和 biome 纹理计算密度场值
 /// 对 biome 纹理 2x2 邻域采样，双线性混合密度值
