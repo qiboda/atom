@@ -28,15 +28,16 @@ Exit: `cargo run -p atom_terrain --example chunk_loader` 生成地形网格。
 
 Exit: 不同 biome 顶点有不同 base_color；颜色混合通过 biome_weights 计算。
 
-## Phase 4 — LOD 📋
+## Phase 4 — LOD 🔨
 
 > Spec: `specs/lod.md`
 
-- [ ] 4.1 3 级 LOD 定义 (base/2×/4×)
-- [ ] 4.2 接缝处理
-- [ ] 4.3 验证：256m 可视距离，接缝不可见
+- [x] 4.1 TerrainChunkLod 组件 + from_distance + update_chunk_lod 系统
+- [x] 4.2 LOD 变更重新触发 meshing
+- [ ] 4.3 可变 compute 分辨率 (per-chunk voxel_num) — 需 buffer 重构
+- [ ] 4.4 256m 可视距离验证
 
-Exit: 远距离 Chunk 三角形数明显降低。
+Exit (当前): LOD 架构就绪，变更检测 + 重触发正常。实际分辨率切换留待 Phase 4.1。
 
 ---
 
