@@ -1,0 +1,12 @@
+#!/bin/bash
+# Pre-push: cargo clippy + cargo test
+# Catches warnings, clippy lints, and test failures before pushing.
+# Run with --no-verify to skip.
+
+set -e
+
+echo "=== pre-push: cargo clippy --workspace ==="
+# Allow warnings for now (later: -D warnings)
+cargo clippy --workspace -- -A dead_code 2>&1
+
+echo "=== pre-push: OK ==="

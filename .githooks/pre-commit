@@ -1,0 +1,11 @@
+#!/bin/bash
+# Pre-commit: cargo check workspace
+# A fast no-compile check — skips all cargo run/test/build overhead.
+# Catches type errors, missing imports, wrong signatures.
+
+set -e
+
+echo "=== pre-commit: cargo check --workspace ==="
+cargo check --workspace 2>&1
+
+echo "=== pre-commit: OK ==="
