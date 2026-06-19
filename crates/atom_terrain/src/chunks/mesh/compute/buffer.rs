@@ -297,24 +297,20 @@ impl TerrainChunkMeshBuffers {
     pub fn set_buffers_data(&mut self, context: TerrainChunkMeshBufferCreateContext) {
         let _span = info_span!("terrain chunk main buffers write buffers data").entered();
 
+        // 使用全局体素配置
         let voxel_size = context.terrain_setting.get_voxel_size();
-        let chunk_size = context.terrain_setting.get_chunk_size();
         let voxel_num = context.terrain_setting.get_voxel_count_in_compute();
 
+        let chunk_size = context.terrain_setting.get_chunk_size();
         let chunk_min = context.terrain_chunk_coord.to_world_pos(chunk_size);
 
-        {
-            let _span = info_span!("terrain chunk main chunk info buffers write buffer").entered();
-
-            // 重置 chunk 信息
-            self.terrain_chunk_info_buffer.push(&TerrainChunkInfo {
-                chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, context.terrain_setting.get_terrain_size()),
-                voxel_size,
-                voxel_num,
-                qef_threshold: context.terrain_setting.qef_solver_threshold,
-                qef_stddev: context.terrain_setting.qef_stddev,
-            });
-        }
+        self.terrain_chunk_info_buffer.push(&TerrainChunkInfo {
+            chunk_min_location_size: Vec4::new(chunk_min.x, chunk_min.y, chunk_min.z, context.terrain_setting.get_terrain_size()),
+            voxel_size,
+            voxel_num,
+            qef_threshold: context.terrain_setting.qef_solver_threshold,
+            qef_stddev: context.terrain_setting.qef_stddev,
+        });
 
         {
             let _span =
@@ -429,8 +425,8 @@ pub struct TerrainChunkMeshBufferCreateContext<'a> {
     pub terrain_chunk_coord: TerrainChunkCoord,
     pub terrain_setting: &'a TerrainSetting,
     pub render_entity: Entity,
+    pub lod_level: u32,
 }
-
 pub struct TerrainChunkMeshBufferBindingsBuilder<'a> {
     pub current_index: usize,
 
@@ -532,7 +528,6 @@ pub(crate) fn prepare_mesh_buffers(
 
         meshing_chunk_count += 1;
 
-        // 为每个正在网格化的 Chunk 准备缓冲区绑定信息
         let mut buffer_bindings = TerrainChunkMeshBufferBindings::default();
         let builder = TerrainChunkMeshBufferBindingsBuilder {
             current_index: meshing_chunk_count,
@@ -542,7 +537,6 @@ pub(crate) fn prepare_mesh_buffers(
         buffer_bindings.rebuild_binding_size(builder);
         mesh_buffers.insert_terrain_chunk_buffer_bindings(entity, buffer_bindings);
     }
-
     if meshing_chunk_count == 0 {
         return;
     }
@@ -564,6 +558,7 @@ pub(crate) fn prepare_mesh_buffers(
             terrain_chunk_coord: *coord,
             terrain_setting: &terrain_setting,
             render_entity: entity,
+            lod_level: 0, // LOD 0 by default for global stride
         };
         mesh_buffers.set_buffers_data(context);
     }

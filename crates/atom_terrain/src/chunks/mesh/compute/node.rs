@@ -53,30 +53,25 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
     fn update(&mut self, world: &mut World) {
         self.query.update_archetypes(world);
 
+        let frame_count = world.resource::<FrameCount>().0;
+        let Some(pipelines) = world.get_resource::<TerrainChunkPipelines>() else {
+            return;
+        };
         let pipeline_cache = world.resource::<PipelineCache>();
-        let pipelines = world.resource::<TerrainChunkPipelines>();
 
-        // 提前检查所有需要的管道是否准备好
         let Some(_voxel_vertex_pipeline) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_voxel_vertex_values_pipeline)
         else {
-            if let CachedPipelineState::Err(pipeline_cache_error) = pipeline_cache
-                .get_compute_pipeline_state(pipelines.compute_voxel_vertex_values_pipeline)
-            {
-                error!(
-                    "Failed to get voxel vertex compute pipeline: {:?}",
-                    pipeline_cache_error
-                );
-            }
-
             warn!("Voxel vertex compute pipeline not ready yet.");
-            return; // 管道未准备好，跳过整个节点
+            return;
         };
+
         let Some(_cross_points_pipeline) =
             pipeline_cache.get_compute_pipeline(pipelines.compute_voxel_cross_points_pipeline)
         else {
-            if let CachedPipelineState::Err(pipeline_cache_error) = pipeline_cache
-                .get_compute_pipeline_state(pipelines.compute_voxel_cross_points_pipeline)
+            if let CachedPipelineState::Err(pipeline_cache_error) =
+                pipeline_cache
+                    .get_compute_pipeline_state(pipelines.compute_voxel_cross_points_pipeline)
             {
                 error!(
                     "Failed to get voxel cross points compute pipeline: {:?}",
@@ -116,8 +111,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
             warn!("Mesh indices compute pipeline not ready yet.");
             return;
         };
-
-        let frame_count = world.resource::<FrameCount>().0;
 
         self.to_compute_entities.clear();
         for (entity, state, coord, mut compute_state) in self.query.iter_mut(world) {
@@ -160,7 +153,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
         let main_bind_groups = world.resource::<TerrainChunkBindGroups>();
         let terrain_setting = world.resource::<TerrainSetting>();
 
-        // 提前检查所有需要的管道是否准备好
         let voxel_vertex_pipeline = pipeline_cache
             .get_compute_pipeline(pipelines.compute_voxel_vertex_values_pipeline)
             .expect("Voxel vertex compute pipeline should be ready");
@@ -200,7 +192,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                     debug!("terrain chunk mesh compute node run: coord: {:?}", coord);
 
                     let voxel_num = terrain_setting.get_voxel_count_in_compute();
-                    // TODO: 先用4看看效果，之后可以测试看看2怎么样。
                     let workspace_size_in_shader = 4;
                     let voxel_vertex_or_edge_workgroup_size =
                         ((voxel_num + 1) as f32 / workspace_size_in_shader as f32).ceil() as u32;
@@ -243,22 +234,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                             "TerrainChunkMeshComputeNode::run one main voxel cross points"
                         )
                         .entered();
-                        pass.set_bind_group(
-                            0,
-                            main_bind_groups
-                                .main_mesh_bind_group
-                                .as_ref()
-                                .expect("Failed to get main mesh bind group"),
-                            dynamic_offset_mesh.as_slice(),
-                        );
-                        pass.set_bind_group(
-                            1,
-                            main_bind_groups
-                                .map_bind_group
-                                .as_ref()
-                                .expect("Failed to get map bind group"),
-                            &[],
-                        );
                         pass.set_pipeline(cross_points_pipeline);
                         pass.dispatch_workgroups(
                             voxel_vertex_or_edge_workgroup_size,
@@ -268,26 +243,10 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                     }
 
                     {
-                        let _span =
-                            info_span!("TerrainChunkMeshComputeNode::run one main mesh vertices")
-                                .entered();
-
-                        pass.set_bind_group(
-                            0,
-                            main_bind_groups
-                                .main_mesh_bind_group
-                                .as_ref()
-                                .expect("Failed to get main mesh bind group"),
-                            dynamic_offset_mesh.as_slice(),
-                        );
-                        pass.set_bind_group(
-                            1,
-                            main_bind_groups
-                                .map_bind_group
-                                .as_ref()
-                                .expect("Failed to get map bind group"),
-                            &[],
-                        );
+                        let _span = info_span!(
+                            "TerrainChunkMeshComputeNode::run one main mesh vertices"
+                        )
+                        .entered();
                         pass.set_pipeline(vertices_pipeline);
                         pass.dispatch_workgroups(
                             voxel_workgroup_size,
@@ -297,26 +256,10 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                     }
 
                     {
-                        let _span =
-                            info_span!("TerrainChunkMeshComputeNode::run one main mesh indices")
-                                .entered();
-
-                        pass.set_bind_group(
-                            0,
-                            main_bind_groups
-                                .main_mesh_bind_group
-                                .as_ref()
-                                .expect("Failed to get main mesh bind group"),
-                            dynamic_offset_mesh.as_slice(),
-                        );
-                        pass.set_bind_group(
-                            1,
-                            main_bind_groups
-                                .map_bind_group
-                                .as_ref()
-                                .expect("Failed to get map bind group"),
-                            &[],
-                        );
+                        let _span = info_span!(
+                            "TerrainChunkMeshComputeNode::run one main mesh indices"
+                        )
+                        .entered();
                         pass.set_pipeline(indices_pipeline);
                         pass.dispatch_workgroups(
                             voxel_workgroup_size,
@@ -326,51 +269,6 @@ impl render_graph::Node for TerrainChunkMeshComputeNode {
                     }
                 }
             }
-        }
-        {
-            let _span = info_span!(
-                "TerrainChunkMeshComputeNode::run stage all",
-                count = self.to_compute_entities.len()
-            )
-            .entered();
-
-            debug!("Staging all mesh buffers after compute shader execution.");
-
-            // 获取需要stage的右边界，并 stage buffer
-            let mut max_vertices_indices_count_right_offset = 0;
-            let mut max_vertices_right_offset = 0;
-            let mut max_indices_right_offset = 0;
-            for (_, value) in mesh_buffers.terrain_chunk_buffer_bindings_map.iter() {
-                if max_vertices_indices_count_right_offset
-                    < value
-                        .mesh_vertices_indices_count_buffer_binding
-                        .get_right_offset()
-                {
-                    max_vertices_indices_count_right_offset = value
-                        .mesh_vertices_indices_count_buffer_binding
-                        .get_right_offset();
-                }
-                if max_vertices_right_offset < value.mesh_vertices_buffer_binding.get_right_offset()
-                {
-                    max_vertices_right_offset =
-                        value.mesh_vertices_buffer_binding.get_right_offset();
-                }
-                if max_indices_right_offset < value.mesh_indices_buffer_binding.get_right_offset() {
-                    max_indices_right_offset = value.mesh_indices_buffer_binding.get_right_offset();
-                }
-            }
-
-            let command_encoder = render_context.command_encoder();
-
-            mesh_buffers
-                .mesh_vertices_buffer
-                .stage_buffer(command_encoder, max_vertices_right_offset);
-            mesh_buffers
-                .mesh_indices_buffer
-                .stage_buffer(command_encoder, max_indices_right_offset);
-            mesh_buffers
-                .mesh_vertices_indices_count_buffer
-                .stage_buffer(command_encoder, max_vertices_indices_count_right_offset);
         }
 
         Ok(())
