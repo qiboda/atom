@@ -1,6 +1,11 @@
 #define_import_path terrain::terrain_type
 
-#import terrain::biome::TerrainType_MAX
+const BIOME_NUM: u32 = 6;
+
+struct BiomeColor {
+    biome: u32,
+    base_color: vec4f,
+}
 
 struct TerrainVertexInput {
     @builtin(instance_index) instance_index: u32,
@@ -26,9 +31,9 @@ struct TerrainMaterial {
     lod: u32,
     perceptual_roughness: f32,
     metallic: f32,
-    // use standard material flags
     flags: u32,
     reflectance: f32,
     attenuation_distance: f32,
     attenuation_color: vec4f,
+    biome_colors: array<BiomeColor, 6>,
 }

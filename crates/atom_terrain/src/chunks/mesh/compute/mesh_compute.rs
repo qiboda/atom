@@ -38,6 +38,7 @@ use crate::chunks::{
             },
             types::TerrainChunkVertexInfo,
         },
+        materials::terrain_material::BIOME_VERTEX_ATTRIBUTE,
     },
 };
 
@@ -289,13 +290,14 @@ fn map_and_read_buffer(
                     .map(|x| x.vertex_local_coord.xz().as_vec2())
                     .collect::<Vec<Vec2>>(),
             );
-            // mesh.insert_attribute(
-            //     BIOME_VERTEX_ATTRIBUTE,
-            //     vertices
-            //         .iter()
-            //         .map(|x| x.get_vertex_biome() as u32)
-            //         .collect::<Vec<u32>>(),
-            // );
+            // 插入 biome 顶点属性（Phase 3: 材质驱动）
+            mesh.insert_attribute(
+                BIOME_VERTEX_ATTRIBUTE,
+                vertices
+                    .iter()
+                    .map(|x| x.get_vertex_biome())
+                    .collect::<Vec<u32>>(),
+            );
             mesh.insert_indices(Indices::U32(indices));
 
             mesh.compute_normals();

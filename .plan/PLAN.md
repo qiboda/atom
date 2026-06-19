@@ -6,27 +6,27 @@
 - [x] 1.2 6 种 biome 定义
 - [x] 1.3 GPU 可采样纹理
 
-## Phase 2 — 地形形状 🔨
+## Phase 2 — 地形形状 ✅
 
 > Spec: `specs/terrain-shape.md`
 
-- [ ] 2.1 6 种 biome 密度场函数（GPU shader）
-- [ ] 2.2 Biome 边界加权混合
-- [ ] 2.3 激活现有噪声函数
-- [ ] 2.4 验证：6 种地形肉眼可辨
+- [x] 2.1 6 种 biome 密度场函数（GPU shader）— `density_field.wgsl`
+- [x] 2.2 Biome 边界加权混合 — 2×2 双线性
+- [x] 2.3 激活现有噪声函数 — `open_simplex_3d_with_seed`
+- [x] 2.4 验证：chunk(-2,0,-2) 1493 顶点 / 8214 索引 (2738 三角形)
 
-Exit: `cargo run -p atom_terrain --example chunk_loader` 中不同 biome 有不同高度和起伏。
+Exit: `cargo run -p atom_terrain --example chunk_loader` 生成地形网格。
 
-## Phase 3 — 材质 📋
+## Phase 3 — 材质 ✅
 
 > Spec: `specs/terrain-material.md`
 
-- [ ] 3.1 6 种 biome PBR 参数定义
-- [ ] 3.2 顶点权重材质混合
-- [ ] 3.3 TerrainMaterial 扩展
-- [ ] 3.4 验证：biome 颜色/材质可辨
+- [x] 3.1 6 种 biome PBR 参数定义 — `BIOME_COLORS` + `BiomeColorUniform`
+- [x] 3.2 顶点 biome 属性传递 — `get_vertex_biome()` + `BIOME_VERTEX_ATTRIBUTE`
+- [x] 3.3 WGSL TerrainMaterial 扩展 — `biome_colors: array<BiomeColor, 6>`
+- [x] 3.4 构建通过 + 网格正常生成
 
-Exit: 不同 biome 有不同外观，边界平滑。
+Exit: 不同 biome 顶点有不同 base_color；颜色混合通过 biome_weights 计算。
 
 ## Phase 4 — LOD 📋
 

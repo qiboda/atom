@@ -83,18 +83,35 @@ impl TerrainChunkVertexInfo {
         [x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]]
     }
 
-    // pub fn get_vertex_biome(&self) -> GpuTerrainType {
-    //     let biomes = self.get_voxel_biome();
-    //     select_voxel_biome(biomes)
-    // }
+    /// 从打包的 voxel_biome 中选出顶点的主导 biome 类型
+    pub fn get_vertex_biome(&self) -> u32 {
+        let biomes = self.get_voxel_biome();
+        select_dominant_biome(biomes)
+    }
 
-    // pub fn get_voxel_biome(&self) -> [GpuTerrainType; 8] {
-    //     let x = TerrainChunkVertexInfo::unpack_u32(self.voxel_biome.x)
-    //         .map(|x| GpuTerrainType::from_repr(x as usize).expect("Invalid GpuTerrainType repr"));
-    //     let y = TerrainChunkVertexInfo::unpack_u32(self.voxel_biome.y)
-    //         .map(|x| GpuTerrainType::from_repr(x as usize).expect("Invalid GpuTerrainType repr"));
-    //     [x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]]
-    // }
+    /// 解压 voxel_biome 中 2 个 u32 的 8 个 biome 字节 (每个 u32 4 字节)
+    pub fn get_voxel_biome(&self) -> [u32; 8] {
+        let x = TerrainChunkVertexInfo::unpack_u32(self.voxel_biome.x);
+        let y = TerrainChunkVertexInfo::unpack_u32(self.voxel_biome.y);
+        [x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]]
+    }
+}
+
+/// 从 8 个 voxel corner biome 中选出出现次数最多的
+fn select_dominant_biome(biomes: [u32; 8]) -> u32 {
+    let mut counts = [0u32; 256];
+    for &b in &biomes {
+        counts[b as usize] += 1;
+    }
+    let mut max_count = 0u32;
+    let mut dominant = 0u32;
+    for (i, &count) in counts.iter().enumerate() {
+        if count > max_count {
+            max_count = count;
+            dominant = i as u32;
+        }
+    }
+    dominant
 }
 
 #[repr(C)]

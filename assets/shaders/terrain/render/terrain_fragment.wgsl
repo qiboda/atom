@@ -3,8 +3,7 @@
 #import trimap::biplanar::{calculate_biplanar_mapping, biplanar_texture, biplanar_texture_single, biplanar_texture_splatted, BiplanarMapping}
 #import trimap::triplanar::{calculate_triplanar_mapping, triplanar_normal_to_world, triplanar_normal_to_world_splatted, TriplanarMapping}
 
-#import terrain::biome::TerrainType_Max
-#import terrain::terrain_type::{TerrainVertexOutput}
+#import terrain::terrain_type::{TerrainVertexOutput, BIOME_NUM}
 #import terrain::terrain_bind_groups:: {
     terrain_material,
     base_color_texture,
@@ -119,24 +118,6 @@ fn compute_color(in: TerrainVertexOutput) -> vec4f {
     color += terrain_material.biome_colors[3].base_color * in.biome_weights_a.w;
     color += terrain_material.biome_colors[4].base_color * in.biome_weights_b.x;
     color += terrain_material.biome_colors[5].base_color * in.biome_weights_b.y;
-    color += terrain_material.biome_colors[6].base_color * in.biome_weights_b.z;
-    color += terrain_material.biome_colors[7].base_color * in.biome_weights_b.w;
-    color += terrain_material.biome_colors[8].base_color * in.biome_weights_c.x;
-    color += terrain_material.biome_colors[9].base_color * in.biome_weights_c.y;
-    color += terrain_material.biome_colors[10].base_color * in.biome_weights_c.z;
-    color += terrain_material.biome_colors[11].base_color * in.biome_weights_c.w;
-    color += terrain_material.biome_colors[12].base_color * in.biome_weights_d.x;
-    color += terrain_material.biome_colors[13].base_color * in.biome_weights_d.y;
-    color += terrain_material.biome_colors[14].base_color * in.biome_weights_d.z;
-    color += terrain_material.biome_colors[15].base_color * in.biome_weights_d.w;
-    color += terrain_material.biome_colors[16].base_color * in.biome_weights_e.x;
-    color += terrain_material.biome_colors[17].base_color * in.biome_weights_e.y;
-    color += terrain_material.biome_colors[18].base_color * in.biome_weights_e.z;
-    color += terrain_material.biome_colors[19].base_color * in.biome_weights_e.w;
-    color += terrain_material.biome_colors[20].base_color * in.biome_weights_f.x;
-    // color += terrain_material.biome_colors[21].base_color * in.biome_weights_f.y;
-    // color += terrain_material.biome_colors[22].base_color * in.biome_weights_f.z;
-    // color += terrain_material.biome_colors[23].base_color * in.biome_weights_f.w;
     return color;
 }
 

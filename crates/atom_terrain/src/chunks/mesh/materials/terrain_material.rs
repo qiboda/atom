@@ -23,7 +23,32 @@ pub const BIOME_VERTEX_ATTRIBUTE: MeshVertexAttribute =
     MeshVertexAttribute::new("biome", 100, VertexFormat::Uint32);
 
 // 根据 terrain chunk 的 material 的类型来决定使用哪种地形材质。
+
+/// 6 种 biome 的 PBR 基础颜色（Phase 3 spec）
+const BIOME_COLORS: [BiomeColorUniform; 6] = [
+    // Ocean: 深蓝灰
+    BiomeColorUniform { biome: 0, base_color: Vec4::new(0.12, 0.18, 0.25, 1.0), _padding1: 0, _padding2: 0, _padding3: 0 },
+    // Forest: 深绿
+    BiomeColorUniform { biome: 1, base_color: Vec4::new(0.15, 0.35, 0.10, 1.0), _padding1: 0, _padding2: 0, _padding3: 0 },
+    // Desert: 沙黄
+    BiomeColorUniform { biome: 2, base_color: Vec4::new(0.76, 0.65, 0.35, 1.0), _padding1: 0, _padding2: 0, _padding3: 0 },
+    // Plains: 草绿
+    BiomeColorUniform { biome: 3, base_color: Vec4::new(0.25, 0.55, 0.15, 1.0), _padding1: 0, _padding2: 0, _padding3: 0 },
+    // Mountains: 灰白
+    BiomeColorUniform { biome: 4, base_color: Vec4::new(0.55, 0.55, 0.58, 1.0), _padding1: 0, _padding2: 0, _padding3: 0 },
+    // Swamp: 暗绿棕
+    BiomeColorUniform { biome: 5, base_color: Vec4::new(0.20, 0.28, 0.12, 1.0), _padding1: 0, _padding2: 0, _padding3: 0 },
+];
 // 如果是过渡部分，则使用过渡材质。
+
+#[derive(Clone, Default, ShaderType)]
+pub struct BiomeColorUniform {
+    pub biome: u32,
+    pub _padding1: u32,
+    pub _padding2: u32,
+    pub _padding3: u32,
+    pub base_color: Vec4,
+}
 
 #[derive(Clone, Default, ShaderType)]
 pub struct TerrainMaterialUniform {
@@ -34,6 +59,7 @@ pub struct TerrainMaterialUniform {
     pub reflectance: f32,
     pub attenuation_distance: f32,
     pub attenuation_color: Vec4,
+    pub biome_colors: [BiomeColorUniform; 6],
 }
 
 impl AsBindGroupShaderType<TerrainMaterialUniform> for TerrainMaterial {
@@ -67,7 +93,6 @@ impl AsBindGroupShaderType<TerrainMaterialUniform> for TerrainMaterial {
                 .expect("Normal map texture handle missing");
             if let Some(texture) = images.get(normal_map_id) {
                 match texture.texture_format {
-                    // All 2-component unorm formats
                     TextureFormat::Rg8Unorm
                     | TextureFormat::Rg16Unorm
                     | TextureFormat::Bc5RgUnorm
@@ -93,6 +118,7 @@ impl AsBindGroupShaderType<TerrainMaterialUniform> for TerrainMaterial {
             attenuation_color: LinearRgba::from(self.attenuation_color)
                 .to_f32_array()
                 .into(),
+            biome_colors: BIOME_COLORS,
         }
     }
 }
