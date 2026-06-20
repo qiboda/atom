@@ -13,6 +13,18 @@
 
 - **2026-06-20**: 顶点 buffer 使用固定 slot 稀疏存储（每 voxel 一个 TerrainChunkVertex slot），CPU 端 compact + remap。buffer 大小为 vc³ × sizeof(Vertex)，16³=128KB。后续可能需要 compact 存储优化。
 
+## Phase 2 接缝修复发现
+
+- **2026-06-20**: 多 chunk 边界有 1-voxel 缝隙 — 根因是边界 voxel 的 quad 引用的邻接 voxel slot 不存在。修复：双边 shell（density (vc+3)³, vertex/cross (vc+2)³）。
+- **2026-06-20**: ExtractResourcePlugin 在 Bevy 0.19 sub-app 中不工作 → main→render 同步改用 crossbeam channel（`ChunkProcessRequest` + Sender/Receiver）。
+- **2026-06-20**: QEF Cramer's rule 对平面退化 — 行列式阈值 `1e-10` 太小，f32 近奇异矩阵产生 spike。修到 `1e-5` + centroid 安全网（顶点距 centroid > 2×voxel_size 则回落）。
+- **2026-06-20**: 每个 voxel 只有 6 个 index slot（1 quad）→ 倾斜面上多 quad 互相覆盖导致整行缺失。扩到 72 slot（12 edge × 6 index）。
+- **2026-06-20**: `ncross==0` 的边界 voxel 无顶点 → has_vertex 失败 → quad 丢弃。加 fallback 中心点占位。
+- **2026-06-20**: Staging buffer 重复 `map_async` panic — 加 `map_started` 标志防止重入。
+- **2026-06-20**: 负 shell voxel 顶点为 fallback（无表面交叉）时，邻居无 mesh，不应 skip 该 quad。智能 dedup：仅当负 shell 顶点有真实法线（`length(normal)>0` 表示邻居有 mesh）才跳过。
+- **2026-06-20**: Bevy 0.19 内置 `FreeCamera` (`bevy_camera_controller` + `free_camera` feature)。操作：右键旋转 + WASD/QE。
+- **2026-06-20**: `StandardMaterial::double_sided` 不管背面剔除 — 需同时设 `cull_mode: None`。
+
 ## 工具链
 
 - **2026-06-20**: Bevy 0.19 需要 Rust nightly + `#![feature(cfg_select)]`。本地 Bevy checkout v0.19.0 的 `bevy_app` 和 `bevy_winit` 缺失该 feature flag，需手动补丁。

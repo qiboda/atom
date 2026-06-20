@@ -41,6 +41,22 @@
 | `Indices::U32(...)` | `bevy::mesh::Indices::U32(...)` | 同上 |
 | `RenderAssetUsages::default()` | `bevy::asset::RenderAssetUsages::default()` | 从 bevy_render 移到 bevy_asset |
 
+## Camera / Input
+
+| 0.18 | 0.19 | 备注 |
+|------|------|------|
+| 第三方 flycam | `FreeCamera` + `FreeCameraPlugin` | feature `bevy_camera_controller` + `free_camera`; 右键旋转，WASD/QE 移动 |
+| `Input<T>` | `ButtonInput<T>` | |
+| `MouseMotion` event (EventReader) | `AccumulatedMouseMotion` resource | 每帧累积 delta → `acc_motion.delta` |
+| `MouseWheel` event (EventReader) | `AccumulatedMouseScroll` resource | 同上，`acc_scroll.delta` |
+
+## Material
+
+| 0.18 | 0.19 | 备注 |
+|------|------|------|
+| — | `StandardMaterial::cull_mode: None` | 禁用背面剔除 |
+| — | `StandardMaterial::double_sided: true` | 仅影响光照(双面法线)，**不关剔除**，要配合 `cull_mode: None` |
+
 ## wgpu
 
 | 0.18 | 0.19 | 备注 |
