@@ -103,7 +103,7 @@ pub fn handle_mesh_data(
         let mat = materials.add(StandardMaterial {
             base_color: Color::srgb(0.7, 0.75, 0.8),
             perceptual_roughness: 0.3,
-            cull_mode: None, // FIXME: DC winding 待修复，临时双面渲染
+            // cull_mode: default
             ..default()
         });
         // 通过 translation 反查 TerrainChunkCoord，找到父 chunk entity

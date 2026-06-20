@@ -52,12 +52,12 @@ const EDGE_CORNERS: array<vec3<u32>, 12> = array<vec3<u32>, 12>(
     vec3(0u, 0u, 0u), vec3(1u, 0u, 0u), vec3(0u, 1u, 0u), vec3(1u, 1u, 0u),
 );
 
-fn write_cross_point(edge_id: u32, pos: vec3<f32>, normal: vec3<f32>) {
+fn write_cross_point(edge_id: u32, pos: vec3<f32>, normal: vec3<f32>, flip: bool) {
     let base = edge_id * 8u;
     cross_points[base + 0u] = bitcast<u32>(pos.x);
     cross_points[base + 1u] = bitcast<u32>(pos.y);
     cross_points[base + 2u] = bitcast<u32>(pos.z);
-    cross_points[base + 3u] = 0u;
+    cross_points[base + 3u] = bitcast<u32>(f32(flip)); // flip flag
     cross_points[base + 4u] = bitcast<u32>(normal.x);
     cross_points[base + 5u] = bitcast<u32>(normal.y);
     cross_points[base + 6u] = bitcast<u32>(normal.z);
@@ -130,6 +130,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let normal = estimate_normal(cross_pos);
 
         let edge_id = (gid.x + gid.y * vv + gid.z * vv * vv) * 12u + e;
-        write_cross_point(edge_id, cross_pos, normal);
+        write_cross_point(edge_id, cross_pos, normal, d1 < 0.0);
     }
 }

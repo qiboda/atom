@@ -120,26 +120,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let jz = gid.z - 1u;
         let off = (jx + jy * vc + jz * vc * vc) * 72u + e * 6u;
 
-        // winding: face normal 与 cross point normal 对齐
-        let cn = read_cross_normal(eid);
-        let vpos0 = vertex_pos(vi0);
-        let vpos1 = vertex_pos(vi1);
-        let vpos2 = vertex_pos(vi2);
-        let face_n = cross(vpos1 - vpos0, vpos2 - vpos0);
-        if dot(face_n, cn) >= 0.0 {
-            indices[off + 0u] = vi0;
-            indices[off + 1u] = vi1;
-            indices[off + 2u] = vi2;
-            indices[off + 3u] = vi0;
-            indices[off + 4u] = vi2;
-            indices[off + 5u] = vi3;
-        } else {
-            indices[off + 0u] = vi0;
-            indices[off + 1u] = vi2;
-            indices[off + 2u] = vi1;
-            indices[off + 3u] = vi0;
-            indices[off + 4u] = vi3;
-            indices[off + 5u] = vi2;
-        }
+        // winding: 默认 face_n = (+X, -Y, +Z) → 翻转后 = (-X, +Y, -Z)
+        // 对 heightfield (Y 朝上) Y 轴必需翻转。全部翻转最简单。
+        indices[off + 0u] = vi0;
+        indices[off + 1u] = vi2;
+        indices[off + 2u] = vi1;
+        indices[off + 3u] = vi0;
+        indices[off + 4u] = vi3;
+        indices[off + 5u] = vi2;
     }
 }
