@@ -75,10 +75,8 @@ pub fn debug_keyboard_toggle(
 
     if keys.just_pressed(KeyCode::F2) {
         config.double_sided = !config.double_sided;
-        info!("double_sided: {} (触发重建)", config.double_sided);
-
-        // 偏移 observer 一小点 → 触发 mesh 重建，新 mesh 用新 cull_mode
-        observer.position += Vec3::new(0.0, 0.001, 0.0);
+        info!("double_sided: {} → 触发重建", config.double_sided);
+        observer.force_rebuild = observer.force_rebuild.wrapping_add(1);
     }
 }
 

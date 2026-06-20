@@ -46,6 +46,8 @@ use crate::{
 pub struct TerrainObserver {
     /// 观察者世界坐标（通常为相机位置）
     pub position: Vec3,
+    /// 强制重建计数器：主世界递增 → 渲染世界检测变化 → 触发重建
+    pub force_rebuild: u32,
 }
 
 /// 全局 compute 管线资源
@@ -88,6 +90,8 @@ pub struct GlobalComputeState {
     pub grid_min: Vec3,
     /// 上次是否已触发重建（避免 idle 帧重复触发）
     pub rebuild_triggered: bool,
+    /// 上次 force_rebuild 计数器值
+    pub last_force_rebuild: u32,
 }
 
 /// GPU→CPU readback staging
@@ -225,11 +229,15 @@ pub fn global_compute_system(
     let vc = gs;
 
     // ── 检测是否需要重建 ──
-    let observer_pos = observer.map(|o| o.position).unwrap_or(Vec3::ZERO);
+    let (observer_pos, observer_force) = observer
+        .as_deref()
+        .map(|o: &TerrainObserver| (o.position, o.force_rebuild))
+        .unwrap_or((Vec3::ZERO, 0));
     let snapped = (observer_pos / vs).floor() * vs;
 
+    let force_changed = observer_force != state.last_force_rebuild;
     let need_rebuild = state.pass == 0
-        && (snapped != state.last_observer || !state.rebuild_triggered);
+        && (snapped != state.last_observer || !state.rebuild_triggered || force_changed);
 
     // ── 阶段 0: dispatch compute passes ──
     if need_rebuild {
@@ -252,6 +260,7 @@ pub fn global_compute_system(
         state.last_observer = snapped;
         state.grid_min = grid_min;
         state.rebuild_triggered = true;
+        state.last_force_rebuild = observer_force;
 
         let encoder = render_context.command_encoder();
 

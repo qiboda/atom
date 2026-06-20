@@ -97,7 +97,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let voxel_idx = gid.x + gid.y * gs + gid.z * gs * gs;
     let vx = gid.x; let vy = gid.y; let vz = gid.z;
 
-    // 检查全部 12 条边，通过 canonical owner 规则去重
+    // 对全部 12 条边生成 quad（试探性去掉去重，验证 winding 是否与去重逻辑有关）
     for (var e = 0u; e < 12u; e++) {
         let corner = EDGE_CORNERS[e];
         let axis = EDGE_DIRS[e];
@@ -106,15 +106,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let cx = vx + corner.x;
         let cy = vy + corner.y;
         let cz = vz + corner.z;
-
-        // 去重：若 canonical owner 在 grid 内且 ≠ 当前 voxel → 跳过。
-        // canonical owner 会自己生成这个 quad。
-        // 注：shell voxel (x=0 等) 现在也生成 quad，由边界检查过滤越界的。
-        let owner_exists = cx < gs && cy < gs && cz < gs;
-        if owner_exists && (cx != vx || cy != vy || cz != vz) {
-            continue; // canonical owner 存在 → 由它生成
-        }
-        // 否则: canonical owner 不存在（在 grid 外）→ 由当前 voxel 生成
 
         let edge_id = voxel_idx * 12u + e;
         if !has_cross(edge_id) { continue; }
