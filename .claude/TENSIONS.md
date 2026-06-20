@@ -2,11 +2,12 @@
 
 > 发现数据与系统设计之间的不一致、工具链问题、或流程阻碍时记录。不要当场解决——只捕获信号。
 
-
 ## GPU 管线
 
-- **2026-06-20**: 四 pass compute 管线未在 GPU 上验证。shader 编译和 mesh 产出待 smoke test。
+- **2026-06-20**: ✅ 四 pass compute 管线 smoke test 通过 (RTX 4090, Vulkan), 0 GPU validation error。Readback 待实现 (需 staging buffer 方案)。
 - **2026-06-20**: WGSL atomics 类型匹配问题 — `array<atomic<u32>>` 在 shader 端需要匹配 Rust 端 binding type 声明。当前绕过（固定 slot 无 atomics）。
+- **2026-06-20**: ExtractResourcePlugin 在 Bevy 0.19 pipelined rendering 中不工作 → render world 资源必须直接用 `render_app.insert_resource()`。`render_app.init_resource()` 也可。
+- **2026-06-20**: WGSL `var<storage>` 无访问修饰符默认 `read`（非 `read_write`）。向 storage buffer 写入必须声明 `var<storage, read_write>`。
 
 ## 数据对齐
 

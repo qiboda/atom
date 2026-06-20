@@ -109,23 +109,48 @@ mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 mesh.insert_indices(Indices::U32(indices));
 ```
 
-## ExtractResource 同步模式
+## Render World 资源管理 (0.19 已验证)
+
+`ExtractResourcePlugin` 在 0.19 pipelined rendering 中不可用。render world 资源直接 insert：
 
 ```rust
-// main world 和 render world 之间同步
-#[derive(Resource, Clone, ExtractResource)]
-pub struct MySyncData { ... }
-
-// main world
-app.insert_resource(MySyncData { ... });
-
-// render world 自动获得 clone 的副本
-fn render_system(data: Res<MySyncData>) { ... }
+// ❌ 不工作: ExtractResourcePlugin::<T>::default()
+// ✅ 直接插入到 render world
+let render_app = app.sub_app_mut(RenderApp);
+render_app.insert_resource(TerrainSetting::default());
+render_app.init_resource::<TerrainChunkMeshBuffers>();
 ```
 
-注意: 0.19 中 `Resource` 需要 `Mutability = Mutable` bound 才能使用 `ResMut`:
+已在 compute pipeline 中验证。
 
-```rust
-// 如果泛型需要 ResMut
-fn generic_system<R: Resource<Mutability = Mutable>>(mut res: ResMut<R>) { ... }
+## WGSL Storage Buffer 访问修饰符 (0.19 已验证)
+
+`var<storage>` 无访问修饰符时**默认为 `read`**，不是 `read_write`：
+
+```wgsl
+// ❌ 只读: var<storage> data: array<u32>;
+// ✅ 读写: var<storage, read_write> data: array<u32>;
 ```
+
+## WGSL Uniform Struct 对齐规则 (0.19 已验证)
+
+WGSL `uniform` 地址空间的 struct 与 Rust `#[repr(C)]` 布局不同：
+
+```
+vec3<f32> 对齐: 16 字节 (不是 12)
+struct 总大小: 16 的倍数 (不是按字段紧凑排列)
+```
+
+| 字段 | Rust offset | WGSL uniform offset |
+|------|------------|-------------------|
+| `chunk_min: vec3<f32>` | 0 | 0 (12B + 4B pad) |
+| `voxel_size: f32` | 12 | 16 |
+| total | 36 | 48 |
+
+必须在 Rust struct 中添加显式 padding 字段以匹配 WGSL 布局。
+
+## Buffer Usage 约束 (wgpu 29, 0.19 已验证)
+
+- `MAP_READ` 只能与 `COPY_DST` 组合（不能与 `COPY_SRC` 或 `STORAGE`）
+- CPU 读回 GBU buffer 需要 staging buffer: compute writes → `STORAGE|COPY_SRC`, then copy to `COPY_DST|MAP_READ`
+- `queue.write_buffer()` 需要 `COPY_DST` flag
