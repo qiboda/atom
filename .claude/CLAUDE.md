@@ -2,12 +2,12 @@
 
 基于 Bevy 0.19 的体素平滑地形（GPU Dual Contouring + QEF）。
 Bevy API 变更频繁，遇到不确定的 API 先查 `.claude/bevy-kb/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。
-架构导航见 `.claude/intent.lisp`（0.19 重写后待更新，当前以代码为准）。
+架构导航: 高层见 `.claude/intent.lisp`（数据流/管线/约束），符号级见 `cargo doc --open`。
 
 ## 文档索引
 
 | 位置 | 内容 |
-| `.claude/intent.lisp` | **架构描述符**（crate→组件→符号导航，待更新） |
+| `.claude/intent.lisp` | **架构描述符**（数据流/管线/约束，符号导航见 rust-doc） |
 | `.claude/workflow.lisp` | **开发流程**（understand → research → design → document → implement → verify → review） |
 | `.claude/SOUL.md` | Agent 行为规范、依赖规则、测试策略、架构边界 |
 | `.claude/ARCHITECTURE.md` | 架构决策记录 (ADR) |
@@ -16,7 +16,7 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.claude/bevy-kb/migration
 | `.claude/bevy-kb/` | **Bevy 知识库**（迁移指南、已验证 API 模式） |
 | `.claude/AGENTS.md` | 操作协议、缺口检测 |
 | `.claude/CAPABILITY-MAP.md` | 当前能力边界 |
-| `.claude/APPEND_SYSTEM.md` | 项目代码模式速查（待更新，以代码为准） |
+| `.claude/APPEND_SYSTEM.md` | 项目代码模式速查（指针索引，指向源码位置） |
 
 ## Workspace 当前状态
 
