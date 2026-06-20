@@ -19,6 +19,21 @@
 遭遇架构不一致、工具链问题、或流程阻碍时，**先记录到 `.claude/TENSIONS.md` 对应分类下**，再处理。不跳过信号采集直接修复。
 分类：GPU 管线 / 数据对齐 / 工具链 / 流程 / 已知退化。
 
+## Testing
+
+按代码层级选择验证策略。Spec 的 Completion Criteria 先行——每个 spec 完成时逐条对账。
+
+| 层级 | 方法 | 工具 |
+|------|------|------|
+| Spec 验收 | BDD 场景对账 (C1-C6) | spec 文件 + 手动/自动判定 |
+| 纯 Rust 数学/逻辑 | 红绿 TDD | `#[test]`, `cargo test` |
+| ECS 系统 | 集成测试 (headless App) | `bevy::app::App` 无窗口 |
+| GPU compute / Shader | 手动验证 | example + 肉眼 + 记入 TENSIONS.md |
+
+流程：**spec → Completion Criteria → 可自动化？→ (Y) 先测试 (red) 后实现 (green) / (N) 实现后跑 example**。
+
+测试只测行为不测 plumbing——不测默认值、不测内部中间状态。断言逻辑行为而非当前值。
+
 ## Boundaries
 
 - 不删除关键性能代码（GPU pipeline、buffer 管理）。

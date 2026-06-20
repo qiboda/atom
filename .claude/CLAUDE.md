@@ -178,6 +178,9 @@ cargo run -p atom_datatables --example tables_load # 数据表加载
 cargo check --workspace
 cargo clippy --workspace
 
+# 测试 (纯 Rust 单元/集成)
+cargo test --workspace
+
 # 数据表代码生成 (需要 .NET Luban 工具链)
 crates/atom_datatables/gen_bin.bat
 ```
