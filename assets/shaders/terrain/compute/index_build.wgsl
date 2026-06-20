@@ -92,12 +92,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let gs = info.grid_size;
     if gid.x >= gs || gid.y >= gs || gid.z >= gs { return; }
 
-    // 仅内层 voxel [1, gs-1) 生成 quad — 外层 1-voxel shell 只提供顶点引用
-    let inner_min = 1u;
-    let inner_max = gs - 1u; // 不含边界 shell
-    if gid.x < inner_min || gid.x >= inner_max
-        || gid.y < inner_min || gid.y >= inner_max
-        || gid.z < inner_min || gid.z >= inner_max { return; }
+    if gid.x >= gs || gid.y >= gs || gid.z >= gs { return; }
 
     let voxel_idx = gid.x + gid.y * gs + gid.z * gs * gs;
     let vx = gid.x; let vy = gid.y; let vz = gid.z;
@@ -107,21 +102,19 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let corner = EDGE_CORNERS[e];
         let axis = EDGE_DIRS[e];
 
-        // edge 的起始 corner（世界 voxel 坐标）
+        // edge 的起始 corner
         let cx = vx + corner.x;
         let cy = vy + corner.y;
         let cz = vz + corner.z;
 
-        // 去重：若 canonical owner 是 inner voxel 且 ≠ 当前 voxel → 跳过
-        // 如果 canonical owner 是 shell voxel（不生成 quad），
-        // 或 canonical owner 在 grid 之外，由当前 voxel 生成。
-        let owner_inner = cx >= inner_min && cx < inner_max
-                       && cy >= inner_min && cy < inner_max
-                       && cz >= inner_min && cz < inner_max;
-        if owner_inner && (cx != vx || cy != vy || cz != vz) {
-            continue; // canonical owner（inner voxel）会生成此 quad
+        // 去重：若 canonical owner 在 grid 内且 ≠ 当前 voxel → 跳过。
+        // canonical owner 会自己生成这个 quad。
+        // 注：shell voxel (x=0 等) 现在也生成 quad，由边界检查过滤越界的。
+        let owner_exists = cx < gs && cy < gs && cz < gs;
+        if owner_exists && (cx != vx || cy != vy || cz != vz) {
+            continue; // canonical owner 存在 → 由它生成
         }
-        // 否则: canonical owner 是 shell / 在 grid 外 → 由当前 voxel 生成
+        // 否则: canonical owner 不存在（在 grid 外）→ 由当前 voxel 生成
 
         let edge_id = voxel_idx * 12u + e;
         if !has_cross(edge_id) { continue; }
