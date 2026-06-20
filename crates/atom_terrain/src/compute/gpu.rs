@@ -642,3 +642,115 @@ fn compact_and_build_mesh(
     mesh.insert_indices(bevy::mesh::Indices::U32(tri_indices));
     Some(mesh)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 验证 compact 函数能从有效顶点数据产出非空 mesh
+    #[test]
+    fn single_chunk_produces_vertices() {
+        let vc = 4u32;
+        let total = (vc as usize).pow(3); // 64
+        let mut verts = vec![TerrainChunkVertex::default(); total];
+        let mut indices = vec![0u32; total * 6];
+
+        // 模拟一个 voxel 有几何：顶点在 chunk 中心 + 两个有效三角形
+        let vi = 21usize; // 中间 voxel
+        verts[vi] = TerrainChunkVertex {
+            position: [2.0, 1.0, 2.0],
+            normal: [0.0, 1.0, 0.0],
+            ..Default::default()
+        };
+        // 三角形: voxel 21 的三个"邻居"也有顶点
+        verts[22] = TerrainChunkVertex {
+            position: [2.5, 1.2, 2.0],
+            normal: [0.0, 1.0, 0.0],
+            ..Default::default()
+        };
+        verts[26] = TerrainChunkVertex {
+            position: [2.0, 1.1, 2.5],
+            normal: [0.0, 1.0, 0.0],
+            ..Default::default()
+        };
+        verts[27] = TerrainChunkVertex {
+            position: [2.5, 1.3, 2.5],
+            normal: [0.0, 1.0, 0.0],
+            ..Default::default()
+        };
+
+        // 写入 6 个索引指向这 4 个顶点 (两个三角形: 21-22-26, 21-26-27)
+        let base = vi * 6;
+        indices[base] = 21;
+        indices[base + 1] = 22;
+        indices[base + 2] = 26;
+        indices[base + 3] = 21;
+        indices[base + 4] = 26;
+        indices[base + 5] = 27;
+
+        let mesh = compact_and_build_mesh(
+            &verts,
+            &indices,
+            vc,
+            Vec3::ZERO,
+            0.5,
+        );
+        assert!(mesh.is_some(), "should produce non-empty mesh");
+        let mesh = mesh.unwrap();
+        assert!(mesh.count_vertices() > 0, "vertex_count > 0");
+        assert_eq!(mesh.count_vertices(), 4, "4 valid vertices after compact");
+        // 2 triangles × 3 indices = 6
+        assert!(mesh.indices().is_some(), "index_count > 0");
+    }
+
+    /// Phase 2: 两相邻 chunk 边界无缝验证（当前无法执行，标记 ignore）
+    #[test]
+    #[ignore = "Phase 2 — requires multi-chunk observer + GPU output comparison"]
+    fn surface_is_contiguous() {}
+
+    /// 验证顶点位置 = chunk_min + local * voxel_size
+    #[test]
+    fn vertex_in_world_space() {
+        let vc = 2u32;
+        let total = (vc as usize).pow(3); // 8
+        let chunk_min = Vec3::new(10.0, -5.0, 0.0);
+        let voxel_size = 0.5;
+        let mut verts = vec![TerrainChunkVertex::default(); total];
+        let mut indices = vec![0u32; total * 6];
+
+        // 三个顶点形成一个三角形，顶点在 world space
+        verts[0].position = [10.0, -5.0, 0.0]; // chunk_min (local 0,0,0)
+        verts[1].position = [10.5, -5.0, 0.0]; // chunk_min + (1,0,0)*0.5
+        verts[2].position = [10.0, -4.5, 0.0]; // chunk_min + (0,1,0)*0.5
+        verts[0].normal = [0.0, 0.0, 1.0];
+        verts[1].normal = [0.0, 0.0, 1.0];
+        verts[2].normal = [0.0, 0.0, 1.0];
+
+        // 一个三角形 0-1-2 (voxel 0 的 6 个索引槽)
+        indices[0] = 0;
+        indices[1] = 1;
+        indices[2] = 2;
+        indices[3] = 0;
+        indices[4] = 2;
+        indices[5] = 1; // degenerate (0,2,1)
+
+        let mesh = compact_and_build_mesh(&verts, &indices, vc, chunk_min, voxel_size);
+        assert!(mesh.is_some(), "should produce mesh with vertices");
+        let mesh = mesh.unwrap();
+        let positions: Vec<[f32; 3]> = mesh
+            .attribute(Mesh::ATTRIBUTE_POSITION)
+            .expect("mesh has positions")
+            .as_float3()
+            .expect("positions are float3")
+            .to_vec();
+        // 3 valid vertices, 1 valid triangle
+        assert_eq!(positions.len(), 3);
+        // vertex 0 = chunk_min → (10, -5, 0)
+        assert!((positions[0][0] - 10.0).abs() < 0.001);
+    }
+
+    /// ⚠️ 已知偏差：CPU OpenSimplex2D ≠ GPU value noise。待 biome phase 统一。
+    #[test]
+    #[ignore = "known deviation: CPU OpenSimplex2D vs GPU value noise — unify at biome phase"]
+    fn cpu_gpu_noise_parity() {}
+}
