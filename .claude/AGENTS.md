@@ -35,17 +35,16 @@
 - YYYY-MM-DD: [category] 描述
 ```
 
-## 多会话项目 (.plan/ 协议)
+## 多会话项目 (.claude/plan/ 协议)
 
-当任务跨越多个会话时，创建 `.plan/` 目录维护四个文件：
+当任务跨越多个会话时，维护 `.claude/plan/` 下四个文件：
 
 | 文件 | 用途 |
 |------|------|
-| `.plan/PLAN.md` | 按阶段组织的勾选框 + 退出标准（每阶段 5-10 项） |
-| `.plan/MEMORY.md` | 每个决策 + 理由（防止后续会话无意逆转） |
-| `.plan/DRIFT.md` | 规格偏离追踪 |
-| `.plan/SESSION-LOG.md` | 每次会话的 handoff note（简报，不是摘要） |
-
+| `.claude/plan/PLAN.md` | 按阶段组织的勾选框 + 退出标准（每阶段 5-10 项） |
+| `.claude/plan/MEMORY.md` | 每个决策 + 理由（防止后续会话无意逆转） |
+| `.claude/plan/DRIFT.md` | 规格偏离追踪 |
+| `.claude/plan/SESSION-LOG.md` | 每次会话的 handoff note（简报，不是摘要） |
 **项目优先级**: 所有扩展和配置放在项目目录下（`.claude/`），不全局安装——clone 即获得完整 agent 能力。
 
 ## 能力边界

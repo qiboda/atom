@@ -13,8 +13,8 @@ RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain 2>&1
 
 echo "=== pre-commit: bevy_lint ==="
 echo "=== pre-commit: agent-spec guard ==="
-if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d specs ]; then
-    "$HOME/.cargo/bin/agent-spec" guard --spec-dir specs --code . --change-scope staged 2>&1 || echo "WARN: spec guard issues (non-blocking)"
+if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d .claude/specs ]; then
+    "$HOME/.cargo/bin/agent-spec" guard --spec-dir .claude/specs --code . --change-scope staged 2>&1 || echo "WARN: spec guard issues (non-blocking)"
 fi
 
 echo "=== pre-commit: OK ==="

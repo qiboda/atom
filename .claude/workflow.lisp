@@ -14,7 +14,7 @@
   (phase understand
     (purpose "理解需求，消除歧义")
     (actions
-      (read-spec "读取 specs/*.spec 获取验收标准和边界")
+      (read-spec "读取 .claude/specs/*.spec 获取验收标准和边界")
       (check-constraints "对照 SOUL.md 检查: 是否违反依赖规则/架构边界/不可触碰项")
       (ask-before-guessing "需求模糊且无法从代码/文档推断时，用 ask 给出 2-4 个互斥选项 + 推荐默认值"))
     (exit-condition "可以一句话描述: 要改什么、为什么、验收标准是什么"))

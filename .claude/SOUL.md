@@ -38,7 +38,7 @@
 
 驱动工具: `agent-spec` CLI v0.3.0（3 个 skill: tool-first, authoring, estimate）
 
-每个 `specs/*.spec` 使用中文 DSL:
+每个 `.claude/specs/*.spec` 使用中文 DSL:
 ```
 spec: task
 name: "名称"
@@ -65,7 +65,7 @@ inherits: project
 2. `agent-spec lint <spec>` — 质量门（检查 scenario 数量、selector 存在性）
 3. `agent-spec plan <spec> --code . --format prompt` — 生成实现计划
 4. `agent-spec lifecycle <spec> --code .` — 主质量门（lint + verify + boundary）
-5. `agent-spec guard --spec-dir specs --code . --change-scope staged` — pre-commit
+5. `agent-spec guard --spec-dir .claude/specs --code . --change-scope staged` — pre-commit
 
 **铁律: NO CODE IS "DONE" WITHOUT A PASSING LIFECYCLE.**
 

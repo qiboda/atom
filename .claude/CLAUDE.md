@@ -11,11 +11,11 @@
 | `.claude/SOUL.md` | Agent 行为规范、依赖规则、测试策略、架构边界 |
 | `.claude/ARCHITECTURE.md` | 架构决策记录 (ADR) |
 | `.claude/TENSIONS.md` | 摩擦日志 |
-| `.plan/` | 跨会话规划 |
+| `.claude/plan/` | 跨会话规划 |
 | `.claude/AGENTS.md` | 操作协议、缺口检测 |
 | `.claude/CAPABILITY-MAP.md` | 当前能力边界 |
 | `Justfile` | 开发任务 |
-| `specs/*.spec` | 任务 Spec |
+| `.claude/specs/*.spec` | 任务 Spec |
 
 ## 编码约定
 
