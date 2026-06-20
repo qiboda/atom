@@ -476,8 +476,14 @@ pub fn terrain_compute_system(
         let all_indices: &[u32] =
             bytemuck::cast_slice(&index_view[..s.index_size as usize]);
 
-        // compact + remap: 过滤零顶点，重映射索引
-        let mesh = compact_and_build_mesh(all_vertices, all_indices, vc);
+        // compact + remap: 过滤零顶点，clamp QEF 外溢，重映射索引
+        let mesh = compact_and_build_mesh(
+            all_vertices,
+            all_indices,
+            vc,
+            s.world_min,
+            setting.voxel_size,
+        );
         drop(vertex_view);
         drop(index_view);
         s.vertices.unmap();
@@ -527,13 +533,17 @@ fn compact_and_build_mesh(
     all_vertices: &[TerrainChunkVertex],
     all_indices: &[u32],
     vc: u32,
+    chunk_min: Vec3,
+    voxel_size: f32,
 ) -> Option<Mesh> {
     let total = (vc as usize).pow(3);
+    let chunk_max = chunk_min + Vec3::splat(vc as f32 * voxel_size);
 
     // 构建 old→new 映射：标记有 position 的顶点
     let mut remap: Vec<Option<u32>> = vec![None; total];
     let mut compact_verts: Vec<[f32; 3]> = Vec::new();
     let mut compact_norms: Vec<[f32; 3]> = Vec::new();
+    let mut clamped = 0u32;
 
     for (i, v) in all_vertices.iter().enumerate().take(total) {
         let len = (v.position[0] * v.position[0]
@@ -541,10 +551,22 @@ fn compact_and_build_mesh(
             + v.position[2] * v.position[2])
             .sqrt();
         if len > 0.0001 {
+            // clamp QEF 顶点到 voxel 所在的 chunk 范围内
+            let clamped_pos = [
+                v.position[0].clamp(chunk_min.x, chunk_max.x),
+                v.position[1].clamp(chunk_min.y, chunk_max.y),
+                v.position[2].clamp(chunk_min.z, chunk_max.z),
+            ];
+            if clamped_pos != v.position {
+                clamped += 1;
+            }
             remap[i] = Some(compact_verts.len() as u32);
-            compact_verts.push(v.position);
+            compact_verts.push(clamped_pos);
             compact_norms.push(v.normal);
         }
+    }
+    if clamped > 0 {
+        info!("  clamp: {clamped}/{} vertices clamped to chunk bounds", compact_verts.len());
     }
 
     if compact_verts.is_empty() {
@@ -593,6 +615,27 @@ fn compact_and_build_mesh(
     let mut mesh = Mesh::new(
         bevy::mesh::PrimitiveTopology::TriangleList,
         bevy::asset::RenderAssetUsages::default(),
+    );
+    // 诊断: bounding box + 采样前几个顶点
+    let mut bmin = Vec3::splat(f32::MAX);
+    let mut bmax = Vec3::splat(f32::MIN);
+    for p in &compact_verts {
+        let v = Vec3::from_array(*p);
+        bmin = bmin.min(v);
+        bmax = bmax.max(v);
+    }
+    let sample: Vec<String> = compact_verts
+        .iter()
+        .take(8)
+        .map(|v| format!("({:.2},{:.2},{:.2})", v[0], v[1], v[2]))
+        .collect();
+    info!(
+        "  mesh: {} verts {} tris bbox=({:.1},{:.1},{:.1})→({:.1},{:.1},{:.1}) sample=[{}]",
+        compact_verts.len(),
+        tri_indices.len() / 3,
+        bmin.x, bmin.y, bmin.z,
+        bmax.x, bmax.y, bmax.z,
+        sample.join(" ")
     );
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, compact_verts);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, compact_norms);
