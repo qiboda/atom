@@ -9,8 +9,8 @@ use crossbeam::channel::{Receiver, Sender};
 pub struct TerrainChunkMeshData {
     /// 生成的网格数据
     pub mesh: Mesh,
-    /// 所属 chunk 的主世界实体
-    pub chunk_entity: Entity,
+    /// chunk 世界坐标偏移
+    pub translation: Vec3,
 }
 
 /// 主世界端的 mesh 接收器，包装 crossbeam channel `Receiver`
@@ -54,27 +54,25 @@ pub fn handle_load_requests(
     }
 }
 
-/// 接收渲染世界发来的 mesh，附加到 chunk 实体上
+/// 接收渲染世界发来的 mesh，spawn 新实体并在正确位置渲染
 pub fn handle_mesh_data(
     mut commands: Commands,
     receiver: Res<TerrainChunkMeshReceiver>,
-    chunks: Query<&crate::chunk::TerrainChunkCoord>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     while let Ok(data) = receiver.try_recv() {
-        if chunks.contains(data.chunk_entity) {
-            let mesh = meshes.add(data.mesh);
-            let mat = materials.add(StandardMaterial {
-                base_color: Color::srgb(0.4, 0.6, 0.3),
-                perceptual_roughness: 0.9,
-                ..default()
-            });
-            commands.entity(data.chunk_entity).insert((
-                TerrainChunkMeshingState::Idle,
-                Mesh3d(mesh),
-                MeshMaterial3d(mat),
-            ));
-        }
+        let mesh = meshes.add(data.mesh);
+        let mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.4, 0.6, 0.3),
+            perceptual_roughness: 0.9,
+            ..default()
+        });
+        commands.spawn((
+            Mesh3d(mesh),
+            MeshMaterial3d(mat),
+            Transform::from_translation(data.translation),
+            Visibility::default(),
+        ));
     }
 }

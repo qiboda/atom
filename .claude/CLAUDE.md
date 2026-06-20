@@ -25,6 +25,10 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.claude/bevy-kb/migration
 atom_ability, atom_layertag, atom_datatables, atom_core, atom_math, atom_renderdoc,
 atom_cel_shader, atom_pqef, atom_utils）暂时移出，后续逐步迁入 Bevy 0.19。
 
+**重要**: Bevy debug 构建极慢（~19s 启动，30s+ 出首帧）。运行/测试必须用 `--release`。
+验证可用 `cargo run -p atom_terrain --example chunk_loader --release`（超时 30s）。
+直接跑二进制需先 `ln -sf $(pwd)/assets target/release/examples/assets`（Bevy 从 exe 目录找 assets）。
+
 ## 编码约定
 
 - 非平凡逻辑用中文注释；简单辅助函数用英文；Shader 中英文混合

@@ -1,9 +1,16 @@
 //! GPU compute mesh generation — Bevy 0.19.
 //! Four-pass Dual Contouring on GPU with fixed-slot vertices/indices.
 //!
-//! State machine per chunk: 0→allocate→1→2→3→4→5(readback)→done
+//! State machine per chunk:
+//!   0(allocate)→1(pass1)→2(pass2)→3(pass3)→4(pass4)→5(staging copy)→6(readback)→7(cleanup)
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use bevy::{
     prelude::*,
@@ -23,7 +30,7 @@ use super::{
     sync::TerrainChunksToProcess,
     types::{TerrainChunkInfo, TerrainChunkVertex},
 };
-use crate::{mesh::TerrainChunkMeshSender, setting::TerrainSetting};
+use crate::{mesh::TerrainChunkMeshData, mesh::TerrainChunkMeshSender, setting::TerrainSetting};
 
 /// 地形 compute 管线资源，包含 bind group layout 和四个 pass 的 compute pipeline id。
 #[derive(Resource)]
@@ -94,6 +101,8 @@ pub struct ChunkBuffers {
     pub counters: Buffer,
     /// 绑定组
     pub bind_group: BindGroup,
+    /// chunk 世界坐标偏移（分配时记录，staging 时使用）
+    pub world_min: Vec3,
 }
 
 /// 所有 chunk 的 GPU buffer 映射表（Entity → ChunkBuffers）。
@@ -104,12 +113,36 @@ pub struct TerrainChunkMeshBuffers {
 }
 
 /// 每个 chunk 的 compute pass 进度计数器。
-/// 0=未开始，1-4=pass 序号，5=等待读回。
+/// 0=已分配未开始，1-4=compute pass，5=staging copy 已提交，6=readback，7=完成。
 /// 由 terrain_compute_system 每帧推进。
 #[derive(Resource, Default)]
 pub struct TerrainChunkComputeProgress {
     /// entity → 当前 pass
     pub pass: HashMap<Entity, u32>,
+}
+
+/// GPU→CPU readback 的 staging buffer 及异步映射状态
+struct StagingReadback {
+    /// 顶点 staging buffer
+    vertices: Buffer,
+    /// 索引 staging buffer
+    indices: Buffer,
+    /// 计数器 staging buffer
+    counters: Buffer,
+    /// 顶点 buffer 大小 (bytes)
+    vertex_size: u64,
+    /// 索引 buffer 大小 (bytes)
+    index_size: u64,
+    /// 计数器映射完成标志
+    mapped: Arc<AtomicBool>,
+    /// chunk 世界坐标偏移
+    world_min: Vec3,
+}
+
+/// 待 readback 的 staging buffer 集合 (entity → staging)
+#[derive(Resource, Default)]
+pub struct TerrainChunkStagingBuffers {
+    buffers: HashMap<Entity, StagingReadback>,
 }
 
 impl TerrainChunkMeshBuffers {
@@ -187,6 +220,7 @@ impl TerrainChunkMeshBuffers {
                 indices: ib,
                 counters: ct,
                 bind_group: bg,
+                world_min: Vec3::from_array(info.chunk_min),
             },
         );
     }
@@ -210,14 +244,16 @@ pub fn terrain_compute_system(
     device: Res<RenderDevice>,
     queue: Res<RenderQueue>,
     setting: Res<TerrainSetting>,
-    to_process: Res<TerrainChunksToProcess>,
+    mut to_process: ResMut<TerrainChunksToProcess>,
     mut buffers: ResMut<TerrainChunkMeshBuffers>,
     mut progress: ResMut<TerrainChunkComputeProgress>,
-    _sender: Res<TerrainChunkMeshSender>,
+    mut staging: ResMut<TerrainChunkStagingBuffers>,
+    sender: Res<TerrainChunkMeshSender>,
 ) {
     let vc = setting.voxel_count;
 
-    // 0. allocate new chunks
+    // 0. allocate new chunks, then clear from pending (world_min stored in ChunkBuffers)
+    let mut to_remove: Vec<Entity> = Vec::new();
     for (&entity, world_min) in to_process.pending.iter() {
         if progress.pass.contains_key(&entity) {
             continue;
@@ -241,10 +277,19 @@ pub fn terrain_compute_system(
             &pipeline.bind_group_layout,
         );
         progress.pass.insert(entity, 0);
+        to_remove.push(entity);
+    }
+    for entity in to_remove {
+        to_process.pending.remove(&entity);
     }
 
-    // 1. dispatch
+    // 1. dispatch compute passes 1-4
+    use std::collections::HashSet;
     let encoder = render_context.command_encoder();
+    let mut dispatched: HashSet<Entity> = HashSet::new();
+    // 跟踪本帧刚晋升的 pass，跳过需要 GPU 执行等待的 staging/readback
+    let mut fresh_pass5: HashSet<Entity> = HashSet::new();
+    let mut fresh_pass6: HashSet<Entity> = HashSet::new();
     for (&entity, pass) in progress.pass.iter() {
         let Some(cb) = buffers.get(entity) else {
             continue;
@@ -257,7 +302,7 @@ pub fn terrain_compute_system(
             _ => continue,
         };
         let Some(cp) = pipeline_cache.get_compute_pipeline(pid) else {
-            continue;
+            continue; // pipeline 尚未编译完成
         };
         let wg = match *pass {
             1 => {
@@ -273,36 +318,257 @@ pub fn terrain_compute_system(
         cpass.set_pipeline(cp);
         cpass.set_bind_group(0, &cb.bind_group, &[]);
         cpass.dispatch_workgroups(wg.0, wg.1, wg.2);
+        dispatched.insert(entity);
     }
 
-    // 2. advance
-    for pass in progress.pass.values_mut() {
-        if *pass < 4 {
+    // 2. advance: 只有 dispatch 成功的才推进
+    //    pass 4→5 需要等一帧（GPU 执行需要时间），所以标记为 fresh_pass5 跳过本帧的 staging
+    for (entity, pass) in progress.pass.iter_mut() {
+        if *pass == 0 {
+            *pass = 1;
+        } else if *pass >= 1 && *pass < 4 && dispatched.contains(entity) {
             *pass += 1;
-        }
-    }
-
-    // 3. mark ready — readback 暂略，MVP smoke test
-    for pass in progress.pass.values_mut() {
-        if *pass == 4 {
+        } else if *pass == 4 && dispatched.contains(entity) {
             *pass = 5;
-            info!("Chunk compute pipeline 完成！等待 readback 实现");
+            fresh_pass5.insert(*entity);
         }
     }
 
-    // 4. readback pass==5 — 暂略（需 staging buffer + copy_buffer_to_buffer）
-    let done: Vec<Entity> = progress
-        .pass
-        .iter()
-        .filter(|(_, p)| **p == 5)
-        .map(|(e, _)| *e)
-        .collect();
-    for entity in done {
-        let Some(_cb) = buffers.remove(entity) else {
-            progress.pass.remove(&entity);
+    // 3. staging copy (pass == 5, 且不是本帧刚晋升的)
+    let v = vc as u64 * vc as u64 * vc as u64;
+    let vertex_size = v * size_of::<TerrainChunkVertex>() as u64;
+    let index_size = v * 6 * 4;
+
+    let mut copied: Vec<Entity> = Vec::new();
+    for (&entity, pass) in progress.pass.iter() {
+        if *pass != 5 {
+            continue;
+        }
+        // 跳过本帧刚从 pass 4 晋升的 — GPU 还没执行 dispatch
+        if fresh_pass5.contains(&entity) {
+            continue;
+        }
+        let Some(cb) = buffers.get(entity) else {
             continue;
         };
-        info!("Chunk {entity:?} 完成，跳过 mesh 组装（staging readback 待实现）");
+        // 创建 staging buffers
+        let mk_staging = |label: &str, size: u64| {
+            device.create_buffer(&BufferDescriptor {
+                label: Some(label),
+                size,
+                usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            })
+        };
+        let sv = mk_staging("staging_v", vertex_size);
+        let si = mk_staging("staging_i", index_size);
+        let sc = mk_staging("staging_c", 16);
+
+        // 提交 copy 命令到当前帧的 encoder
+        encoder.copy_buffer_to_buffer(&cb.vertices, 0, &sv, 0, vertex_size);
+        encoder.copy_buffer_to_buffer(&cb.indices, 0, &si, 0, index_size);
+        encoder.copy_buffer_to_buffer(&cb.counters, 0, &sc, 0, 16);
+
+        // 从 ChunkBuffers 读取 world_min（分配时记录）
+        let world_min = cb.world_min;
+
+        staging.buffers.insert(
+            entity,
+            StagingReadback {
+                vertices: sv,
+                indices: si,
+                counters: sc,
+                vertex_size,
+                index_size,
+                mapped: Arc::new(AtomicBool::new(false)),
+                world_min,
+            },
+        );
+        copied.push(entity);
+    }
+    for entity in &copied {
+        *progress.pass.get_mut(entity).expect("pass entry exists") = 6;
+        fresh_pass6.insert(*entity);
+    }
+
+    // 4. readback (pass == 6)
+    //    上一帧的 copy 已被 GPU 执行，map staging buffer 读取数据
+    let wgpu_device = device.wgpu_device();
+    let mut done: Vec<(Entity, Vec3)> = Vec::new();
+
+    for (&entity, pass) in progress.pass.iter() {
+        if *pass != 6 {
+            continue;
+        }
+        // 跳过本帧刚完成 copy 的 — GPU 还没执行 copy 命令
+        if fresh_pass6.contains(&entity) {
+            continue;
+        }
+        let Some(s) = staging.buffers.get(&entity) else {
+            warn!("pass==6 but no staging buffer for {entity:?}");
+            continue;
+        };
+
+        // 首次进入 pass==6：发起 async 映射
+        if !s.mapped.load(Ordering::Acquire) {
+            let flag = s.mapped.clone();
+            let slice = s.counters.slice(..);
+            slice.map_async(
+                bevy::render::render_resource::MapMode::Read,
+                move |result| {
+                    if result.is_ok() {
+                        flag.store(true, Ordering::Release);
+                    }
+                },
+            );
+            let _ = wgpu_device.poll(
+                bevy::render::render_resource::PollType::Poll,
+            );
+        }
+
+        if !s.mapped.load(Ordering::Acquire) {
+            continue; // 映射尚未完成，下帧再试
+        }
+
+        let counter_view = s.counters.slice(..).get_mapped_range();
+        let _counters: &[u32; 4] = bytemuck::from_bytes(&counter_view[..16]);
+        drop(counter_view);
+        s.counters.unmap();
+
+        // 读顶点
+        s.vertices.slice(..).map_async(
+            bevy::render::render_resource::MapMode::Read,
+            |_| {},
+        );
+        // 读索引
+        s.indices.slice(..).map_async(
+            bevy::render::render_resource::MapMode::Read,
+            |_| {},
+        );
+        let _ = wgpu_device.poll(
+            bevy::render::render_resource::PollType::Poll,
+        );
+
+        let vertex_view = s.vertices.slice(..).get_mapped_range();
+        let all_vertices: &[TerrainChunkVertex] =
+            bytemuck::cast_slice(&vertex_view[..s.vertex_size as usize]);
+        let index_view = s.indices.slice(..).get_mapped_range();
+        let all_indices: &[u32] =
+            bytemuck::cast_slice(&index_view[..s.index_size as usize]);
+
+        // compact + remap: 过滤零顶点，重映射索引
+        let mesh = compact_and_build_mesh(all_vertices, all_indices, vc);
+        drop(vertex_view);
+        drop(index_view);
+        s.vertices.unmap();
+        s.indices.unmap();
+
+        if let Some(mesh) = mesh {
+            let _ = sender.send(TerrainChunkMeshData {
+                mesh,
+                translation: s.world_min,
+            });
+            info!(
+                "Chunk {entity:?} readback 完成 → mesh 已发送 ({:?})",
+                s.world_min
+            );
+        }
+        done.push((entity, s.world_min));
+    }
+
+    for (entity, _world_min) in &done {
+        *progress.pass.get_mut(entity).expect("pass entry exists") = 7;
+    }
+
+    // 5. cleanup (pass == 7)
+    let to_remove: Vec<Entity> = progress
+        .pass
+        .iter()
+        .filter(|(_, p)| **p == 7)
+        .map(|(e, _)| *e)
+        .collect();
+    for entity in to_remove {
+        buffers.remove(entity);
+        staging.buffers.remove(&entity);
         progress.pass.remove(&entity);
     }
+}
+
+/// 将 GPU 读回的稀疏顶点/索引 compact + remap 为 Bevy Mesh。
+/// 过滤零顶点（未生成几何的 voxel），重映射索引，构建 TriangleList mesh。
+fn compact_and_build_mesh(
+    all_vertices: &[TerrainChunkVertex],
+    all_indices: &[u32],
+    vc: u32,
+) -> Option<Mesh> {
+    let total = (vc as usize).pow(3);
+
+    // 构建 old→new 映射：标记有 position 的顶点
+    let mut remap: Vec<Option<u32>> = vec![None; total];
+    let mut compact_verts: Vec<[f32; 3]> = Vec::new();
+    let mut compact_norms: Vec<[f32; 3]> = Vec::new();
+
+    for (i, v) in all_vertices.iter().enumerate().take(total) {
+        let len = (v.position[0] * v.position[0]
+            + v.position[1] * v.position[1]
+            + v.position[2] * v.position[2])
+            .sqrt();
+        if len > 0.0001 {
+            remap[i] = Some(compact_verts.len() as u32);
+            compact_verts.push(v.position);
+            compact_norms.push(v.normal);
+        }
+    }
+
+    if compact_verts.is_empty() {
+        return None;
+    }
+
+    // 遍历索引：每个 voxel 最多 6 个索引 → 两个三角形 (0-1-2, 0-2-3)
+    let mut tri_indices: Vec<u32> = Vec::new();
+    for voxel_idx in 0..total {
+        let base = voxel_idx * 6;
+        if base + 5 >= all_indices.len() {
+            break;
+        }
+        let i0 = all_indices[base] as usize;
+        let i1 = all_indices[base + 1] as usize;
+        let i2 = all_indices[base + 2] as usize;
+        let i3 = all_indices[base + 3] as usize;
+        let i4 = all_indices[base + 4] as usize;
+        let i5 = all_indices[base + 5] as usize;
+
+        // 检查两组三角形是否有效（所有 6 个索引都是有效顶点）
+        let r0 = remap.get(i0).copied().flatten();
+        let r1 = remap.get(i1).copied().flatten();
+        let r2 = remap.get(i2).copied().flatten();
+        let r3 = remap.get(i3).copied().flatten();
+        let r4 = remap.get(i4).copied().flatten();
+        let r5 = remap.get(i5).copied().flatten();
+
+        if let (Some(r0), Some(r1), Some(r2), Some(r3), Some(r4), Some(r5)) =
+            (r0, r1, r2, r3, r4, r5)
+        {
+            // 过滤退化的三角形（三个顶点都不同）
+            if r0 != r1 && r0 != r2 && r1 != r2 {
+                tri_indices.extend_from_slice(&[r0, r1, r2]);
+            }
+            if r3 != r4 && r3 != r5 && r4 != r5 {
+                tri_indices.extend_from_slice(&[r3, r4, r5]);
+            }
+        }
+    }
+
+    if tri_indices.is_empty() {
+        return None;
+    }
+
+    let mut mesh = Mesh::new(
+        bevy::mesh::PrimitiveTopology::TriangleList,
+        bevy::asset::RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, compact_verts);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, compact_norms);
+    mesh.insert_indices(bevy::mesh::Indices::U32(tri_indices));
+    Some(mesh)
 }

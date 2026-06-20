@@ -28,7 +28,7 @@
 
 ## 已知退化
 
-- 密度场使用简版 value noise（非 OpenSimplex），视觉质量低于目标。
+- 密度场使用简版 value noise（非 OpenSimplex），视觉质量低于目标。GPU value noise height_at(0,0) ≈ -26（CPU OpenSimplex 仅为 -0.14），两者高度不同。
 - 使用 StandardMaterial（单色绿色），非 biome 驱动 PBR。
 - 无 LOD — 所有 chunk 用相同 16³ 分辨率。
 - 无 biome — 所有 chunk 地形形状相同。
