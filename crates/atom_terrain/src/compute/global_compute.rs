@@ -500,6 +500,7 @@ fn do_readback(
     let mesh = build_global_mesh(
         all_vertices,
         all_indices,
+        vertex_count as usize,
         voxel_alloc_data.as_deref(),
         s.grid_min,
         vs,
@@ -523,14 +524,19 @@ fn do_readback(
     // 保持 rebuild_triggered = true，后续只在 observer 移动时触发
 }
 
-/// Phase 2 风格的 per-voxel fixed slot compaction。
+/// 从 GPU compute 输出构建 Mesh。
+///
+/// 两条路径:
+/// - voxel_alloc 为 Some → compact path: 顶点已在紧凑位置，索引已为 compact_index，无需 remap
+/// - voxel_alloc 为 None → fallback: Phase 2 fixed slot 扫描 + remap 表
 ///
 /// index buffer 布局: 每 voxel 72 u32 (12 edge × 6)，offset = grid_idx * 72。
 /// vertex buffer: 每 voxel 1 slot (32 bytes)，offset = grid_idx。
 fn build_global_mesh(
     all_vertices: &[TerrainChunkVertex],
     all_indices: &[u32],
-    _voxel_alloc: Option<&[u32]>,
+    vertex_count: usize,
+    voxel_alloc: Option<&[u32]>,
     grid_min: Vec3,
     voxel_size: f32,
 ) -> Option<Mesh> {
@@ -538,97 +544,165 @@ fn build_global_mesh(
     let total_slots = (gs as usize).pow(3).min(all_vertices.len());
     let grid_max = grid_min + Vec3::splat((gs + 1) as f32 * voxel_size);
 
-    // Phase 2 方式：遍历 fixed slot，过滤零顶点，构建 remap
-    let mut remap: Vec<Option<u32>> = vec![None; total_slots];
-    let mut positions: Vec<[f32; 3]> = Vec::new();
-    let mut normals: Vec<[f32; 3]> = Vec::new();
-    let mut clamped = 0u32;
+    // 两条路径产生的数据
+    let (positions, normals, tri_indices): (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>);
 
-    for i in 0..total_slots {
-        let v = &all_vertices[i];
-        let len = (v.position[0] * v.position[0]
-            + v.position[1] * v.position[1]
-            + v.position[2] * v.position[2])
-            .sqrt();
-        if len > 0.0001 {
-            let p = [
-                v.position[0].clamp(grid_min.x, grid_max.x),
-                v.position[1].clamp(grid_min.y, grid_max.y),
-                v.position[2].clamp(grid_min.z, grid_max.z),
-            ];
-            if p != v.position {
-                clamped += 1;
-            }
-            remap[i] = Some(positions.len() as u32);
-            positions.push(p);
-            normals.push(v.normal);
-        }
-    }
+    if voxel_alloc.is_some() {
+        // ── Compact path: shader 已 scatter-write 到紧凑位置 ──
+        // vertices[0..V] 是有效顶点，indices 已写入 compact_index 值
+        let mut pos: Vec<[f32; 3]> = Vec::new();
+        let mut nrm: Vec<[f32; 3]> = Vec::new();
+        let mut clamped = 0u32;
 
-    if clamped > 0 {
-        info!(
-            "  QEF clamp: {clamped}/{} vertices clamped to grid",
-            positions.len()
-        );
-    }
-    info!(
-        "  fixed slot scan: {} valid / {} total",
-        positions.len(),
-        total_slots
-    );
-
-    if positions.is_empty() {
-        return None;
-    }
-
-    // Phase 2: inner voxels [0, vc)³ → index = jx + jy*vc + jz*vc*vc
-    // index buffer offset = inner_index * 72
-    let vc = gs - 2; // inner voxel count (Phase 2 convention)
-    let mut tri_indices: Vec<u32> = Vec::new();
-    for jz in 0..vc {
-        for jy in 0..vc {
-            for jx in 0..vc {
-                let inner_idx = (jx + jy * vc + jz * vc * vc) as usize;
-                let base = inner_idx * 72;
-                if base + 71 >= all_indices.len() {
-                    break;
+        for i in 0..vertex_count {
+            let v = &all_vertices[i];
+            let len = (v.position[0] * v.position[0]
+                + v.position[1] * v.position[1]
+                + v.position[2] * v.position[2])
+                .sqrt();
+            if len > 0.0001 {
+                let p = [
+                    v.position[0].clamp(grid_min.x, grid_max.x),
+                    v.position[1].clamp(grid_min.y, grid_max.y),
+                    v.position[2].clamp(grid_min.z, grid_max.z),
+                ];
+                if p != v.position {
+                    clamped += 1;
                 }
+                pos.push(p);
+                nrm.push(v.normal);
+            }
+        }
 
-                for slot in 0..12 {
-                    let off = base + slot * 6;
-                    let s0 = all_indices[off] as usize;
-                    let s1 = all_indices[off + 1] as usize;
-                    let s2 = all_indices[off + 2] as usize;
-                    let s3 = all_indices[off + 3] as usize;
-                    let s4 = all_indices[off + 4] as usize;
-                    let s5 = all_indices[off + 5] as usize;
+        if clamped > 0 {
+            info!(
+                "  QEF clamp: {clamped}/{} vertices clamped to grid",
+                pos.len()
+            );
+        }
+        info!(
+            "  compact scan: {} valid / {} total",
+            pos.len(),
+            total_slots
+        );
 
-                    let r0 = remap.get(s0).copied().flatten();
-                    let r1 = remap.get(s1).copied().flatten();
-                    let r2 = remap.get(s2).copied().flatten();
-                    let r3 = remap.get(s3).copied().flatten();
-                    let r4 = remap.get(s4).copied().flatten();
-                    let r5 = remap.get(s5).copied().flatten();
+        if pos.is_empty() {
+            return None;
+        }
 
-                    if let (Some(r0), Some(r1), Some(r2), Some(r3), Some(r4), Some(r5)) =
-                        (r0, r1, r2, r3, r4, r5)
-                    {
-                        if r0 != r1 && r1 != r2 && r0 != r2 {
-                            tri_indices.extend_from_slice(&[r0, r1, r2]);
-                        }
-                        if r3 != r4 && r4 != r5 && r3 != r5 {
-                            tri_indices.extend_from_slice(&[r3, r4, r5]);
+        // 无需 remap：index buffer 已包含 compact_index 值，直接当三角索引
+        let vertex_count = pos.len() as u32;
+        let mut idx: Vec<u32> = Vec::new();
+        for &i in all_indices {
+            if i < vertex_count {
+                idx.push(i);
+            }
+        }
+        if idx.is_empty() {
+            return None;
+        }
+
+        positions = pos;
+        normals = nrm;
+        tri_indices = idx;
+    } else {
+        // ── Fallback: fixed slot scan with remap (Phase 2 风格) ──
+        let mut remap: Vec<Option<u32>> = vec![None; total_slots];
+        let mut pos: Vec<[f32; 3]> = Vec::new();
+        let mut nrm: Vec<[f32; 3]> = Vec::new();
+        let mut clamped = 0u32;
+
+        for i in 0..total_slots {
+            let v = &all_vertices[i];
+            let len = (v.position[0] * v.position[0]
+                + v.position[1] * v.position[1]
+                + v.position[2] * v.position[2])
+                .sqrt();
+            if len > 0.0001 {
+                let p = [
+                    v.position[0].clamp(grid_min.x, grid_max.x),
+                    v.position[1].clamp(grid_min.y, grid_max.y),
+                    v.position[2].clamp(grid_min.z, grid_max.z),
+                ];
+                if p != v.position {
+                    clamped += 1;
+                }
+                remap[i] = Some(pos.len() as u32);
+                pos.push(p);
+                nrm.push(v.normal);
+            }
+        }
+
+        if clamped > 0 {
+            info!(
+                "  QEF clamp: {clamped}/{} vertices clamped to grid",
+                pos.len()
+            );
+        }
+        info!(
+            "  fixed slot scan: {} valid / {} total",
+            pos.len(),
+            total_slots
+        );
+
+        if pos.is_empty() {
+            return None;
+        }
+
+        // Phase 2: inner voxels [0, vc)³ → index = jx + jy*vc + jz*vc*vc
+        // index buffer offset = inner_index * 72
+        let vc = gs - 2;
+        let mut idx: Vec<u32> = Vec::new();
+        for jz in 0..vc {
+            for jy in 0..vc {
+                for jx in 0..vc {
+                    let inner_idx = (jx + jy * vc + jz * vc * vc) as usize;
+                    let base = inner_idx * 72;
+                    if base + 71 >= all_indices.len() {
+                        break;
+                    }
+
+                    for slot in 0..12 {
+                        let off = base + slot * 6;
+                        let s0 = all_indices[off] as usize;
+                        let s1 = all_indices[off + 1] as usize;
+                        let s2 = all_indices[off + 2] as usize;
+                        let s3 = all_indices[off + 3] as usize;
+                        let s4 = all_indices[off + 4] as usize;
+                        let s5 = all_indices[off + 5] as usize;
+
+                        let r0 = remap.get(s0).copied().flatten();
+                        let r1 = remap.get(s1).copied().flatten();
+                        let r2 = remap.get(s2).copied().flatten();
+                        let r3 = remap.get(s3).copied().flatten();
+                        let r4 = remap.get(s4).copied().flatten();
+                        let r5 = remap.get(s5).copied().flatten();
+
+                        if let (Some(r0), Some(r1), Some(r2), Some(r3), Some(r4), Some(r5)) =
+                            (r0, r1, r2, r3, r4, r5)
+                        {
+                            if r0 != r1 && r1 != r2 && r0 != r2 {
+                                idx.extend_from_slice(&[r0, r1, r2]);
+                            }
+                            if r3 != r4 && r4 != r5 && r3 != r5 {
+                                idx.extend_from_slice(&[r3, r4, r5]);
+                            }
                         }
                     }
                 }
             }
         }
+
+        if idx.is_empty() {
+            return None;
+        }
+
+        positions = pos;
+        normals = nrm;
+        tri_indices = idx;
     }
 
-    if tri_indices.is_empty() {
-        return None;
-    }
-
+    // ── Common: bbox + mesh 构建 ──
     let mut bmin = Vec3::splat(f32::MAX);
     let mut bmax = Vec3::splat(f32::MIN);
     for p in &positions {

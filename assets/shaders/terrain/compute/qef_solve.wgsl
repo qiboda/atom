@@ -106,6 +106,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     else if length(vp - centroid) > info.voxel_size * 2.0 { vp = centroid; }
 
     let vn = normalize(avg_norm / f32(ncross));
-    // 使用 fixed slot (同 Phase 2): vertices[voxel_idx]
-    vertices[voxel_idx] = TerrainChunkVertex(vp, 0u, vn, 0u);
+    // compact scatter-write via voxel_alloc (dexyfex Reverse Expansion)
+    let vi = voxel_alloc[voxel_idx];
+    if vi != ~0u { vertices[vi] = TerrainChunkVertex(vp, 0u, vn, 0u); }
 }
