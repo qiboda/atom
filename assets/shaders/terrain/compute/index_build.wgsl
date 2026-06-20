@@ -127,12 +127,30 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         // atomic 分配 6 个 index slot
         let base = atomicAdd(&counters[1], 6u);
 
-        // winding: 几何法线应与顶点法线同向（已验证 always-flip 反了）
-        indices[base + 0u] = fixed_slots[0];
-        indices[base + 1u] = fixed_slots[1];
-        indices[base + 2u] = fixed_slots[2];
-        indices[base + 3u] = fixed_slots[0];
-        indices[base + 4u] = fixed_slots[2];
-        indices[base + 5u] = fixed_slots[3];
+        // winding: flip flag + axis-dependent correction
+        // X/Z-edge default=+X/+Z, Y-edge default=-Y
+        // flip=true (air@c0, solid@c1): face toward air (-axis)
+        //   X/Z: need flipped(-X/-Z)  |  Y: need default(-Y)
+        // flip=false (solid@c0, air@c1): face toward air (+axis)
+        //   X/Z: need default(+X/+Z)  |  Y: need flipped(+Y)
+        let flip = read_flip(edge_id);
+        let use_flip = select(flip, !flip, axis == 1u); // Y-axis: invert flip logic
+        if use_flip {
+            // flipped winding (q0-q2-q1, q0-q3-q2)
+            indices[base + 0u] = fixed_slots[0];
+            indices[base + 1u] = fixed_slots[2];
+            indices[base + 2u] = fixed_slots[1];
+            indices[base + 3u] = fixed_slots[0];
+            indices[base + 4u] = fixed_slots[3];
+            indices[base + 5u] = fixed_slots[2];
+        } else {
+            // default winding (q0-q1-q2, q0-q2-q3)
+            indices[base + 0u] = fixed_slots[0];
+            indices[base + 1u] = fixed_slots[1];
+            indices[base + 2u] = fixed_slots[2];
+            indices[base + 3u] = fixed_slots[0];
+            indices[base + 4u] = fixed_slots[2];
+            indices[base + 5u] = fixed_slots[3];
+        }
     }
 }
