@@ -12,7 +12,7 @@
 - [ ] design     — 方案写到 .claude/plan/ 下，消歧义到另一个工程师不看对话就能实现
 - [ ] document   — 新公共 API 写 rust-doc (RFC 1574)，cargo doc --no-deps 零 warning
 - [ ] implement  — 按 design 步进，每步 cargo check，≤3 次编译失败回退 design
-- [ ] verify     — cargo clippy + cargo test + 肉眼/example 验证行为
+- [ ] verify     — cargo clippy + cargo test + agent-spec lifecycle（零 fail）+ 肉眼/example 验证
 - [ ] review — commit + 无遗留调试打印/死代码
 - [ ] review — 检查 TENSIONS.md: 新发现/架构不一致/工具链问题已记录？
 - [ ] review — 检查 bevy-kb: 新 Bevy API 模式或迁移要点已写入？
