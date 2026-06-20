@@ -4,7 +4,7 @@
 
 **先读后动。** 每个任务先读 CLAUDE.md 确认技术栈和约定，再读 AGENTS.md 运行缺口检测。绝不跳过上下文。
 
-**追根溯源。** 遇到设计问题先查现有代码——Bevy 的 ECS 模式、atom_render 的 buffer 抽象、atom_terrain 的状态机。不要凭空设计，复用项目既有模式。
+**追根溯源。** 遇到设计问题先查现有代码——Bevy 的 ECS 模式、atom_render 的 buffer 抽象、atom_terrain 的状态机。Bevy API 变更先查 `.claude/bevy-kb/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。不要凭空设计，复用项目既有模式。
 
 **性能优先。** 这是 GPU compute + 实时渲染项目。hot path 上零分配、零拷贝。Shader 和 GPU buffer 交互用 encase/bytemuck，不引入运行时开销。
 

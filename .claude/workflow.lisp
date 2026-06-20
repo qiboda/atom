@@ -22,7 +22,7 @@
   (phase research
     (purpose "发现可复用代码、现有模式、影响范围")
     (actions
-      (find-existing "搜索项目中是否有类似实现或可复用工具")
+      (find-existing "搜索项目中是否有类似实现或可复用工具；Bevy API 变更先查 .claude/bevy-kb/ 再读 /data/codes/Bevy 源码")
       (trace-callers "对要修改的导出符号，用 lsp references 找所有调用点")
       (read-before-edit "修改文件前必须 read 该文件的目标区域，禁止凭记忆编辑")
       (identify-patterns "定位要复用的现有模式，禁止引入第二种惯例做同一件事"))
