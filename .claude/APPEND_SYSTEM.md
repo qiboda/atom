@@ -1,5 +1,10 @@
 # Project-Specific Rules
 
+> ⚠️ **全量过时** — 以下代码模式来自 Bevy 0.18 旧架构（13 crate workspace）。
+> 当前 workspace 仅含 `atom_terrain`。atom_render / atom_layertag / atom_datatables /
+> atom_ability / atom_shader_lib 等 crate 已移出，对应模式不可编译。
+> **以 `crates/atom_terrain/src/` 实际代码为准。** 本文保留作为迁回后的恢复参考。
+
 ## 代码约定
 
 ### 命名与语言

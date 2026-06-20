@@ -4,7 +4,7 @@
 
 **先读后动。** 每个任务先读 CLAUDE.md 确认技术栈和约定，再读 AGENTS.md 运行缺口检测。绝不跳过上下文。
 
-**追根溯源。** 遇到设计问题先查现有代码——Bevy 的 ECS 模式、atom_render 的 buffer 抽象、atom_terrain 的状态机。Bevy API 变更先查 `.claude/bevy-kb/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。不要凭空设计，复用项目既有模式。
+**追根溯源。** 遇到设计问题先查现有代码——Bevy 的 ECS 模式、现有 wgpu buffer 管理（`crates/atom_terrain/src/compute/`）、atom_terrain 的状态机。Bevy API 变更先查 `.claude/bevy-kb/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。不要凭空设计，复用项目既有模式。
 
 **性能优先。** 这是 GPU compute + 实时渲染项目。hot path 上零分配、零拷贝。Shader 和 GPU buffer 交互用 encase/bytemuck，不引入运行时开销。
 
@@ -90,7 +90,7 @@ skip ≠ pass。未绑定测试的场景不算完成。
 引入新三方库的判断链（按优先级）：
 
 1. **stdlib** — 能用的绝对不引入
-2. **workspace 已有 dep** — `crossbeam`、`bytemuck`、`serde` 等直接在 Cargo.toml 里
+2. **workspace 已有 dep** — `crossbeam`、`bytemuck` 等直接在 Cargo.toml 里
 3. **Bevy 生态已有** — `bevy_flycam`、`bevy-inspector-egui` 等，与引擎深度集成且无需新 Cargo 条目
 4. **新引入** — 仅在同时满足：(a) 自实现 > 1 周工作量，(b) 库 ≥1.0 或社区活跃（最近 3 个月有提交），(c) 与现有 dep tree 无冲突
 

@@ -74,7 +74,7 @@
       (no-leftovers "检查无遗留的调试打印、注释掉的测试、未使用的 import")
       (update-docs "如改动改变了公共 API 或惯例，同步更新 intent.lisp 和 APPEND_SYSTEM.md")
       (update-kb "如果 verify 阶段发现了新的 Bevy API 模式或迁移要点，写入 .claude/bevy-kb/")
-      (verify-references "检查 CLADE.md 中引用的文件路径和函数名是否仍然存在"))
+      (verify-references "检查 CLAUDE.md 中引用的文件路径和函数名是否仍然存在"))
     (exit-condition "工作区干净，commit message 描述准确；KB 和 TENSIONS.md 已更新"))
 
   ;; ── Common Failure Modes (已发生过的流程违规) ──
@@ -123,6 +123,6 @@
 
   (quality-gates
     (per-step "cargo check 必须在每步编辑后通过")
-    (pre-commit "cargo check + cargo doc --no-deps + bevy_lint (fast)")
-    (pre-push "cargo check + cargo clippy + bevy_lint + cargo nextest + cargo doc --no-deps (full)")
-    (after-commit "spec guard 非阻塞运行")))
+    (pre-commit "cargo check + cargo doc --no-deps + bevy_lint + agent-spec guard (fast, guard non-blocking)")
+    (pre-push "cargo check + cargo clippy + cargo doc --no-deps + bevy_lint + cargo nextest (full)")
+    (after-commit "spec guard 非阻塞运行（如 pre-commit 未覆盖时补充）")))

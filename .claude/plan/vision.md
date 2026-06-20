@@ -10,7 +10,7 @@
 - **Pipeline**: 四 pass GPU Dual Contouring，固定 slot 顶点/索引，CPU compact remap
 - **地形**: 单 biome value noise 密度场（`y - height_at(x,z)`）
 - **材质**: StandardMaterial 绿色，后续切换 TerrainMaterial
-- **Workspace**: 仅 `atoms_terrain` 一个 crate，其他后续逐步迁入
+- **Workspace**: 仅 `atom_terrain` 一个 crate，其他后续逐步迁入
 
 ## 技术累积栈
 

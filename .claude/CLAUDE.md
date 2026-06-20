@@ -23,14 +23,14 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.claude/bevy-kb/migration
 
 目前 workspace **仅包含 `crates/atom_terrain`**。其他 crate（atom_render, atom_shader_lib,
 atom_ability, atom_layertag, atom_datatables, atom_core, atom_math, atom_renderdoc,
-atom_cel_shader）暂时移出，后续逐步迁入 Bevy 0.19。
+atom_cel_shader, atom_pqef, atom_utils）暂时移出，后续逐步迁入 Bevy 0.19。
 
 ## 编码约定
 
 - 非平凡逻辑用中文注释；简单辅助函数用英文；Shader 中英文混合
-- 公共 API 强制 `#[deny(missing_docs)]` + `///` rust-doc（RFC 1574: Summary/Examples/Panics）
+- 公共 API 强制 `#[deny(missing_docs)]` + `///` rust-doc（RFC 1574: Summary/Examples/Panics/Safety）
 - 模块组织: `mod.rs` 模式；相关 component/system/resource 分组
-- `rustfmt.toml`: Unix 换行, field init shorthand, edition 2024
+- `rustfmt.toml`: Unix 换行, field init shorthand（edition 2024 在 `Cargo.toml` 中配置）
 - clippy lint 配置在 `Cargo.toml` 的 `[workspace.lints.clippy]`：`unwrap_used = "warn"`, `too_many_arguments`/`type_complexity`/`collapsible_if` 允许
 
 ### 错误处理

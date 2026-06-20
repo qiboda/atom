@@ -22,7 +22,7 @@ tags: [terrain, bevy, gpu, rust]
 - 网络同步
 - biome 分布（最后再做）
 
-## 验收标准
+## 完成条件
 
 场景: workspace 编译通过
   测试: cargo_check_workspace

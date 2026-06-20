@@ -23,7 +23,7 @@
 
 - **2026-06-20**: intent.lisp、APPEND_SYSTEM.md 全量过时。手工维护的元文档总是落后于代码修改。待方案：自动生成 intent.lisp，APPEND_SYSTEM.md 改为指针索引。
 - **2026-06-20**: 旧 specs/lod.spec 已删，specs/terrain-shape.spec 和 specs/terrain-material.spec 重写为 MVP 现状。specs/ → .claude/specs/，.plan/ → .claude/plan/。
-- **2026-06-20**: Workspace 仅保留 atom_terrain。其他 14 个 crate 暂时移出，待逐步迁入 Bevy 0.19。
+- **2026-06-20**: Workspace 仅保留 atom_terrain。其他 11 个 crate 暂时移出，待逐步迁入 Bevy 0.19。
 - **2026-06-20**: Workflow 加 document phase + bevy-kb 更新 + verify-references 检查。Phase-Gate Protocol 防止阶段跳过。
 
 ## 已知退化

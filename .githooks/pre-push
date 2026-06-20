@@ -16,7 +16,17 @@ echo "=== pre-push: cargo doc --no-deps ==="
 RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain 2>&1
 
 echo "=== pre-push: bevy_lint ==="
+if command -v bevy_lint &>/dev/null; then
+    bevy_lint 2>&1
+else
+    echo "WARN: bevy_lint not installed, skipping"
+fi
 echo "=== pre-push: cargo test --workspace (nextest) ==="
-cargo nextest run --workspace 2>&1
+if command -v cargo-nextest &>/dev/null; then
+    cargo nextest run --workspace 2>&1
+else
+    echo "WARN: cargo-nextest not installed, falling back to cargo test"
+    cargo test --workspace 2>&1
+fi
 
 echo "=== pre-push: OK ==="

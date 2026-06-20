@@ -12,6 +12,11 @@ echo "=== pre-commit: cargo doc --no-deps ==="
 RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain 2>&1
 
 echo "=== pre-commit: bevy_lint ==="
+if command -v bevy_lint &>/dev/null; then
+    bevy_lint 2>&1
+else
+    echo "WARN: bevy_lint not installed, skipping"
+fi
 echo "=== pre-commit: agent-spec guard ==="
 if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d .claude/specs ]; then
     "$HOME/.cargo/bin/agent-spec" guard --spec-dir .claude/specs --code . --change-scope staged 2>&1 || echo "WARN: spec guard issues (non-blocking)"
