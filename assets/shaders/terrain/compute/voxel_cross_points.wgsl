@@ -11,11 +11,13 @@ struct VoxelEdgeCrossPoint {
 
 struct TerrainChunkInfo {
     chunk_min: vec3<f32>,
+    pad0: u32,        // align to 16
     voxel_size: f32,
     voxel_count: u32,
     terrain_size: f32,
     seed: u32,
-    _pad: vec2<u32>,
+    pad1: vec2<u32>,
+    pad2: vec2<u32>,  // total 48 bytes
 }
 
 @group(0) @binding(0) var<uniform> chunk_info: TerrainChunkInfo;

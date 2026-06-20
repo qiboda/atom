@@ -6,11 +6,15 @@ use bevy::render::render_resource::ShaderType;
 use bytemuck::{Pod, Zeroable};
 
 /// GPU compute 的每个 chunk 输入参数，含 uniform buffer 布局。
+/// WGSL uniform 地址空间要求: vec3 对齐 16 字节，struct 总大小 16 的倍数。
+/// 布局: chunk_min(12)+pad0(4)=16, voxel_size(4)+voxel_count(4)+terrain_size(4)+seed(4)=16, pad1(8)=8, pad2(8)=8 → 48
 #[derive(ShaderType, Clone, Copy, Default, Pod, Zeroable)]
 #[repr(C)]
 pub struct TerrainChunkInfo {
-    /// chunk 最小角的世界坐标
+    /// chunk 最小角的世界坐标 (`vec3<f32>` → WGSL uniform 对齐到 16 字节)
     pub chunk_min: [f32; 3],
+    /// uniform vec3 对齐填充
+    pub pad0: u32,
     /// 单个 voxel 在世界空间的边长
     pub voxel_size: f32,
     /// 每条边的 voxel 数量
@@ -19,8 +23,10 @@ pub struct TerrainChunkInfo {
     pub terrain_size: f32,
     /// 噪声种子
     pub seed: u32,
-    /// 显式填充至 16 字节对齐
-    pub _pad: [u32; 2],
+    /// 填充至 32 字节
+    pub pad1: [u32; 2],
+    /// 填充至 48 字节（WGSL uniform struct 大小为 16 的倍数）
+    pub pad2: [u32; 2],
 }
 
 /// GPU compute 输出的单个顶点

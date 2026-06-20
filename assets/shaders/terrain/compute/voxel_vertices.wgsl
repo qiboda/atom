@@ -10,11 +10,13 @@ struct TerrainChunkVertex {
 
 struct TerrainChunkInfo {
     chunk_min: vec3<f32>,
+    pad0: u32,        // align chunk_min to 16 bytes
     voxel_size: f32,
     voxel_count: u32,
     terrain_size: f32,
     seed: u32,
-    _pad: vec2<u32>,
+    pad1: vec2<u32>,  // fill to 32 bytes
+    pad2: vec2<u32>,  // fill to 48 bytes (multiple of 16)
 }
 
 @group(0) @binding(0) var<uniform> chunk_info: TerrainChunkInfo;

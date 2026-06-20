@@ -7,11 +7,22 @@ use bevy::{
     render::{Render, RenderApp, RenderStartup},
 };
 
+use crate::setting::TerrainSetting;
 use gpu::{
     init_compute_pipeline, terrain_compute_system, TerrainChunkComputeProgress,
     TerrainChunkMeshBuffers,
 };
 use sync::TerrainChunksToProcess;
+
+/// 渲染 world 启动时创建测试用的 chunk entity 和 pending 条目。
+pub fn setup_test_chunk(
+    mut commands: Commands,
+    mut to_process: ResMut<TerrainChunksToProcess>,
+) {
+    let entity = commands.spawn_empty().id();
+    to_process.pending.insert(entity, Vec3::ZERO);
+    info!("[ComputePlugin] 注入测试 chunk entity={entity:?} at (0,0,0)");
+}
 
 /// 地形 chunk 网格的 GPU compute 管线插件。
 /// 在 RenderApp 中注册 GPU compute pipeline、buffer 资源和每帧 compute 系统。
@@ -23,11 +34,13 @@ impl Plugin for TerrainChunkMeshComputePlugin {
 
         let render_app = app.sub_app_mut(RenderApp);
 
-        render_app.add_systems(RenderStartup, init_compute_pipeline);
-        render_app.add_systems(Render, terrain_compute_system);
+        // 直接插入到 render world（ExtractResourcePlugin 在 0.19 的 sub-app 时序中有问题）
+        render_app.insert_resource(TerrainSetting::default());
+        render_app.init_resource::<TerrainChunksToProcess>();
+        render_app.init_resource::<TerrainChunkMeshBuffers>();
+        render_app.init_resource::<TerrainChunkComputeProgress>();
 
-        render_app
-            .init_resource::<TerrainChunkMeshBuffers>()
-            .init_resource::<TerrainChunkComputeProgress>();
+        render_app.add_systems(RenderStartup, (init_compute_pipeline, setup_test_chunk).chain());
+        render_app.add_systems(Render, terrain_compute_system);
     }
 }
