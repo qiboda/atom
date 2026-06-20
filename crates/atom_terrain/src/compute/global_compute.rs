@@ -535,6 +535,24 @@ fn build_global_mesh(
     }
     info!("  fixed slot scan: {} valid / {} total", positions.len(), total_slots);
 
+    // 诊断：采样前几个顶点和法线
+    let sample_n = 10usize.min(positions.len());
+    let samples: Vec<String> = (0..sample_n).map(|i| {
+        let p = positions[i];
+        let n = normals[i];
+        format!("p({:.2},{:.2},{:.2}) n({:.2},{:.2},{:.2})",
+            p[0], p[1], p[2], n[0], n[1], n[2])
+    }).collect();
+    info!("  vertex sample (first {sample_n}): [{}]", samples.join(" | "));
+
+    // 诊断：统计法线 Y 分量的分布（应为正，朝向 air）
+    let mut ny_pos = 0u32;
+    let mut ny_neg = 0u32;
+    for n in &normals {
+        if n[1] > 0.0 { ny_pos += 1; } else { ny_neg += 1; }
+    }
+    info!("  normal Y: {ny_pos} up, {ny_neg} down");
+
     if positions.is_empty() { return None; }
 
     // Phase 2: inner voxels [0, vc)³ → index = jx + jy*vc + jz*vc*vc
@@ -580,6 +598,30 @@ fn build_global_mesh(
     }
 
     if tri_indices.is_empty() { return None; }
+
+    // 诊断：前几个三角面的几何法线 vs 顶点法线
+    let tri_sample = 5usize.min(tri_indices.len() / 3);
+    for t in 0..tri_sample {
+        let i0 = tri_indices[t*3] as usize;
+        let i1 = tri_indices[t*3+1] as usize;
+        let i2 = tri_indices[t*3+2] as usize;
+        if i0 < positions.len() && i1 < positions.len() && i2 < positions.len() {
+            let p0 = Vec3::from_array(positions[i0]);
+            let p1 = Vec3::from_array(positions[i1]);
+            let p2 = Vec3::from_array(positions[i2]);
+            let geo_n = (p1 - p0).cross(p2 - p0).normalize();
+            let avg_vn = (Vec3::from_array(normals[i0])
+                + Vec3::from_array(normals[i1])
+                + Vec3::from_array(normals[i2])) / 3.0;
+            let dot = geo_n.dot(avg_vn);
+            info!("  tri[{t}]: geo_n=({:.2},{:.2},{:.2}) avg_vn=({:.2},{:.2},{:.2}) dot={:.2} {}",
+                geo_n.x, geo_n.y, geo_n.z,
+                avg_vn.x, avg_vn.y, avg_vn.z,
+                dot,
+                if dot > 0.0 { "OK" } else { "FLIPPED" }
+            );
+        }
+    }
 
     let mut bmin = Vec3::splat(f32::MAX);
     let mut bmax = Vec3::splat(f32::MIN);

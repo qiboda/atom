@@ -18,5 +18,9 @@ crossbeam = { workspace = true }
 name = "chunk_loader"
 path = "examples/chunk_loader.rs"
 
+[[example]]
+name = "winding_debug"
+path = "examples/winding_debug.rs"
+
 [lints]
 workspace = true

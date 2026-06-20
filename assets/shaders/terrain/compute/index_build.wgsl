@@ -85,15 +85,20 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let voxel_idx = gid.x + gid.y * gs + gid.z * gs * gs;
     let vx = gid.x; let vy = gid.y; let vz = gid.z;
 
-    // 对全部 12 条边生成 quad（试探性去掉去重，验证 winding 是否与去重逻辑有关）
+    // canonical owner 去重 + 全部 12 边
     for (var e = 0u; e < 12u; e++) {
         let corner = EDGE_CORNERS[e];
         let axis = EDGE_DIRS[e];
 
-        // edge 的起始 corner
         let cx = vx + corner.x;
         let cy = vy + corner.y;
         let cz = vz + corner.z;
+
+        // 去重：若 canonical owner 存在且 ≠ 当前 voxel → 跳过
+        let owner_exists = cx < gs && cy < gs && cz < gs;
+        if owner_exists && (cx != vx || cy != vy || cz != vz) {
+            continue;
+        }
 
         let edge_id = voxel_idx * 12u + e;
         if !has_cross(edge_id) { continue; }
@@ -122,26 +127,12 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         // atomic 分配 6 个 index slot
         let base = atomicAdd(&counters[1], 6u);
 
-        // winding: flip = d1 < 0（cross 数据 bit 3）
-        //   flip=false → solid→air → 翻转（q0-q2-q1,q0-q3-q2）→ face 朝向 air
-        //   flip=true  → air→solid → 默认（q0-q1-q2,q0-q2-q3）→ face 朝向 solid
-        let flip = read_flip(edge_id);
-        if flip {
-            // air→solid: 默认 winding
-            indices[base + 0u] = fixed_slots[0];
-            indices[base + 1u] = fixed_slots[1];
-            indices[base + 2u] = fixed_slots[2];
-            indices[base + 3u] = fixed_slots[0];
-            indices[base + 4u] = fixed_slots[2];
-            indices[base + 5u] = fixed_slots[3];
-        } else {
-            // solid→air: 翻转 winding（同 Phase 2）
-            indices[base + 0u] = fixed_slots[0];
-            indices[base + 1u] = fixed_slots[2];
-            indices[base + 2u] = fixed_slots[1];
-            indices[base + 3u] = fixed_slots[0];
-            indices[base + 4u] = fixed_slots[3];
-            indices[base + 5u] = fixed_slots[2];
-        }
+        // winding: 几何法线应与顶点法线同向（已验证 always-flip 反了）
+        indices[base + 0u] = fixed_slots[0];
+        indices[base + 1u] = fixed_slots[1];
+        indices[base + 2u] = fixed_slots[2];
+        indices[base + 3u] = fixed_slots[0];
+        indices[base + 4u] = fixed_slots[2];
+        indices[base + 5u] = fixed_slots[3];
     }
 }
