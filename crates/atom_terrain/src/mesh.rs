@@ -2,7 +2,10 @@
 //!
 //! 定义从渲染世界回传到主世界的 mesh 数据结构与 channel 收发器。
 
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    render::render_resource::Face,
+};
 use crossbeam::channel::{Receiver, Sender};
 
 use crate::{
@@ -11,6 +14,7 @@ use crate::{
         TerrainLoadedChunks,
     },
     compute::sync::{ChunkProcessRequest, TerrainChunkProcessSender},
+    debug::TerrainDebugConfig,
     setting::TerrainSetting,
 };
 
@@ -132,6 +136,7 @@ pub struct GlobalTerrainMesh;
 pub fn handle_global_mesh_data(
     mut commands: Commands,
     receiver: Res<TerrainChunkMeshReceiver>,
+    debug_config: Res<TerrainDebugConfig>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut mesh_entity: Local<Option<Entity>>,
@@ -141,6 +146,7 @@ pub fn handle_global_mesh_data(
         let mat = materials.add(StandardMaterial {
             base_color: Color::srgb(0.7, 0.75, 0.8),
             perceptual_roughness: 0.3,
+            cull_mode: if debug_config.double_sided { None } else { Some(Face::Back) },
             ..default()
         });
 

@@ -142,13 +142,12 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         // atomic 分配 6 个 index slot
         let base = atomicAdd(&counters[1], 6u);
 
-        // winding: 默认 face_n = (+X, -Y, +Z)，heightfield 全部翻转
-        // 翻转顺序: vi0-vi2-vi1, vi0-vi3-vi2
+        // winding: 默认 face_n = (+X, -Y, +Z)（基于 quad_voxels 顺序）
         indices[base + 0u] = vidx[0];
-        indices[base + 1u] = vidx[2];
-        indices[base + 2u] = vidx[1];
+        indices[base + 1u] = vidx[1];
+        indices[base + 2u] = vidx[2];
         indices[base + 3u] = vidx[0];
-        indices[base + 4u] = vidx[3];
-        indices[base + 5u] = vidx[2];
+        indices[base + 4u] = vidx[2];
+        indices[base + 5u] = vidx[3];
     }
 }

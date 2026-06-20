@@ -21,8 +21,11 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    // 开启线框调试
-    commands.insert_resource(TerrainDebugConfig { wireframe: true });
+    // 调试开关
+    commands.insert_resource(TerrainDebugConfig {
+        wireframe: true,
+        double_sided: true,
+    });
 
     // 摄像机 + FreeCamera（TerrainObserver 资源由 GlobalTerrainPlugin 自动更新）
     commands.spawn((
