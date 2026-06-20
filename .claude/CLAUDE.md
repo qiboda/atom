@@ -1,13 +1,13 @@
 # Atom Terrain Engine
 
-基于 Bevy 0.18 的体素平滑地形（GPU Dual Contouring + QEF）+ EffectGraph 技能系统。
+基于 Bevy 0.19 的体素平滑地形（GPU Dual Contouring + QEF）。
 架构导航见 `.claude/intent.lisp`。
 
 ## 文档索引
 
 | 位置 | 内容 |
 | `.claude/intent.lisp` | **架构描述符**（crate→组件→符号导航） |
-| `.claude/workflow.lisp` | **开发流程**（understand → research → design → implement → verify → review） |
+| `.claude/workflow.lisp` | **开发流程**（understand → research → design → document → implement → verify → review） |
 | `.claude/SOUL.md` | Agent 行为规范、依赖规则、测试策略、架构边界 |
 | `.claude/ARCHITECTURE.md` | 架构决策记录 (ADR) |
 | `.claude/TENSIONS.md` | 摩擦日志 |
@@ -20,6 +20,7 @@
 ## 编码约定
 
 - 非平凡逻辑用中文注释；简单辅助函数用英文；Shader 中英文混合
+- 公共 API 强制 `#[deny(missing_docs)]` + `///` rust-doc（RFC 1574: Summary/Examples/Panics）
 - 模块组织: `mod.rs` 模式；相关 component/system/resource 分组
 - `rustfmt.toml`: Unix 换行, field init shorthand, edition 2024
 - `clippy.toml`: `unwrap_used = "warn"`, `too_many_arguments`/`type_complexity`/`collapsible_if` 允许

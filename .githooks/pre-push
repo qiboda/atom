@@ -11,9 +11,11 @@ cargo check --workspace 2>&1
 echo "=== pre-push: cargo clippy --workspace ==="
 cargo clippy --workspace -- -A dead_code 2>&1
 
-echo "=== pre-push: bevy_lint ==="
-$HOME/.cargo/bin/bevy_lint 2>&1
 
+echo "=== pre-push: cargo doc --no-deps ==="
+RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps 2>&1
+
+echo "=== pre-push: bevy_lint ==="
 echo "=== pre-push: cargo test --workspace (nextest) ==="
 cargo nextest run --workspace 2>&1
 

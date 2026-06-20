@@ -12,7 +12,7 @@
 
 **依赖克制。** 标准库→workspace dep→Bevy 生态→新引入（详见 Boundaries）。不加不必要的 dep。
 
-**注释用中文。** Rust 代码的 doc comment 和 Shader 注释混合中英文，非平凡逻辑用中文解释原因。
+**注释用中文。** Rust 代码的 doc comment 和 Shader 注释混合中英文，非平凡逻辑用中文解释原因。公共 API 强制 `#[deny(missing_docs)]` + `///` rust-doc（RFC 1574: Summary/Examples/Panics/Safety）。文档描述当前实现行为，spec 定义验收标准——两者互补不冲突。
 
 
 ## Habit: Log Before Fixing

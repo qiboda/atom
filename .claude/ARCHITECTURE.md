@@ -5,17 +5,17 @@
 
 ## Foundation
 
-### Foundation: Rust + Bevy 0.18
+### Foundation: Rust + Bevy 0.19
 
 - **日期**: 2026-06
 - **状态**: accepted
-- **决策**: Rust Edition 2024, Bevy 0.18 ECS + 渲染
+- **决策**: Rust Edition 2024, Bevy 0.19 ECS + 渲染
 - **理由**: Rust 零成本抽象 + GPU compute 安全；Bevy 的 plugin/state/material 体系无需自己造；workspace 模式拆分 crate 边界清晰
 - **替代方案**: Godot with Rust GDExtension（GDScript 性能不够 compute）、Unreal Engine with C++（过度重型，不透明管线）、纯 wgpu 无 ECS（需要自己造所有调度和资源管理）
 - **后果**:
   - + 编译时安全，GPU buffer 对齐由 encase/bytemuck 保证
   - + Plugin 体系强制关注点分离（render/main world 通信清晰）
-  - - Bevy 0.18 尚在快速迭代，API 不稳定
+  - - Bevy 尚在快速迭代，API 偶尔 breaking
   - - WGSL shader 调试困难（无断点），compute dispatch 需手动验证
 
 > 以下所有子系统的设计（GPU compute pipeline、buffer 管理、数据表系统、技能图）均继承自有代码。不做追溯 ADR——从我们的介入点 forward。
