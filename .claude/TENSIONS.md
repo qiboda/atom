@@ -32,3 +32,11 @@
 - 使用 StandardMaterial（单色绿色），非 biome 驱动 PBR。
 - 无 LOD — 所有 chunk 用相同 16³ 分辨率。
 - 无 biome — 所有 chunk 地形形状相同。
+
+## 2026-06-20: readback 实现发现
+
+- **GPU compute 4-pass 管线确认工作**: RTX 4090 Vulkan，17³ 网格 density→cross→QEF→indices 四 pass 输出正确顶点/索引。
+- **WGSL binding(5) counters 始终为 0**: 无 atomics 设计下所有 shader 不写 binding 5。vertex_count/index_count 无法从 GPU 读回，需 CPU 端 compact 时自动统计。
+- **Pipeline 异步编译 timing**: `pipeline_cache.get_compute_pipeline()` 在 RenderStartup 后 N 帧才返回 Some。dispatch 成功才 advance pass，否则 pass 停在当前值等待。
+- **Staging buffer readback 两帧等待**: dispatch→(1帧等GPU执行)→copy→(1帧等GPU执行)→map→read。同一帧内 dispatch+copy 会读到全零。
+- **CPU/GPU 噪声不匹配**: GPU 用 value noise（hash-based），CPU 用 OpenSimplex2D。同一坐标高度不同，无法直接对比验证。测试 chunk 位置需根据 GPU noise 单独定位。

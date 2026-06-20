@@ -69,30 +69,48 @@ fn my_compute_system(
 
 注意: `encoder.begin_compute_pass` 返回的 `ComputePass` 在 drop 时自动结束。不需要显式 `mem::drop`，scope 离开即可。
 
-## GPU Buffer 读回模式
+## GPU Buffer 读回模式（非阻塞，Render 系统安全）
+
+⚠️ **不要用 `PollType::Wait`** — 会阻塞渲染线程导致 swap chain timeout。
 
 ```rust
-fn poll_and_read(device: &RenderDevice, buffer: &Buffer, size: u64) -> Option<Box<[u8]>> {
-    let slice = buffer.slice(..size);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(MapMode::Read, move |_| { tx.send(()).ok(); });
-    device.wgpu_device().poll(PollType::Wait { submission_index: None, timeout: None });
-    if rx.recv().is_ok() {
-        let view = slice.get_mapped_range();
-        let data = view.to_vec().into_boxed_slice();
-        drop(view);
-        buffer.unmap();
-        Some(data)
-    } else {
-        None
-    }
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+
+// 1. Staging copy（Render 系统中，拿到 encoder 后）
+let staging = device.create_buffer(&BufferDescriptor {
+    label: Some("staging"),
+    size,
+    usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
+    mapped_at_creation: false,
+});
+encoder.copy_buffer_to_buffer(&src_gpu_buffer, 0, &staging, 0, size);
+
+// 2. 下一个 frame（copy 已被 GPU 执行），发起 async map
+let mapped = Arc::new(AtomicBool::new(false));
+let flag = mapped.clone();
+staging.slice(..).map_async(MapMode::Read, move |result| {
+    if result.is_ok() { flag.store(true, Ordering::Release); }
+});
+let _ = device.wgpu_device().poll(PollType::Poll); // 非阻塞触发回调
+
+// 3. 再下一个 frame（或同 frame 如果 poll 触发成功），检查并读取
+if mapped.load(Ordering::Acquire) {
+    let view = staging.slice(..).get_mapped_range();
+    let data: &[MyType] = bytemuck::cast_slice(&view);
+    // ... 使用 data ...
+    drop(view);
+    staging.unmap();
 }
 ```
 
-注意:
-- `PollType` 从 `bevy::render::render_resource` re-export
-- `MapMode` 同上
-- `device.wgpu_device()` 返回 `&wgpu::Device`（不是 `inner()`）
+时序: `dispatch → (1帧) → copy → (1帧) → map → read`。
+同一帧内 dispatch+copy 读到全零（GPU 还没执行 dispatch）。
+不要在同一帧内 copy+map+read（GPU 还没执行 copy）。
+
+**关键 API 路径**:
+- `MapMode` → `bevy::render::render_resource::MapMode`
+- `PollType` → `bevy::render::render_resource::PollType`
+- `device.wgpu_device()` → `&wgpu::Device`（不是 `inner()`）
 
 ## Mesh 创建模式
 
