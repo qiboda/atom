@@ -1,0 +1,131 @@
+// atom_terrain.bsn — atom_terrain crate 的 ECS 结构
+// 自动生成: 2026-06-21
+// 源: crates/atom_terrain/src/lib.rs, src/compute/global_compute.rs
+
+// ── 状态 ──
+state TerrainState {
+    variants: [None, LoadAssets, GenerateTerrainRegion, GenerateTerrainMesh]
+}
+
+// ── 实体 ──
+entity terrain_mesh {
+    component Mesh3d { handle: auto }
+    component MeshMaterial3d { handle: auto }
+    component Transform { translation: Vec3(0, 0, 0), rotation: Quat::IDENTITY, scale: Vec3(1, 1, 1) }
+    component Visibility::Visible
+    marker GlobalTerrainMesh
+}
+
+// ── 资源 (Main World) ──
+resource TerrainSetting {
+    chunk_setting: TerrainChunkSetting {   // 复用旧类型
+        voxel_size: 0.5,
+        voxel_count: 50,
+    },
+    qef_solver: true,
+    qef_solver_threshold: 0.5,
+    qef_stddev: 0.3,
+}
+
+resource TerrainObserver {
+    position: Vec3(0.0, -24.0, 0.0),
+    force_rebuild: 0,
+}
+
+resource TerrainDebugConfig {
+    wireframe: false,
+    double_sided: true,
+}
+
+resource GlobalTerrainMaterial {
+    handle: None  // Option<Handle<StandardMaterial>>
+}
+
+resource TerrainChunkMeshReceiver {
+    // crossbeam::channel::Receiver<TerrainChunkMeshData>
+    // 从 render world 接收 mesh 数据
+}
+
+// ── 资源 (Render World) ──
+resource GlobalComputeState {
+    pass: 0,                      // 0=idle 1=staging_copy 2=readback
+    last_grid_min: Vec3(0, 0, 0),
+    grid_min: Vec3(0, 0, 0),
+    rebuild_triggered: false,
+    last_force_rebuild: 0,
+}
+
+resource TerrainChunkMeshSender {
+    // crossbeam::channel::Sender<TerrainChunkMeshData>
+    // 向 main world 发送 mesh 数据
+}
+
+// ── GPU Buffer Pool (Render World) ──
+buffer_pool GlobalMeshPool {
+    buffers: [
+        buffer vertices    { size: 125000 * 32,  usage: [Storage, CopySrc] }
+        buffer indices     { size: 9000000 * 4,  usage: [Storage, CopySrc] }
+        buffer cross       { size: 125000 * 96,  usage: [Storage] }
+        buffer counters    { size: 16,           usage: [Storage] }
+        buffer voxel_alloc { size: 125000 * 4,   usage: [Storage] }
+    ]
+    grid_size: 50
+}
+
+// ── 系统 (Main World — Update) ──
+system update_observer_from_camera {
+    schedule: Update
+    params: [Query<&Transform, With<Camera3d>>, ResMut<TerrainObserver>]
+    // 从 camera transform 提取世界坐标，写回 TerrainObserver
+}
+
+system handle_global_mesh_data {
+    schedule: Update
+    params: [Commands, Res<TerrainChunkMeshReceiver>, Res<TerrainDebugConfig>,
+             ResMut<Assets<Mesh>>, ResMut<Assets<StandardMaterial>>,
+             Local<Option<Entity>>, ResMut<GlobalTerrainMaterial>]
+    after: [update_observer_from_camera]
+    // 从 channel 接收 mesh → despawn 旧 entity → spawn 新 entity
+}
+
+system debug_keyboard_toggle {
+    schedule: Update
+    params: [Res<ButtonInput<KeyCode>>, ResMut<TerrainDebugConfig>]
+    after: [handle_global_mesh_data]
+    // F1: toggle wireframe, F2: force_rebuild
+}
+
+system apply_debug_wireframe {
+    schedule: Update
+    params: [Res<TerrainDebugConfig>, Res<GlobalTerrainMaterial>,
+             Query<Entity, With<GlobalTerrainMesh>>, Commands]
+    after: [debug_keyboard_toggle]
+    // wireframe 开关 ⇒ 对 GlobalTerrainMesh entity 插/拔 Wireframe
+}
+
+// ── 系统 (Render World — Render) ──
+system global_compute_system {
+    schedule: Render
+    params: [Option<Res<TerrainObserver>>, ResMut<GlobalComputeState>,
+             Res<GlobalMeshPool>, Res<RenderDevice>, Res<RenderQueue>,
+             Res<PipelineCache>, Res<TerrainChunkMeshSender>,
+             Local<Option<GlobalStagingContext>>]
+    // 6-pass DC compute: sdf_fill→edge_detect→vertex_alloc→qef_solve→index_build→fill_indirect
+    // → staging copy → readback → build mesh → send to main world
+}
+
+// ── 插件 ──
+plugin GlobalTerrainPlugin {
+    entities: [terrain_mesh]
+    resources: [TerrainSetting, TerrainObserver, TerrainDebugConfig,
+                GlobalTerrainMaterial, TerrainChunkMeshReceiver]
+    systems: [update_observer_from_camera, handle_global_mesh_data,
+              debug_keyboard_toggle, apply_debug_wireframe]
+    plugins: [GlobalTerrainMeshPlugin]
+}
+
+// Render World 子插件
+plugin GlobalTerrainMeshPlugin {
+    resources: [GlobalComputeState, TerrainChunkMeshSender, GlobalMeshPool]
+    systems: [global_compute_system, init_global_pool]
+}
