@@ -1,6 +1,6 @@
 // Pass 3: 全局 QEF Solve — 对每个分配了 vertex 的 voxel，
-// 收集其 crossing edge 的 cross point + normal，求解 QEF 最小二乘，
-// 写入 compacted vertex buffer。
+// 收集其 crossing edge 的 cross point + normal，用 Probabilistic Quadrics
+// (Trettner & Kobbelt 2020) 求解正则化最小二乘，写入 compacted vertex buffer。
 
 struct TerrainChunkVertex {
     position: vec3<f32>,
@@ -97,15 +97,26 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     if ncross == 0u { return; } // 同 Phase 2: no crossings → no vertex
 
+    // ── Probabilistic Quadrics 正则化 (Trettner & Kobbelt 2020) ──
+    // A += ncross·σ²I,  b += σ²·Σp_i
+    // σ_n = 0.1·voxel_size → det(A) ≥ ncross³·σ⁴ > 1e-5 for ncross≥2
+    let sigma_n = info.voxel_size * 0.1;
+    let sigma2 = sigma_n * sigma_n;
+    let nc = f32(ncross);
+    a00 += nc * sigma2;
+    a11 += nc * sigma2;
+    a22 += nc * sigma2;
+    b0 += sigma2 * avg_pos.x;   // avg_pos = Σ p_i (未除 ncross)
+    b1 += sigma2 * avg_pos.y;
+    b2 += sigma2 * avg_pos.z;
+
     var vp = solve3(a00,a01,a02, a11,a12,a22, b0,b1,b2);
-    let centroid = avg_pos / f32(ncross);
+    let centroid = avg_pos / nc;
 
-    // fallback: 奇异矩阵 → 质心
+    // 安全钳: 数值异常 → centroid (正则化后极少触发)
     if length(vp) < 0.0001f { vp = centroid; }
-    // 安全钳: QEF 解离群 → 质心
     else if length(vp - centroid) > info.voxel_size * 2.0 { vp = centroid; }
-
-    let vn = normalize(avg_norm / f32(ncross));
+    let vn = normalize(avg_norm / nc);
     // compact scatter-write via voxel_alloc (dexyfex Reverse Expansion)
     let vi = voxel_alloc[voxel_idx];
     if vi != ~0u { vertices[vi] = TerrainChunkVertex(vp, 0u, vn, 0u); }

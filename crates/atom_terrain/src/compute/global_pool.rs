@@ -42,7 +42,7 @@ pub struct GlobalMeshPool {
 }
 
 impl GlobalMeshPool {
-    /// 以观察者为中心的 grid 半边长（世界单位）
+    /// 以观察者为中心的 grid 半边长（世界单位，legacy，不再用于 grid 对齐）
     pub const VIEW_RADIUS: f32 = 16.0;
 
     /// voxel 边长
@@ -50,11 +50,10 @@ impl GlobalMeshPool {
         0.5
     }
 
-    /// grid 覆盖的世界空间 AABB
+    /// grid 世界坐标原点（对齐到 grid_world_size 边界，与 observer 无关）。
     pub fn grid_min(&self, observer: Vec3) -> Vec3 {
-        let half = Self::VIEW_RADIUS;
-        let snapped = (observer / self.voxel_size()).floor() * self.voxel_size();
-        snapped - Vec3::splat(half)
+        let grid_world_size = self.grid_size as f32 * self.voxel_size();
+        (observer / grid_world_size).floor() * grid_world_size
     }
 
     /// 世界坐标 → grid 索引 (clamped)

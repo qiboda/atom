@@ -64,24 +64,60 @@ fn write_cross_point(edge_id: u32, pos: vec3<f32>, normal: vec3<f32>, flip: bool
     cross_points[base + 7u] = 0u;
 }
 
-fn estimate_normal(p: vec3<f32>) -> vec3<f32> {
-    let h = chunk_info.voxel_size * 0.5;
-    let dx = read_density(grid_idx_from_world(p + vec3(h, 0.0, 0.0)))
-           - read_density(grid_idx_from_world(p - vec3(h, 0.0, 0.0)));
-    let dy = read_density(grid_idx_from_world(p + vec3(0.0, h, 0.0)))
-           - read_density(grid_idx_from_world(p - vec3(0.0, h, 0.0)));
-    let dz = read_density(grid_idx_from_world(p + vec3(0.0, 0.0, h)))
-           - read_density(grid_idx_from_world(p - vec3(0.0, 0.0, h)));
-    return normalize(vec3(dx, dy, dz));
+// ── 三线性插值：在连续密度场上采样 ──
+
+fn trilinear_sample(p: vec3<f32>) -> f32 {
+    // density grid 有双边 1-voxel shell，offset +1
+    let rel = (p - chunk_info.chunk_min) / chunk_info.voxel_size + 1.0;
+    let n = chunk_info.voxel_count + 3u;
+
+    let fx = clamp(rel.x, 0.0, f32(n - 1u));
+    let fy = clamp(rel.y, 0.0, f32(n - 1u));
+    let fz = clamp(rel.z, 0.0, f32(n - 1u));
+
+    let ix = u32(floor(fx));
+    let iy = u32(floor(fy));
+    let iz = u32(floor(fz));
+
+    let jx = min(ix + 1u, n - 1u);
+    let jy = min(iy + 1u, n - 1u);
+    let jz = min(iz + 1u, n - 1u);
+
+    let wx = fx - f32(ix);
+    let wy = fy - f32(iy);
+    let wz = fz - f32(iz);
+
+    let d000 = read_density(grid_idx(ix, iy, iz));
+    let d100 = read_density(grid_idx(jx, iy, iz));
+    let d010 = read_density(grid_idx(ix, jy, iz));
+    let d110 = read_density(grid_idx(jx, jy, iz));
+    let d001 = read_density(grid_idx(ix, iy, jz));
+    let d101 = read_density(grid_idx(jx, iy, jz));
+    let d011 = read_density(grid_idx(ix, jy, jz));
+    let d111 = read_density(grid_idx(jx, jy, jz));
+
+    let d00 = d000 + (d100 - d000) * wx;
+    let d01 = d001 + (d101 - d001) * wx;
+    let d10 = d010 + (d110 - d010) * wx;
+    let d11 = d011 + (d111 - d011) * wx;
+
+    let d0 = d00 + (d10 - d00) * wy;
+    let d1 = d01 + (d11 - d01) * wy;
+
+    return d0 + (d1 - d0) * wz;
 }
 
-fn grid_idx_from_world(p: vec3<f32>) -> u32 {
-    let rel = (p - chunk_info.chunk_min) / chunk_info.voxel_size + 1.0; // +1 偏移
-    let max_grid = chunk_info.voxel_count + 2u;
-    let gx = clamp(u32(round(rel.x)), 0u, max_grid);
-    let gy = clamp(u32(round(rel.y)), 0u, max_grid);
-    let gz = clamp(u32(round(rel.z)), 0u, max_grid);
-    return grid_idx(gx, gy, gz);
+// ── 法线估计（中心差分，使用三线性插值）──
+
+fn estimate_normal(p: vec3<f32>) -> vec3<f32> {
+    let h = chunk_info.voxel_size * 0.5;
+    let dx = trilinear_sample(p + vec3(h, 0.0, 0.0))
+           - trilinear_sample(p - vec3(h, 0.0, 0.0));
+    let dy = trilinear_sample(p + vec3(0.0, h, 0.0))
+           - trilinear_sample(p - vec3(0.0, h, 0.0));
+    let dz = trilinear_sample(p + vec3(0.0, 0.0, h))
+           - trilinear_sample(p - vec3(0.0, 0.0, h));
+    return normalize(vec3(dx, dy, dz));
 }
 
 @compute @workgroup_size(8, 8, 8)
@@ -115,10 +151,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         var lo = p0;
         var hi = p1;
         var dlo = d0;
-
         for (var iter = 0u; iter < 8u; iter++) {
             let mid = (lo + hi) * 0.5;
-            let dmid = read_density(grid_idx_from_world(mid));
+            let dmid = trilinear_sample(mid);
             if (dmid > 0.0) == (dlo > 0.0) {
                 lo = mid;
                 dlo = dmid;

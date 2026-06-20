@@ -77,8 +77,8 @@ pub struct GlobalComputePipeline {
 pub struct GlobalComputeState {
     /// 当前 pass: 0=idle, 1=wait_gpu, 2=staging, 3=readback
     pub pass: u32,
-    /// 上次重建时的 snapped observer 位置
-    pub last_observer: Vec3,
+    /// 上次重建时的 world-aligned grid_min
+    pub last_grid_min: Vec3,
     /// 当前 grid_min（用于 mesh world_offset）
     pub grid_min: Vec3,
     /// 上次是否已触发重建（避免 idle 帧重复触发）
@@ -251,15 +251,18 @@ pub fn global_compute_system(
     let vc = gs;
 
     // ── 检测是否需要重建 ──
+    // grid_min 对齐到 grid_world_size 世界坐标边界，
+    // 只有 observer 跨越块边界才触发重建，保持 mesh 形状稳定。
     let (observer_pos, observer_force) = observer
         .as_deref()
         .map(|o: &TerrainObserver| (o.position, o.force_rebuild))
         .unwrap_or((Vec3::ZERO, 0));
-    let snapped = (observer_pos / vs).floor() * vs;
+    let grid_world_size = gs as f32 * vs;
+    let grid_min = (observer_pos / grid_world_size).floor() * grid_world_size;
 
     let force_changed = observer_force != state.last_force_rebuild;
     let need_rebuild = state.pass == 0
-        && (snapped != state.last_observer || !state.rebuild_triggered || force_changed);
+        && (grid_min != state.last_grid_min || !state.rebuild_triggered || force_changed);
 
     // ── 阶段 0: dispatch compute passes ──
     if need_rebuild {
@@ -282,21 +285,22 @@ pub fn global_compute_system(
             return;
         }
 
-        let grid_min = snapped - Vec3::splat(GlobalMeshPool::VIEW_RADIUS);
         let uniform = GlobalUniformsGpu::new(grid_min, vs, gs);
         queue.write_buffer(&pipeline.uniform_buffer, 0, bytemuck::bytes_of(&uniform));
 
-        state.last_observer = snapped;
+        state.last_grid_min = grid_min;
         state.grid_min = grid_min;
         state.rebuild_triggered = true;
         state.last_force_rebuild = observer_force;
 
         let encoder = render_context.command_encoder();
 
-        // 清 cross（防 stale），清 counters，清 vertices（fixed slot，防 stale）
+        // 清所有 mutable buffer（防 stale data 导致闪烁）
         encoder.clear_buffer(&pool.cross, 0, None);
         encoder.clear_buffer(&pool.counters, 0, None);
         encoder.clear_buffer(&pool.vertices, 0, None);
+        encoder.clear_buffer(&pool.voxel_alloc, 0, None);
+        encoder.clear_buffer(&pool.indices, 0, None);
 
         // dispatch 5 pass 在同一 encoder 内（GPU 保证顺序执行）
         let dispatch = |encoder: &mut bevy::render::render_resource::CommandEncoder,
@@ -324,7 +328,7 @@ pub fn global_compute_system(
         dispatch(encoder, pipeline.pass5, (1, 1, 1));
 
         state.pass = 1;
-        info!("Global DC: rebuild at obs={snapped:?} grid_min={grid_min:?}");
+        info!("Global DC: rebuild at grid_min={grid_min:?} observer={observer_pos:?}");
     }
     // ── 阶段 1: 等 GPU → staging copy ──
     else if state.pass == 1 {

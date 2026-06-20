@@ -95,9 +95,20 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     if ncross == 0u { return; }
 
+    // ── Probabilistic Quadrics 正则化 (Trettner & Kobbelt 2020) ──
+    let sigma_n = chunk_info.voxel_size * 0.1;
+    let sigma2 = sigma_n * sigma_n;
+    let nc = f32(ncross);
+    a00 += nc * sigma2;
+    a11 += nc * sigma2;
+    a22 += nc * sigma2;
+    b0 += sigma2 * avg_pos.x;
+    b1 += sigma2 * avg_pos.y;
+    b2 += sigma2 * avg_pos.z;
+
     var vp = solve3(a00,a01,a02, a11,a12,a22, b0,b1,b2);
     let vi = gid.x + gid.y * vv + gid.z * vv * vv;
-    let centroid = avg_pos / f32(ncross);
+    let centroid = avg_pos / nc;
     if length(vp) < 0.0001f { vp = centroid; }
     else if length(vp - centroid) > chunk_info.voxel_size * 2.0 { vp = centroid; }
 
