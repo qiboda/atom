@@ -183,7 +183,7 @@ impl TerrainChunkMeshBuffers {
         let vn = vv as u64 * vv as u64 * vv as u64; // vertex/cross slots
         let ni = vc as u64 * vc as u64 * vc as u64; // index slots (仅内层)
         let s = BufferUsages::STORAGE | BufferUsages::COPY_DST;
-        let so = BufferUsages::STORAGE | BufferUsages::COPY_SRC;
+        let so = BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST;
         let u = BufferUsages::UNIFORM | BufferUsages::COPY_DST;
 
         let mk = |label: &str, size: u64, usage: BufferUsages| {
@@ -278,6 +278,7 @@ pub fn terrain_compute_system(
     let vc = setting.voxel_count;
 
     // 0. 从 channel 读取主世界发来的加载/卸载请求
+    let mut new_entities: Vec<Entity> = Vec::new();
     while let Ok(req) = receiver.try_recv() {
         match req {
             ChunkProcessRequest::Load { entity, world_min } => {
@@ -303,12 +304,23 @@ pub fn terrain_compute_system(
                     &pipeline.bind_group_layout,
                 );
                 progress.pass.insert(entity, 0);
+                new_entities.push(entity);
             }
             ChunkProcessRequest::Unload { entity } => {
                 buffers.remove(entity);
                 staging.buffers.remove(&entity);
                 progress.pass.remove(&entity);
             }
+        }
+    }
+
+    // 清空新分配 buffer 的残留数据
+    for entity in &new_entities {
+        if let Some(cb) = buffers.get(*entity) {
+            let enc = render_context.command_encoder();
+            enc.clear_buffer(&cb.cross_points, 0, None);
+            enc.clear_buffer(&cb.vertices, 0, None);
+            enc.clear_buffer(&cb.indices, 0, None);
         }
     }
 

@@ -26,7 +26,7 @@ struct TerrainChunkInfo {
 // ── 测试 pattern: 平滑正弦波 ──
 
 fn height_at(xz: vec2<f32>) -> f32 {
-    return sin(xz.x * 0.15) * 6.0 - 24.0;
+    return xz.x * 0.3 + xz.y * 0.2 - 24.0;
 }
 
 fn world_pos(idx: u32) -> vec3<f32> {

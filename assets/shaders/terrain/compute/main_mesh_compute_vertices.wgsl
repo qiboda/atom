@@ -93,17 +93,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         b0 += n.x*d; b1 += n.y*d; b2 += n.z*d;
     }
 
-    let vi = gid.x + gid.y * vv + gid.z * vv * vv;
-
-    if ncross == 0u {
-        // shell voxel 无表面交叉 → voxel 中心占位，确保 has_vertex 通过
-        let center = chunk_info.chunk_min
-            + (vec3<f32>(f32(gid.x), f32(gid.y), f32(gid.z)) - 0.5) * chunk_info.voxel_size;
-        vertices[vi] = TerrainChunkVertex(center, 0u, vec3(0f), 0u);
-        return;
-    }
+    if ncross == 0u { return; }
 
     var vp = solve3(a00,a01,a02, a11,a12,a22, b0,b1,b2);
+    let vi = gid.x + gid.y * vv + gid.z * vv * vv;
     let centroid = avg_pos / f32(ncross);
     if length(vp) < 0.0001f { vp = centroid; }
     else if length(vp - centroid) > chunk_info.voxel_size * 2.0 { vp = centroid; }

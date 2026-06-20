@@ -120,7 +120,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let jz = gid.z - 1u;
         let off = (jx + jy * vc + jz * vc * vc) * 72u + e * 6u;
 
-        // winding 矫正：face normal 与 cross normal 对齐
+        // winding: face normal 与 cross point normal 对齐
         let cn = read_cross_normal(eid);
         let vpos0 = vertex_pos(vi0);
         let vpos1 = vertex_pos(vi1);
