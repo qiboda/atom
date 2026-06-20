@@ -70,7 +70,7 @@ impl Plugin for GlobalTerrainMeshPlugin {
 
 /// 创建 GlobalMeshPool（依赖 RenderDevice + TerrainSetting）。
 fn init_global_pool(mut commands: Commands, device: Res<RenderDevice>, setting: Res<TerrainSetting>) {
-    let grid_size = 48u32; // 观察者视野: 48 × 0.5m = 24m 半径
+    let grid_size = 50u32; // inner 48 + 1-voxel shell 两侧 = 50 (25m 半径)
     let pool = GlobalMeshPool::new(&device, setting.voxel_size, grid_size);
     info!(
         "GlobalMeshPool: grid_size={grid_size}, vertex_cap={}, index_cap={}",
