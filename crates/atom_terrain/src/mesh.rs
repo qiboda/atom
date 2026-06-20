@@ -71,7 +71,7 @@ pub fn handle_mesh_data(
         commands.spawn((
             Mesh3d(mesh),
             MeshMaterial3d(mat),
-            Transform::from_translation(data.translation),
+            Transform::IDENTITY, // 顶点已由 shader 转为世界坐标
             Visibility::default(),
         ));
     }

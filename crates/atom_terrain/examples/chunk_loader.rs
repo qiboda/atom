@@ -20,10 +20,10 @@ fn setup(
     mut commands: Commands,
     mut to_process: ResMut<TerrainChunksToProcess>,
 ) {
-    // 摄像机
+    // 摄像机 — 对准测试 chunk 中心 (chunk 跨度 [-26,-18], 中心 ≈ -22)
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(0.0, 10.0, 15.0).looking_at(Vec3::new(0.0, 3.0, 0.0), Vec3::Y),
+        Transform::from_xyz(15.0, -12.0, 15.0).looking_at(Vec3::new(0.0, -22.0, 0.0), Vec3::Y),
         TerrainObserver,
         TerrainObserverConfig::default(),
     ));
