@@ -24,19 +24,19 @@ spec-init name:
 
 # Spec 质量检查
 spec-lint spec:
-    agent-spec lint specs/{{spec}}.spec
+    agent-spec lint .claude/specs/{{spec}}.spec
 
 # Spec 生命周期验证
 spec-lifecycle spec:
-    agent-spec lifecycle specs/{{spec}}.spec --code .
+    agent-spec lifecycle .claude/specs/{{spec}}.spec --code .
 
 # 全 spec 守卫 (提交前)
 spec-guard:
-    agent-spec guard --spec-dir specs --code . --change-scope staged
+    agent-spec guard --spec-dir .claude/specs --code . --change-scope staged
 
 # Spec 审查摘要
 spec-explain spec:
-    agent-spec explain specs/{{spec}}.spec --code . --format markdown
+    agent-spec explain .claude/specs/{{spec}}.spec --code . --format markdown
 
 # 构建所有 release
 build:

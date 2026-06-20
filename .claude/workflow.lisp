@@ -72,8 +72,10 @@
     (actions
       (commit "git commit 前确保 pre-commit hook 通过")
       (no-leftovers "检查无遗留的调试打印、注释掉的测试、未使用的 import")
-      (update-docs "如改动改变了公共 API 或惯例，同步更新 intent.lisp 和 APPEND_SYSTEM.md"))
-    (exit-condition "工作区干净，commit message 描述准确"))
+      (update-docs "如改动改变了公共 API 或惯例，同步更新 intent.lisp 和 APPEND_SYSTEM.md")
+      (update-kb "如果 verify 阶段发现了新的 Bevy API 模式或迁移要点，写入 .claude/bevy-kb/")
+      (verify-references "检查 CLADE.md 中引用的文件路径和函数名是否仍然存在"))
+    (exit-condition "工作区干净，commit message 描述准确；KB 和 TENSIONS.md 已更新"))
 
   ;; ── Common Failure Modes (已发生过的流程违规) ──
 
@@ -96,8 +98,12 @@
     (cause "把 spec 当成文档用，或认为 '文档可以后补'")
     (hard-rule "design 之后 MUST 经过 document phase。无 cargo doc 检查的 implement 视为违规"))
 
-  ;; ── Supporting protocols ──
+  (anti-pattern doc-rot
+    (symptom "intent.lisp / APPEND_SYSTEM.md / TENSIONS.md 描述的是已删除的旧架构")
+    (cause "写完代码后没有回头更新元文档；手工维护副本终将漂移")
+    (hard-rule "review phase 的 verify-references + update-kb + update-docs 三项必须全部执行"))
 
+  ;; ── Supporting protocols ──
   (habit log-before-fixing
     (purpose "捕获摩擦信号，不跳过诊断直接修复")
     (rule "遭遇架构不一致、工具链问题、或流程阻碍时，先记录到 .claude/TENSIONS.md 对应分类下")

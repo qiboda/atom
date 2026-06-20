@@ -5,30 +5,29 @@
 
 ## GPU 管线
 
-- **composable module 解析死锁**: shader 在 render app `build()` 里用 `DirectAssetAccessExt::load_asset` 加载 → `AssetEvent<Shader>` 只在 render world 发，永远不被 `PipelineCache::extract_shaders`（只读 main world 事件）捕获 → composable import 注册不发生 → pipeline 永不解锁（`ShaderNotLoaded`/`ShaderImportNotYetAvailable` 交替）。Bevy Game of Life 示例的正确做法：main app `Startup` 里用 `AssetServer::load`，靠 `ExtractResource` 自然同步。涉及所有 `shaders_plugin!` 调用点。
-- 主分支 `density_field.wgsl` 有 `h10` undefined bug（WgslParseError），feature 分支修了 `h10` 但引入 noise composable import 链暴露上述 bug。
-- WGSL 清理：删掉 `voxel_cross_points.wgsl`/`voxel_utils.wgsl`/`main_mesh_compute_vertices.wgsl` 中不存在的 `VOXEL_MATERIAL_*` 和 `get_voxel_material_type*` import。
-- TerrainMaterial 管线不渲染 — 0 vertex shader invocation。已退成 StandardMaterial 白模验证。Biome 颜色不可见。
+- **2026-06-20**: 四 pass compute 管线未在 GPU 上验证。shader 编译和 mesh 产出待 smoke test。
+- **2026-06-20**: WGSL atomics 类型匹配问题 — `array<atomic<u32>>` 在 shader 端需要匹配 Rust 端 binding type 声明。当前绕过（固定 slot 无 atomics）。
 
 ## 数据对齐
 
-- pack4xU8 biome 编码脆弱 — CPU 端位掩码解包 (`0xFF`, `>>8`, `>>16`, `>>24`)，GPU 布局改则坏。
-- mesh_vertex_map 用 u32 索引，单 chunk 上限 4096 顶点。未来 LOD 0 可能超。
-- biome 纹理 Luma8 → GPU normalizes to [0,1] → 需 ×255 恢复。漏了就是全零 biome 类型。
+- **2026-06-20**: 顶点 buffer 使用固定 slot 稀疏存储（每 voxel 一个 TerrainChunkVertex slot），CPU 端 compact + remap。buffer 大小为 vc³ × sizeof(Vertex)，16³=128KB。后续可能需要 compact 存储优化。
 
 ## 工具链
 
-- rust-analyzer LSP 初次启动失败（组件未安装）。已装 1.96.0。
-- buffer.rs + node.rs Phase 4 编辑损害了 render world 状态一致性 → 已回退 Phase 3 版本。
-- WGSL 无断点 — compute shader 调试全靠「改 → 怀疑 → print → 重复」。
+- **2026-06-20**: Bevy 0.19 需要 Rust nightly + `#![feature(cfg_select)]`。本地 Bevy checkout v0.19.0 的 `bevy_app` 和 `bevy_winit` 缺失该 feature flag，需手动补丁。
+- **2026-06-20**: `cargo doc -Dwarnings` 会把 Bevy 依赖的 warning 也当 error。已限定 `-p atom_terrain` 范围。
+- **2026-06-20**: WGSL 无断点 — compute shader 调试全靠肉眼。
 
 ## 流程
 
-- 噪声调参被推迟（"先不急"）→ 地形视觉未定。
-- 无 per-module 日志等级文件 — 当前全靠 atom_log_plugin 运行时过滤字符串。
-- LOD 边界无缝合 — 不同分辨率 chunk 之间有裂缝。
+- **2026-06-20**: intent.lisp、APPEND_SYSTEM.md 全量过时。手工维护的元文档总是落后于代码修改。待方案：自动生成 intent.lisp，APPEND_SYSTEM.md 改为指针索引。
+- **2026-06-20**: 旧 specs/lod.spec 已删，specs/terrain-shape.spec 和 specs/terrain-material.spec 重写为 MVP 现状。specs/ → .claude/specs/，.plan/ → .claude/plan/。
+- **2026-06-20**: Workspace 仅保留 atom_terrain。其他 14 个 crate 暂时移出，待逐步迁入 Bevy 0.19。
+- **2026-06-20**: Workflow 加 document phase + bevy-kb 更新 + verify-references 检查。Phase-Gate Protocol 防止阶段跳过。
 
 ## 已知退化
 
-- Wireframe 已全局关闭，DirectionalLight 需手动加（example 级）。
-- 简化 MC 索引（非 256 表）有已知洞（FIXME 标注）。边界 chunk 可能缺面。
+- 密度场使用简版 value noise（非 OpenSimplex），视觉质量低于目标。
+- 使用 StandardMaterial（单色绿色），非 biome 驱动 PBR。
+- 无 LOD — 所有 chunk 用相同 16³ 分辨率。
+- 无 biome — 所有 chunk 地形形状相同。
