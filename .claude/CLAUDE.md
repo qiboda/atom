@@ -12,10 +12,9 @@
 | `.claude/ARCHITECTURE.md` | 架构决策记录 (ADR) |
 | `.claude/TENSIONS.md` | 摩擦日志 |
 | `.claude/plan/` | 跨会话规划 |
+| `.claude/bevy-kb/` | **Bevy 知识库**（迁移指南、已验证 API 模式） |
 | `.claude/AGENTS.md` | 操作协议、缺口检测 |
 | `.claude/CAPABILITY-MAP.md` | 当前能力边界 |
-| `Justfile` | 开发任务 |
-| `.claude/specs/*.spec` | 任务 Spec |
 
 ## 编码约定
 
