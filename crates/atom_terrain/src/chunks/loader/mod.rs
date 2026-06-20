@@ -5,7 +5,6 @@ mod systems;
 use bevy::prelude::*;
 
 pub use loaded_chunks::{TerrainChunkLoadMsg, TerrainChunkUnloadMsg, TerrainLoadedChunks};
-pub use systems::update_chunk_lod;
 pub use systems::update_grid_chunks;
 
 use crate::terrain::TerrainSystems;
@@ -22,8 +21,6 @@ impl Plugin for TerrainChunkLoaderPlugin {
                 Update,
                 (
                     update_grid_chunks.in_set(TerrainSystems::ChunkLoader),
-                    // LOD 已禁用 — 俯视角固定最大精度
-                    // update_chunk_lod.in_set(TerrainSystems::ChunkLoader),
                 ),
             );
     }

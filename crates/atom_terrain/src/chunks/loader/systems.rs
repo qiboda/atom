@@ -18,7 +18,6 @@ use crate::{
             observer::{TerrainObserver, TerrainObserverConfig},
         },
         mesh::{
-            components::{TerrainChunkLod, TerrainChunkMeshingState},
             visual::TerrainChunkVisual,
         },
     },
@@ -150,48 +149,11 @@ pub fn update_grid_chunks(
             .spawn((
                 TerrainChunk,
                 coord,
-                TerrainChunkLod::default(),
+                // LOD 已移除 — 所有 chunk 固定最大精度
                 Name::new(format!("Chunk_{:?}", coord)),
             ))
             .id();
         loaded_chunks.insert(coord, entity);
-
         load_requests.write(TerrainChunkLoadMsg { coord });
-    }
-}
-
-/// LOD 更新系统：根据 chunk 到摄像机的距离动态调整精度
-/// LOD 变更时重新触发 meshing
-pub fn update_chunk_lod(
-    mut commands: Commands,
-    observers: Query<&GlobalTransform, With<TerrainObserver>>,
-    terrain_setting: Res<TerrainSetting>,
-    mut chunk_query: Query<(Entity, &TerrainChunkCoord, &mut TerrainChunkLod)>,
-) {
-    let observer_pos = match observers.iter().next() {
-        Some(t) => t.translation(),
-        None => return,
-    };
-
-    let chunk_size = terrain_setting.get_chunk_size();
-
-    for (entity, coord, mut lod) in chunk_query.iter_mut() {
-        // 计算 chunk 中心世界坐标
-        let chunk_min = coord.to_world_pos(chunk_size);
-        let chunk_center = chunk_min + Vec3::splat(chunk_size * 0.5);
-        let distance = (chunk_center - observer_pos).length();
-
-        let new_lod = TerrainChunkLod::from_distance(distance);
-
-        if new_lod != *lod {
-            info!(
-                "Chunk {:?} LOD 变更: {:?} -> {:?} (距离={:.1}m)",
-                coord, lod, new_lod, distance
-            );
-
-            // 更新 LOD 并重新触发 meshing
-            *lod = new_lod;
-            commands.entity(entity).insert(TerrainChunkMeshingState::Meshing);
-        }
     }
 }
