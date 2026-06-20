@@ -1,7 +1,9 @@
 # Terrain Material — Biome 驱动 PBR 材质
 
-> Phase 3 · 规划中
-> 依赖: Phase 2 (biome 密度场形状已完成)
+> status: planned
+> phase: 3
+> depends: phase-2
+↳ SPEC: terrain-shape.md (biome 密度场已完成)
 
 ## Intent
 

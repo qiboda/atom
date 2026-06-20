@@ -43,7 +43,7 @@ Exit (当前): LOD 架构就绪，变更检测 + 重触发正常。实际分辨�
 
 ## 后续储备
 
-不在当前 plan 中，方向定义在 `specs/vision.md`：
+不在当前 plan 中，方向定义在 `.plan/vision.md`：
 
 - 寻路 (nav mesh)
 - 技能系统与地形交互

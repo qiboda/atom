@@ -1,7 +1,9 @@
 # Terrain LOD — 多分辨率 chunk
 
-> Phase 4 · 进行中（架构就绪，实际切换待实现）
-> 依赖: Phase 3 (材质系统已完成)
+> status: in_progress
+> phase: 4
+> depends: phase-3
+↳ SPEC: terrain-material.md (材质系统已完成)
 
 ## Intent
 

@@ -34,6 +34,26 @@
 
 测试只测行为不测 plumbing——不测默认值、不测内部中间状态。断言逻辑行为而非当前值。
 
+## Spec Lifecycle
+
+每个 `specs/*.md` 头部包含结构化元数据。Agent 在读取/编辑 spec 前必须检查 `status`。
+
+```
+status: planned | in_progress | implemented | superseded
+phase: N
+depends: <phase-N | spec-name>
+↳ <相关文档引用>
+```
+
+| status | 允许编辑 | 条件 |
+|--------|----------|------|
+| `planned` | YES | 自由编辑 |
+| `in_progress` | YES | 编辑后更新 Completion Criteria 检查状态 |
+| `implemented` | **NO** | 只读。修改必须先记录到 DRIFT.md 或创建新 ADR，然后状态改为 `superseded` |
+| `superseded` | NO | 只读，不可复活。新 spec 引用之 |
+
+**禁止**将 `implemented` spec 的 status 直接改回 `in_progress`——这是架构漂移的信号，必须先告警。
+
 ## Boundaries
 
 - 不删除关键性能代码（GPU pipeline、buffer 管理）。

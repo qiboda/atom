@@ -1,7 +1,9 @@
 # Terrain Shape — 基于 Biome 的地形形状
 
-> Phase 2 · 已完成
-> 依赖: Phase 1 (biome 纹理)
+> status: implemented
+> phase: 2
+> depends: phase-1
+↳ ARCHITECTURE.md: Foundation (Rust + Bevy 0.18)
 
 ## Intent
 
