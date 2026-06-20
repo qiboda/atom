@@ -1,6 +1,7 @@
 //! 地形调试开关。
 //!
 //! `TerrainDebugConfig` 控制 wireframe、双面渲染等调试选项。
+//! 快捷键：F1 切 wireframe，F2 切 double_sided。
 
 use bevy::prelude::*;
 use bevy::pbr::wireframe::{Wireframe, WireframeColor};
@@ -26,12 +27,69 @@ impl Default for TerrainDebugConfig {
     }
 }
 
+/// 键盘快捷键切换调试开关。
+/// F1 = wireframe, F2 = double_sided。
+pub fn debug_keyboard_toggle(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut config: ResMut<TerrainDebugConfig>,
+    // Phase 2 wireframe: chunk mesh entities
+    chunks: Query<&Children, With<TerrainChunk>>,
+    // Phase 3 wireframe: global mesh entity
+    global_meshes: Query<Entity, With<GlobalTerrainMesh>>,
+    mesh_children: Query<Entity, With<Mesh3d>>,
+    mut commands: Commands,
+) {
+    if keys.just_pressed(KeyCode::F1) {
+        config.wireframe = !config.wireframe;
+        info!("wireframe: {}", config.wireframe);
+
+        if config.wireframe {
+            // 添加 Wireframe 到所有 terrain mesh
+            for chunk_children in chunks.iter() {
+                for child in chunk_children.iter() {
+                    if mesh_children.contains(child) {
+                        commands.entity(child).insert((
+                            Wireframe,
+                            WireframeColor { color: Color::srgba(0.3, 0.9, 0.4, 1.0) },
+                        ));
+                    }
+                }
+            }
+            for entity in global_meshes.iter() {
+                commands.entity(entity).insert((
+                    Wireframe,
+                    WireframeColor { color: Color::srgba(0.3, 0.9, 0.4, 1.0) },
+                ));
+            }
+        } else {
+            // 移除 Wireframe
+            for chunk_children in chunks.iter() {
+                for child in chunk_children.iter() {
+                    commands.entity(child).remove::<Wireframe>().remove::<WireframeColor>();
+                }
+            }
+            for entity in global_meshes.iter() {
+                commands.entity(entity).remove::<Wireframe>().remove::<WireframeColor>();
+            }
+        }
+    }
+
+    if keys.just_pressed(KeyCode::F2) {
+        config.double_sided = !config.double_sided;
+        info!(
+            "double_sided: {} (需移动摄像机触发重建)",
+            config.double_sided
+        );
+        // double_sided 在 handle_global_mesh_data 中生效，
+        // 下次重建 spawn 新 mesh 时自动应用新 cull_mode。
+    }
+}
+
 /// 当 `TerrainDebugConfig.wireframe` 为 true 时，自动给 terrain mesh 添加 Wireframe 组件。
+/// （用于初始启动时的应用，后续切换由 debug_keyboard_toggle 处理）
 pub fn apply_debug_wireframe(
     debug_config: Res<TerrainDebugConfig>,
-    // Phase 2: per-chunk mesh children
     chunks: Query<&Children, With<TerrainChunk>>,
-    // Phase 3: global mesh entity
     global_meshes: Query<Entity, With<GlobalTerrainMesh>>,
     children: Query<Entity, With<Mesh3d>>,
     mut commands: Commands,
@@ -39,7 +97,6 @@ pub fn apply_debug_wireframe(
     if !debug_config.wireframe {
         return;
     }
-    // Phase 2: chunk children
     for chunk_children in chunks.iter() {
         for child in chunk_children.iter() {
             if children.contains(child) {
@@ -52,7 +109,6 @@ pub fn apply_debug_wireframe(
             }
         }
     }
-    // Phase 3: global mesh
     for entity in global_meshes.iter() {
         commands.entity(entity).insert((
             Wireframe,

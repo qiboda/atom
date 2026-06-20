@@ -26,7 +26,7 @@ use chunk::{ChunkLoadMsg, ChunkUnloadMsg, TerrainLoadedChunks};
 use compute::global_compute::TerrainObserver;
 use compute::sync::{TerrainChunkProcessReceiver, TerrainChunkProcessSender};
 use compute::{GlobalTerrainMeshPlugin, TerrainChunkMeshComputePlugin};
-use debug::{apply_debug_wireframe, TerrainDebugConfig};
+use debug::{apply_debug_wireframe, debug_keyboard_toggle, TerrainDebugConfig};
 use loader::update_grid_chunks;
 use mesh::{
     handle_global_mesh_data, handle_load_requests, handle_mesh_data,
@@ -72,6 +72,7 @@ impl Plugin for TerrainPlugin {
                 handle_load_requests,
                 handle_unload_requests,
                 handle_mesh_data,
+                debug_keyboard_toggle,
                 apply_debug_wireframe,
             )
                 .chain(),
@@ -118,6 +119,7 @@ impl Plugin for GlobalTerrainPlugin {
             (
                 update_observer_from_camera,
                 handle_global_mesh_data,
+                debug_keyboard_toggle,
                 apply_debug_wireframe,
             )
                 .chain(),
