@@ -1,6 +1,7 @@
 # Atom Terrain Engine
 
 基于 Bevy 0.19 的体素平滑地形（GPU Dual Contouring + QEF）。
+Bevy API 变更频繁，遇到不确定的 API 先查 `.claude/bevy-kb/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。
 架构导航见 `.claude/intent.lisp`。
 
 ## 文档索引
