@@ -34,10 +34,9 @@ use bevy::{
     render::{
         render_resource::{
             binding_types::*, BindGroup, BindGroupEntry, BindGroupLayout,
-            BindGroupLayoutDescriptor, BindGroupLayoutEntries, Buffer,
-            BufferDescriptor, BufferUsages, CachedComputePipelineId,
-            ComputePassDescriptor, ComputePipelineDescriptor, PipelineCache,
-            ShaderStages,
+            BindGroupLayoutDescriptor, BindGroupLayoutEntries, Buffer, BufferDescriptor,
+            BufferUsages, CachedComputePipelineId, ComputePassDescriptor,
+            ComputePipelineDescriptor, PipelineCache, ShaderStages,
         },
         renderer::{RenderContext, RenderDevice, RenderQueue},
     },
@@ -99,8 +98,14 @@ pub fn init_compute_pipeline(
         bind_group_layout: bgl,
         pass1: mk("pass1", "shaders/terrain/compute/voxel_vertices.wgsl"),
         pass2: mk("pass2", "shaders/terrain/compute/voxel_cross_points.wgsl"),
-        pass3: mk("pass3", "shaders/terrain/compute/main_mesh_compute_vertices.wgsl"),
-        pass4: mk("pass4", "shaders/terrain/compute/main_mesh_compute_indices.wgsl"),
+        pass3: mk(
+            "pass3",
+            "shaders/terrain/compute/main_mesh_compute_vertices.wgsl",
+        ),
+        pass4: mk(
+            "pass4",
+            "shaders/terrain/compute/main_mesh_compute_indices.wgsl",
+        ),
     });
 }
 
@@ -378,7 +383,7 @@ pub fn terrain_compute_system(
 
     // 3. staging copy (pass == 5, 且不是本帧刚晋升的)
     let vn = (vc + 2) as u64 * (vc + 2) as u64 * (vc + 2) as u64; // vertex slots (双边 shell)
-    let ni = vc as u64 * vc as u64 * vc as u64;                    // index slots (仅内层)
+    let ni = vc as u64 * vc as u64 * vc as u64; // index slots (仅内层)
     let vertex_size = vn * size_of::<TerrainChunkVertex>() as u64;
     let index_size = ni * 72 * 4; // 72 slots/voxel (12 edges × 6)
 
@@ -466,9 +471,7 @@ pub fn terrain_compute_system(
                     }
                 },
             );
-            let _ = wgpu_device.poll(
-                bevy::render::render_resource::PollType::Poll,
-            );
+            let _ = wgpu_device.poll(bevy::render::render_resource::PollType::Poll);
             continue; // 下帧等 mapping 完成
         }
 
@@ -482,25 +485,20 @@ pub fn terrain_compute_system(
         s.counters.unmap();
 
         // 读顶点
-        s.vertices.slice(..).map_async(
-            bevy::render::render_resource::MapMode::Read,
-            |_| {},
-        );
+        s.vertices
+            .slice(..)
+            .map_async(bevy::render::render_resource::MapMode::Read, |_| {});
         // 读索引
-        s.indices.slice(..).map_async(
-            bevy::render::render_resource::MapMode::Read,
-            |_| {},
-        );
-        let _ = wgpu_device.poll(
-            bevy::render::render_resource::PollType::Poll,
-        );
+        s.indices
+            .slice(..)
+            .map_async(bevy::render::render_resource::MapMode::Read, |_| {});
+        let _ = wgpu_device.poll(bevy::render::render_resource::PollType::Poll);
 
         let vertex_view = s.vertices.slice(..).get_mapped_range();
         let all_vertices: &[TerrainChunkVertex] =
             bytemuck::cast_slice(&vertex_view[..s.vertex_size as usize]);
         let index_view = s.indices.slice(..).get_mapped_range();
-        let all_indices: &[u32] =
-            bytemuck::cast_slice(&index_view[..s.index_size as usize]);
+        let all_indices: &[u32] = bytemuck::cast_slice(&index_view[..s.index_size as usize]);
 
         // compact + remap: 过滤零顶点，clamp QEF 外溢，重映射索引
         let mesh = compact_and_build_mesh(
@@ -562,8 +560,8 @@ fn compact_and_build_mesh(
     chunk_min: Vec3,
     voxel_size: f32,
 ) -> Option<Mesh> {
-    let total_vv = ((vc + 2) as usize).pow(3);  // 双边 shell slot 数
-    let total_vc = (vc as usize).pow(3);         // 内层 voxel 数（索引）
+    let total_vv = ((vc + 2) as usize).pow(3); // 双边 shell slot 数
+    let total_vc = (vc as usize).pow(3); // 内层 voxel 数（索引）
     let chunk_max = chunk_min + Vec3::splat((vc + 1) as f32 * voxel_size); // 含 shell 的 clamp 上界
 
     // 构建 old→new 映射：标记有 position 的顶点（包括 shell 顶点）
@@ -593,7 +591,10 @@ fn compact_and_build_mesh(
         }
     }
     if clamped > 0 {
-        info!("  clamp: {clamped}/{} vertices clamped to chunk bounds", compact_verts.len());
+        info!(
+            "  clamp: {clamped}/{} vertices clamped to chunk bounds",
+            compact_verts.len()
+        );
     }
 
     if compact_verts.is_empty() {
@@ -662,8 +663,12 @@ fn compact_and_build_mesh(
         "  mesh: {} verts {} tris bbox=({:.1},{:.1},{:.1})→({:.1},{:.1},{:.1}) sample=[{}]",
         compact_verts.len(),
         tri_indices.len() / 3,
-        bmin.x, bmin.y, bmin.z,
-        bmax.x, bmax.y, bmax.z,
+        bmin.x,
+        bmin.y,
+        bmin.z,
+        bmax.x,
+        bmax.y,
+        bmax.z,
         sample.join(" ")
     );
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, compact_verts);
@@ -681,7 +686,7 @@ mod tests {
     fn single_chunk_produces_vertices() {
         let vc = 4u32;
         let total_vv = ((vc + 2) as usize).pow(3); // 216 (双边 shell)
-        let total_vc = (vc as usize).pow(3);       // 64
+        let total_vc = (vc as usize).pow(3); // 64
         let mut verts = vec![TerrainChunkVertex::default(); total_vv];
         let mut indices = vec![0u32; total_vc * 72]; // 72 slots/voxel
 
@@ -718,13 +723,7 @@ mod tests {
         indices[base + 4] = 26;
         indices[base + 5] = 27;
 
-        let mesh = compact_and_build_mesh(
-            &verts,
-            &indices,
-            vc,
-            Vec3::ZERO,
-            0.5,
-        );
+        let mesh = compact_and_build_mesh(&verts, &indices, vc, Vec3::ZERO, 0.5);
         assert!(mesh.is_some(), "should produce non-empty mesh");
         let mesh = mesh.unwrap();
         assert!(mesh.count_vertices() > 0, "vertex_count > 0");
@@ -733,17 +732,187 @@ mod tests {
         assert!(mesh.indices().is_some(), "index_count > 0");
     }
 
-    /// Phase 2: 两相邻 chunk 边界无缝验证（当前无法执行，标记 ignore）
+    /// 验证两个相邻 chunk 在 shell overlap 区域产生一致的顶点世界坐标。
+    ///
+    /// CPU 测试：构造两相邻 chunk 的合成顶点/索引数据，两 chunk 各在共享边界
+    /// (X = vc * voxel_size) 放置一个顶点，期望 compact 后两者的世界坐标一致。
     #[test]
-    #[ignore = "Phase 2 — requires multi-chunk observer + GPU output comparison"]
-    fn surface_is_contiguous() {}
+    #[ignore = "CPU test: needs shell overlap convention document"]
+    fn surface_is_contiguous() {
+        let vc = 2u32;
+        let voxel_size = 0.5;
+        let chunk_size = vc as f32 * voxel_size; // 1.0
+        let total_vv = ((vc + 2) as usize).pow(3); // 64
+        let total_vc = (vc as usize).pow(3); // 8
+
+        // Chunk A: world_min = (0, 0, 0)
+        // Chunk B: world_min = (chunk_size, 0, 0) = (1.0, 0, 0)
+        let chunk_a_min = Vec3::ZERO;
+        let chunk_b_min = Vec3::new(chunk_size, 0.0, 0.0);
+
+        // 共享边界的世界坐标
+        let shared_pos: [f32; 3] = [1.0, 0.25, 0.25];
+
+        // --- Chunk A 数据 ---
+        // +X shell vertex at (ix=2, iy=0, iz=0) → flat index 23
+        //   世界位置: (1.0, 0.25, 0.25) — 与 chunk B 的 -X shell 共享
+        // 额外三个顶点组成有效 quad:
+        //   (ix=1, iy=0, iz=0) → flat 22: (0.75, 0.25, 0.25)
+        //   (ix=1, iy=1, iz=0) → flat 26: (0.75, 0.50, 0.25)
+        //   (ix=2, iy=1, iz=0) → flat 27: (1.0,  0.50, 0.25)
+        // Voxel (1, 0, 0) — voxel_idx = 1 — base = 72
+        let mut verts_a = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices_a = vec![0u32; total_vc * 72];
+
+        verts_a[23] = TerrainChunkVertex {
+            position: shared_pos,
+            normal: [0.0, 0.0, 1.0],
+            ..Default::default()
+        };
+        verts_a[22] = TerrainChunkVertex {
+            position: [0.75, 0.25, 0.25],
+            normal: [0.0, 0.0, 1.0],
+            ..Default::default()
+        };
+        verts_a[26] = TerrainChunkVertex {
+            position: [0.75, 0.50, 0.25],
+            normal: [0.0, 0.0, 1.0],
+            ..Default::default()
+        };
+        verts_a[27] = TerrainChunkVertex {
+            position: [1.0, 0.50, 0.25],
+            normal: [0.0, 0.0, 1.0],
+            ..Default::default()
+        };
+
+        // Quad: 23-22-26, 23-27-26 (两个三角形)
+        let base_a = 1 * 72;
+        indices_a[base_a] = 23;
+        indices_a[base_a + 1] = 22;
+        indices_a[base_a + 2] = 26;
+        indices_a[base_a + 3] = 23;
+        indices_a[base_a + 4] = 27;
+        indices_a[base_a + 5] = 26;
+
+        // --- Chunk B 数据 ---
+        // -X shell vertex at (ix=-1, iy=0, iz=0) → flat index 20
+        //   世界位置: (1.0, 0.25, 0.25) — 与 chunk A 的 +X shell 一致
+        // 额外三个顶点:
+        //   (ix=0, iy=0, iz=0) → flat 21: (1.25, 0.25, 0.25)
+        //   (ix=-1, iy=1, iz=0) → flat 24: (1.0,  0.50, 0.25)
+        //   (ix=0, iy=1, iz=0) → flat 25: (1.25, 0.50, 0.25)
+        // Voxel (0, 0, 0) — voxel_idx = 0 — base = 0
+        let mut verts_b = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices_b = vec![0u32; total_vc * 72];
+
+        verts_b[20] = TerrainChunkVertex {
+            position: shared_pos,
+            normal: [0.0, 0.0, 1.0],
+            ..Default::default()
+        };
+        verts_b[21] = TerrainChunkVertex {
+            position: [1.25, 0.25, 0.25],
+            normal: [0.0, 0.0, 1.0],
+            ..Default::default()
+        };
+        verts_b[24] = TerrainChunkVertex {
+            position: [1.0, 0.50, 0.25],
+            normal: [0.0, 0.0, 1.0],
+            ..Default::default()
+        };
+        verts_b[25] = TerrainChunkVertex {
+            position: [1.25, 0.50, 0.25],
+            normal: [0.0, 0.0, 1.0],
+            ..Default::default()
+        };
+
+        // Quad: 20-21-24, 20-24-25
+        let base_b = 0;
+        indices_b[base_b] = 20;
+        indices_b[base_b + 1] = 21;
+        indices_b[base_b + 2] = 24;
+        indices_b[base_b + 3] = 20;
+        indices_b[base_b + 4] = 24;
+        indices_b[base_b + 5] = 25;
+
+        // --- Build both meshes ---
+        let mesh_a = compact_and_build_mesh(&verts_a, &indices_a, vc, chunk_a_min, voxel_size)
+            .expect("chunk A should produce a mesh");
+        let mesh_b = compact_and_build_mesh(&verts_b, &indices_b, vc, chunk_b_min, voxel_size)
+            .expect("chunk B should produce a mesh");
+
+        // --- Extract compacted positions ---
+        let pos_a: Vec<[f32; 3]> = mesh_a
+            .attribute(Mesh::ATTRIBUTE_POSITION)
+            .expect("mesh A has positions")
+            .as_float3()
+            .expect("positions are float3")
+            .to_vec();
+        let pos_b: Vec<[f32; 3]> = mesh_b
+            .attribute(Mesh::ATTRIBUTE_POSITION)
+            .expect("mesh B has positions")
+            .as_float3()
+            .expect("positions are float3")
+            .to_vec();
+
+        // --- Assertions ---
+        assert_eq!(pos_a.len(), 4, "chunk A should have 4 valid vertices");
+        assert_eq!(pos_b.len(), 4, "chunk B should have 4 valid vertices");
+
+        // 共享边界顶点 (1.0, 0.25, 0.25) 必须在两个 mesh 中同时出现
+        let shared_in_a = pos_a.iter().any(|p| {
+            (p[0] - shared_pos[0]).abs() < 0.001
+                && (p[1] - shared_pos[1]).abs() < 0.001
+                && (p[2] - shared_pos[2]).abs() < 0.001
+        });
+        let shared_in_b = pos_b.iter().any(|p| {
+            (p[0] - shared_pos[0]).abs() < 0.001
+                && (p[1] - shared_pos[1]).abs() < 0.001
+                && (p[2] - shared_pos[2]).abs() < 0.001
+        });
+        assert!(
+            shared_in_a,
+            "shared vertex {shared_pos:?} must appear in chunk A's compacted mesh"
+        );
+        assert!(
+            shared_in_b,
+            "shared vertex {shared_pos:?} must appear in chunk B's compacted mesh"
+        );
+
+        // 额外验证：两个 mesh 中的共享顶点世界坐标完全相同
+        let a_shared = pos_a
+            .iter()
+            .find(|p| {
+                (p[0] - shared_pos[0]).abs() < 0.001
+                    && (p[1] - shared_pos[1]).abs() < 0.001
+                    && (p[2] - shared_pos[2]).abs() < 0.001
+            })
+            .expect("shared vertex in chunk A");
+        let b_shared = pos_b
+            .iter()
+            .find(|p| {
+                (p[0] - shared_pos[0]).abs() < 0.001
+                    && (p[1] - shared_pos[1]).abs() < 0.001
+                    && (p[2] - shared_pos[2]).abs() < 0.001
+            })
+            .expect("shared vertex in chunk B");
+        assert!(
+            (a_shared[0] - b_shared[0]).abs() < f32::EPSILON
+                && (a_shared[1] - b_shared[1]).abs() < f32::EPSILON
+                && (a_shared[2] - b_shared[2]).abs() < f32::EPSILON,
+            "shared vertex world position must be identical in both meshes: \
+             chunk A has {:?}, chunk B has {:?}",
+            a_shared,
+            b_shared
+        );
+    }
 
     /// 验证顶点位置 = chunk_min + local * voxel_size
     #[test]
     fn vertex_in_world_space() {
         let vc = 2u32;
         let total_vv = ((vc + 2) as usize).pow(3); // 64 (双边 shell)
-        let total_vc = (vc as usize).pow(3);       // 8
+        let total_vc = (vc as usize).pow(3); // 8
         let chunk_min = Vec3::new(10.0, -5.0, 0.0);
         let voxel_size = 0.5;
         let mut verts = vec![TerrainChunkVertex::default(); total_vv];
