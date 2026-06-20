@@ -535,24 +535,6 @@ fn build_global_mesh(
     }
     info!("  fixed slot scan: {} valid / {} total", positions.len(), total_slots);
 
-    // 诊断：采样前几个顶点和法线
-    let sample_n = 10usize.min(positions.len());
-    let samples: Vec<String> = (0..sample_n).map(|i| {
-        let p = positions[i];
-        let n = normals[i];
-        format!("p({:.2},{:.2},{:.2}) n({:.2},{:.2},{:.2})",
-            p[0], p[1], p[2], n[0], n[1], n[2])
-    }).collect();
-    info!("  vertex sample (first {sample_n}): [{}]", samples.join(" | "));
-
-    // 诊断：统计法线 Y 分量的分布（应为正，朝向 air）
-    let mut ny_pos = 0u32;
-    let mut ny_neg = 0u32;
-    for n in &normals {
-        if n[1] > 0.0 { ny_pos += 1; } else { ny_neg += 1; }
-    }
-    info!("  normal Y: {ny_pos} up, {ny_neg} down");
-
     if positions.is_empty() { return None; }
 
     // Phase 2: inner voxels [0, vc)³ → index = jx + jy*vc + jz*vc*vc
@@ -599,30 +581,6 @@ fn build_global_mesh(
 
     if tri_indices.is_empty() { return None; }
 
-    // 诊断：前几个三角面的几何法线 vs 顶点法线
-    let tri_sample = 5usize.min(tri_indices.len() / 3);
-    for t in 0..tri_sample {
-        let i0 = tri_indices[t*3] as usize;
-        let i1 = tri_indices[t*3+1] as usize;
-        let i2 = tri_indices[t*3+2] as usize;
-        if i0 < positions.len() && i1 < positions.len() && i2 < positions.len() {
-            let p0 = Vec3::from_array(positions[i0]);
-            let p1 = Vec3::from_array(positions[i1]);
-            let p2 = Vec3::from_array(positions[i2]);
-            let geo_n = (p1 - p0).cross(p2 - p0).normalize();
-            let avg_vn = (Vec3::from_array(normals[i0])
-                + Vec3::from_array(normals[i1])
-                + Vec3::from_array(normals[i2])) / 3.0;
-            let dot = geo_n.dot(avg_vn);
-            info!("  tri[{t}]: geo_n=({:.2},{:.2},{:.2}) avg_vn=({:.2},{:.2},{:.2}) dot={:.2} {}",
-                geo_n.x, geo_n.y, geo_n.z,
-                avg_vn.x, avg_vn.y, avg_vn.z,
-                dot,
-                if dot > 0.0 { "OK" } else { "FLIPPED" }
-            );
-        }
-    }
-
     let mut bmin = Vec3::splat(f32::MAX);
     let mut bmax = Vec3::splat(f32::MIN);
     for p in &positions {
@@ -637,58 +595,6 @@ fn build_global_mesh(
         bmin.x, bmin.y, bmin.z,
         bmax.x, bmax.y, bmax.z,
     );
-
-    let mut mesh = Mesh::new(
-        bevy::mesh::PrimitiveTopology::TriangleList,
-        bevy::asset::RenderAssetUsages::default(),
-    );
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.insert_indices(bevy::mesh::Indices::U32(tri_indices));
-    Some(mesh)
-}
-
-/// fallback: 无 voxel_alloc 时直接使用 compact indices
-fn build_global_mesh_direct(
-    all_vertices: &[TerrainChunkVertex],
-    all_indices: &[u32],
-    vertex_count: usize,
-    index_count: usize,
-    grid_min: Vec3,
-    voxel_size: f32,
-) -> Option<Mesh> {
-    let gs = (all_vertices.len() as f64).cbrt() as u32;
-    let grid_max = grid_min + Vec3::splat((gs) as f32 * voxel_size);
-
-    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
-    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
-
-    for i in 0..vertex_count.min(all_vertices.len()) {
-        let v = &all_vertices[i];
-        let p = [
-            v.position[0].clamp(grid_min.x, grid_max.x),
-            v.position[1].clamp(grid_min.y, grid_max.y),
-            v.position[2].clamp(grid_min.z, grid_max.z),
-        ];
-        positions.push(p);
-        normals.push(v.normal);
-    }
-
-    if positions.is_empty() { return None; }
-
-    let idx_count = index_count.min(all_indices.len());
-    let mut tri_indices: Vec<u32> = Vec::with_capacity(idx_count);
-    for i in (0..idx_count).step_by(3) {
-        if i + 2 >= idx_count { break; }
-        let i0 = all_indices[i] as usize;
-        let i1 = all_indices[i + 1] as usize;
-        let i2 = all_indices[i + 2] as usize;
-        if i0 >= vertex_count || i1 >= vertex_count || i2 >= vertex_count { continue; }
-        if i0 == i1 || i1 == i2 || i0 == i2 { continue; }
-        tri_indices.extend_from_slice(&[i0 as u32, i1 as u32, i2 as u32]);
-    }
-
-    if tri_indices.is_empty() { return None; }
 
     let mut mesh = Mesh::new(
         bevy::mesh::PrimitiveTopology::TriangleList,
