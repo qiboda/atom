@@ -11,6 +11,10 @@ cargo check --workspace 2>&1
 echo "=== pre-commit: cargo doc --no-deps ==="
 RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain 2>&1
 
+echo "=== pre-commit: review checklist ==="
+echo "  ☐ TENSIONS.md updated with new discoveries?"
+echo "  ☐ bevy-kb updated with new API patterns?"
+echo "  ☐ No leftover debug prints / dead code?"
 echo "=== pre-commit: bevy_lint ==="
 if command -v bevy_lint &>/dev/null; then
     bevy_lint 2>&1

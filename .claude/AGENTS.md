@@ -13,7 +13,9 @@
 - [ ] document   — 新公共 API 写 rust-doc (RFC 1574)，cargo doc --no-deps 零 warning
 - [ ] implement  — 按 design 步进，每步 cargo check，≤3 次编译失败回退 design
 - [ ] verify     — cargo clippy + cargo test + 肉眼/example 验证行为
-- [ ] review     — commit + 更新 TENSIONS.md + 更新 bevy-kb（如有新 API 模式）
+- [ ] review — commit + 无遗留调试打印/死代码
+- [ ] review — 检查 TENSIONS.md: 新发现/架构不一致/工具链问题已记录？
+- [ ] review — 检查 bevy-kb: 新 Bevy API 模式或迁移要点已写入？
 ```
 
 **铁律: NO CHECKBOX UNCHECKED → NO COMMIT.** 跳过任何环节的 commit 视为流程违规。
