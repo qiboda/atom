@@ -1,163 +1,99 @@
-/// QEF 顶点计算（第三 pass — Marching Cubes）。
-///
-/// 对每个体素收集 12 条边的交叉点数据，构建立方 QEF 矩阵，
-/// 通过 `quadric_minimizer` 求顶点位置，写入 `mesh_vertices` 缓冲区，
-/// 原子递增 `vertices_indices_count.vertices_count`。
-#import quadric::{Quadric, quadric_default, probabilistic_plane_quadric, quadric_minimizer, quadric_add_quadric, quadric_residual_l2_error}
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount, VOXEL_MATERIAL_NUM, VOXEL_MATERIAL_AIR, VOXEL_MATERIAL_TABLE}
-
-#import terrain::voxel_utils::{get_voxel_edge_index, get_voxel_index, get_voxel_vertex_index, get_voxel_material_type}
-#import terrain::main_mesh_bind_group::{terrain_chunk_info, voxel_cross_points, mesh_vertices, mesh_vertex_map, mesh_vertices_indices_count, voxel_vertex_values}
-#import terrain::density_field::get_biome_type_by_location
-
-#import math::pack::pack4xU8
-
-fn compute_cross_point_data(edge_index: u32, qef: ptr<function, Quadric>, location: ptr<function, vec4f>, normal: ptr<function, vec4f>) {
-    let cross_point = voxel_cross_points[edge_index];
-
-    if cross_point.cross_location.w == 0.0 {
-        return;
-    }
-
-    *location += cross_point.cross_location;
-
-    *normal += cross_point.normal_material_index;
-
-    let quadric = probabilistic_plane_quadric(cross_point.cross_location.xyz, cross_point.normal_material_index.xyz,
-        terrain_chunk_info.qef_stddev * terrain_chunk_info.voxel_size, terrain_chunk_info.qef_stddev);
-    *qef = quadric_add_quadric(*qef, quadric);
+// Pass 3: QEF 顶点计算 (无 atomics，固定 voxel index 写入)
+struct TerrainChunkVertex {
+    position: vec3<f32>,
+    _pad0: u32,
+    normal: vec3<f32>,
+    _pad1: u32,
 }
 
-fn is_in_aabb(location: vec3f, min_location: vec3f, max_location: vec3f) -> bool {
-    return all(min_location < location) && all(location < max_location);
+struct TerrainChunkInfo {
+    chunk_min: vec3<f32>,
+    voxel_size: f32,
+    voxel_count: u32,
+    terrain_size: f32,
+    seed: u32,
+    _pad: vec2<u32>,
 }
 
-fn clamp_aabb(location: vec3f, min_location: vec3f, max_location: vec3f) -> vec3f {
-    return min(max(location, min_location), max_location);
+@group(0) @binding(0) var<uniform> chunk_info: TerrainChunkInfo;
+@group(0) @binding(2) var<storage, read> cross_points: array<u32>;
+@group(0) @binding(3) var<storage, read_write> vertices: array<TerrainChunkVertex>;
+
+fn read_cross_pos(edge_id: u32) -> vec3<f32> {
+    let b = edge_id * 8u;
+    return vec3(bitcast<f32>(cross_points[b]),
+                bitcast<f32>(cross_points[b + 1u]),
+                bitcast<f32>(cross_points[b + 2u]));
 }
 
-// Vertex and Edge Index Map
-//
-//       2-------1------3
-//      /.             /|
-//     10.           11 |
-//    /  4           /  5
-//   /   .          /   |     ^ Y
-//  6-------3------7    |     |
-//  |    0 . . 0 . |. . 1     --> X
-//  |   .          |   /     /
-//  6  8           7  9     / z
-//  | .            | /     |/
-//  |.             |/
-//  4-------2------5
-//
-@compute @workgroup_size(4, 4, 4)
-fn compute_vertices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
-    if (invocation_id.x >= terrain_chunk_info.voxel_num) || (invocation_id.y >= terrain_chunk_info.voxel_num) || (invocation_id.z >= terrain_chunk_info.voxel_num) {
-        return;
+fn read_cross_normal(edge_id: u32) -> vec3<f32> {
+    let b = edge_id * 8u + 4u;
+    return vec3(bitcast<f32>(cross_points[b]),
+                bitcast<f32>(cross_points[b + 1u]),
+                bitcast<f32>(cross_points[b + 2u]));
+}
+
+fn has_cross(edge_id: u32) -> bool {
+    let b = edge_id * 8u;
+    return abs(bitcast<f32>(cross_points[b]))
+         + abs(bitcast<f32>(cross_points[b + 1u]))
+         + abs(bitcast<f32>(cross_points[b + 2u])) > 0.001;
+}
+
+fn det3(m00: f32, m01: f32, m02: f32,
+        m10: f32, m11: f32, m12: f32,
+        m20: f32, m21: f32, m22: f32) -> f32 {
+    return m00*(m11*m22 - m12*m21) - m01*(m10*m22 - m12*m20) + m02*(m10*m21 - m11*m20);
+}
+
+fn solve3(a00: f32, a01: f32, a02: f32,
+          a11: f32, a12: f32, a22: f32,
+          b0: f32, b1: f32, b2: f32) -> vec3<f32> {
+    let d = det3(a00,a01,a02, a01,a11,a12, a02,a12,a22);
+    if abs(d) < 1e-10f { return vec3(0f); }
+    return vec3(
+        det3(b0,a01,a02, b1,a11,a12, b2,a12,a22) / d,
+        det3(a00,b0,a02, a01,b1,a12, a02,b2,a22) / d,
+        det3(a00,a01,b0, a01,a11,b1, a02,a12,b2) / d,
+    );
+}
+
+fn voxel_edge_id(vx: u32, vy: u32, vz: u32, e: u32) -> u32 {
+    let vc = chunk_info.voxel_count;
+    return (vx + vy * vc + vz * vc * vc) * 12u + e;
+}
+
+@compute @workgroup_size(8, 8, 8)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let vc = chunk_info.voxel_count;
+    if gid.x >= vc || gid.y >= vc || gid.z >= vc { return; }
+
+    var a00=0f; var a01=0f; var a02=0f;
+    var a11=0f; var a12=0f; var a22=0f;
+    var b0=0f; var b1=0f; var b2=0f;
+    var ncross = 0u;
+    var avg_pos = vec3(0f);
+    var avg_norm = vec3(0f);
+
+    for (var e = 0u; e < 12u; e++) {
+        let eid = voxel_edge_id(gid.x, gid.y, gid.z, e);
+        if !has_cross(eid) { continue; }
+        let p = read_cross_pos(eid);
+        let n = read_cross_normal(eid);
+        ncross += 1u;
+        avg_pos += p;
+        avg_norm += n;
+        let d = dot(n, p);
+        a00 += n.x*n.x; a01 += n.x*n.y; a02 += n.x*n.z;
+        a11 += n.y*n.y; a12 += n.y*n.z; a22 += n.z*n.z;
+        b0 += n.x*d; b1 += n.y*d; b2 += n.z*d;
     }
 
-    let voxel_min_location = terrain_chunk_info.chunk_min_location_size.xyz + vec3<f32>(
-        f32(invocation_id.x),
-        f32(invocation_id.y),
-        f32(invocation_id.z),
-    ) * terrain_chunk_info.voxel_size;
+    if ncross == 0u { return; }
 
-    let voxel_max_location = terrain_chunk_info.chunk_min_location_size.xyz + vec3<f32>(
-        f32(invocation_id.x + 1),
-        f32(invocation_id.y + 1),
-        f32(invocation_id.z + 1),
-    ) * terrain_chunk_info.voxel_size;
-
-    // 获取12条边的交点，计算出mesh的顶点的位置
-    let edge_0 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z, 0u);
-    let edge_1 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z, 1u);
-    let edge_2 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z, 2u);
-
-    let edge_3 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y, invocation_id.z, 1u);
-    let edge_4 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y, invocation_id.z, 2u);
-
-    let edge_5 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1u, invocation_id.z, 0u);
-    let edge_6 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1u, invocation_id.z, 2u);
-
-    let edge_7 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z + 1u, 0u);
-    let edge_8 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z + 1u, 1u);
-
-    let edge_9 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y + 1u, invocation_id.z, 2u);
-    let edge_10 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y, invocation_id.z + 1u, 1u);
-    let edge_11 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1u, invocation_id.z + 1u, 0u);
-
-    var qef = quadric_default();
-    var avg_location = vec4<f32>();
-    var avg_normal = vec4<f32>();
-    compute_cross_point_data(edge_0, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_1, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_2, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_3, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_4, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_5, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_6, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_7, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_8, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_9, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_10, &qef, &avg_location, &avg_normal);
-    compute_cross_point_data(edge_11, &qef, &avg_location, &avg_normal);
-
-    let count = avg_location.w;
-    if count <= 0.0 {
-        return;
-    }
-
-
-    var qef_location = quadric_minimizer(qef);
-    if quadric_residual_l2_error(qef, qef_location) < terrain_chunk_info.qef_threshold {
-        if is_in_aabb(qef_location, voxel_min_location, voxel_max_location) {
-            avg_location = vec4f(qef_location, 1.0);
-        } else {
-            avg_location = vec4f(clamp_aabb(qef_location, voxel_min_location + vec3f(0.01, 0.01, 0.01), voxel_max_location - vec3f(0.01, 0.01, 0.01)), 1.0);
-        }
-    } else {
-        avg_location = avg_location / count;
-    }
-
-    avg_normal.w = 0.0;
-    avg_normal = normalize(avg_normal);
-
-    let vertex_index = atomicAdd(&mesh_vertices_indices_count.vertices_count, 1u);
-
-    mesh_vertices[vertex_index].location = avg_location;
-    mesh_vertices[vertex_index].normal = avg_normal;
-    mesh_vertices[vertex_index].local_coord = vec4u(invocation_id, 0u);
-
-    let value_index_0 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z);
-    let value_index_1 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y, invocation_id.z);
-    let value_index_2 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1u, invocation_id.z);
-    let value_index_3 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y + 1u, invocation_id.z);
-    let value_index_4 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z + 1u);
-    let value_index_5 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y, invocation_id.z + 1u);
-    let value_index_6 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1u, invocation_id.z + 1u);
-    let value_index_7 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1u, invocation_id.y + 1u, invocation_id.z + 1u);
-    // >= 0.0 is outside, < 0.0 is inside
-    let v0 = u32(voxel_vertex_values[value_index_0] >= 0.0);
-    let v1 = u32(voxel_vertex_values[value_index_1] >= 0.0);
-    let v2 = u32(voxel_vertex_values[value_index_2] >= 0.0);
-    let v3 = u32(voxel_vertex_values[value_index_3] >= 0.0);
-    let v4 = u32(voxel_vertex_values[value_index_4] >= 0.0);
-    let v5 = u32(voxel_vertex_values[value_index_5] >= 0.0);
-    let v6 = u32(voxel_vertex_values[value_index_6] >= 0.0);
-    let voxel_biome_0 = u32(get_biome_type_by_location(voxel_min_location + vec3f(0.0, 0.0, 0.0)));
-    let voxel_biome_1 = u32(get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, 0.0, 0.0)));
-    let voxel_biome_2 = u32(get_biome_type_by_location(voxel_min_location + vec3f(0.0, terrain_chunk_info.voxel_size, 0.0)));
-    let voxel_biome_3 = u32(get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size, 0.0)));
-    let voxel_biome_4 = u32(get_biome_type_by_location(voxel_min_location + vec3f(0.0, 0.0, terrain_chunk_info.voxel_size)));
-    let voxel_biome_5 = u32(get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, 0.0, terrain_chunk_info.voxel_size)));
-    let voxel_biome_6 = u32(get_biome_type_by_location(voxel_min_location + vec3f(0.0, terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size)));
-    let voxel_biome_7 = u32(get_biome_type_by_location(voxel_min_location + vec3f(terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size, terrain_chunk_info.voxel_size)));
-
-    let voxel_biome_00 = pack4xU8(vec4u(voxel_biome_0, voxel_biome_1, voxel_biome_2, voxel_biome_3));
-    let voxel_biome_01 = pack4xU8(vec4u(voxel_biome_4, voxel_biome_5, voxel_biome_6, voxel_biome_7));
-    mesh_vertices[vertex_index].voxel_biome = vec2u(voxel_biome_00, voxel_biome_01);
-
-    let voxel_index = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z);
-    mesh_vertex_map[voxel_index] = vertex_index;
+    var vp = solve3(a00,a01,a02, a11,a12,a22, b0,b1,b2);
+    if length(vp) < 0.0001f { vp = avg_pos / f32(ncross); }
+    let vn = normalize(avg_norm / f32(ncross));
+    let vi = gid.x + gid.y * vc + gid.z * vc * vc;
+    vertices[vi] = TerrainChunkVertex(vp, 0u, vn, 0u);
 }

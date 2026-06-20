@@ -1,9 +1,6 @@
 [workspace]
 members = [
-    "crates/*",
-    "crates/atom_datatables/gen/atom_cfg",
-    "crates/atom_datatables/gen/atom_macros",
-    "crates/atom_datatables/atom_luban_lib",
+    "crates/atom_terrain",
 ]
 resolver = "3"
 
@@ -12,77 +9,36 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-bevy = { version = "0.18", features = [
+bevy = { version = "0.19", features = [
     "file_watcher",
     "embedded_watcher",
     "trace",
     "trace_tracy",
     "serialize",
-    # "free_camera",
     "bevy_remote",
 ] }
 log = { version = "0.4", features = ["max_level_info"] }
 tracing = { version = "0.1", features = ["max_level_info"] }
-tracing-subscriber = { version = "0.3", features = [
-    "env-filter",
-    "fmt",
-    "local-time",
-] }
-tracing-appender = { version = "0.2" }
-
-wgpu = { version = "27.0" }
-wgpu-types = { version = "27.0" }
-encase = { version = "0.12" }
-
-
-# 辅助功能
 bytemuck = { version = "1.24" }
-once_cell = { version = "1.21" }
-serde = { version = "1.0", features = ["derive"] }
-strum = { version = "0.27", features = ["derive"] }
-bitflags = { version = "2.10", features = ["serde"] }
-paste = { version = "1.0" }
-time = { version = "0.3", features = ["formatting", "parsing"] }
-image = { version = "0.25" }
-imageproc = { version = "0.25" }
 crossbeam = { version = "0.8" }
-rand = { version = "0.9.2" }
-smallvec = { version = "1.15" }
-thiserror = { version = "2" }
-dotenv = { version = "0.15" }
 
+[patch.crates-io]
+bevy = { path = "/data/codes/Bevy" }
 
-# Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.
-# In some cases they may still signal poor code quality however, so consider commenting out these lines.
 [workspace.lints.clippy]
-# Bevy supplies arguments to systems via dependency injection, so it's natural for systems to
-# request more than 7 arguments -- which triggers this lint.
 too_many_arguments = "allow"
-# Queries that access many components may trigger this lint.
 type_complexity = "allow"
-# 屏蔽收缩式if警告
 collapsible_if = "allow"
-# 禁止 unwrap()
 unwrap_used = "warn"
-# 允许使用 panic!
 panic = "allow"
 
-# Enable a small amount of optimization in the dev profile.
 [profile.dev]
 opt-level = 1
 
-# Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]
 opt-level = 3
 
-# Remove expensive debug assertions due to <https://github.com/bevyengine/bevy/issues/14291>
-[profile.dev.package.wgpu-types]
-debug-assertions = false
-
 [profile.release]
-# Compile the entire crate as one unit.
 codegen-units = 1
-# 跨 crate 二次优化
 lto = "thin"
-# 崩溃时输出完整堆栈
 debug = 1

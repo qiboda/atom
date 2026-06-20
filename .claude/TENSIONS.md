@@ -5,10 +5,10 @@
 
 ## GPU 管线
 
+- **composable module 解析死锁**: shader 在 render app `build()` 里用 `DirectAssetAccessExt::load_asset` 加载 → `AssetEvent<Shader>` 只在 render world 发，永远不被 `PipelineCache::extract_shaders`（只读 main world 事件）捕获 → composable import 注册不发生 → pipeline 永不解锁（`ShaderNotLoaded`/`ShaderImportNotYetAvailable` 交替）。Bevy Game of Life 示例的正确做法：main app `Startup` 里用 `AssetServer::load`，靠 `ExtractResource` 自然同步。涉及所有 `shaders_plugin!` 调用点。
+- 主分支 `density_field.wgsl` 有 `h10` undefined bug（WgslParseError），feature 分支修了 `h10` 但引入 noise composable import 链暴露上述 bug。
+- WGSL 清理：删掉 `voxel_cross_points.wgsl`/`voxel_utils.wgsl`/`main_mesh_compute_vertices.wgsl` 中不存在的 `VOXEL_MATERIAL_*` 和 `get_voxel_material_type*` import。
 - TerrainMaterial 管线不渲染 — 0 vertex shader invocation。已退成 StandardMaterial 白模验证。Biome 颜色不可见。
-- 部分 chunk 困在 Meshing→Done（0 vertices，永不回 Idle）。无重置机制。
-- LOD 切换被检测/日志记录，但实际 compute resolution 未变。Phase 4.1 推迟。
-- 可变 per-chunk compute resolution 需要 buffer 分配重构，暂用 LOD 0 max stride。
 
 ## 数据对齐
 

@@ -5,59 +5,18 @@ edition = "2024"
 publish.workspace = true
 license.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-# 项目依赖
-atom_core = { path = "../atom_core" }
-atom_shader_lib = { path = "../atom_shader_lib" }
-atom_render = { path = "../atom_render" }
-atom_pqef = { path = "../atom_pqef" }
-atom_renderdoc = { path = "../atom_renderdoc" }
-atom_math = { path = "../atom_math" }
-
-# 公共核心库
 bevy = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-tracing-appender = { workspace = true }
 log = { workspace = true }
-serde = { workspace = true }
-strum = { workspace = true }
-bitflags = { workspace = true }
-encase = { workspace = true }
-paste = { workspace = true }
 bytemuck = { workspace = true }
 crossbeam = { workspace = true }
-wgpu = { workspace = true }
-wgpu-types = { workspace = true }
-image = { workspace = true }
-imageproc = { workspace = true }
-rand = { workspace = true }
-
-# 第三方依赖
-# rand_distr = "0.5.1"
-rand_pcg = { version = "0.9.0" }
-# fast_poisson = "1.0.2"
-# spade = { version = "2.15.0" }
-voronator = { version = "0.2.1" }
-
-# ndshape = { version = "0.3.0" }
-
-# noise = { workspace = true }
-
 
 [dev-dependencies]
-bevy-inspector-egui = { version = "0.36" }
-bevy_flycam = { version = "0.18" }
 
 [[example]]
 name = "chunk_loader"
 path = "examples/chunk_loader.rs"
-
-[features]
-# 默认是 cpu seam
-default = []
 
 [lints]
 workspace = true

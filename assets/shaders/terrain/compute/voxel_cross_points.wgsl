@@ -1,123 +1,143 @@
-/// 体素边交叉点计算。
-///
-/// 对每个 grid 点，沿 X/Y/Z 三条边检查密度值符号变化，
-/// 若符号不同则二分查找 (8 迭代) 找到 isosurface 交叉点位置 + 法线。
-/// 无交叉的边写入 cross_location.w=0（被顶点 shader 跳过）。
-/// 计算体素顶点的密度值以及
-#import terrain::voxel_type::{TerrainChunkInfo, VoxelEdgeCrossPoint, VOXEL_MATERIAL_AIR_INDEX}
-#import terrain::voxel_utils::{get_voxel_vertex_index, get_voxel_edge_index, get_voxel_material_type_index, central_gradient}
-#import terrain::density_field::get_terrain_noise
-#import terrain::main_mesh_bind_group:: {
-    terrain_chunk_info,
-    voxel_vertex_values,
-    voxel_cross_points
+// Pass 2: 边交叉点查找
+// 对 voxel_count³ 个体素，检查 12 条边是否穿过 isosurface，
+// 若是则二分查找精确交叉点并计算法向。
+
+struct VoxelEdgeCrossPoint {
+    position: vec3<f32>,
+    _pad0: u32,
+    normal: vec3<f32>,
+    _pad1: u32,
 }
 
-fn estimate_edge_cross_point(
-    left_vertex_index: u32,
-    right_vertex_index: u32,
-    left_vertex_location: vec3<f32>,
-    right_vertex_location: vec3<f32>,
-    edge_index: u32
-) {
-    let s1 = voxel_vertex_values[left_vertex_index];
-    let s2 = voxel_vertex_values[right_vertex_index];
-    if (s1 < 0.0 && s2 >= 0.0) || (s1 >= 0.0 && s2 < 0.0) {
+struct TerrainChunkInfo {
+    chunk_min: vec3<f32>,
+    voxel_size: f32,
+    voxel_count: u32,
+    terrain_size: f32,
+    seed: u32,
+    _pad: vec2<u32>,
+}
 
-        var dir = 1.0;
-        if s2 > s1 {
-            dir = 1.0;
-        } else {
-            dir = -1.0;
-        }
+@group(0) @binding(0) var<uniform> chunk_info: TerrainChunkInfo;
+@group(0) @binding(1) var<storage, read> density: array<f32>;
+@group(0) @binding(2) var<storage, read_write> cross_points: array<u32>;
 
-        var cross_pos = left_vertex_location + (right_vertex_location - left_vertex_location) * 0.5;
-        var step = (right_vertex_location - left_vertex_location) * 0.25;
-        var cross_value = get_terrain_noise(cross_pos);
-        for (var j = 0u; j < 8u; j++) {
-            if cross_value == 0.0 {
-                break;
+// ── density query ──
+
+fn grid_idx(x: u32, y: u32, z: u32) -> u32 {
+    let n = chunk_info.voxel_count + 1u;
+    return x + y * n + z * n * n;
+}
+
+fn read_density(idx: u32) -> f32 {
+    return density[idx];
+}
+
+fn grid_pos(idx: u32) -> vec3<f32> {
+    let n = chunk_info.voxel_count + 1u;
+    let z = idx / (n * n);
+    let r = idx % (n * n);
+    let y = r / n;
+    let x = r % n;
+    return chunk_info.chunk_min + vec3<f32>(f32(x), f32(y), f32(z)) * chunk_info.voxel_size;
+}
+
+// ── edge definitions: 方向轴, 起点偏移 (相对于 voxel min corner) ──
+// 12 条边，按 X→Y→Z 顺序。每条边 = (axis, offset_of_corner_0)
+
+const EDGE_DIRS: array<u32, 12> = array<u32, 12>(0u, 0u, 0u, 0u,  1u, 1u, 1u, 1u,  2u, 2u, 2u, 2u);
+const EDGE_CORNERS: array<vec3<u32>, 12> = array<vec3<u32>, 12>(
+    vec3(0u, 0u, 0u), vec3(0u, 0u, 1u), vec3(0u, 1u, 0u), vec3(0u, 1u, 1u), // X 轴边
+    vec3(0u, 0u, 0u), vec3(1u, 0u, 0u), vec3(0u, 0u, 1u), vec3(1u, 0u, 1u), // Y 轴边
+    vec3(0u, 0u, 0u), vec3(1u, 0u, 0u), vec3(0u, 1u, 0u), vec3(1u, 1u, 0u), // Z 轴边
+);
+
+// 存储交叉点到 buffer（pack as u32 — position + normal 用 f32 原始字节）
+fn write_cross_point(edge_id: u32, pos: vec3<f32>, normal: vec3<f32>) {
+    let base = edge_id * 8u; // 8 × u32 = 32 bytes per cross point
+    cross_points[base + 0u] = bitcast<u32>(pos.x);
+    cross_points[base + 1u] = bitcast<u32>(pos.y);
+    cross_points[base + 2u] = bitcast<u32>(pos.z);
+    cross_points[base + 3u] = 0u; // pad
+    cross_points[base + 4u] = bitcast<u32>(normal.x);
+    cross_points[base + 5u] = bitcast<u32>(normal.y);
+    cross_points[base + 6u] = bitcast<u32>(normal.z);
+    cross_points[base + 7u] = 0u; // pad
+}
+
+// 中心差分法向估算
+fn estimate_normal(p: vec3<f32>) -> vec3<f32> {
+    let h = chunk_info.voxel_size * 0.5;
+    let dx = read_density(grid_idx_from_world(p + vec3(h, 0.0, 0.0)))
+           - read_density(grid_idx_from_world(p - vec3(h, 0.0, 0.0)));
+    let dy = read_density(grid_idx_from_world(p + vec3(0.0, h, 0.0)))
+           - read_density(grid_idx_from_world(p - vec3(0.0, h, 0.0)));
+    let dz = read_density(grid_idx_from_world(p + vec3(0.0, 0.0, h)))
+           - read_density(grid_idx_from_world(p - vec3(0.0, 0.0, h)));
+    return normalize(vec3(dx, dy, dz));
+}
+
+// 世界坐标 → 最近网格点 index（仅用于法向估计）
+fn grid_idx_from_world(p: vec3<f32>) -> u32 {
+    let rel = (p - chunk_info.chunk_min) / chunk_info.voxel_size;
+    let n = chunk_info.voxel_count;
+    let x = clamp(u32(round(rel.x)), 0u, n);
+    let y = clamp(u32(round(rel.y)), 0u, n);
+    let z = clamp(u32(round(rel.z)), 0u, n);
+    return grid_idx(x, y, z);
+}
+
+@compute @workgroup_size(8, 8, 8)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let vc = chunk_info.voxel_count;
+    if gid.x >= vc || gid.y >= vc || gid.z >= vc { return; }
+
+    let base = grid_idx(gid.x, gid.y, gid.z);
+
+    for (var e = 0u; e < 12u; e++) {
+        let axis = EDGE_DIRS[e];
+        let corner = EDGE_CORNERS[e];
+
+        // 边两端点的网格坐标 + density
+        let c0_x = gid.x + corner.x;
+        let c0_y = gid.y + corner.y;
+        let c0_z = gid.z + corner.z;
+        let mut c1_x = c0_x;
+        let mut c1_y = c0_y;
+        let mut c1_z = c0_z;
+        if axis == 0u { c1_x += 1u; }
+        else if axis == 1u { c1_y += 1u; }
+        else { c1_z += 1u; }
+
+        if c1_x > vc || c1_y > vc || c1_z > vc { continue; }
+
+        let d0 = read_density(grid_idx(c0_x, c0_y, c0_z));
+        let d1 = read_density(grid_idx(c1_x, c1_y, c1_z));
+
+        // 符号相同 → 无交叉
+        if (d0 > 0.0) == (d1 > 0.0) { continue; }
+
+        // 二分查找交叉点
+        let p0 = grid_pos(grid_idx(c0_x, c0_y, c0_z));
+        let p1 = grid_pos(grid_idx(c1_x, c1_y, c1_z));
+        var lo = p0;
+        var hi = p1;
+        var dlo = d0;
+
+        for (var iter = 0u; iter < 8u; iter++) {
+            let mid = (lo + hi) * 0.5;
+            let dmid = read_density(grid_idx_from_world(mid));
+            if (dmid > 0.0) == (dlo > 0.0) {
+                lo = mid;
+                dlo = dmid;
             } else {
-                var offset_dir = dir;
-                if cross_value < 0.0 {
-                    offset_dir = dir ;
-                } else {
-                    offset_dir = -dir;
-                };
-                cross_pos += offset_dir * step;
-                cross_value = get_terrain_noise(cross_pos);
-                step *= 0.5;
+                hi = mid;
             }
         }
+        let cross_pos = (lo + hi) * 0.5;
+        let normal = estimate_normal(cross_pos);
 
-        let normal = central_gradient(cross_pos, terrain_chunk_info.voxel_size);
-        voxel_cross_points[edge_index] = VoxelEdgeCrossPoint(vec4f(cross_pos, 1.0), vec4f(normal, 1.0));
-    } else {
-        voxel_cross_points[edge_index] = VoxelEdgeCrossPoint(vec4f(0.0, 0.0, 0.0, 0.0), vec4f(0.0, 0.0, 0.0, 0.0));
-    }
-}
-
-// Vertex and Edge Index Map
-//
-//       2-------1------3
-//      /.             /|
-//     10.           11 |
-//    /  4           /  5
-//   /   .          /   |     ^ Y
-//  6-------3------7    |     |
-//  |    0 . . 0 . |. . 1     --> X
-//  |   .          |   /     /
-//  6  8           7  9     / z
-//  | .            | /     |/
-//  |.             |/
-//  4-------2------5
-//
-// 考虑考虑是否可以改为dispatch_indirect: 不能，因为并不是每帧都进行计算
-// voxel one vertex to three edge
-@compute @workgroup_size(4, 4, 4)
-fn compute_voxel_cross_points(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
-    // 顶点比体素数量多1
-    if (invocation_id.x > terrain_chunk_info.voxel_num) || (invocation_id.y > terrain_chunk_info.voxel_num) || (invocation_id.z > terrain_chunk_info.voxel_num) {
-        return;
-    }
-
-    let voxel_vertex_location = terrain_chunk_info.chunk_min_location_size.xyz + vec3<f32>(
-        f32(invocation_id.x),
-        f32(invocation_id.y),
-        f32(invocation_id.z),
-    ) * terrain_chunk_info.voxel_size;
-
-    let vertex_index = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z);
-
-    var xyz = vec3u(0u, 0u, 0u);
-    if invocation_id.x == terrain_chunk_info.voxel_num {
-        xyz.x = 1u;
-    }
-    if invocation_id.y == terrain_chunk_info.voxel_num {
-        xyz.y = 1u;
-    }
-    if invocation_id.z == terrain_chunk_info.voxel_num {
-        xyz.z = 1u;
-    }
-
-    if xyz.x == 0u {
-        let edge_index_0 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z, 0u);
-        let vertex_index_x = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1, invocation_id.y, invocation_id.z);
-        let voxel_vertex_location_x = voxel_vertex_location + vec3<f32>(terrain_chunk_info.voxel_size, 0.0, 0.0);
-        estimate_edge_cross_point(vertex_index, vertex_index_x, voxel_vertex_location, voxel_vertex_location_x, edge_index_0);
-    }
-
-    if xyz.y == 0u {
-        let edge_index_1 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z, 1u);
-        let voxel_vertex_location_y = voxel_vertex_location + vec3<f32>(0.0, terrain_chunk_info.voxel_size, 0.0);
-        let vertex_index_y = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1, invocation_id.z);
-        estimate_edge_cross_point(vertex_index, vertex_index_y, voxel_vertex_location, voxel_vertex_location_y, edge_index_1);
-    }
-
-    if xyz.z == 0u {
-        let edge_index_2 = get_voxel_edge_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z, 2u);
-        let voxel_vertex_location_z = voxel_vertex_location + vec3<f32>(0.0, 0.0, terrain_chunk_info.voxel_size);
-        let vertex_index_z = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z + 1);
-        estimate_edge_cross_point(vertex_index, vertex_index_z, voxel_vertex_location, voxel_vertex_location_z, edge_index_2);
+        let edge_id = (gid.x + gid.y * vc + gid.z * vc * vc) * 12u + e;
+        write_cross_point(edge_id, cross_pos, normal);
     }
 }

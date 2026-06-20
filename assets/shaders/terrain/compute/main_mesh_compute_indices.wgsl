@@ -1,115 +1,102 @@
-/// 三角形索引生成（第四 pass — Marching Cubes 索引表）。
-///
-/// 根据每个体素 8 个顶点的密度值符号（≥0 为外部），
-/// 查 Marching Cubes 256 项索引表生成三角形索引，
-/// 原子递增 `vertices_indices_count.indices_count`。
-#import terrain::voxel_utils::{get_voxel_vertex_index, get_voxel_index}
+// Pass 4: 三角索引生成（DC quad，固定 slot 无 atomics）
+// 每个 voxel 最多 6 个索引写入 indices[voxel_idx * 6 + ...]
 
-#import terrain::main_mesh_bind_group::{
-    terrain_chunk_info,
-    voxel_vertex_values,
-    mesh_vertex_map,
-    mesh_vertices_indices_count,
-    mesh_indices
+struct TerrainChunkVertex {
+    position: vec3<f32>,
+    _pad0: u32,
+    normal: vec3<f32>,
+    _pad1: u32,
 }
 
-// Vertex and Edge Index Map
-//
-//       2-------1------3
-//      /.             /|
-//     10.           11 |
-//    /  4           /  5
-//   /   .          /   |     ^ Y
-//  6-------3------7    |     |
-//  |    0 . . 0 . |. . 1     --> X
-//  |   .          |   /     /
-//  6  8           7  9     / z
-//  | .            | /     |/
-//  |.             |/
-//  4-------2------5
-//
-// 考虑考虑是否可以改为dispatch_indirect: 不能，因为并不是每帧都进行计算
-// 边缘体素的正边界面由邻居 chunk 处理（共享面由跨 chunk 一致的确定性边界顶点保证焊缝）
-// xyz.x/xyz.y/xyz.z 检查仅跳过内部体素索引会越界的正边界面
-@compute @workgroup_size(4, 4, 4)
-fn compute_indices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
-    if (invocation_id.x >= terrain_chunk_info.voxel_num) || (invocation_id.y >= terrain_chunk_info.voxel_num) || (invocation_id.z >= terrain_chunk_info.voxel_num) {
-        return;
-    }
-    var xyz = vec3u(0u, 0u, 0u);
-    if invocation_id.x == terrain_chunk_info.voxel_num - 1u {
-        xyz.x = 1u;
-    }
-    if invocation_id.y == terrain_chunk_info.voxel_num - 1u {
-        xyz.y = 1u;
-    }
-    if invocation_id.z == terrain_chunk_info.voxel_num - 1u {
-        xyz.z = 1u;
-    }
-
-    // if xyz.x + xyz.y + xyz.z > 2u {
-    //     return;
-    // }
-
-    let voxel_vertex_index_3 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1, invocation_id.y + 1, invocation_id.z);
-    let voxel_vertex_index_5 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1, invocation_id.y, invocation_id.z + 1);
-    let voxel_vertex_index_6 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1, invocation_id.z + 1);
-    let voxel_vertex_index_7 = get_voxel_vertex_index(terrain_chunk_info.voxel_num, invocation_id.x + 1, invocation_id.y + 1, invocation_id.z + 1);
-
-    let voxel_index_0 = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z);
-    let voxel_index_1 = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x + 1, invocation_id.y, invocation_id.z);
-    let voxel_index_2 = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1, invocation_id.z);
-    let voxel_index_3 = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x + 1, invocation_id.y + 1, invocation_id.z);
-    let voxel_index_4 = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y, invocation_id.z + 1);
-    let voxel_index_5 = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x + 1, invocation_id.y, invocation_id.z + 1);
-    let voxel_index_6 = get_voxel_index(terrain_chunk_info.voxel_num, invocation_id.x, invocation_id.y + 1, invocation_id.z + 1);
-
-    // edge is x axis 0 2 4 6
-    if xyz.y == 0u && xyz.z == 0u {
-        compute_indices_on_axis(voxel_vertex_index_7, voxel_vertex_index_6, voxel_index_0, voxel_index_2, voxel_index_4, voxel_index_6);
-    }
-    // edge is y axis 0 1 4 5
-    if xyz.x == 0u && xyz.z == 0u {
-        compute_indices_on_axis(voxel_vertex_index_5, voxel_vertex_index_7, voxel_index_0, voxel_index_1, voxel_index_4, voxel_index_5);
-    }
-    // edge is z axis 0 1 2 3
-    if xyz.x == 0u && xyz.y == 0u {
-        compute_indices_on_axis(voxel_vertex_index_7, voxel_vertex_index_3, voxel_index_0, voxel_index_1, voxel_index_2, voxel_index_3);
-    }
+struct TerrainChunkInfo {
+    chunk_min: vec3<f32>,
+    voxel_size: f32,
+    voxel_count: u32,
+    terrain_size: f32,
+    seed: u32,
+    _pad: vec2<u32>,
 }
 
-fn compute_indices_on_axis(
-    voxel_vertex_index_0: u32, voxel_vertex_index_1: u32,
-    voxel_index_0: u32, voxel_index_1: u32, voxel_index_2: u32, voxel_index_3: u32
-) {
-    let vertex_value_0 = voxel_vertex_values[voxel_vertex_index_0];
-    let vertex_value_1 = voxel_vertex_values[voxel_vertex_index_1];
-    if (vertex_value_0 >= 0.0 && vertex_value_1 >= 0.0) || (vertex_value_0 < 0.0 && vertex_value_1 < 0.0) {
-        return;
-    }
+@group(0) @binding(0) var<uniform> chunk_info: TerrainChunkInfo;
+@group(0) @binding(2) var<storage, read> cross_points: array<u32>;
+@group(0) @binding(3) var<storage, read> vertices: array<TerrainChunkVertex>;
+@group(0) @binding(4) var<storage, read_write> indices: array<u32>;
 
-    let mesh_vertex_index_0 = mesh_vertex_map[voxel_index_0];
-    let mesh_vertex_index_1 = mesh_vertex_map[voxel_index_1];
-    let mesh_vertex_index_2 = mesh_vertex_map[voxel_index_2];
-    let mesh_vertex_index_3 = mesh_vertex_map[voxel_index_3];
+fn has_cross(edge_id: u32) -> bool {
+    let b = edge_id * 8u;
+    return abs(bitcast<f32>(cross_points[b]))
+         + abs(bitcast<f32>(cross_points[b + 1u]))
+         + abs(bitcast<f32>(cross_points[b + 2u])) > 0.001;
+}
 
-    let mesh_indices_index = atomicAdd(&mesh_vertices_indices_count.indices_count, 6u);
+fn has_vertex(vx: u32, vy: u32, vz: u32) -> bool {
+    let vc = chunk_info.voxel_count;
+    if vx >= vc || vy >= vc || vz >= vc { return false; }
+    return length(vertices[vx + vy * vc + vz * vc * vc].position) > 0.0001;
+}
 
-    if vertex_value_0 >= 0.0 {
-        mesh_indices[mesh_indices_index] = mesh_vertex_index_0;
-        mesh_indices[mesh_indices_index + 1] = mesh_vertex_index_1;
-        mesh_indices[mesh_indices_index + 2] = mesh_vertex_index_2;
+fn voxel_edge_id(vx: u32, vy: u32, vz: u32, e: u32) -> u32 {
+    let vc = chunk_info.voxel_count;
+    return (vx + vy * vc + vz * vc * vc) * 12u + e;
+}
 
-        mesh_indices[mesh_indices_index + 3] = mesh_vertex_index_1;
-        mesh_indices[mesh_indices_index + 4] = mesh_vertex_index_3;
-        mesh_indices[mesh_indices_index + 5] = mesh_vertex_index_2;
+const EDGE_AXIS: array<u32, 12> = array(0u,0u,0u,0u, 1u,1u,1u,1u, 2u,2u,2u,2u);
+const EDGE_CORNER: array<vec3<u32>, 12> = array(
+    vec3(0u,0u,0u), vec3(0u,0u,1u), vec3(0u,1u,0u), vec3(0u,1u,1u),
+    vec3(0u,0u,0u), vec3(1u,0u,0u), vec3(0u,0u,1u), vec3(1u,0u,1u),
+    vec3(0u,0u,0u), vec3(1u,0u,0u), vec3(0u,1u,0u), vec3(1u,1u,0u),
+);
+
+// 4 个相邻 voxel（axis == edge 方向, cx,cy,cz == edge 起点网格坐标）
+fn quad_voxels(axis: u32, cx: u32, cy: u32, cz: u32) -> array<vec3<i32>, 4> {
+    let x = i32(cx); let y = i32(cy); let z = i32(cz);
+    if axis == 0u {
+        return array(vec3(x, y-1, z-1), vec3(x, y, z-1), vec3(x, y, z), vec3(x, y-1, z));
+    } else if axis == 1u {
+        return array(vec3(x-1, y, z-1), vec3(x, y, z-1), vec3(x, y, z), vec3(x-1, y, z));
     } else {
-        mesh_indices[mesh_indices_index] = mesh_vertex_index_0;
-        mesh_indices[mesh_indices_index + 1] = mesh_vertex_index_2;
-        mesh_indices[mesh_indices_index + 2] = mesh_vertex_index_1;
+        return array(vec3(x-1, y-1, z), vec3(x, y-1, z), vec3(x, y, z), vec3(x-1, y, z));
+    }
+}
 
-        mesh_indices[mesh_indices_index + 3] = mesh_vertex_index_1;
-        mesh_indices[mesh_indices_index + 4] = mesh_vertex_index_2;
-        mesh_indices[mesh_indices_index + 5] = mesh_vertex_index_3;
+@compute @workgroup_size(8, 8, 8)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let vc = chunk_info.voxel_count;
+    if gid.x >= vc || gid.y >= vc || gid.z >= vc { return; }
+
+    for (var e = 0u; e < 12u; e++) {
+        let axis = EDGE_AXIS[e];
+        let corner = EDGE_CORNER[e];
+        let cx = gid.x + corner.x;
+        let cy = gid.y + corner.y;
+        let cz = gid.z + corner.z;
+        let eid = voxel_edge_id(gid.x, gid.y, gid.z, e);
+        if !has_cross(eid) { continue; }
+
+        let qv = quad_voxels(axis, cx, cy, cz);
+        var all = true;
+        for (var i = 0u; i < 4u; i++) {
+            let q = qv[i];
+            if q.x < 0i || q.y < 0i || q.z < 0i
+                || q.x >= i32(vc) || q.y >= i32(vc) || q.z >= i32(vc)
+                || !has_vertex(u32(q.x), u32(q.y), u32(q.z)) {
+                all = false; break;
+            }
+        }
+        if !all { continue; }
+
+        let vi0 = u32(qv[0].x) + u32(qv[0].y) * vc + u32(qv[0].z) * vc * vc;
+        let vi1 = u32(qv[1].x) + u32(qv[1].y) * vc + u32(qv[1].z) * vc * vc;
+        let vi2 = u32(qv[2].x) + u32(qv[2].y) * vc + u32(qv[2].z) * vc * vc;
+        let vi3 = u32(qv[3].x) + u32(qv[3].y) * vc + u32(qv[3].z) * vc * vc;
+
+        // 写入固定 slot: gid 对应的 voxel，最多 6 个索引
+        let base = (gid.x + gid.y * vc + gid.z * vc * vc) * 6u;
+        indices[base + 0u] = vi0;
+        indices[base + 1u] = vi1;
+        indices[base + 2u] = vi2;
+        indices[base + 3u] = vi0;
+        indices[base + 4u] = vi2;
+        indices[base + 5u] = vi3;
     }
 }
