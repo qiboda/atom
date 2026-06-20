@@ -44,7 +44,7 @@ use bevy::{
 };
 
 use super::{
-    sync::TerrainChunksToProcess,
+    sync::{ChunkProcessRequest, TerrainChunkProcessReceiver},
     types::{TerrainChunkInfo, TerrainChunkVertex},
 };
 use crate::{mesh::TerrainChunkMeshData, mesh::TerrainChunkMeshSender, setting::TerrainSetting};
@@ -150,8 +150,10 @@ struct StagingReadback {
     vertex_size: u64,
     /// 索引 buffer 大小 (bytes)
     index_size: u64,
-    /// 计数器映射完成标志
+    /// 映射完成标志（callback 设置）
     mapped: Arc<AtomicBool>,
+    /// 映射已发起标志（防止重复 map_async）
+    map_started: bool,
     /// chunk 世界坐标偏移
     world_min: Vec3,
 }
@@ -175,8 +177,11 @@ impl TerrainChunkMeshBuffers {
         queue: &RenderQueue,
         bgl: &BindGroupLayout,
     ) {
-        let g = (vc + 1) as u64 * (vc + 1) as u64 * (vc + 1) as u64;
-        let v = vc as u64 * vc as u64 * vc as u64;
+        let vv = vc + 2; // 双边 shell voxel 数
+        let dv = vc + 3; // 双边 shell 密度 grid 点数
+        let dg = dv as u64 * dv as u64 * dv as u64;
+        let vn = vv as u64 * vv as u64 * vv as u64; // vertex/cross slots
+        let ni = vc as u64 * vc as u64 * vc as u64; // index slots (仅内层)
         let s = BufferUsages::STORAGE | BufferUsages::COPY_DST;
         let so = BufferUsages::STORAGE | BufferUsages::COPY_SRC;
         let u = BufferUsages::UNIFORM | BufferUsages::COPY_DST;
@@ -190,10 +195,10 @@ impl TerrainChunkMeshBuffers {
             })
         };
         let ct = mk("counters", 16, so | BufferUsages::COPY_DST);
-        let db = mk("density", g * 4, s);
-        let cb = mk("cross", v * 12 * 32, s);
-        let vb = mk("verts", v * size_of::<TerrainChunkVertex>() as u64, so);
-        let ib = mk("indices", v * 6 * 4, so);
+        let db = mk("density", dg * 4, s);
+        let cb = mk("cross", vn * 12 * 32, s);
+        let vb = mk("verts", vn * size_of::<TerrainChunkVertex>() as u64, so);
+        let ib = mk("indices", ni * 72 * 4, so); // 72 slots/voxel (12 edges × 6)
         let ub = mk("chunk_info", size_of::<TerrainChunkInfo>() as u64, u);
 
         queue.write_buffer(&ub, 0, bytemuck::bytes_of(info));
@@ -264,7 +269,7 @@ pub fn terrain_compute_system(
     device: Res<RenderDevice>,
     queue: Res<RenderQueue>,
     setting: Res<TerrainSetting>,
-    mut to_process: ResMut<TerrainChunksToProcess>,
+    receiver: Res<TerrainChunkProcessReceiver>,
     mut buffers: ResMut<TerrainChunkMeshBuffers>,
     mut progress: ResMut<TerrainChunkComputeProgress>,
     mut staging: ResMut<TerrainChunkStagingBuffers>,
@@ -272,35 +277,39 @@ pub fn terrain_compute_system(
 ) {
     let vc = setting.voxel_count;
 
-    // 0. allocate new chunks, then clear from pending (world_min stored in ChunkBuffers)
-    let mut to_remove: Vec<Entity> = Vec::new();
-    for (&entity, world_min) in to_process.pending.iter() {
-        if progress.pass.contains_key(&entity) {
-            continue;
+    // 0. 从 channel 读取主世界发来的加载/卸载请求
+    while let Ok(req) = receiver.try_recv() {
+        match req {
+            ChunkProcessRequest::Load { entity, world_min } => {
+                if progress.pass.contains_key(&entity) {
+                    continue; // 已在处理中
+                }
+                let info = TerrainChunkInfo {
+                    chunk_min: world_min.to_array(),
+                    voxel_size: setting.voxel_size,
+                    voxel_count: vc,
+                    terrain_size: setting.terrain_size,
+                    seed: setting.seed,
+                    pad0: 0,
+                    pad1: [0; 2],
+                    pad2: [0; 2],
+                };
+                buffers.allocate(
+                    entity,
+                    &info,
+                    vc,
+                    &device,
+                    &queue,
+                    &pipeline.bind_group_layout,
+                );
+                progress.pass.insert(entity, 0);
+            }
+            ChunkProcessRequest::Unload { entity } => {
+                buffers.remove(entity);
+                staging.buffers.remove(&entity);
+                progress.pass.remove(&entity);
+            }
         }
-        let info = TerrainChunkInfo {
-            chunk_min: world_min.to_array(),
-            voxel_size: setting.voxel_size,
-            voxel_count: vc,
-            terrain_size: setting.terrain_size,
-            seed: setting.seed,
-            pad0: 0,
-            pad1: [0; 2],
-            pad2: [0; 2],
-        };
-        buffers.allocate(
-            entity,
-            &info,
-            vc,
-            &device,
-            &queue,
-            &pipeline.bind_group_layout,
-        );
-        progress.pass.insert(entity, 0);
-        to_remove.push(entity);
-    }
-    for entity in to_remove {
-        to_process.pending.remove(&entity);
     }
 
     // 1. dispatch compute passes 1-4
@@ -326,13 +335,14 @@ pub fn terrain_compute_system(
         };
         let wg = match *pass {
             1 => {
-                let n = vc + 1;
+                let n = vc + 3; // 密度 grid 双边 shell
                 (n.div_ceil(8), n.div_ceil(8), n.div_ceil(8))
             }
-            _ => {
-                let n = vc;
+            2 | 3 | 4 => {
+                let n = vc + 2; // voxel 双边 shell; pass4 内部 skip 非内层
                 (n.div_ceil(8), n.div_ceil(8), n.div_ceil(8))
             }
+            _ => continue,
         };
         let mut cpass = encoder.begin_compute_pass(&ComputePassDescriptor::default());
         cpass.set_pipeline(cp);
@@ -355,9 +365,10 @@ pub fn terrain_compute_system(
     }
 
     // 3. staging copy (pass == 5, 且不是本帧刚晋升的)
-    let v = vc as u64 * vc as u64 * vc as u64;
-    let vertex_size = v * size_of::<TerrainChunkVertex>() as u64;
-    let index_size = v * 6 * 4;
+    let vn = (vc + 2) as u64 * (vc + 2) as u64 * (vc + 2) as u64; // vertex slots (双边 shell)
+    let ni = vc as u64 * vc as u64 * vc as u64;                    // index slots (仅内层)
+    let vertex_size = vn * size_of::<TerrainChunkVertex>() as u64;
+    let index_size = ni * 72 * 4; // 72 slots/voxel (12 edges × 6)
 
     let mut copied: Vec<Entity> = Vec::new();
     for (&entity, pass) in progress.pass.iter() {
@@ -401,6 +412,7 @@ pub fn terrain_compute_system(
                 vertex_size,
                 index_size,
                 mapped: Arc::new(AtomicBool::new(false)),
+                map_started: false,
                 world_min,
             },
         );
@@ -424,13 +436,14 @@ pub fn terrain_compute_system(
         if fresh_pass6.contains(&entity) {
             continue;
         }
-        let Some(s) = staging.buffers.get(&entity) else {
+        let Some(s) = staging.buffers.get_mut(&entity) else {
             warn!("pass==6 but no staging buffer for {entity:?}");
             continue;
         };
 
         // 首次进入 pass==6：发起 async 映射
-        if !s.mapped.load(Ordering::Acquire) {
+        if !s.map_started {
+            s.map_started = true;
             let flag = s.mapped.clone();
             let slice = s.counters.slice(..);
             slice.map_async(
@@ -444,10 +457,11 @@ pub fn terrain_compute_system(
             let _ = wgpu_device.poll(
                 bevy::render::render_resource::PollType::Poll,
             );
+            continue; // 下帧等 mapping 完成
         }
 
         if !s.mapped.load(Ordering::Acquire) {
-            continue; // 映射尚未完成，下帧再试
+            continue; // 映射尚未完成
         }
 
         let counter_view = s.counters.slice(..).get_mapped_range();
@@ -536,16 +550,17 @@ fn compact_and_build_mesh(
     chunk_min: Vec3,
     voxel_size: f32,
 ) -> Option<Mesh> {
-    let total = (vc as usize).pow(3);
-    let chunk_max = chunk_min + Vec3::splat(vc as f32 * voxel_size);
+    let total_vv = ((vc + 2) as usize).pow(3);  // 双边 shell slot 数
+    let total_vc = (vc as usize).pow(3);         // 内层 voxel 数（索引）
+    let chunk_max = chunk_min + Vec3::splat((vc + 1) as f32 * voxel_size); // 含 shell 的 clamp 上界
 
-    // 构建 old→new 映射：标记有 position 的顶点
-    let mut remap: Vec<Option<u32>> = vec![None; total];
+    // 构建 old→new 映射：标记有 position 的顶点（包括 shell 顶点）
+    let mut remap: Vec<Option<u32>> = vec![None; total_vv];
     let mut compact_verts: Vec<[f32; 3]> = Vec::new();
     let mut compact_norms: Vec<[f32; 3]> = Vec::new();
     let mut clamped = 0u32;
 
-    for (i, v) in all_vertices.iter().enumerate().take(total) {
+    for (i, v) in all_vertices.iter().enumerate().take(total_vv) {
         let len = (v.position[0] * v.position[0]
             + v.position[1] * v.position[1]
             + v.position[2] * v.position[2])
@@ -573,37 +588,39 @@ fn compact_and_build_mesh(
         return None;
     }
 
-    // 遍历索引：每个 voxel 最多 6 个索引 → 两个三角形 (0-1-2, 0-2-3)
+    // 遍历索引：只处理内层 vc³ 个 voxel（边界 shell 不生成 quad）
+    // 每 voxel 12 个 index slot（2 quad），遍历两个 slot
     let mut tri_indices: Vec<u32> = Vec::new();
-    for voxel_idx in 0..total {
-        let base = voxel_idx * 6;
-        if base + 5 >= all_indices.len() {
+    for voxel_idx in 0..total_vc {
+        let base = voxel_idx * 72;
+        if base + 71 >= all_indices.len() {
             break;
         }
-        let i0 = all_indices[base] as usize;
-        let i1 = all_indices[base + 1] as usize;
-        let i2 = all_indices[base + 2] as usize;
-        let i3 = all_indices[base + 3] as usize;
-        let i4 = all_indices[base + 4] as usize;
-        let i5 = all_indices[base + 5] as usize;
+        for slot in 0..12 {
+            let off = base + slot * 6;
+            let i0 = all_indices[off] as usize;
+            let i1 = all_indices[off + 1] as usize;
+            let i2 = all_indices[off + 2] as usize;
+            let i3 = all_indices[off + 3] as usize;
+            let i4 = all_indices[off + 4] as usize;
+            let i5 = all_indices[off + 5] as usize;
 
-        // 检查两组三角形是否有效（所有 6 个索引都是有效顶点）
-        let r0 = remap.get(i0).copied().flatten();
-        let r1 = remap.get(i1).copied().flatten();
-        let r2 = remap.get(i2).copied().flatten();
-        let r3 = remap.get(i3).copied().flatten();
-        let r4 = remap.get(i4).copied().flatten();
-        let r5 = remap.get(i5).copied().flatten();
+            let r0 = remap.get(i0).copied().flatten();
+            let r1 = remap.get(i1).copied().flatten();
+            let r2 = remap.get(i2).copied().flatten();
+            let r3 = remap.get(i3).copied().flatten();
+            let r4 = remap.get(i4).copied().flatten();
+            let r5 = remap.get(i5).copied().flatten();
 
-        if let (Some(r0), Some(r1), Some(r2), Some(r3), Some(r4), Some(r5)) =
-            (r0, r1, r2, r3, r4, r5)
-        {
-            // 过滤退化的三角形（三个顶点都不同）
-            if r0 != r1 && r0 != r2 && r1 != r2 {
-                tri_indices.extend_from_slice(&[r0, r1, r2]);
-            }
-            if r3 != r4 && r3 != r5 && r4 != r5 {
-                tri_indices.extend_from_slice(&[r3, r4, r5]);
+            if let (Some(r0), Some(r1), Some(r2), Some(r3), Some(r4), Some(r5)) =
+                (r0, r1, r2, r3, r4, r5)
+            {
+                if r0 != r1 && r0 != r2 && r1 != r2 {
+                    tri_indices.extend_from_slice(&[r0, r1, r2]);
+                }
+                if r3 != r4 && r3 != r5 && r4 != r5 {
+                    tri_indices.extend_from_slice(&[r3, r4, r5]);
+                }
             }
         }
     }
@@ -651,9 +668,10 @@ mod tests {
     #[test]
     fn single_chunk_produces_vertices() {
         let vc = 4u32;
-        let total = (vc as usize).pow(3); // 64
-        let mut verts = vec![TerrainChunkVertex::default(); total];
-        let mut indices = vec![0u32; total * 6];
+        let total_vv = ((vc + 2) as usize).pow(3); // 216 (双边 shell)
+        let total_vc = (vc as usize).pow(3);       // 64
+        let mut verts = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices = vec![0u32; total_vc * 72]; // 72 slots/voxel
 
         // 模拟一个 voxel 有几何：顶点在 chunk 中心 + 两个有效三角形
         let vi = 21usize; // 中间 voxel
@@ -680,7 +698,7 @@ mod tests {
         };
 
         // 写入 6 个索引指向这 4 个顶点 (两个三角形: 21-22-26, 21-26-27)
-        let base = vi * 6;
+        let base = vi * 72; // edge 0 slot
         indices[base] = 21;
         indices[base + 1] = 22;
         indices[base + 2] = 26;
@@ -712,11 +730,12 @@ mod tests {
     #[test]
     fn vertex_in_world_space() {
         let vc = 2u32;
-        let total = (vc as usize).pow(3); // 8
+        let total_vv = ((vc + 2) as usize).pow(3); // 64 (双边 shell)
+        let total_vc = (vc as usize).pow(3);       // 8
         let chunk_min = Vec3::new(10.0, -5.0, 0.0);
         let voxel_size = 0.5;
-        let mut verts = vec![TerrainChunkVertex::default(); total];
-        let mut indices = vec![0u32; total * 6];
+        let mut verts = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices = vec![0u32; total_vc * 72]; // 72 slots/voxel
 
         // 三个顶点形成一个三角形，顶点在 world space
         verts[0].position = [10.0, -5.0, 0.0]; // chunk_min (local 0,0,0)

@@ -5,6 +5,15 @@
 use bevy::prelude::*;
 use crossbeam::channel::{Receiver, Sender};
 
+use crate::{
+    chunk::{
+        ChunkLoadMsg, ChunkUnloadMsg, TerrainChunk, TerrainChunkCoord,
+        TerrainLoadedChunks,
+    },
+    compute::sync::{ChunkProcessRequest, TerrainChunkProcessSender},
+    setting::TerrainSetting,
+};
+
 /// 从 GPU compute 管线回传到主世界的 chunk mesh 数据
 pub struct TerrainChunkMeshData {
     /// 生成的网格数据
@@ -33,46 +42,82 @@ pub enum TerrainChunkMeshingState {
     Done,
 }
 
-/// 接收主世界的 chunk 加载消息，设置 Meshing 状态
+/// 接收主世界的 chunk 加载消息，首次加载时创建实体，注册并通过 channel 发送到渲染世界。
 pub fn handle_load_requests(
     mut commands: Commands,
-    mut reader: MessageReader<crate::chunk::ChunkLoadMsg>,
-    chunks: Res<crate::chunk::TerrainLoadedChunks>,
-    setting: Res<crate::setting::TerrainSetting>,
-    mut to_process: ResMut<crate::compute::sync::TerrainChunksToProcess>,
+    mut reader: MessageReader<ChunkLoadMsg>,
+    setting: Res<TerrainSetting>,
+    mut loaded_chunks: ResMut<TerrainLoadedChunks>,
+    sender: Res<TerrainChunkProcessSender>,
 ) {
     let chunk_size = setting.chunk_size();
     for msg in reader.read() {
-        if let Some(entity) = chunks.get(&msg.coord) {
-            let world_pos = msg.coord.to_world(chunk_size);
-            commands.entity(entity).insert((
+        if loaded_chunks.contains(&msg.coord) {
+            // 已在队列中，跳过（可能是前一帧刚创建的）
+            continue;
+        }
+        let world_pos = msg.coord.to_world(chunk_size);
+        let entity = commands
+            .spawn((
+                TerrainChunk,
+                TerrainChunkCoord(msg.coord.0),
                 TerrainChunkMeshingState::Meshing,
-                Transform::from_translation(world_pos),
-            ));
-            to_process.pending.insert(entity, world_pos);
+                Transform::IDENTITY, // 顶点已是世界坐标，父 entity 不加偏移
+                Visibility::default(),
+            ))
+            .id();
+        loaded_chunks.insert(msg.coord, entity);
+        let _ = sender.send(ChunkProcessRequest::Load {
+            entity,
+            world_min: world_pos,
+        });
+    }
+}
+
+/// 接收卸载消息: despawn chunk entity（含 children mesh），清理注册表，通知渲染世界释放 GPU buffer。
+pub fn handle_unload_requests(
+    mut commands: Commands,
+    mut reader: MessageReader<ChunkUnloadMsg>,
+    mut loaded_chunks: ResMut<TerrainLoadedChunks>,
+    sender: Res<TerrainChunkProcessSender>,
+) {
+    for msg in reader.read() {
+        if let Some(entity) = loaded_chunks.remove(&msg.coord) {
+            commands.entity(entity).despawn();
+            let _ = sender.send(ChunkProcessRequest::Unload { entity });
         }
     }
 }
 
-/// 接收渲染世界发来的 mesh，spawn 新实体并在正确位置渲染
+/// 接收渲染世界发来的 mesh，spawn 为 chunk entity 的子实体
 pub fn handle_mesh_data(
     mut commands: Commands,
     receiver: Res<TerrainChunkMeshReceiver>,
+    setting: Res<TerrainSetting>,
+    loaded_chunks: Res<TerrainLoadedChunks>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     while let Ok(data) = receiver.try_recv() {
         let mesh = meshes.add(data.mesh);
         let mat = materials.add(StandardMaterial {
-            base_color: Color::srgb(0.4, 0.6, 0.3),
-            perceptual_roughness: 0.9,
+            base_color: Color::srgb(0.7, 0.75, 0.8),
+            perceptual_roughness: 0.3,
+            // cull_mode: default (Some(Face::Back))
             ..default()
         });
-        commands.spawn((
-            Mesh3d(mesh),
-            MeshMaterial3d(mat),
-            Transform::IDENTITY, // 顶点已由 shader 转为世界坐标
-            Visibility::default(),
-        ));
+        // 通过 translation 反查 TerrainChunkCoord，找到父 chunk entity
+        let coord = TerrainChunkCoord::from_world(data.translation, setting.chunk_size());
+        if let Some(chunk_entity) = loaded_chunks.get(&coord) {
+            commands.entity(chunk_entity).with_children(|parent| {
+                parent.spawn((
+                    Mesh3d(mesh),
+                    MeshMaterial3d(mat),
+                    Transform::IDENTITY, // 顶点已由 shader 转为世界坐标
+                    Visibility::default(),
+                ));
+            });
+            commands.entity(chunk_entity).insert(TerrainChunkMeshingState::Done);
+        }
     }
 }

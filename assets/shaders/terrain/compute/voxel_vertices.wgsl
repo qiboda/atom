@@ -1,5 +1,6 @@
 // Pass 1: 密度场计算
-// 对 (voxel_count+1)³ 个网格点计算 density = y - noise_height(x,z)
+// 对 (vc+3)³ 个网格点计算 density = y - height_at(x,z)
+// 网格索引偏移: grid[0] = chunk_min - voxel_size (负 shell)
 
 struct TerrainChunkVertex {
     position: vec3<f32>,
@@ -22,60 +23,27 @@ struct TerrainChunkInfo {
 @group(0) @binding(0) var<uniform> chunk_info: TerrainChunkInfo;
 @group(0) @binding(1) var<storage, read_write> density: array<f32>;
 
-// ── simple hash noise (替代 OpenSimplex，MVP) ──
-
-fn hash22(p: vec2<f32>) -> f32 {
-    let n = fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
-    return n * 2.0 - 1.0;
-}
-
-fn value_noise_2d(p: vec2<f32>) -> f32 {
-    let i = floor(p);
-    let f = fract(p);
-    let u = f * f * (3.0 - 2.0 * f); // smoothstep
-    return mix(
-        mix(hash22(i + vec2(0.0, 0.0)), hash22(i + vec2(1.0, 0.0)), u.x),
-        mix(hash22(i + vec2(0.0, 1.0)), hash22(i + vec2(1.0, 1.0)), u.x),
-        u.y,
-    );
-}
-
-fn fbm_2d(p: vec2<f32>, octaves: u32) -> f32 {
-    var val = 0.0;
-    var amp = 1.0;
-    var freq = 1.0;
-    var max_val = 0.0;
-    var pp = p;
-    for (var i = 0u; i < octaves; i++) {
-        val += value_noise_2d(pp * freq) * amp;
-        max_val += amp;
-        amp *= 0.5;
-        freq *= 2.0;
-    }
-    return val / max_val;
-}
+// ── 测试 pattern: 平滑正弦波 ──
 
 fn height_at(xz: vec2<f32>) -> f32 {
-    let h1 = fbm_2d(xz * 0.02, 3u) * 20.0;
-    let h2 = fbm_2d(xz * 0.08, 3u) * 5.0;
-    let h3 = fbm_2d(xz * 0.25, 3u) * 1.0;
-    return h1 + h2 + h3;
+    return sin(xz.x * 0.15) * 6.0 - 24.0;
 }
 
-fn world_pos(voxel_idx: u32) -> vec3<f32> {
-    let n = chunk_info.voxel_count;
-    let z = voxel_idx / ((n + 1u) * (n + 1u));
-    let r = voxel_idx % ((n + 1u) * (n + 1u));
-    let y = r / (n + 1u);
-    let x = r % (n + 1u);
-    return chunk_info.chunk_min + vec3<f32>(f32(x), f32(y), f32(z)) * chunk_info.voxel_size;
+fn world_pos(idx: u32) -> vec3<f32> {
+    let dn = chunk_info.voxel_count + 3u; // vc+3 grid points (双边 shell)
+    let z = idx / (dn * dn);
+    let r = idx % (dn * dn);
+    let y = r / dn;
+    let x = r % dn;
+    // grid[0] = chunk_min - voxel_size
+    return chunk_info.chunk_min + (vec3<f32>(f32(x), f32(y), f32(z)) - 1.0) * chunk_info.voxel_size;
 }
 
 @compute @workgroup_size(8, 8, 8)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let n = chunk_info.voxel_count + 1u;
-    if gid.x >= n || gid.y >= n || gid.z >= n { return; }
-    let idx = gid.x + gid.y * n + gid.z * n * n;
+    let dn = chunk_info.voxel_count + 3u;
+    if gid.x >= dn || gid.y >= dn || gid.z >= dn { return; }
+    let idx = gid.x + gid.y * dn + gid.z * dn * dn;
     let pos = world_pos(idx);
     density[idx] = pos.y - height_at(pos.xz);
 }

@@ -34,10 +34,9 @@ impl Default for TerrainObserverConfig {
 
 /// 每帧根据观察者位置加载/卸载 chunk
 pub fn update_grid_chunks(
-    mut commands: Commands,
     observers: Query<(&GlobalTransform, &TerrainObserverConfig), With<TerrainObserver>>,
     terrain_setting: Res<TerrainSetting>,
-    mut loaded: ResMut<TerrainLoadedChunks>,
+    loaded: Res<TerrainLoadedChunks>,
     mut load_tx: MessageWriter<ChunkLoadMsg>,
     mut unload_tx: MessageWriter<ChunkUnloadMsg>,
 ) {
@@ -70,10 +69,8 @@ pub fn update_grid_chunks(
         .map(|(c, _)| *c)
         .collect();
 
+    // 只发卸载消息，不 despawn — 实际清理由 handle_unload_requests 完成
     for coord in to_unload {
-        if let Some(entity) = loaded.remove(&coord) {
-            commands.entity(entity).despawn();
-            unload_tx.write(ChunkUnloadMsg { coord });
-        }
+        unload_tx.write(ChunkUnloadMsg { coord });
     }
 }

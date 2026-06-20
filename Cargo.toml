@@ -16,6 +16,8 @@ bevy = { version = "0.19", features = [
     "trace_tracy",
     "serialize",
     "bevy_remote",
+    "bevy_camera_controller",
+    "free_camera",
 ] }
 log = { version = "0.4", features = ["max_level_info"] }
 tracing = { version = "0.1", features = ["max_level_info"] }

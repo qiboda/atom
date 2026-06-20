@@ -6,6 +6,8 @@
 //! 密度场 = y - height_at(x,z)，正值 = air，负值 = solid。
 /// Chunk 加载/卸载管理
 pub mod chunk;
+/// 调试开关（wireframe 等）
+pub mod debug;
 /// GPU Mesh compute 管线
 pub mod compute;
 /// 观察者驱动的动态加载系统
@@ -18,12 +20,16 @@ pub mod noise;
 pub mod setting;
 
 use bevy::prelude::*;
+use bevy::pbr::wireframe::WireframePlugin;
 
 use chunk::{ChunkLoadMsg, ChunkUnloadMsg, TerrainLoadedChunks};
+use compute::sync::{TerrainChunkProcessReceiver, TerrainChunkProcessSender};
 use compute::TerrainChunkMeshComputePlugin;
+use debug::{apply_debug_wireframe, TerrainDebugConfig};
 use loader::update_grid_chunks;
 use mesh::{
-    handle_load_requests, handle_mesh_data, TerrainChunkMeshReceiver, TerrainChunkMeshSender,
+    handle_load_requests, handle_mesh_data, handle_unload_requests,
+    TerrainChunkMeshReceiver, TerrainChunkMeshSender,
 };
 use setting::TerrainSetting;
 
@@ -41,14 +47,21 @@ impl Plugin for TerrainPlugin {
         // ── 主世界资源 ──
         app.insert_resource(TerrainSetting::default());
         app.init_resource::<TerrainLoadedChunks>();
+        app.init_resource::<TerrainDebugConfig>();
         app.add_message::<ChunkLoadMsg>();
         app.add_message::<ChunkUnloadMsg>();
 
         // ── 渲染 → 主世界 mesh 数据 channel ──
-        let (tx, rx) = crossbeam::channel::unbounded();
-        app.insert_resource(TerrainChunkMeshReceiver(rx));
+        let (mesh_tx, mesh_rx) = crossbeam::channel::unbounded();
+        app.insert_resource(TerrainChunkMeshReceiver(mesh_rx));
+
+        // ── 主世界 → 渲染 chunk 处理请求 channel ──
+        let (proc_tx, proc_rx) = crossbeam::channel::unbounded();
+        app.insert_resource(TerrainChunkProcessSender(proc_tx));
+
         let render_app = app.sub_app_mut(bevy::render::RenderApp);
-        render_app.insert_resource(TerrainChunkMeshSender(tx));
+        render_app.insert_resource(TerrainChunkMeshSender(mesh_tx));
+        render_app.insert_resource(TerrainChunkProcessReceiver(proc_rx));
 
         // ── 主世界系统 ──
         app.add_systems(
@@ -56,10 +69,17 @@ impl Plugin for TerrainPlugin {
             (
                 update_grid_chunks,
                 handle_load_requests,
+                handle_unload_requests,
                 handle_mesh_data,
+                apply_debug_wireframe,
             )
                 .chain(),
         );
+
+        // ── 调试：wireframe 渲染 ──
+        app.add_plugins(WireframePlugin {
+            debug_flags: Default::default(),
+        });
 
         // ── GPU compute 管线 ──
         app.add_plugins(TerrainChunkMeshComputePlugin);

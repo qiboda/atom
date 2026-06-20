@@ -25,15 +25,15 @@ Exit: `cargo check` / `cargo clippy` / `cargo doc` / `cargo test` 通过。
 
 Exit: 可见绿色地形 mesh。✅ GPU readback 完成，mesh 通过 crossbeam 回传主世界渲染。
 
-## Phase 2 — 多 chunk 动态加载 🔲
+## Phase 2 — 多 chunk 动态加载 ✅
 
 > Spec: `.claude/specs/terrain-shape.spec`
 
-- [ ] 2.1 `TerrainObserver` + `update_grid_chunks` 功能验证
-- [ ] 2.2 多 chunk 同时 compute（buffer pool 复用）
-- [ ] 2.3 QEF 确定性边界无缝验证
+- [x] 2.1 `TerrainObserver` + `update_grid_chunks` 功能验证
+- [x] 2.2 多 chunk 同时 compute（buffer pool 复用）
+- [x] 2.3 QEF 确定性边界无缝验证
 
-Exit: 移动摄像机可见连续无缝的多 chunk 地形。
+Exit: 移动摄像机可见连续无缝的多 chunk 地形。✅ 100 chunk 动态加载，双边 shell + fallback 顶点填补边界缝隙。
 
 ## 后续储备
 
