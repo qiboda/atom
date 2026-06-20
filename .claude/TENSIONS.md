@@ -49,6 +49,9 @@
 
 - **GPU compute 4-pass 管线确认工作**: RTX 4090 Vulkan，17³ 网格 density→cross→QEF→indices 四 pass 输出正确顶点/索引。
 - **WGSL binding(5) counters 始终为 0**: 无 atomics 设计下所有 shader 不写 binding 5。vertex_count/index_count 无法从 GPU 读回，需 CPU 端 compact 时自动统计。
-- **Pipeline 异步编译 timing**: `pipeline_cache.get_compute_pipeline()` 在 RenderStartup 后 N 帧才返回 Some。dispatch 成功才 advance pass，否则 pass 停在当前值等待。
 - **Staging buffer readback 两帧等待**: dispatch→(1帧等GPU执行)→copy→(1帧等GPU执行)→map→read。同一帧内 dispatch+copy 会读到全零。
 - **CPU/GPU 噪声不匹配**: GPU 用 value noise（hash-based），CPU 用 OpenSimplex2D。同一坐标高度不同，无法直接对比验证。测试 chunk 位置需根据 GPU noise 单独定位。
+- **2026-06-20**: `edge_detect.wgsl` 密度采样用 `round()` 最近邻 — 将连续密度场量化为阶梯函数，二分搜索收敛到体素边界而非真实 isosurface。根因修复：替换为三线性插值 `trilinear_sample()`。
+- **2026-06-20**: 经典 QEF `A = Σ n nᵀ` 在 height field 下 rank≤2，Cramer's rule 恒返回零向量 → 无条件 centroid fallback。根因修复：Probabilistic Quadrics (Trettner & Kobbelt 2020) 正则化 `A += ncross·σ²I`, `σ=0.1·voxel_size`。
+- **2026-06-20**: `grid_min` 随 observer 每 0.5m 移动 → 同一地形 voxel 边位移 → mesh 形状变。根因修复：world-aligned grid，`grid_min = floor(observer/25m)·25m`。
+- **2026-06-20**: `atom_pqef` crate（Rust + WGSL）已有正确的概率 quadric 实现，但 `atom_terrain` 的 terrain shader (`qef_solve.wgsl`) 使用独立 inline 经典 QEF — 实现重复。
