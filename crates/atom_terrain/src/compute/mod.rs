@@ -13,6 +13,8 @@ use gpu::{
 };
 use sync::TerrainChunksToProcess;
 
+/// 地形 chunk 网格的 GPU compute 管线插件。
+/// 在 RenderApp 中注册 GPU compute pipeline、buffer 资源和每帧 compute 系统。
 pub struct TerrainChunkMeshComputePlugin;
 
 impl Plugin for TerrainChunkMeshComputePlugin {

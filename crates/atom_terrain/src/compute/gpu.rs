@@ -1,5 +1,7 @@
 //! GPU compute mesh generation — Bevy 0.19.
 //! Four-pass Dual Contouring on GPU with fixed-slot vertices/indices.
+//!
+//! State machine per chunk: 0→allocate→1→2→3→4→5(readback)→done
 
 use std::collections::HashMap;
 
@@ -14,15 +16,23 @@ use bevy::{
 use crate::{mesh::{TerrainChunkMeshData, TerrainChunkMeshSender}, setting::TerrainSetting};
 use super::{sync::TerrainChunksToProcess, types::{TerrainChunkInfo, TerrainChunkVertex}};
 
+/// 地形 compute 管线资源，包含 bind group layout 和四个 pass 的 compute pipeline id。
 #[derive(Resource)]
 pub struct TerrainComputePipeline {
+    /// bind group layout（所有 pass 共用）
     pub bind_group_layout: BindGroupLayout,
+    /// pass 1: 密度场计算 (voxel_vertices.wgsl)
     pub pass1: CachedComputePipelineId,
+    /// pass 2: 边交叉点二分查找 (voxel_cross_points.wgsl)
     pub pass2: CachedComputePipelineId,
+    /// pass 3: QEF 顶点计算 (main_mesh_compute_vertices.wgsl)
     pub pass3: CachedComputePipelineId,
+    /// pass 4: 三角形索引生成 (main_mesh_compute_indices.wgsl)
     pub pass4: CachedComputePipelineId,
 }
 
+/// 初始化 compute pipeline：创建 bind group layout 并注册四个 compute pass 的 shader。
+/// 在 RenderStartup 阶段调用。
 pub fn init_compute_pipeline(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -61,20 +71,35 @@ pub fn init_compute_pipeline(
     });
 }
 
+/// 单个 chunk 的 GPU buffer 集合：密度场、cross points、顶点、索引、计数器及 bind group。
 pub struct ChunkBuffers {
+    /// 密度场值 (f32 per grid point)
     pub density: Buffer,
+    /// 边交叉点 (32 bytes per edge)
     pub cross_points: Buffer,
+    /// 顶点 buffer (TerrainChunkVertex per voxel)
     pub vertices: Buffer,
+    /// 索引 buffer (u32 per index slot)
     pub indices: Buffer,
+    /// 统计计数器 (4×u32)
     pub counters: Buffer,
+    /// bind group（绑定上述所有 buffer + chunk_info uniform）
     pub bind_group: BindGroup,
 }
 
+/// 所有 chunk 的 GPU buffer 映射表（Entity → ChunkBuffers）。
+/// 作为资源注入，由 terrain_compute_system 管理生命周期。
 #[derive(Resource, Default)]
 pub struct TerrainChunkMeshBuffers { buffers: HashMap<Entity, ChunkBuffers> }
 
+/// 每个 chunk 的 compute pass 进度计数器。
+/// 0=未开始，1-4=pass 序号，5=等待读回。
+/// 由 terrain_compute_system 每帧推进。
 #[derive(Resource, Default)]
-pub struct TerrainChunkComputeProgress { pub pass: HashMap<Entity, u32> }
+pub struct TerrainChunkComputeProgress {
+    /// entity → 当前 pass
+    pub pass: HashMap<Entity, u32>,
+}
 
 impl TerrainChunkMeshBuffers {
     fn allocate(&mut self, entity: Entity, info: &TerrainChunkInfo, vc: u32,
@@ -114,6 +139,8 @@ impl TerrainChunkMeshBuffers {
     fn remove(&mut self, entity: Entity) -> Option<ChunkBuffers> { self.buffers.remove(&entity) }
 }
 
+/// 每帧执行的 compute dispatch + readback 系统。
+/// 运行于 Render 阶段，管理四 pass dispatch、pass 推进和完成 chunk 的 buffer 读回。
 #[allow(clippy::too_many_arguments)]
 pub fn terrain_compute_system(
     mut render_context: RenderContext,

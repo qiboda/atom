@@ -1,3 +1,7 @@
+//! 地形动态加载系统。
+//!
+//! 每帧根据观察者（`TerrainObserver`）位置加载/卸载 chunk，通过消息队列驱动 GPU compute 管线。
+
 use bevy::prelude::*;
 
 use crate::{
@@ -5,15 +9,20 @@ use crate::{
     setting::TerrainSetting,
 };
 
+/// 观察者标记组件，挂载到玩家相机等需要加载地形 chunk 的实体上
 #[derive(Component, Default)]
 #[require(Transform)]
 pub struct TerrainObserver;
 
+/// 观察者配置，控制加载半径与高度范围
 #[derive(Component)]
 #[require(TerrainObserver)]
 pub struct TerrainObserverConfig {
+    /// 以 chunk 为单位的水平加载半径
     pub load_radius: u32,
+    /// 垂直加载范围（相对于观察者 chunk Y）
     pub height_range: std::ops::RangeInclusive<i32>,
+    /// 卸载宽松边界（chunk 单位），防止边界抖动
     pub margin: u32,
 }
 

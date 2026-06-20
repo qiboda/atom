@@ -33,6 +33,8 @@ fn xorshift_128_with_seed(state: &mut UVec4) -> u32 {
     state.w
 }
 
+/// XorShift128 随机数生成器生成的置换表，用于噪声哈希
+/// 生成见 `open_simplex_seed.wgsl` 的 GPU 端等价实现
 pub fn generate_permutation_table(seed: u32) -> [u32; TABLE_SIZE] {
     let mut state = UVec4::new(seed, seed ^ 0x9E37_79B9, seed ^ 0x6A09_E667, seed ^ 0xBB67_AE85);
     for _ in 0..8 {
@@ -86,6 +88,8 @@ fn _contribute_2d(
     attn * NORM_CONSTANT_2D
 }
 
+/// OpenSimplex 2D 噪声基础函数，值域 [-1, 1]。
+/// 与 `open_simplex.wgsl` 中 `open_simplex_2d` 逐位一致。
 pub fn open_simplex_2d(point: Vec2, perm: &[u32; TABLE_SIZE]) -> f32 {
     let stretch_offset = (point.x + point.y) * -STRETCH_CONSTANT_2D;
     let stretched = point + Vec2::splat(stretch_offset);
@@ -125,6 +129,8 @@ fn revert_scale_factor(octaves: u32, persistence: f32) -> f32 {
     }
 }
 
+/// FBM (Fractional Brownian Motion) 叠加多层 OpenSimplex 2D 噪声。
+/// `persistence` 控制每层振幅衰减，`lacunarity` 控制频率增长。
 pub fn open_simplex_2d_fbm(
     point: Vec2,
     perm: &[u32; TABLE_SIZE],
@@ -144,7 +150,7 @@ pub fn open_simplex_2d_fbm(
     }
     value * scale
 }
-
+/// 带种子的 FBM 快捷方式。给定 seed 自动生成置换表并调用 `open_simplex_2d_fbm`。
 pub fn open_simplex_2d_fbm_with_seed(
     point: Vec2,
     seed: u32,

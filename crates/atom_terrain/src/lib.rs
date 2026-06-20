@@ -1,8 +1,20 @@
+#![deny(missing_docs)]
+//! Atom 地形系统 — GPU Dual Contouring 程序化地形。
+//!
+//! 四 pass compute pipeline 在 GPU 上生成 chunk mesh，
+//! crossbeam channel 回传 CPU 端用于碰撞检测。
+//! 密度场 = y - height_at(x,z)，正值 = air，负值 = solid。
+/// Chunk 加载/卸载管理
 pub mod chunk;
+/// GPU Mesh compute 管线
 pub mod compute;
+/// 观察者驱动的动态加载系统
 pub mod loader;
+/// Mesh 数据跨线程收发
 pub mod mesh;
+/// 地形噪声生成
 pub mod noise;
+/// 地形全局配置
 pub mod setting;
 
 use bevy::prelude::*;

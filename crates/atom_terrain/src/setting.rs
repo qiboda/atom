@@ -1,3 +1,7 @@
+//! 地形全局配置。
+//!
+//! 定义 `TerrainSetting` 资源，控制 voxel 大小、chunk 粒度、地形范围与噪声种子。
+
 use bevy::{prelude::*, render::extract_resource::ExtractResource};
 
 /// 地形全局配置，主世界和渲染世界共享。

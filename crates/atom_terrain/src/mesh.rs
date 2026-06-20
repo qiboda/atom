@@ -1,22 +1,35 @@
+//! Chunk mesh 数据跨线程收发。
+//!
+//! 定义从渲染世界回传到主世界的 mesh 数据结构与 channel 收发器。
+
 use bevy::prelude::*;
 use crossbeam::channel::{Receiver, Sender};
 
+/// 从 GPU compute 管线回传到主世界的 chunk mesh 数据
 pub struct TerrainChunkMeshData {
+    /// 生成的网格数据
     pub mesh: Mesh,
+    /// 所属 chunk 的主世界实体
     pub chunk_entity: Entity,
 }
 
+/// 主世界端的 mesh 接收器，包装 crossbeam channel `Receiver`
 #[derive(Resource, Deref)]
 pub struct TerrainChunkMeshReceiver(pub Receiver<TerrainChunkMeshData>);
 
+/// 渲染世界端的 mesh 发送器，包装 crossbeam channel `Sender`
 #[derive(Resource, Deref)]
 pub struct TerrainChunkMeshSender(pub Sender<TerrainChunkMeshData>);
 
+/// Chunk 网格化状态机
 #[derive(Component, Default, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum TerrainChunkMeshingState {
+    /// 空闲，等待加载
     #[default]
     Idle,
+    /// GPU compute 处理中
     Meshing,
+    /// compute 完成，等待读回
     Done,
 }
 
