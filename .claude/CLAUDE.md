@@ -14,6 +14,7 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.claude/bevy-kb/migration
 | `.claude/TENSIONS.md` | 摩擦日志 |
 | `.claude/plan/` | 跨会话规划 |
 | `.claude/bevy-kb/` | **Bevy 知识库**（迁移指南、已验证 API 模式） |
+| `.claude/skills/` | **Agent 技能**（agent-spec 工作流） |
 | `.claude/AGENTS.md` | 操作协议、缺口检测 |
 | `.claude/CAPABILITY-MAP.md` | 当前能力边界 |
 | `.claude/APPEND_SYSTEM.md` | 项目代码模式速查（指针索引，指向源码位置） |
