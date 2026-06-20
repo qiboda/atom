@@ -501,6 +501,7 @@ fn do_readback(
         all_vertices,
         all_indices,
         vertex_count as usize,
+        index_count as usize,
         voxel_alloc_data.as_deref(),
         s.grid_min,
         vs,
@@ -536,6 +537,7 @@ fn build_global_mesh(
     all_vertices: &[TerrainChunkVertex],
     all_indices: &[u32],
     vertex_count: usize,
+    index_count: usize,
     voxel_alloc: Option<&[u32]>,
     grid_min: Vec3,
     voxel_size: f32,
@@ -593,7 +595,7 @@ fn build_global_mesh(
         // 无需 remap：index buffer 已包含 compact_index 值，直接当三角索引
         let vertex_count = pos.len() as u32;
         let mut idx: Vec<u32> = Vec::new();
-        for &i in all_indices {
+        for &i in &all_indices[0..index_count] {
             if i < vertex_count {
                 idx.push(i);
             }
