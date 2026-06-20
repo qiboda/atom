@@ -16,7 +16,7 @@
 - [ ] review — commit + 无遗留调试打印/死代码
 - [ ] review — 检查 TENSIONS.md: 新发现/架构不一致/工具链问题已记录？
 - [ ] review — 检查 bevy-kb: 新 Bevy API 模式或迁移要点已写入？
-```
+- [ ] reflect    — 回顾全过程：哪里走弯路？哪些信号被忽略？流程/工具/架构如何改进？产出 ≤5 条 actionable，写入 SESSION-LOG
 
 **铁律: NO CHECKBOX UNCHECKED → NO COMMIT.** 跳过任何环节的 commit 视为流程违规。
 

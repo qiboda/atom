@@ -9,8 +9,8 @@
     "每个 phase 完成前不可跳转；阻塞时显式声明缺失信息及已尝试路径"
     "快速任务(typo/import整理)可豁免 understand→design→document，但仍需 implement→verify→review"
     "所有公共 API 强制 #[deny(missing_docs)] + rust-doc RFC 1574"
-    "不引入第二种惯例做同一件事；复用现有模式")
-
+    "不引入第二种惯例做同一件事；复用现有模式"
+    "诊断 protocol: 症状描述 → 量化(录屏/截帧/计数) → 隔离变量 → 下结论。禁止凭症状描述直接改代码。")
   ;; ── 已发生的流程违规 ──
   (anti-patterns
     (implement-sprawl
@@ -43,4 +43,10 @@
     (per-step "cargo check")
     (pre-commit "cargo check + cargo doc --no-deps + bevy_lint + agent-spec guard (guard non-blocking)")
     (pre-push "cargo check + cargo clippy + cargo doc --no-deps + bevy_lint + cargo nextest (full)")
-    (after-commit "spec guard 非阻塞运行（pre-commit 未覆盖时补充）")))
+    (after-commit "spec guard 非阻塞运行（pre-commit 未覆盖时补充）"))
+
+  ;; ── 回顾 ──
+  (reflect
+    "每轮 review 后执行: 回顾全过程 → 识别流程/工具/架构不足 → 产出 ≤5 条 actionable → 写入 SESSION-LOG"
+    (triggers "哪里走了弯路？哪些信号被忽略？流程和工具哪里卡了？架构是否有重复/不一致？")
+    (format "## YYYY-MM-DD — reflect: <task>" (items "what-went-well" "what-was-hard" "surprising" "improvements"))))
