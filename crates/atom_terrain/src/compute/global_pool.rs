@@ -81,8 +81,8 @@ impl GlobalMeshPool {
 
         let dg = n as u64 * n as u64 * n as u64; // density grid points
         let cn = vc as u64 * vc as u64 * vc as u64; // cross point slots
-        let vertex_cap = cn as u32; // generous: one vertex per voxel
-        let index_cap = vertex_cap * 6; // generous: one quad per vertex
+        let vertex_cap = cn as u32; // fixed slot: one vertex per voxel
+        let index_cap = vertex_cap * 72; // Phase 2: 12 edges × 6 indices per voxel
 
         let mk = |label: &str, size: u64, usage: BufferUsages| {
             device.create_buffer(&BufferDescriptor {

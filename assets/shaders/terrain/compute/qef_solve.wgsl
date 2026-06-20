@@ -72,8 +72,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if gid.x >= gs || gid.y >= gs || gid.z >= gs { return; }
 
     let voxel_idx = gid.x + gid.y * gs + gid.z * gs * gs;
-    let vi = voxel_alloc[voxel_idx];
-    if vi == ~0u { return; } // 此 voxel 无顶点
 
     // 收集 crossing edge 的约束（位置 + 法线）
     var a00=0f; var a01=0f; var a02=0f;
@@ -97,7 +95,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         b0 += n.x*d; b1 += n.y*d; b2 += n.z*d;
     }
 
-    // ncross > 0 由 vertex_alloc pass 保证
+    if ncross == 0u { return; } // 同 Phase 2: no crossings → no vertex
+
     var vp = solve3(a00,a01,a02, a11,a12,a22, b0,b1,b2);
     let centroid = avg_pos / f32(ncross);
 
@@ -107,5 +106,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     else if length(vp - centroid) > info.voxel_size * 2.0 { vp = centroid; }
 
     let vn = normalize(avg_norm / f32(ncross));
-    vertices[vi] = TerrainChunkVertex(vp, 0u, vn, 0u);
+    // 使用 fixed slot (同 Phase 2): vertices[voxel_idx]
+    vertices[voxel_idx] = TerrainChunkVertex(vp, 0u, vn, 0u);
 }

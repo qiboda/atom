@@ -252,6 +252,7 @@ pub fn global_compute_system(
 
         if !all_ready {
             // 管线尚未编译完成，等待下帧重试
+            info!("Global DC: waiting for pipelines to compile...");
             return;
         }
 
@@ -266,9 +267,10 @@ pub fn global_compute_system(
 
         let encoder = render_context.command_encoder();
 
-        // 清 cross（防 stale），清 counters
+        // 清 cross（防 stale），清 counters，清 vertices（fixed slot，防 stale）
         encoder.clear_buffer(&pool.cross, 0, None);
         encoder.clear_buffer(&pool.counters, 0, None);
+        encoder.clear_buffer(&pool.vertices, 0, None);
 
         // dispatch 5 pass 在同一 encoder 内（GPU 保证顺序执行）
         let dispatch = |encoder: &mut bevy::render::render_resource::CommandEncoder,
@@ -292,7 +294,6 @@ pub fn global_compute_system(
         dispatch(encoder, pipeline.pass2, wg);
         dispatch(encoder, pipeline.pass3, wg);
         dispatch(encoder, pipeline.pass4, wg);
-        // pass5: 单线程填充 indirect draw command
         dispatch(encoder, pipeline.pass5, (1, 1, 1));
 
         state.pass = 1;
@@ -306,7 +307,7 @@ pub fn global_compute_system(
 
         let vertex_cap = vc as u64 * vc as u64 * vc as u64
             * size_of::<TerrainChunkVertex>() as u64;
-        let index_cap = vc as u64 * vc as u64 * vc as u64 * 6 * 4;
+        let index_cap = vc as u64 * vc as u64 * vc as u64 * 72 * 4; // Phase 2: 12 edges × 6
         let voxel_alloc_size = vc as u64 * vc as u64 * vc as u64 * 4;
 
         let mk_staging = |label: &str, size: u64| {
@@ -487,87 +488,99 @@ fn do_readback(
     // 保持 rebuild_triggered = true，后续只在 observer 移动时触发
 }
 
-/// 从 GPU readback 数据构建单个 Mesh（fixed slot → compact remap，同 Phase 2）。
+/// Phase 2 风格的 per-voxel fixed slot compaction。
 ///
-/// GPU index buffer 存的是 fixed slot 索引（vx + vy*gs + vz*gs*gs），
-/// CPU 端通过 voxel_alloc 将 fixed slot 映射到 compact vertex index。
+/// index buffer 布局: 每 voxel 72 u32 (12 edge × 6)，offset = grid_idx * 72。
+/// vertex buffer: 每 voxel 1 slot (32 bytes)，offset = grid_idx。
 fn build_global_mesh(
     all_vertices: &[TerrainChunkVertex],
     all_indices: &[u32],
-    vertex_count: usize,
-    index_count: usize,
-    voxel_alloc: Option<&[u32]>,  // fixed slot → compact index
+    _vertex_count: usize,
+    _index_count: usize,
+    _voxel_alloc: Option<&[u32]>,
     grid_min: Vec3,
     voxel_size: f32,
 ) -> Option<Mesh> {
     let gs = (all_vertices.len() as f64).cbrt() as u32;
-    let grid_max = grid_min + Vec3::splat((gs) as f32 * voxel_size);
+    let total_slots = (gs as usize).pow(3).min(all_vertices.len());
+    let grid_max = grid_min + Vec3::splat((gs + 1) as f32 * voxel_size);
 
-    // 构建 fixed slot → compact index 映射（同 Phase 2 的 remap 表）
-    let remap: Vec<Option<u32>> = if let Some(va) = voxel_alloc {
-        let valid_slots = va.iter().filter(|&&ci| ci != !0u32).count();
-        let dead_slots = va.iter().filter(|&&ci| ci == !0u32).count();
-        info!("  voxel_alloc: {valid_slots} valid, {dead_slots} empty, {vertex_count} vertex_count");
-        let total_slots = (gs as usize).pow(3).min(va.len());
-        let mut r = vec![None; total_slots];
-        for slot in 0..total_slots {
-            let ci = va[slot];
-            if ci != !0u32 && (ci as usize) < vertex_count {
-                r[slot] = Some(ci);
-            }
-        }
-        r
-    } else {
-        // 无 voxel_alloc 时 fallback：直接使用 compact indices
-        return build_global_mesh_direct(all_vertices, all_indices, vertex_count, index_count, grid_min, voxel_size);
-    };
-
-    // compact vertices（保持 compact index 顺序）
-    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
-    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
+    // Phase 2 方式：遍历 fixed slot，过滤零顶点，构建 remap
+    let mut remap: Vec<Option<u32>> = vec![None; total_slots];
+    let mut positions: Vec<[f32; 3]> = Vec::new();
+    let mut normals: Vec<[f32; 3]> = Vec::new();
     let mut clamped = 0u32;
 
-    for i in 0..vertex_count.min(all_vertices.len()) {
+    for i in 0..total_slots {
         let v = &all_vertices[i];
-        let p = [
-            v.position[0].clamp(grid_min.x, grid_max.x),
-            v.position[1].clamp(grid_min.y, grid_max.y),
-            v.position[2].clamp(grid_min.z, grid_max.z),
-        ];
-        if p != v.position { clamped += 1; }
-        positions.push(p);
-        normals.push(v.normal);
+        let len = (v.position[0] * v.position[0]
+            + v.position[1] * v.position[1]
+            + v.position[2] * v.position[2])
+            .sqrt();
+        if len > 0.0001 {
+            let p = [
+                v.position[0].clamp(grid_min.x, grid_max.x),
+                v.position[1].clamp(grid_min.y, grid_max.y),
+                v.position[2].clamp(grid_min.z, grid_max.z),
+            ];
+            if p != v.position { clamped += 1; }
+            remap[i] = Some(positions.len() as u32);
+            positions.push(p);
+            normals.push(v.normal);
+        }
     }
 
     if clamped > 0 {
-        info!("  QEF clamp: {clamped}/{vertex_count} vertices clamped to grid");
+        info!("  QEF clamp: {clamped}/{} vertices clamped to grid", positions.len());
     }
+    info!("  fixed slot scan: {} valid / {} total", positions.len(), total_slots);
 
     if positions.is_empty() { return None; }
 
-    // remap fixed slot indices → compact indices（同 Phase 2）
-    let idx_count = index_count.min(all_indices.len());
-    let mut tri_indices: Vec<u32> = Vec::with_capacity(idx_count);
-    for i in (0..idx_count).step_by(3) {
-        if i + 2 >= idx_count { break; }
-        let s0 = all_indices[i] as usize;
-        let s1 = all_indices[i + 1] as usize;
-        let s2 = all_indices[i + 2] as usize;
+    // Phase 2: inner voxels [0, vc)³ → index = jx + jy*vc + jz*vc*vc
+    // index buffer offset = inner_index * 72
+    let vc = gs - 2; // inner voxel count (Phase 2 convention)
+    let mut tri_indices: Vec<u32> = Vec::new();
+    for jz in 0..vc {
+        for jy in 0..vc {
+            for jx in 0..vc {
+                let inner_idx = (jx + jy * vc + jz * vc * vc) as usize;
+                let base = inner_idx * 72;
+                if base + 71 >= all_indices.len() { break; }
 
-        let r0 = remap.get(s0).copied().flatten();
-        let r1 = remap.get(s1).copied().flatten();
-        let r2 = remap.get(s2).copied().flatten();
+                for slot in 0..12 {
+                    let off = base + slot * 6;
+                    let s0 = all_indices[off] as usize;
+                    let s1 = all_indices[off + 1] as usize;
+                    let s2 = all_indices[off + 2] as usize;
+                    let s3 = all_indices[off + 3] as usize;
+                    let s4 = all_indices[off + 4] as usize;
+                    let s5 = all_indices[off + 5] as usize;
 
-        if let (Some(r0), Some(r1), Some(r2)) = (r0, r1, r2) {
-            if r0 != r1 && r1 != r2 && r0 != r2 {
-                tri_indices.extend_from_slice(&[r0, r1, r2]);
+                    let r0 = remap.get(s0).copied().flatten();
+                    let r1 = remap.get(s1).copied().flatten();
+                    let r2 = remap.get(s2).copied().flatten();
+                    let r3 = remap.get(s3).copied().flatten();
+                    let r4 = remap.get(s4).copied().flatten();
+                    let r5 = remap.get(s5).copied().flatten();
+
+                    if let (Some(r0), Some(r1), Some(r2), Some(r3), Some(r4), Some(r5)) =
+                        (r0, r1, r2, r3, r4, r5)
+                    {
+                        if r0 != r1 && r1 != r2 && r0 != r2 {
+                            tri_indices.extend_from_slice(&[r0, r1, r2]);
+                        }
+                        if r3 != r4 && r4 != r5 && r3 != r5 {
+                            tri_indices.extend_from_slice(&[r3, r4, r5]);
+                        }
+                    }
+                }
             }
         }
     }
 
     if tri_indices.is_empty() { return None; }
 
-    // 诊断
     let mut bmin = Vec3::splat(f32::MAX);
     let mut bmax = Vec3::splat(f32::MIN);
     for p in &positions {
