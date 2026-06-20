@@ -1,8 +1,25 @@
 //! GPU compute mesh generation — Bevy 0.19.
-//! Four-pass Dual Contouring on GPU with fixed-slot vertices/indices.
+//! Four-pass Dual Contouring on GPU with fixed-slot sparse vertices/indices.
 //!
-//! State machine per chunk:
-//!   0(allocate)→1(pass1)→2(pass2)→3(pass3)→4(pass4)→5(staging copy)→6(readback)→7(cleanup)
+//! # Architecture
+//!
+//! ```text
+//! RenderStartup: init_compute_pipeline → queue 4 compute shaders + bind group layout
+//! Render (every frame): terrain_compute_system
+//!   allocate → dispatch(1-4) → staging copy → async map → compact+remap → crossbeam send
+//! Main world (every frame): handle_mesh_data → spawn Mesh3d + MeshMaterial3d
+//! ```
+//!
+//! # Per-chunk state machine
+//!
+//! ```text
+//! 0(allocate)→1(pass1)→2(pass2)→3(pass3)→4(pass4)→5(staging copy)→6(readback)→7(cleanup)
+//! ```
+//!
+//! Each dispatch→advance transition waits for the compute pipeline to be compiled
+//! (async shader compilation). Pass 4→5 and 5→6 each wait one extra frame for GPU
+//! execution (dispatch and copy are queued commands, executed after Bevy submits the
+//! command encoder).
 
 use std::{
     collections::HashMap,
@@ -139,7 +156,10 @@ struct StagingReadback {
     world_min: Vec3,
 }
 
-/// 待 readback 的 staging buffer 集合 (entity → staging)
+/// 待 readback 的 staging buffer 集合 (entity → staging)。
+///
+/// 生命周期：在 pass 5（staging copy）时插入，pass 7（cleanup）时移除。
+/// 每个 entry 持有顶点/索引/计数器的 GPU→CPU 中转 buffer 及异步映射状态。
 #[derive(Resource, Default)]
 pub struct TerrainChunkStagingBuffers {
     buffers: HashMap<Entity, StagingReadback>,
@@ -494,8 +514,15 @@ pub fn terrain_compute_system(
     }
 }
 
-/// 将 GPU 读回的稀疏顶点/索引 compact + remap 为 Bevy Mesh。
-/// 过滤零顶点（未生成几何的 voxel），重映射索引，构建 TriangleList mesh。
+/// 将 GPU 读回的稀疏（fixed-slot）顶点/索引 compact + remap 为 Bevy Mesh。
+///
+/// # 算法
+///
+/// 1. 过滤：保留 `length(position) > 1e-4` 的顶点，构建 old→new 索引映射
+/// 2. Remap：遍历每个 voxel 的 6 个索引（两个三角形 0-1-2、0-2-3），跳过退化三角形
+/// 3. 构建 `Mesh`（TriangleList + Positions + Normals + Indices）
+///
+/// 返回 `None` 当没有有效顶点（chunk 全部在空气或全部在固体中）。
 fn compact_and_build_mesh(
     all_vertices: &[TerrainChunkVertex],
     all_indices: &[u32],
