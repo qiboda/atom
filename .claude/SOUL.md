@@ -36,23 +36,47 @@
 
 ## Spec Lifecycle
 
-每个 `specs/*.md` 头部包含结构化元数据。Agent 在读取/编辑 spec 前必须检查 `status`。
+驱动工具: `agent-spec` CLI v0.3.0（3 个 skill: tool-first, authoring, estimate）
 
+每个 `specs/*.spec` 使用中文 DSL:
 ```
-status: planned | in_progress | implemented | superseded
-phase: N
-depends: <phase-N | spec-name>
-↳ <相关文档引用>
+spec: task
+name: "名称"
+inherits: project
+---
+
+## 意图
+## 已定决策
+## 边界
+  ### 禁止更改
+  ### 允许更改
+## 完成条件
+
+场景: <名称>
+  测试: <#[test] 函数名>
+  假设 ...
+  当 ...
+  那么 ...
 ```
 
-| status | 允许编辑 | 条件 |
-|--------|----------|------|
-| `planned` | YES | 自由编辑 |
-| `in_progress` | YES | 编辑后更新 Completion Criteria 检查状态 |
-| `implemented` | **NO** | 只读。修改必须先记录到 DRIFT.md 或创建新 ADR，然后状态改为 `superseded` |
-| `superseded` | NO | 只读，不可复活。新 spec 引用之 |
+### 工作流
 
-**禁止**将 `implemented` spec 的 status 直接改回 `in_progress`——这是架构漂移的信号，必须先告警。
+1. `agent-spec init --level task --lang zh --name "名称"` — 生成骨架
+2. `agent-spec lint <spec>` — 质量门（检查 scenario 数量、selector 存在性）
+3. `agent-spec plan <spec> --code . --format prompt` — 生成实现计划
+4. `agent-spec lifecycle <spec> --code .` — 主质量门（lint + verify + boundary）
+5. `agent-spec guard --spec-dir specs --code . --change-scope staged` — pre-commit
+
+**铁律: NO CODE IS "DONE" WITHOUT A PASSING LIFECYCLE.**
+
+| verdict | 含义 | 行动 |
+|---------|------|------|
+| pass | 测试通过 | none |
+| fail | 测试失败 | 修代码 |
+| skip | 测试不存在 | 补测试或修正 selector |
+| uncertain | AI 验证待定 | 手动审查 |
+
+skip ≠ pass。未绑定测试的场景不算完成。
 
 ## Boundaries
 

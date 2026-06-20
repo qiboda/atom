@@ -8,4 +8,9 @@ set -e
 echo "=== pre-commit: cargo check --workspace ==="
 cargo check --workspace 2>&1
 
+echo "=== pre-commit: agent-spec guard ==="
+if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d specs ]; then
+    "$HOME/.cargo/bin/agent-spec" guard --spec-dir specs --code . --change-scope staged 2>&1 || echo "WARN: spec guard issues (non-blocking)"
+fi
+
 echo "=== pre-commit: OK ==="

@@ -8,7 +8,7 @@
 
 ## Phase 2 — 地形形状 ✅
 
-> Spec: `specs/terrain-shape.md`
+> Spec: `specs/terrain-shape.spec`
 
 - [x] 2.1 6 种 biome 密度场函数（GPU shader）— `density_field.wgsl`
 - [x] 2.2 Biome 边界加权混合 — 2×2 双线性
@@ -19,7 +19,7 @@ Exit: `cargo run -p atom_terrain --example chunk_loader` 生成地形网格。
 
 ## Phase 3 — 材质 ✅
 
-> Spec: `specs/terrain-material.md`
+> Spec: `specs/terrain-material.spec`
 
 - [x] 3.1 6 种 biome PBR 参数定义 — `BIOME_COLORS` + `BiomeColorUniform`
 - [x] 3.2 顶点 biome 属性传递 — `get_vertex_biome()` + `BIOME_VERTEX_ATTRIBUTE`
@@ -30,7 +30,7 @@ Exit: 不同 biome 顶点有不同 base_color；颜色混合通过 biome_weights
 
 ## Phase 4 — LOD 🔨
 
-> Spec: `specs/lod.md`
+> Spec: `specs/lod.spec`
 
 - [x] 4.1 TerrainChunkLod 组件 + from_distance + update_chunk_lod 系统
 - [x] 4.2 LOD 变更重新触发 meshing
