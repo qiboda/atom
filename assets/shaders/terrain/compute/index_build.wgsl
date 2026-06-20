@@ -117,10 +117,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             // 边界检查: quad voxel 超出 grid → 跳过此 quad
             if qx >= gs || qy >= gs || qz >= gs { all = false; break; }
 
-            // 用 fixed slot index（同 Phase 2），CPU 端通过 voxel_alloc remap
+            // 用 compact index（via voxel_alloc），CPU 端直接使用无需 remap
             let slot = qx + qy * gs + qz * gs * gs;
-            if voxel_alloc[slot] == ~0u { all = false; break; }
-            fixed_slots[i] = slot;
+            let ci = voxel_alloc[slot];
+            if ci == ~0u { all = false; break; }
+            fixed_slots[i] = ci;
         }
         if !all { continue; }
 
