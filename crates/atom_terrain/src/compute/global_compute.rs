@@ -53,7 +53,7 @@ pub struct TerrainObserver {
 pub struct GlobalComputePipeline {
     /// uniform buffer（每轮重建时更新 grid_min）
     pub uniform_buffer: Buffer,
-    /// 全局 bind group（7 个 binding）
+    /// 全局 bind group（8 个 binding: 0..=7）
     pub bind_group: BindGroup,
     /// bind group layout
     pub bind_group_layout: BindGroupLayout,
@@ -67,6 +67,8 @@ pub struct GlobalComputePipeline {
     pub pass3: CachedComputePipelineId,
     /// Pass 4: quad 索引生成 (index_build.wgsl)
     pub pass4: CachedComputePipelineId,
+    /// Pass 5: 填充 indirect draw command (fill_indirect.wgsl)
+    pub pass5: CachedComputePipelineId,
 }
 
 /// 全局管线的当前阶段
@@ -149,6 +151,7 @@ pub fn init_global_compute_pipeline(
             storage_buffer::<Vec<TerrainChunkVertex>>(false), // 4: vertices
             storage_buffer::<Vec<u32>>(false),                // 5: counters (atomic)
             storage_buffer::<Vec<u32>>(false),                // 6: indices
+            storage_buffer::<Vec<u32>>(false),                // 7: indirect draw command
         ),
     );
     let desc = BindGroupLayoutDescriptor::new("global_bgl", &entries);
@@ -177,6 +180,7 @@ pub fn init_global_compute_pipeline(
             BindGroupEntry { binding: 4, resource: pool.vertices.as_entire_binding() },
             BindGroupEntry { binding: 5, resource: pool.counters.as_entire_binding() },
             BindGroupEntry { binding: 6, resource: pool.indices.as_entire_binding() },
+            BindGroupEntry { binding: 7, resource: pool.indirect.as_entire_binding() },
         ],
     );
 
@@ -198,6 +202,7 @@ pub fn init_global_compute_pipeline(
         pass2: mk("global_alloc", "shaders/terrain/compute/vertex_alloc.wgsl"),
         pass3: mk("global_qef", "shaders/terrain/compute/qef_solve.wgsl"),
         pass4: mk("global_index", "shaders/terrain/compute/index_build.wgsl"),
+        pass5: mk("global_indirect", "shaders/terrain/compute/fill_indirect.wgsl"),
     });
 }
 
@@ -230,7 +235,7 @@ pub fn global_compute_system(
     if need_rebuild {
         // 检查所有管线是否已编译完成（异步编译，首帧可能未就绪）
         let pids = [pipeline.pass0, pipeline.pass1, pipeline.pass2,
-                    pipeline.pass3, pipeline.pass4];
+                    pipeline.pass3, pipeline.pass4, pipeline.pass5];
         let all_ready = pids.iter().all(|pid| {
             pipeline_cache.get_compute_pipeline(*pid).is_some()
         });
@@ -276,6 +281,8 @@ pub fn global_compute_system(
         dispatch(encoder, pipeline.pass2, wg);
         dispatch(encoder, pipeline.pass3, wg);
         dispatch(encoder, pipeline.pass4, wg);
+        // pass5: 单线程填充 indirect draw command
+        dispatch(encoder, pipeline.pass5, (1, 1, 1));
 
         state.pass = 1;
         info!(
@@ -369,6 +376,9 @@ fn do_readback(
     let index_count = u32::from_le_bytes(counter_view[4..8].try_into().expect("counter read"));
     drop(counter_view);
     s.counters.unmap();
+
+    // indirect draw command 已由 GPU pass 5 填充到 pool.indirect，
+    // 内容与 counters[1] (index_count) 一致，无需单独读回。
 
     info!(
         "Global DC readback: {vertex_count} vertices, {index_count} indices ({} tris)",

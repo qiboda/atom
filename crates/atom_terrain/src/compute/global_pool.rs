@@ -32,6 +32,9 @@ pub struct GlobalMeshPool {
     pub indices: Buffer,
     /// 计数器 buffer: [vertex_count, index_count, pad, pad] — atomic 可写
     pub counters: Buffer,
+    /// Indirect draw command buffer: [index_count, instance_count, first_index,
+    /// vertex_offset, first_instance, pad] (24 bytes, DrawIndexedIndirect)
+    pub indirect: Buffer,
     /// grid 每轴的采样点数 (含端点)
     pub grid_size: u32,
     /// 顶点容量
@@ -100,6 +103,7 @@ impl GlobalMeshPool {
             vertices: mk("global_verts", vertex_cap as u64 * 32, so),
             indices: mk("global_indices", index_cap as u64 * 4, so),
             counters: mk("global_counters", 16, so),
+            indirect: mk("global_indirect", 24, so),
             grid_size,
             vertex_capacity: vertex_cap,
             index_capacity: index_cap,
