@@ -4,3 +4,6 @@ saved
 tools/luban
 tools/tracy
 tools/Multi-Channel-Image-Tool
+
+# AI tooling
+.omo/
