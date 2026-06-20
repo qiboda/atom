@@ -103,7 +103,6 @@ pub fn handle_mesh_data(
         let mat = materials.add(StandardMaterial {
             base_color: Color::srgb(0.7, 0.75, 0.8),
             perceptual_roughness: 0.3,
-            // cull_mode: default
             ..default()
         });
         // 通过 translation 反查 TerrainChunkCoord，找到父 chunk entity
@@ -119,5 +118,44 @@ pub fn handle_mesh_data(
             });
             commands.entity(chunk_entity).insert(TerrainChunkMeshingState::Done);
         }
+    }
+}
+
+/// 全局 mesh 标记组件（Phase 3 global pipeline）。
+#[derive(Component)]
+pub struct GlobalTerrainMesh;
+
+/// 接收渲染世界发来的全局 mesh（Phase 3），直接 spawn 实体。
+///
+/// 与 `handle_mesh_data` 不同，不依赖 TerrainLoadedChunks，
+/// mesh 直接独立 spawn（顶点已为世界坐标）。
+pub fn handle_global_mesh_data(
+    mut commands: Commands,
+    receiver: Res<TerrainChunkMeshReceiver>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut mesh_entity: Local<Option<Entity>>,
+) {
+    while let Ok(data) = receiver.try_recv() {
+        let mesh = meshes.add(data.mesh);
+        let mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.7, 0.75, 0.8),
+            perceptual_roughness: 0.3,
+            ..default()
+        });
+
+        // 如果已有旧 mesh 实体，despawn 它
+        if let Some(old) = mesh_entity.take() {
+            commands.entity(old).despawn();
+        }
+
+        let entity = commands.spawn((
+            Mesh3d(mesh),
+            MeshMaterial3d(mat),
+            Transform::IDENTITY,
+            Visibility::default(),
+            GlobalTerrainMesh,
+        )).id();
+        *mesh_entity = Some(entity);
     }
 }

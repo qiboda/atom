@@ -1,0 +1,520 @@
+//! 全局 Edge Graph DC 管线 — 观察者中心，单次 QEF 求解，无 chunk 边界。
+//!
+//! ## 管线
+//!
+//! ```text
+//! Frame N:   clear cross/counters → dispatch pass0→1→2→3→4 (同一 encoder)
+//! Frame N+1: staging copy → 等 GPU 执行
+//! Frame N+2: readback counters → vertices → indices → build Mesh → send to main
+//! ```
+//!
+//! ## 与 per-chunk 管线的区别
+//!
+//! - 无 chunk 边界 → 无 shell，无 seam
+//! - 全局 edge_id → 每条 edge 只求解一次
+//! - GPU atomic counters → 精确分配 vertex/index slot
+//! - 观察者驱动 → 只在观察者移动时触发重建
+
+use std::sync::{atomic::AtomicBool, Arc};
+
+use bevy::{
+    prelude::*,
+    render::{
+        extract_resource::ExtractResource,
+        render_resource::{
+            binding_types::*, BindGroup, BindGroupEntry, BindGroupLayout,
+            BindGroupLayoutDescriptor, BindGroupLayoutEntries, Buffer,
+            BufferDescriptor, BufferUsages, CachedComputePipelineId,
+            ComputePassDescriptor, ComputePipelineDescriptor, PipelineCache,
+            ShaderStages, ShaderType, MapMode,
+        },
+        renderer::{RenderContext, RenderDevice, RenderQueue},
+    },
+};
+
+use super::{
+    global_pool::GlobalMeshPool,
+    types::TerrainChunkVertex,
+};
+use crate::{
+    mesh::TerrainChunkMeshData,
+    mesh::TerrainChunkMeshSender,
+};
+
+/// 观察者位置，主世界每帧更新，渲染世界自动提取。
+#[derive(Resource, Clone, Debug, Default, ExtractResource)]
+pub struct TerrainObserver {
+    /// 观察者世界坐标（通常为相机位置）
+    pub position: Vec3,
+}
+
+/// 全局 compute 管线资源
+#[derive(Resource)]
+pub struct GlobalComputePipeline {
+    /// uniform buffer（每轮重建时更新 grid_min）
+    pub uniform_buffer: Buffer,
+    /// 全局 bind group（7 个 binding）
+    pub bind_group: BindGroup,
+    /// bind group layout
+    pub bind_group_layout: BindGroupLayout,
+    /// Pass 0: SDF 填充 (sdf_fill.wgsl)
+    pub pass0: CachedComputePipelineId,
+    /// Pass 1: 全局 edge 检测 (edge_detect.wgsl)
+    pub pass1: CachedComputePipelineId,
+    /// Pass 2: atomic vertex 分配 (vertex_alloc.wgsl)
+    pub pass2: CachedComputePipelineId,
+    /// Pass 3: 全局 QEF 求解 (qef_solve.wgsl)
+    pub pass3: CachedComputePipelineId,
+    /// Pass 4: quad 索引生成 (index_build.wgsl)
+    pub pass4: CachedComputePipelineId,
+}
+
+/// 全局管线的当前阶段
+///
+/// 状态机:
+///   0 (idle) → 触发重建 → 清 buffer → dispatch pass0-4 → 1
+///   1 (dispatched, 等 GPU) → staging copy → 2
+///   2 (staging, 等 GPU copy) → (等一帧) → map → readback → 3
+///   3 (readback done) → build mesh → send → 0 (回到 idle)
+#[derive(Resource, Default)]
+pub struct GlobalComputeState {
+    /// 当前 pass: 0=idle, 1=wait_gpu, 2=staging, 3=readback
+    pub pass: u32,
+    /// 上次重建时的 snapped observer 位置
+    pub last_observer: Vec3,
+    /// 当前 grid_min（用于 mesh world_offset）
+    pub grid_min: Vec3,
+    /// 上次是否已触发重建（避免 idle 帧重复触发）
+    pub rebuild_triggered: bool,
+}
+
+/// GPU→CPU readback staging
+struct GlobalStaging {
+    vertices: Buffer,
+    indices: Buffer,
+    counters: Buffer,
+    vertex_cap: u64, // vertex buffer 总字节数
+    index_cap: u64,  // index buffer 总字节数
+    mapped: Arc<AtomicBool>,
+    map_started: bool,
+    grid_min: Vec3,
+}
+
+/// 全局 staging readback（单例，不是 HashMap）
+#[derive(Resource, Default)]
+pub struct GlobalStagingState {
+    staging: Option<GlobalStaging>,
+}
+
+// ── WGSL GlobalUniforms 对应 ──
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderType)]
+struct GlobalUniformsGpu {
+    grid_min: [f32; 3],
+    pad0: u32,
+    voxel_size: f32,
+    grid_size: u32,
+    pad1: [u32; 2],
+}
+
+impl GlobalUniformsGpu {
+    fn new(grid_min: Vec3, voxel_size: f32, grid_size: u32) -> Self {
+        Self {
+            grid_min: grid_min.to_array(),
+            pad0: 0,
+            voxel_size,
+            grid_size,
+            pad1: [0; 2],
+        }
+    }
+}
+
+/// 初始化全局 compute pipeline（RenderStartup）。
+pub fn init_global_compute_pipeline(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    render_device: Res<RenderDevice>,
+    pipeline_cache: Res<PipelineCache>,
+    pool: Res<GlobalMeshPool>,
+    queue: Res<RenderQueue>,
+) {
+    let entries = BindGroupLayoutEntries::sequential(
+        ShaderStages::COMPUTE,
+        (
+            uniform_buffer::<GlobalUniformsGpu>(false),
+            storage_buffer::<Vec<f32>>(false),                // 1: density
+            storage_buffer::<Vec<u32>>(false),                // 2: cross
+            storage_buffer::<Vec<u32>>(false),                // 3: voxel_alloc
+            storage_buffer::<Vec<TerrainChunkVertex>>(false), // 4: vertices
+            storage_buffer::<Vec<u32>>(false),                // 5: counters (atomic)
+            storage_buffer::<Vec<u32>>(false),                // 6: indices
+        ),
+    );
+    let desc = BindGroupLayoutDescriptor::new("global_bgl", &entries);
+    let bgl = render_device.create_bind_group_layout("global_bgl", &entries);
+
+    let uniform = GlobalUniformsGpu::new(Vec3::ZERO, pool.voxel_size(), pool.grid_size);
+    let ub = render_device.create_buffer(&BufferDescriptor {
+        label: Some("global_uniform"),
+        size: size_of::<GlobalUniformsGpu>() as u64,
+        usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    queue.write_buffer(&ub, 0, bytemuck::bytes_of(&uniform));
+
+    let zero: [u32; 4] = [0; 4];
+    queue.write_buffer(&pool.counters, 0, bytemuck::bytes_of(&zero));
+
+    let bg = render_device.create_bind_group(
+        "global_bg",
+        &bgl,
+        &[
+            BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+            BindGroupEntry { binding: 1, resource: pool.sdf.as_entire_binding() },
+            BindGroupEntry { binding: 2, resource: pool.cross.as_entire_binding() },
+            BindGroupEntry { binding: 3, resource: pool.voxel_alloc.as_entire_binding() },
+            BindGroupEntry { binding: 4, resource: pool.vertices.as_entire_binding() },
+            BindGroupEntry { binding: 5, resource: pool.counters.as_entire_binding() },
+            BindGroupEntry { binding: 6, resource: pool.indices.as_entire_binding() },
+        ],
+    );
+
+    let mk = |label: &'static str, path: &'static str| {
+        pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
+            label: Some(label.into()),
+            layout: vec![desc.clone()],
+            shader: asset_server.load(path),
+            ..default()
+        })
+    };
+
+    commands.insert_resource(GlobalComputePipeline {
+        uniform_buffer: ub,
+        bind_group: bg,
+        bind_group_layout: bgl,
+        pass0: mk("global_sdf", "shaders/terrain/compute/sdf_fill.wgsl"),
+        pass1: mk("global_edge", "shaders/terrain/compute/edge_detect.wgsl"),
+        pass2: mk("global_alloc", "shaders/terrain/compute/vertex_alloc.wgsl"),
+        pass3: mk("global_qef", "shaders/terrain/compute/qef_solve.wgsl"),
+        pass4: mk("global_index", "shaders/terrain/compute/index_build.wgsl"),
+    });
+}
+
+/// 每帧执行的全局 compute 调度系统。
+#[allow(clippy::too_many_arguments)]
+pub fn global_compute_system(
+    mut render_context: RenderContext,
+    pipeline_cache: Res<PipelineCache>,
+    pipeline: Res<GlobalComputePipeline>,
+    device: Res<RenderDevice>,
+    queue: Res<RenderQueue>,
+    pool: Res<GlobalMeshPool>,
+    observer: Option<Res<TerrainObserver>>,
+    mut state: ResMut<GlobalComputeState>,
+    mut staging_state: ResMut<GlobalStagingState>,
+    sender: Res<TerrainChunkMeshSender>,
+) {
+    let gs = pool.grid_size;
+    let vs = pool.voxel_size();
+    let vc = gs;
+
+    // ── 检测是否需要重建 ──
+    let observer_pos = observer.map(|o| o.position).unwrap_or(Vec3::ZERO);
+    let snapped = (observer_pos / vs).floor() * vs;
+
+    let need_rebuild = state.pass == 0
+        && (snapped != state.last_observer || !state.rebuild_triggered);
+
+    // ── 阶段 0: dispatch compute passes ──
+    if need_rebuild {
+        // 检查所有管线是否已编译完成（异步编译，首帧可能未就绪）
+        let pids = [pipeline.pass0, pipeline.pass1, pipeline.pass2,
+                    pipeline.pass3, pipeline.pass4];
+        let all_ready = pids.iter().all(|pid| {
+            pipeline_cache.get_compute_pipeline(*pid).is_some()
+        });
+
+        if !all_ready {
+            // 管线尚未编译完成，等待下帧重试
+            return;
+        }
+
+        let grid_min = snapped - Vec3::splat(GlobalMeshPool::VIEW_RADIUS);
+        let uniform = GlobalUniformsGpu::new(grid_min, vs, gs);
+        queue.write_buffer(&pipeline.uniform_buffer, 0, bytemuck::bytes_of(&uniform));
+
+        state.last_observer = snapped;
+        state.grid_min = grid_min;
+        state.rebuild_triggered = true;
+
+        let encoder = render_context.command_encoder();
+
+        // 清 cross（防 stale），清 counters
+        encoder.clear_buffer(&pool.cross, 0, None);
+        encoder.clear_buffer(&pool.counters, 0, None);
+
+        // dispatch 5 pass 在同一 encoder 内（GPU 保证顺序执行）
+        let dispatch = |encoder: &mut bevy::render::render_resource::CommandEncoder,
+                        pid: CachedComputePipelineId,
+                        wg: (u32, u32, u32)| {
+            // 此时管线必定就绪（已验证）
+            let cp = pipeline_cache.get_compute_pipeline(pid)
+                .expect("pipeline ready");
+            let mut cpass = encoder.begin_compute_pass(&ComputePassDescriptor::default());
+            cpass.set_pipeline(cp);
+            cpass.set_bind_group(0, &pipeline.bind_group, &[]);
+            cpass.dispatch_workgroups(wg.0, wg.1, wg.2);
+        };
+
+        let n = gs + 1;
+        let wg0 = (n.div_ceil(8), n.div_ceil(8), n.div_ceil(8));
+        dispatch(encoder, pipeline.pass0, wg0);
+
+        let wg = (gs.div_ceil(8), gs.div_ceil(8), gs.div_ceil(8));
+        dispatch(encoder, pipeline.pass1, wg);
+        dispatch(encoder, pipeline.pass2, wg);
+        dispatch(encoder, pipeline.pass3, wg);
+        dispatch(encoder, pipeline.pass4, wg);
+
+        state.pass = 1;
+        info!(
+            "Global DC: rebuild at obs={snapped:?} grid_min={grid_min:?}"
+        );
+    }
+    // ── 阶段 1: 等 GPU → staging copy ──
+    else if state.pass == 1 {
+        let encoder = render_context.command_encoder();
+
+        let vertex_cap = vc as u64 * vc as u64 * vc as u64
+            * size_of::<TerrainChunkVertex>() as u64;
+        let index_cap = vc as u64 * vc as u64 * vc as u64 * 6 * 4;
+
+        let mk_staging = |label: &str, size: u64| {
+            device.create_buffer(&BufferDescriptor {
+                label: Some(label),
+                size,
+                usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            })
+        };
+
+        let sv = mk_staging("global_staging_v", vertex_cap);
+        let si = mk_staging("global_staging_i", index_cap);
+        let sc = mk_staging("global_staging_c", 16);
+
+        encoder.copy_buffer_to_buffer(&pool.vertices, 0, &sv, 0, vertex_cap);
+        encoder.copy_buffer_to_buffer(&pool.indices, 0, &si, 0, index_cap);
+        encoder.copy_buffer_to_buffer(&pool.counters, 0, &sc, 0, 16);
+
+        staging_state.staging = Some(GlobalStaging {
+            vertices: sv,
+            indices: si,
+            counters: sc,
+            vertex_cap,
+            index_cap,
+            mapped: Arc::new(AtomicBool::new(false)),
+            map_started: false,
+            grid_min: state.grid_min,
+        });
+
+        state.pass = 2;
+    }
+    // ── 阶段 2: 等 staging copy → readback → mesh ──
+    else if state.pass == 2 {
+        do_readback(&device, &mut staging_state, &mut state, &sender, vs, vc);
+    }
+}
+
+/// 执行 staging readback：映射 counter → vertex → index buffer，
+/// 构建 Mesh 并发送到主世界。
+fn do_readback(
+    device: &RenderDevice,
+    staging_state: &mut GlobalStagingState,
+    state: &mut GlobalComputeState,
+    sender: &TerrainChunkMeshSender,
+    vs: f32,
+    _vc: u32,
+) {
+    let Some(ref mut s) = staging_state.staging else {
+        state.pass = 0;
+        return;
+    };
+
+    // staging copy 本帧刚提交，等下一帧 GPU 执行
+    if !s.map_started {
+        s.map_started = true;
+        return;
+    }
+
+    let wgpu_device = device.wgpu_device();
+
+    // 尝试映射 counter buffer
+    if !s.mapped.load(std::sync::atomic::Ordering::Acquire) {
+        let flag = s.mapped.clone();
+        s.counters.slice(..).map_async(MapMode::Read, move |result| {
+            if result.is_ok() {
+                flag.store(true, std::sync::atomic::Ordering::Release);
+            }
+        });
+        let _ = wgpu_device.poll(bevy::render::render_resource::PollType::Poll);
+        if !s.mapped.load(std::sync::atomic::Ordering::Acquire) {
+            return; // 下帧继续等
+        }
+    }
+
+    // 读 counters
+    let counter_view = s.counters.slice(..).get_mapped_range();
+    let vertex_count = u32::from_le_bytes(counter_view[0..4].try_into().expect("counter read"));
+    let index_count = u32::from_le_bytes(counter_view[4..8].try_into().expect("counter read"));
+    drop(counter_view);
+    s.counters.unmap();
+
+    info!(
+        "Global DC readback: {vertex_count} vertices, {index_count} indices ({} tris)",
+        index_count.saturating_div(3)
+    );
+
+    if vertex_count == 0 || index_count == 0 {
+        staging_state.staging = None;
+        state.pass = 0;
+        return;
+    }
+
+    // 映射顶点
+    let v_flag = Arc::new(AtomicBool::new(false));
+    {
+        let vf = v_flag.clone();
+        s.vertices.slice(..).map_async(MapMode::Read, move |result| {
+            if result.is_ok() { vf.store(true, std::sync::atomic::Ordering::Release); }
+        });
+    }
+    let _ = wgpu_device.poll(bevy::render::render_resource::PollType::Poll);
+    if !v_flag.load(std::sync::atomic::Ordering::Acquire) {
+        warn!("Global DC: vertex map timed out");
+        return;
+    }
+
+    // 映射索引
+    let i_flag = Arc::new(AtomicBool::new(false));
+    {
+        let inf = i_flag.clone();
+        s.indices.slice(..).map_async(MapMode::Read, move |result| {
+            if result.is_ok() { inf.store(true, std::sync::atomic::Ordering::Release); }
+        });
+    }
+    let _ = wgpu_device.poll(bevy::render::render_resource::PollType::Poll);
+    if !i_flag.load(std::sync::atomic::Ordering::Acquire) {
+        warn!("Global DC: index map timed out");
+        return;
+    }
+
+    let vertex_view = s.vertices.slice(..).get_mapped_range();
+    let all_vertices: &[TerrainChunkVertex] =
+        bytemuck::cast_slice(&vertex_view[..s.vertex_cap as usize]);
+    let index_view = s.indices.slice(..).get_mapped_range();
+    let all_indices: &[u32] =
+        bytemuck::cast_slice(&index_view[..s.index_cap as usize]);
+
+    let mesh = build_global_mesh(
+        all_vertices, all_indices,
+        vertex_count as usize, index_count as usize,
+        s.grid_min, vs,
+    );
+
+    drop(vertex_view);
+    drop(index_view);
+    s.vertices.unmap();
+    s.indices.unmap();
+
+    if let Some(mesh) = mesh {
+        let _ = sender.send(TerrainChunkMeshData {
+            mesh,
+            translation: s.grid_min,
+        });
+        info!("Global DC: mesh sent to main world");
+    }
+
+    staging_state.staging = None;
+    state.pass = 0;
+    // 保持 rebuild_triggered = true，后续只在 observer 移动时触发
+}
+
+/// 从 GPU readback 数据构建单个 Mesh。
+///
+/// 顶点已 compacted（只有有效 vertex），索引也已 compacted。
+/// 只需要 clamp QEF 外溢顶点并构建 Mesh。
+fn build_global_mesh(
+    all_vertices: &[TerrainChunkVertex],
+    all_indices: &[u32],
+    vertex_count: usize,
+    index_count: usize,
+    grid_min: Vec3,
+    voxel_size: f32,
+) -> Option<Mesh> {
+    let gs = (all_vertices.len() as f64).cbrt() as u32; // 反推 grid_size
+    // 实际: 从 GlobalMeshPool 的 vertex_capacity 反推
+    // 这里 vertex_count 是实际顶点数，all_vertices.len() 是 capacity
+    let grid_max = grid_min + Vec3::splat((gs) as f32 * voxel_size);
+
+    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
+    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
+    let mut clamped = 0u32;
+
+    for i in 0..vertex_count.min(all_vertices.len()) {
+        let v = &all_vertices[i];
+        let p = [
+            v.position[0].clamp(grid_min.x, grid_max.x),
+            v.position[1].clamp(grid_min.y, grid_max.y),
+            v.position[2].clamp(grid_min.z, grid_max.z),
+        ];
+        if p != v.position { clamped += 1; }
+        positions.push(p);
+        normals.push(v.normal);
+    }
+
+    if clamped > 0 {
+        info!("  QEF clamp: {clamped}/{vertex_count} vertices clamped to grid");
+    }
+
+    if positions.is_empty() { return None; }
+
+    let idx_count = index_count.min(all_indices.len());
+    let mut tri_indices: Vec<u32> = Vec::with_capacity(idx_count);
+    for i in (0..idx_count).step_by(3) {
+        if i + 2 >= idx_count { break; }
+        let i0 = all_indices[i] as usize;
+        let i1 = all_indices[i + 1] as usize;
+        let i2 = all_indices[i + 2] as usize;
+        if i0 >= vertex_count || i1 >= vertex_count || i2 >= vertex_count { continue; }
+        if i0 == i1 || i1 == i2 || i0 == i2 { continue; }
+        tri_indices.extend_from_slice(&[i0 as u32, i1 as u32, i2 as u32]);
+    }
+
+    if tri_indices.is_empty() { return None; }
+
+    // 诊断
+    let mut bmin = Vec3::splat(f32::MAX);
+    let mut bmax = Vec3::splat(f32::MIN);
+    for p in &positions {
+        let v = Vec3::from_array(*p);
+        bmin = bmin.min(v);
+        bmax = bmax.max(v);
+    }
+    info!(
+        "  global mesh: {} verts {} tris bbox=({:.1},{:.1},{:.1})→({:.1},{:.1},{:.1})",
+        positions.len(),
+        tri_indices.len() / 3,
+        bmin.x, bmin.y, bmin.z,
+        bmax.x, bmax.y, bmax.z,
+    );
+
+    let mut mesh = Mesh::new(
+        bevy::mesh::PrimitiveTopology::TriangleList,
+        bevy::asset::RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_indices(bevy::mesh::Indices::U32(tri_indices));
+    Some(mesh)
+}

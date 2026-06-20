@@ -1,7 +1,7 @@
 // Step 0: SDF Fill — 以观察者为中心填充全局密度 grid
 // density = y - height_at(x,z)
 
-struct SDFUniforms {
+struct GlobalUniforms {
     grid_min: vec3<f32>,
     pad0: u32,
     voxel_size: f32,
@@ -9,7 +9,7 @@ struct SDFUniforms {
     pad1: vec2<u32>,
 }
 
-@group(0) @binding(0) var<uniform> info: SDFUniforms;
+@group(0) @binding(0) var<uniform> info: GlobalUniforms;
 @group(0) @binding(1) var<storage, read_write> density: array<f32>;
 
 fn height_at(xz: vec2<f32>) -> f32 {

@@ -24,11 +24,13 @@ pub struct GlobalMeshPool {
     pub sdf: Buffer,
     /// cross points 中间数据: grid_size³ * 12 * 32 bytes
     pub cross: Buffer,
+    /// per-voxel vertex index 分配表: grid_size³ 个 u32 (~0u = 无顶点)
+    pub voxel_alloc: Buffer,
     /// 顶点 buffer: capacity 个 TerrainChunkVertex (32B)
     pub vertices: Buffer,
     /// 索引 buffer: capacity 个 u32
     pub indices: Buffer,
-    /// 计数器 buffer: [vertex_count, index_count, pad, pad]
+    /// 计数器 buffer: [vertex_count, index_count, pad, pad] — atomic 可写
     pub counters: Buffer,
     /// grid 每轴的采样点数 (含端点)
     pub grid_size: u32,
@@ -94,6 +96,7 @@ impl GlobalMeshPool {
         Self {
             sdf: mk("global_sdf", dg * 4, s),
             cross: mk("global_cross", cn * 12 * 32, s),
+            voxel_alloc: mk("global_voxel_alloc", cn * 4, so),
             vertices: mk("global_verts", vertex_cap as u64 * 32, so),
             indices: mk("global_indices", index_cap as u64 * 4, so),
             counters: mk("global_counters", 16, so),

@@ -23,13 +23,14 @@ use bevy::prelude::*;
 use bevy::pbr::wireframe::WireframePlugin;
 
 use chunk::{ChunkLoadMsg, ChunkUnloadMsg, TerrainLoadedChunks};
+use compute::global_compute::TerrainObserver;
 use compute::sync::{TerrainChunkProcessReceiver, TerrainChunkProcessSender};
-use compute::TerrainChunkMeshComputePlugin;
+use compute::{GlobalTerrainMeshPlugin, TerrainChunkMeshComputePlugin};
 use debug::{apply_debug_wireframe, TerrainDebugConfig};
 use loader::update_grid_chunks;
 use mesh::{
-    handle_load_requests, handle_mesh_data, handle_unload_requests,
-    TerrainChunkMeshReceiver, TerrainChunkMeshSender,
+    handle_global_mesh_data, handle_load_requests, handle_mesh_data,
+    handle_unload_requests, TerrainChunkMeshReceiver, TerrainChunkMeshSender,
 };
 use setting::TerrainSetting;
 
@@ -83,5 +84,61 @@ impl Plugin for TerrainPlugin {
 
         // ── GPU compute 管线 ──
         app.add_plugins(TerrainChunkMeshComputePlugin);
+    }
+}
+
+/// 全局 Edge Graph DC 地形插件 (Phase 3: observer-centric)。
+///
+/// 使用全局 edge graph + atomic counter + 单次 mesh 渲染，
+/// 替代 per-chunk 管线，消除 chunk 边界 seam。
+pub struct GlobalTerrainPlugin;
+
+impl Default for GlobalTerrainPlugin {
+    fn default() -> Self {
+        Self
+    }
+}
+
+impl Plugin for GlobalTerrainPlugin {
+    fn build(&self, app: &mut App) {
+        // ── 主世界资源 ──
+        app.insert_resource(TerrainSetting::default());
+        app.init_resource::<TerrainDebugConfig>();
+
+        // ── 渲染 → 主世界 mesh 数据 channel ──
+        let (mesh_tx, mesh_rx) = crossbeam::channel::unbounded();
+        app.insert_resource(TerrainChunkMeshReceiver(mesh_rx));
+
+        let render_app = app.sub_app_mut(bevy::render::RenderApp);
+        render_app.insert_resource(TerrainChunkMeshSender(mesh_tx));
+
+        // ── 主世界系统 ──
+        app.add_systems(
+            Update,
+            (
+                update_observer_from_camera,
+                handle_global_mesh_data,
+                apply_debug_wireframe,
+            )
+                .chain(),
+        );
+
+        // ── 调试：wireframe 渲染 ──
+        app.add_plugins(WireframePlugin {
+            debug_flags: Default::default(),
+        });
+
+        // ── 全局 GPU compute 管线 ──
+        app.add_plugins(GlobalTerrainMeshPlugin);
+    }
+}
+
+/// 从主相机 Transform 更新 TerrainObserver 资源。
+fn update_observer_from_camera(
+    camera: Query<&Transform, With<Camera3d>>,
+    mut observer: ResMut<TerrainObserver>,
+) {
+    if let Ok(t) = camera.single() {
+        observer.position = t.translation;
     }
 }
