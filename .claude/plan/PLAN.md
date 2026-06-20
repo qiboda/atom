@@ -18,12 +18,13 @@ Exit: `cargo check` / `cargo clippy` / `cargo doc` / `cargo test` 通过。
 
 > Smoke: GPU 端到端验证 shader 编译 + mesh 生成 + 渲染。
 
-- [ ] 1.1 运行 `cargo run -p atom_terrain --example chunk_loader`
+- [x] 1.1 运行 `cargo run -p atom_terrain --example chunk_loader`
 - [x] 1.2 验证 shader 编译通过（无 WGSL compiler error）
 - [x] 1.3 验证 CPU noise 与 GPU noise 结果一致
-- [x] 1.4 单 chunk mesh 正确渲染
+- [ ] 1.4 单 chunk mesh 正确渲染
 
 Exit: 可见绿色地形 mesh。
+🛑 **Blocker**: staging buffer readback 未实现，GPU 结果无法回传 CPU 组装 Mesh。
 
 ## Phase 2 — 多 chunk 动态加载
 
