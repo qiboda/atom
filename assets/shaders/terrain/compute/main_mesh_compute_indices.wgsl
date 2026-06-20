@@ -94,11 +94,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         var all = true;
         for (var i = 0u; i < 4u; i++) {
             let q = qv[i];
-            // 跳过触及负 shell 的 quad — 由左侧/下方/后方邻居生成
-            if q.x == 0i || q.y == 0i || q.z == 0i { all = false; break; }
             if q.x < 0i || q.y < 0i || q.z < 0i
                 || q.x >= i32(vv) || q.y >= i32(vv) || q.z >= i32(vv)
                 || !has_vertex(u32(q.x), u32(q.y), u32(q.z)) {
+                all = false; break;
+            }
+            // 负 shell 且顶点是真实交叉(非 fallback) → 邻居会生成此 quad，本侧跳过
+            let vi = u32(q.x) + u32(q.y) * vv + u32(q.z) * vv * vv;
+            let vn = vertices[vi].normal;
+            let is_real = length(vn) > 0.0001;
+            if is_real && (q.x == 0i || q.y == 0i || q.z == 0i) {
                 all = false; break;
             }
         }
