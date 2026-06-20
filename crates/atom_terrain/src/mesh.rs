@@ -129,6 +129,10 @@ pub fn handle_mesh_data(
 #[derive(Component)]
 pub struct GlobalTerrainMesh;
 
+/// 全局地形 material handle（Phase 3），供 debug toggle 更新 cull_mode。
+#[derive(Resource, Clone, Debug, Default)]
+pub struct GlobalTerrainMaterial(pub Option<Handle<StandardMaterial>>);
+
 /// 接收渲染世界发来的全局 mesh（Phase 3），直接 spawn 实体。
 ///
 /// 与 `handle_mesh_data` 不同，不依赖 TerrainLoadedChunks，
@@ -140,6 +144,7 @@ pub fn handle_global_mesh_data(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut mesh_entity: Local<Option<Entity>>,
+    mut global_mat: ResMut<GlobalTerrainMaterial>,
 ) {
     while let Ok(data) = receiver.try_recv() {
         let mesh = meshes.add(data.mesh);
@@ -149,6 +154,9 @@ pub fn handle_global_mesh_data(
             cull_mode: if debug_config.double_sided { None } else { Some(Face::Back) },
             ..default()
         });
+
+        // 存储 material handle，供 debug toggle 更新
+        global_mat.0 = Some(mat.clone());
 
         // 如果已有旧 mesh 实体，despawn 它
         if let Some(old) = mesh_entity.take() {

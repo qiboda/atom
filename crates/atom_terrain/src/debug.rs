@@ -28,7 +28,7 @@ impl Default for TerrainDebugConfig {
 }
 
 /// 键盘快捷键切换调试开关。
-/// F1 = wireframe, F2 = double_sided。
+/// F1 = wireframe（即时生效），F2 = double_sided（需移动摄像机触发 mesh 重建）。
 pub fn debug_keyboard_toggle(
     keys: Res<ButtonInput<KeyCode>>,
     mut config: ResMut<TerrainDebugConfig>,
@@ -37,6 +37,7 @@ pub fn debug_keyboard_toggle(
     // Phase 3 wireframe: global mesh entity
     global_meshes: Query<Entity, With<GlobalTerrainMesh>>,
     mesh_children: Query<Entity, With<Mesh3d>>,
+    mut observer: ResMut<crate::compute::global_compute::TerrainObserver>,
     mut commands: Commands,
 ) {
     if keys.just_pressed(KeyCode::F1) {
@@ -44,7 +45,6 @@ pub fn debug_keyboard_toggle(
         info!("wireframe: {}", config.wireframe);
 
         if config.wireframe {
-            // 添加 Wireframe 到所有 terrain mesh
             for chunk_children in chunks.iter() {
                 for child in chunk_children.iter() {
                     if mesh_children.contains(child) {
@@ -62,7 +62,6 @@ pub fn debug_keyboard_toggle(
                 ));
             }
         } else {
-            // 移除 Wireframe
             for chunk_children in chunks.iter() {
                 for child in chunk_children.iter() {
                     commands.entity(child).remove::<Wireframe>().remove::<WireframeColor>();
@@ -76,12 +75,10 @@ pub fn debug_keyboard_toggle(
 
     if keys.just_pressed(KeyCode::F2) {
         config.double_sided = !config.double_sided;
-        info!(
-            "double_sided: {} (需移动摄像机触发重建)",
-            config.double_sided
-        );
-        // double_sided 在 handle_global_mesh_data 中生效，
-        // 下次重建 spawn 新 mesh 时自动应用新 cull_mode。
+        info!("double_sided: {} (触发重建)", config.double_sided);
+
+        // 偏移 observer 一小点 → 触发 mesh 重建，新 mesh 用新 cull_mode
+        observer.position += Vec3::new(0.0, 0.001, 0.0);
     }
 }
 

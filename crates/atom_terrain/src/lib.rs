@@ -30,7 +30,8 @@ use debug::{apply_debug_wireframe, debug_keyboard_toggle, TerrainDebugConfig};
 use loader::update_grid_chunks;
 use mesh::{
     handle_global_mesh_data, handle_load_requests, handle_mesh_data,
-    handle_unload_requests, TerrainChunkMeshReceiver, TerrainChunkMeshSender,
+    handle_unload_requests, GlobalTerrainMaterial,
+    TerrainChunkMeshReceiver, TerrainChunkMeshSender,
 };
 use setting::TerrainSetting;
 
@@ -105,6 +106,7 @@ impl Plugin for GlobalTerrainPlugin {
         // ── 主世界资源 ──
         app.insert_resource(TerrainSetting::default());
         app.init_resource::<TerrainDebugConfig>();
+        app.init_resource::<GlobalTerrainMaterial>();
 
         // ── 渲染 → 主世界 mesh 数据 channel ──
         let (mesh_tx, mesh_rx) = crossbeam::channel::unbounded();
