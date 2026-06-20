@@ -50,6 +50,12 @@ fn has_cross(edge_id: u32) -> bool {
          + abs(bitcast<f32>(cross[b + 2u])) > 0.001;
 }
 
+// 读取 edge crossing 的 flip flag（d1 < 0）
+fn read_flip(edge_id: u32) -> bool {
+    let b = edge_id * 8u + 3u;
+    return bitcast<f32>(cross[b]) > 0.0;
+}
+
 fn get_vertex_index(vx: u32, vy: u32, vz: u32) -> u32 {
     let gs = info.grid_size;
     if vx >= gs || vy >= gs || vz >= gs { return ~0u; }
@@ -116,13 +122,26 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         // atomic 分配 6 个 index slot
         let base = atomicAdd(&counters[1], 6u);
 
-        // winding: 默认 face_n = (+X, -Y, +Z) → 翻转后 = (-X, +Y, -Z)
-        // 对 heightfield (Y 朝上) Y 轴必需翻转。全部翻转（同 Phase 2）。
-        indices[base + 0u] = fixed_slots[0];
-        indices[base + 1u] = fixed_slots[2];
-        indices[base + 2u] = fixed_slots[1];
-        indices[base + 3u] = fixed_slots[0];
-        indices[base + 4u] = fixed_slots[3];
-        indices[base + 5u] = fixed_slots[2];
+        // winding: flip = d1 < 0（cross 数据 bit 3）
+        //   flip=false → solid→air → 翻转（q0-q2-q1,q0-q3-q2）→ face 朝向 air
+        //   flip=true  → air→solid → 默认（q0-q1-q2,q0-q2-q3）→ face 朝向 solid
+        let flip = read_flip(edge_id);
+        if flip {
+            // air→solid: 默认 winding
+            indices[base + 0u] = fixed_slots[0];
+            indices[base + 1u] = fixed_slots[1];
+            indices[base + 2u] = fixed_slots[2];
+            indices[base + 3u] = fixed_slots[0];
+            indices[base + 4u] = fixed_slots[2];
+            indices[base + 5u] = fixed_slots[3];
+        } else {
+            // solid→air: 翻转 winding（同 Phase 2）
+            indices[base + 0u] = fixed_slots[0];
+            indices[base + 1u] = fixed_slots[2];
+            indices[base + 2u] = fixed_slots[1];
+            indices[base + 3u] = fixed_slots[0];
+            indices[base + 4u] = fixed_slots[3];
+            indices[base + 5u] = fixed_slots[2];
+        }
     }
 }
