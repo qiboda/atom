@@ -32,7 +32,7 @@ use crate::{
             compute::{
                 bind_group::{TerrainChunkBindGroups, prepare_mesh_bind_group},
                 buffer::{TerrainChunkMeshBuffers, prepare_mesh_buffers},
-                types::{TerrainChunkVertexInfo, TerrainChunkVerticesIndicesCount},
+                types::TerrainChunkVertexInfo,
             },
             materials::terrain_material::BIOME_VERTEX_ATTRIBUTE,
         },

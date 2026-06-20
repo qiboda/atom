@@ -9,6 +9,19 @@ struct TerrainChunkInfo {
     qef_stddev: f32,
 }
 
+struct TerrainMapConfig {
+    // 地形的最大高度
+    terrain_height: f32,
+    // 一个像素代表的地图大小
+    pixel_size: f32,
+    // 最小温度
+    temperature_min: f32,
+    // 最大温度
+    temperature_max: f32,
+    // 0 = 纯噪声密度场, 非0 = 使用 biome 纹理
+    use_biome: u32,
+}
+
 struct VoxelEdgeCrossPoint {
     // w is exist or not
     cross_location: vec4<f32>,
@@ -27,15 +40,4 @@ struct TerrainChunkVertexInfo {
 struct TerrainChunkVerticesIndicesCount {
     vertices_count: atomic<u32>,
     indices_count: atomic<u32>
-}
-
-struct TerrainMapConfig {
-    // 地形的最大高度
-    terrain_height: f32,
-    // 一个像素代表的地图大小
-    pixel_size: f32,
-    // 最小温度
-    temperature_min: f32,
-    // 最大温度
-    temperature_max: f32,
 }

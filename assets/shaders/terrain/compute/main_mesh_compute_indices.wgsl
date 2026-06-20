@@ -29,7 +29,8 @@
 //  4-------2------5
 //
 // 考虑考虑是否可以改为dispatch_indirect: 不能，因为并不是每帧都进行计算
-// FIXME 没有考虑边缘的indices的情况。
+// 边缘体素的正边界面由邻居 chunk 处理（共享面由跨 chunk 一致的确定性边界顶点保证焊缝）
+// xyz.x/xyz.y/xyz.z 检查仅跳过内部体素索引会越界的正边界面
 @compute @workgroup_size(4, 4, 4)
 fn compute_indices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
     if (invocation_id.x >= terrain_chunk_info.voxel_num) || (invocation_id.y >= terrain_chunk_info.voxel_num) || (invocation_id.z >= terrain_chunk_info.voxel_num) {

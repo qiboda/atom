@@ -108,6 +108,7 @@ fn compute_vertices(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
         return;
     }
 
+
     var qef_location = quadric_minimizer(qef);
     if quadric_residual_l2_error(qef, qef_location) < terrain_chunk_info.qef_threshold {
         if is_in_aabb(qef_location, voxel_min_location, voxel_max_location) {

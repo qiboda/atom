@@ -43,7 +43,6 @@ pub struct TerrainChunkInfo {
     pub qef_threshold: f32,
     pub qef_stddev: f32,
 }
-
 #[repr(C)]
 #[derive(ShaderType, Default, Clone, PartialEq, Copy, Debug, Pod, Zeroable)]
 pub struct TerrainChunkVertexInfo {
@@ -205,6 +204,8 @@ pub struct TerrainMapConfig {
     pub temperature_min: f32,
     /// 最大温度（摄氏度）
     pub temperature_max: f32,
+    /// 0 = 纯噪声密度场, 非0 = 使用 biome 纹理
+    pub use_biome: u32,
 }
 
 #[cfg(test)]

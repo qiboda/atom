@@ -91,7 +91,13 @@ fn biome_height(biome_type: f32, noise_val: f32) -> f32 {
 }
 /// 根据世界坐标和 biome 纹理计算密度场值
 /// 对 biome 纹理 2x2 邻域采样，双线性混合密度值
+/// 根据世界坐标和 biome 纹理计算密度场值
+/// 对 biome 纹理 2x2 邻域采样，双线性混合密度值
 fn get_terrain_noise(location: vec3f) -> f32 {
+    if map_config.use_biome == 0u {
+        return get_terrain_noise_no_biome(location);
+    }
+
     let terrain_size = terrain_chunk_info.chunk_min_location_size.w;
     let terrain_uv = (location.xz + terrain_size * 0.5) / terrain_size;
     let biome_tex_size = vec2f(textureDimensions(biome_map_texture));
@@ -107,6 +113,8 @@ fn get_terrain_noise(location: vec3f) -> f32 {
     // 2D FBM 噪声（高度图风格，XZ 平面），频率 0.08 在 chunk 尺度可见
     let noise_val = open_simplex_2d_fbm_with_seed(location.xz, 232u, 3u, 0.08, 2.0, 0.5);
     let h00 = biome_height(t00, noise_val);
+    let h10 = biome_height(t10, noise_val);
+    let h01 = biome_height(t01, noise_val);
     let h11 = biome_height(t11, noise_val);
     // 双线性混合 biome 密度值
     let h0 = mix(h00, h10, fx);
@@ -115,8 +123,23 @@ fn get_terrain_noise(location: vec3f) -> f32 {
     return location.y - biome_height_val;
 }
 
+/// 无 biome 纹理的纯噪声密度场
+/// 使用 2D FBM 噪声直接生成地形高度
+fn get_terrain_noise_no_biome(location: vec3f) -> f32 {
+    // 基本地形：多层 FBM 噪声叠加
+    let h1 = open_simplex_2d_fbm_with_seed(location.xz, 42u, 3u, 0.02, 2.0, 0.5) * 20.0;
+    // 细节噪声
+    let h2 = open_simplex_2d_fbm_with_seed(location.xz, 137u, 3u, 0.08, 2.0, 0.5) * 5.0;
+    // 微细节
+    let h3 = open_simplex_2d_fbm_with_seed(location.xz, 251u, 3u, 0.25, 2.0, 0.5) * 1.0;
+    return location.y - (h1 + h2 + h3);
+}
+
 /// 单点 biome 查询（用于顶点属性）
 fn get_biome_type_by_location(location: vec3f) -> f32 {
+    if map_config.use_biome == 0u {
+        return 0.0;  // 无 biome 时返回默认值
+    }
     // XZ 平面采样 biome 纹理
     let terrain_size = terrain_chunk_info.chunk_min_location_size.w;
     let terrain_uv = (location.xz + terrain_size * 0.5) / terrain_size;

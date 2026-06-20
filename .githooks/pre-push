@@ -5,8 +5,16 @@
 
 set -e
 
+echo "=== pre-push: cargo check --workspace ==="
+cargo check --workspace 2>&1
+
 echo "=== pre-push: cargo clippy --workspace ==="
-# Allow warnings for now (later: -D warnings)
 cargo clippy --workspace -- -A dead_code 2>&1
+
+echo "=== pre-push: bevy_lint ==="
+$HOME/.cargo/bin/bevy_lint 2>&1
+
+echo "=== pre-push: cargo test --workspace (nextest) ==="
+cargo nextest run --workspace 2>&1
 
 echo "=== pre-push: OK ==="

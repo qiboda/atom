@@ -22,7 +22,8 @@ impl Plugin for TerrainChunkLoaderPlugin {
                 Update,
                 (
                     update_grid_chunks.in_set(TerrainSystems::ChunkLoader),
-                    update_chunk_lod.in_set(TerrainSystems::ChunkLoader),
+                    // LOD 已禁用 — 俯视角固定最大精度
+                    // update_chunk_lod.in_set(TerrainSystems::ChunkLoader),
                 ),
             );
     }

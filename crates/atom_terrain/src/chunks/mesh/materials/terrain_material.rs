@@ -275,7 +275,7 @@ impl Material for TerrainMaterial {
             }
         }
 
-        let vertex_layout = layout.0.get_layout(&[
+        let _vertex_layout = layout.0.get_layout(&[
             Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
             Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
             BIOME_VERTEX_ATTRIBUTE.at_shader_location(2),

@@ -10,8 +10,8 @@ tags: [terrain, bevy, gpu, rust]
 ## 约束
 
 - Rust Edition 2024, Bevy 0.18, wgpu 27.0
-- 不重新设计现有架构（分层、channel 通信、buffer 抽象）
-- 不引入新依赖（详见 SOUL.md Dependencies 规则）
+- 遵守 `.claude/SOUL.md` 的全部规则：依赖引入（四级决策树）、架构边界（不删关键代码/不碰 .atom.project）、测试策略（spec 先行、按层级选工具）
+- 子 spec 定义各自的 Phase 边界（允许/禁止更改范围），project.spec 不设全局禁止项
 
 ## 排除范围
 

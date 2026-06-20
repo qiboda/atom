@@ -2,6 +2,8 @@
 name = "atom_shader_lib"
 version = "0.1.0"
 edition = "2024"
+publish.workspace = true
+license.workspace = true
 
 [dependencies]
 atom_core = { path = "../atom_core" }

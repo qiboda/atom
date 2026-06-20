@@ -21,6 +21,8 @@ use super::{buffer::TerrainChunkMeshBuffers, pipelines::TerrainChunkPipelines, t
 pub struct TerrainChunkBindGroups {
     pub main_mesh_bind_group: Option<BindGroup>,
     pub map_bind_group: Option<BindGroup>,
+    /// 无 biome 时的占位纹理 (per-render-device, lazy init)
+    dummy_texture: Option<bevy::render::render_resource::Texture>,
 }
 
 pub struct TerrainChunkBindGroupsCreateContext<'a> {
@@ -30,7 +32,6 @@ pub struct TerrainChunkBindGroupsCreateContext<'a> {
     pub biome_image: Option<&'a GpuImage>,
     pub terrain_map_config: &'a TerrainMapConfig,
 }
-
 impl TerrainChunkBindGroups {
     pub fn create_bind_groups(&mut self, context: TerrainChunkBindGroupsCreateContext) {
         if context.mesh_buffers.should_create {
@@ -85,35 +86,58 @@ impl TerrainChunkBindGroups {
         }
 
         // 创建地图 bind group (group 1): TerrainMapConfig + biome_texture + sampler
-        if let Some(biome_image) = context.biome_image {
-            if self.map_bind_group.is_none() {
-                info!("Creating terrain chunk map bind group");
-                let biome_sampler = context
-                    .render_device
-                    .create_sampler(&SamplerDescriptor {
-                        label: Some("biome map sampler"),
-                        ..default()
-                    });
-                let biome_view = biome_image.texture.create_view(&Default::default());
+        // 即使 use_biome=0，shader 仍然需要绑定的纹理和采样器可用
+        if self.map_bind_group.is_none() {
+            info!("Creating terrain chunk map bind group");
 
-                let config_buffer = context.render_device.create_buffer_with_data(
-                    &BufferInitDescriptor {
-                        label: Some("terrain map config buffer"),
-                        contents: bytemuck::bytes_of(context.terrain_map_config),
-                        usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            let biome_view = if let Some(biome_image) = context.biome_image {
+                biome_image.texture.create_view(&Default::default())
+            } else {
+                // 无 biome 时创建 1x1 占位纹理
+                let texture = context.render_device.create_texture(
+                    &bevy::render::render_resource::TextureDescriptor {
+                        label: Some("dummy biome texture"),
+                        size: bevy::render::render_resource::Extent3d {
+                            width: 1,
+                            height: 1,
+                            depth_or_array_layers: 1,
+                        },
+                        mip_level_count: 1,
+                        sample_count: 1,
+                        dimension: bevy::render::render_resource::TextureDimension::D2,
+                        format: bevy::render::render_resource::TextureFormat::R32Float,
+                        usage: bevy::render::render_resource::TextureUsages::TEXTURE_BINDING,
+                        view_formats: &[],
                     },
                 );
+                self.dummy_texture = Some(texture);
+                self.dummy_texture.as_ref().expect("just created").create_view(&Default::default())
+            };
 
-                self.map_bind_group = Some(context.render_device.create_bind_group(
-                    "terrain chunk map bind group",
-                    &context.pipelines.compute_map_bind_group_layout,
-                    &BindGroupEntries::sequential((
-                        config_buffer.as_entire_binding(),
-                        bevy::render::render_resource::BindingResource::TextureView(&biome_view),
-                        bevy::render::render_resource::BindingResource::Sampler(&biome_sampler),
-                    )),
-                ));
-            }
+            let biome_sampler = context
+                .render_device
+                .create_sampler(&SamplerDescriptor {
+                    label: Some("biome map sampler"),
+                    ..default()
+                });
+
+            let config_buffer = context.render_device.create_buffer_with_data(
+                &BufferInitDescriptor {
+                    label: Some("terrain map config buffer"),
+                    contents: bytemuck::bytes_of(context.terrain_map_config),
+                    usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                },
+            );
+
+            self.map_bind_group = Some(context.render_device.create_bind_group(
+                "terrain chunk map bind group",
+                &context.pipelines.compute_map_bind_group_layout,
+                &BindGroupEntries::sequential((
+                    config_buffer.as_entire_binding(),
+                    bevy::render::render_resource::BindingResource::TextureView(&biome_view),
+                    bevy::render::render_resource::BindingResource::Sampler(&biome_sampler),
+                )),
+            ));
         }
     }
 }
@@ -147,7 +171,8 @@ pub(crate) fn prepare_mesh_bind_group(
         terrain_height: 4096.0,
         pixel_size: 2.0,
         temperature_min: -10.0,
-        temperature_max: 40.0,
+        temperature_max: 50.0,
+        use_biome: 0,
     };
 
     let context = TerrainChunkBindGroupsCreateContext {
