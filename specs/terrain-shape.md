@@ -3,14 +3,6 @@
 > Phase 2 · 进行中
 > 依赖: Phase 1 (biome 纹理已生成)
 
-## 现状
-
-- Density compute pipeline 已就绪: `assets/shaders/terrain/compute/` 下 4 个 pass
-- Pass 1 (density values) 当前使用硬编码简单密度场，噪声调用已注释
-- Biome 纹理作为 `TerrainRegionInfo.biome_image` (Handle<Image>) 已可 GPU 采样
-- `TerrainRegionGpuConfig.size_per_pixel` 已 extract 到 render world
-- GPU compute 使用 17³ 计算网格 (`get_voxel_count_in_compute()`)
-
 ## 目标
 
 在 `compute_voxel_vertex_values` shader pass 中，根据 biome 纹理采样选择密度场函数，使 6 种 biome 产生不同地形形状。

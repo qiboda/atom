@@ -3,14 +3,6 @@
 > Phase 3 · 规划中
 > 依赖: Phase 2 (biome 密度场集成完成)
 
-## 现状
-
-- `TerrainMaterial` 已实现标准 Bevy `Material` trait (`crates/atom_terrain/src/chunks/mesh/materials/terrain_material.rs`)
-- `BIOME_VERTEX_ATTRIBUTE` 已定义: `MeshVertexAttribute "biome" index 100, VertexFormat::Uint32`
-- `TerrainMaterialUniform` 已有字段: `lod, roughness, metallic, flags, reflectance, attenuation_distance, attenuation_color`
-- `TerrainMaterialPlugin` 已注册 `MaterialPlugin::<TerrainMaterial>`
-- TerrainMaterialShader 已有 shader handles: `triplanar, biplanar, terrain_material`
-- Planar shaders 已存在: `triplanar.wgsl`, `biplanar.wgsl`
 
 ## 目标
 

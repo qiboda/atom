@@ -3,12 +3,6 @@
 > Phase 4 · 规划中
 > 依赖: Phase 3 (材质系统完成)
 
-## 现状
-
-- `TerrainMaterialUniform` 已有 `lod: u32` 字段
-- Chunk 系统基于 `TerrainChunkCoord` 索引
-- Mesh compute 管线已在 GPU 端运行
-- `TerrainSetting` 控制 voxel_size, voxel_count, terrain_size
 
 ## 目标
 
