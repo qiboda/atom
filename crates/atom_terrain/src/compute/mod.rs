@@ -7,16 +7,15 @@ pub mod types;
 use bevy::{
     prelude::*,
     render::{
-        extract_resource::ExtractResourcePlugin,
-        renderer::RenderDevice,
-        Render, RenderApp, RenderStartup,
+        extract_resource::ExtractResourcePlugin, renderer::RenderDevice, Render, RenderApp,
+        RenderStartup,
     },
 };
 
 use crate::setting::TerrainSetting;
 use global_compute::{
-    init_global_compute_pipeline, global_compute_system,
-    TerrainObserver, GlobalComputeState, GlobalStagingState,
+    global_compute_system, init_global_compute_pipeline, GlobalComputeState, GlobalStagingState,
+    TerrainObserver,
 };
 use global_pool::GlobalMeshPool;
 use gpu::{
@@ -69,9 +68,13 @@ impl Plugin for GlobalTerrainMeshPlugin {
 }
 
 /// 创建 GlobalMeshPool（依赖 RenderDevice + TerrainSetting）。
-fn init_global_pool(mut commands: Commands, device: Res<RenderDevice>, setting: Res<TerrainSetting>) {
+fn init_global_pool(
+    mut commands: Commands,
+    device: Res<RenderDevice>,
+    _setting: Res<TerrainSetting>,
+) {
     let grid_size = 50u32; // inner 48 + 1-voxel shell 两侧 = 50 (25m 半径)
-    let pool = GlobalMeshPool::new(&device, setting.voxel_size, grid_size);
+    let pool = GlobalMeshPool::new(&device, grid_size);
     info!(
         "GlobalMeshPool: grid_size={grid_size}, vertex_cap={}, index_cap={}",
         pool.vertex_capacity, pool.index_capacity

@@ -1,4 +1,4 @@
-/// TODO 使用macro，确定使用的noise的类型。但这样就没办法，同时使用两种fbm了，还是需要再考虑一下。
+/// FBM: noise type selection deferred to biome phase — currently hardcoded to open_simplex.
 #define_import_path noise::fbm
 
 #import noise::open_simplex::{TABLE_SIZE, open_simplex_2d, open_simplex_3d, open_simplex_4d}

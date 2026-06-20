@@ -10,9 +10,7 @@
 use bevy::{
     prelude::*,
     render::{
-        render_resource::{
-            Buffer, BufferDescriptor, BufferUsages,
-        },
+        render_resource::{Buffer, BufferDescriptor, BufferUsages},
         renderer::RenderDevice,
     },
 };
@@ -75,7 +73,7 @@ impl GlobalMeshPool {
 
     /// 创建全局 buffer pool。
     /// `grid_size` 是每条轴的 voxel 数量（不含端点）。
-    pub fn new(device: &RenderDevice, _voxel_size: f32, grid_size: u32) -> Self {
+    pub fn new(device: &RenderDevice, grid_size: u32) -> Self {
         let n = grid_size + 1u32;
         let vc = grid_size; // voxel count per axis
 
