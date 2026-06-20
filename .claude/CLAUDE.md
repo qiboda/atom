@@ -35,7 +35,12 @@ atom_cel_shader, atom_pqef, atom_utils）暂时移出，后续逐步迁入 Bevy 
 非平凡实现任务 MUST 按 `.claude/AGENTS.md` 的 Task List 模板创建勾选框并逐项完成。
 跳过任何环节 → commit 视为流程违规。快速任务（typo/import 整理）可豁免 understand→document。
 
-## 编码约定
+
+### Edit 工具纪律
+
+- 每次 `edit` MUST 用上一步返回的 `#TAG`，不得跨 edit 复用旧 tag
+- 连续 edit ≥ 3 步 → 中间插入 `read` 确认文件状态
+- 编辑范围只覆盖变更行；纯增用 `insert`，纯删用 `delete`
 
 - 非平凡逻辑用中文注释；简单辅助函数用英文；Shader 中英文混合
 - 公共 API 强制 `#[deny(missing_docs)]` + `///` rust-doc（RFC 1574: Summary/Examples/Panics/Safety）

@@ -44,3 +44,4 @@ Exit: 移动摄像机可见连续无缝的多 chunk 地形。✅ 100 chunk 动�
 - 寻路 (nav mesh)
 - 技能系统与地形交互
 - CSG 洞穴/构造物生成（系统驱动，非玩家编辑）
+- **CI 冒烟测试**: `chunk_loader` 启动 → 截图 → 与基准截图 diff。可自动捕获 mesh 几何回归。需确定截图方案（headless render / PIX / RenderDoc）。
