@@ -556,8 +556,7 @@ fn build_global_mesh(
         let mut nrm: Vec<[f32; 3]> = Vec::new();
         let mut clamped = 0u32;
 
-        for i in 0..vertex_count {
-            let v = &all_vertices[i];
+        for v in all_vertices.iter().take(vertex_count) {
             let len = (v.position[0] * v.position[0]
                 + v.position[1] * v.position[1]
                 + v.position[2] * v.position[2])

@@ -10,21 +10,12 @@ use crate::chunk::TerrainChunk;
 use crate::mesh::GlobalTerrainMesh;
 
 /// 地形调试配置
-#[derive(Resource, Clone, Debug)]
+#[derive(Resource, Clone, Debug, Default)]
 pub struct TerrainDebugConfig {
     /// 是否启用线框渲染
     pub wireframe: bool,
     /// 是否双面渲染（关闭背面剔除）
     pub double_sided: bool,
-}
-
-impl Default for TerrainDebugConfig {
-    fn default() -> Self {
-        Self {
-            wireframe: false,
-            double_sided: false,
-        }
-    }
 }
 
 /// 键盘快捷键切换调试开关。

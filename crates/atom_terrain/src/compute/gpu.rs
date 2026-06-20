@@ -355,7 +355,7 @@ pub fn terrain_compute_system(
                 let n = vc + 3; // 密度 grid 双边 shell
                 (n.div_ceil(8), n.div_ceil(8), n.div_ceil(8))
             }
-            2 | 3 | 4 => {
+            2..=4 => {
                 let n = vc + 2; // voxel 双边 shell; pass4 内部 skip 非内层
                 (n.div_ceil(8), n.div_ceil(8), n.div_ceil(8))
             }
