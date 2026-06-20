@@ -1,3 +1,4 @@
+pub mod global_pool;
 pub mod gpu;
 pub mod sync;
 pub mod types;
