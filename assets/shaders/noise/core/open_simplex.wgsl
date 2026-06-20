@@ -200,13 +200,10 @@ fn open_simplex_2d(point: vec2f, permutation_table: ptr<function, array<u32, TAB
     let stretched = point + vec2f(stretch_offset);
 
     // Floor to get grid coordinates of rhombus (stretched square) cell origin.
-    // TODO: modf 暂时不支持。
-    // let modf_stretched = modf(stretched);
+    // WGSL modf not available, using floor() as fallback.
     let stretched_floor = floor(stretched);
-    // let stretched_floor = modf_stretched.whole;
     // Compute grid coordinates relative to rhombus origin.
     let rel_coords = stretched - stretched_floor;
-    // let rel_coords = modf_stretched.fract;
 
     // Skew out to get actual coordinates of rhombus origin. We'll need these later.
     let squish_offset = (stretched_floor.x + stretched_floor.y) * SQUISH_CONSTANT_2D;
@@ -280,12 +277,9 @@ fn open_simplex_3d(point: vec3f, permutation_table: ptr<function, array<u32, TAB
 
     // Floor to get simplectic honeycomb coordinates of rhombohedron
     // (stretched cube) super-cell origin.
-    // let modf_stretched = modf(stretched);
     let stretched_floor = floor(stretched);
-    // let stretched_floor = modf_stretched.whole;
     // Compute simplectic honeycomb coordinates relative to rhombohedral origin.
     let rel_coords = stretched - stretched_floor;
-    // let rel_coords = modf_stretched.fract;
 
     // Skew out to get actual coordinates of rhombohedron origin. We'll need
     // these later.
@@ -388,11 +382,8 @@ fn open_simplex_4d(point: vec4f, permutation_table: ptr<function, array<u32, TAB
 
     // Floor to get simplectic honeycomb coordinates of rhombo-hypercube
     // super-cell origin.
-    // let stretched_modf = modf(stretched);
     let stretched_floor = floor(stretched);
-    // let stretched_floor = stretched_modf.whole;
     let rel_coords = stretched - stretched_floor;
-    // let rel_coords = stretched_modf.fract;
 
     // Skew out to get actual coordinates of stretched rhombo-hypercube origin.
     // We'll need these later.
