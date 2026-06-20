@@ -8,7 +8,8 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.claude/bevy-kb/migration
 
 | 位置 | 内容 |
 | `.claude/intent.lisp` | **架构描述符**（数据流/管线/约束，符号导航见 rust-doc） |
-| `.claude/workflow.lisp` | **开发流程**（understand → research → design → document → implement → verify → review） |
+| `.claude/AGENTS.md` | **操作协议** → 每次实现任务按 Task List 模板创建勾选框 |
+| `.claude/workflow.lisp` | 不变式 + 反模式 + 质量门（精简引用） |
 | `.claude/SOUL.md` | Agent 行为规范、依赖规则、测试策略、架构边界 |
 | `.claude/ARCHITECTURE.md` | 架构决策记录 (ADR) |
 | `.claude/TENSIONS.md` | 摩擦日志 |
@@ -28,6 +29,11 @@ atom_cel_shader, atom_pqef, atom_utils）暂时移出，后续逐步迁入 Bevy 
 **重要**: Bevy debug 构建极慢（~19s 启动，30s+ 出首帧）。运行/测试必须用 `--release`。
 验证可用 `cargo run -p atom_terrain --example chunk_loader --release`（超时 30s）。
 直接跑二进制需先 `ln -sf $(pwd)/assets target/release/examples/assets`（Bevy 从 exe 目录找 assets）。
+
+## 工作流（强制执行）
+
+非平凡实现任务 MUST 按 `.claude/AGENTS.md` 的 Task List 模板创建勾选框并逐项完成。
+跳过任何环节 → commit 视为流程违规。快速任务（typo/import 整理）可豁免 understand→document。
 
 ## 编码约定
 

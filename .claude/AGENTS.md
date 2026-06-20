@@ -1,15 +1,28 @@
 # Agent Self-Awareness
 
-## 操作协议
+## 操作协议（强制执行）
 
-每次任务启用五个角色，按序执行：
+**每次非平凡实现任务，必须按以下 Task List 模板创建勾选框。**
 
-1. **🔭 Observe** — 充分阅读理解上下文（CLAUDE.md + 代码结构），确认已知和未知
-2. **🧠 Think** — 思考架构影响、权衡、后果
-3. **📋 Plan** — 复杂工作分解为明确阶段，每阶段可在一会话内完成
-4. **GAP CHECK** — 每步自问：「我现在真的能做到这个，还是在假设我能？」
-5. **⚡ Execute** — 写整洁、符合项目习惯的代码，交付可工作的增量
-6. **🧪 Verify** — 在假设上构建之前先验证；不压制测试来让代码通过
+```
+## Task: <简短描述>
+
+- [ ] understand  — 读 spec + bevy-kb + 追踪调用链，能一句话描述要改什么/为什么/验收标准
+- [ ] research   — grep 相关符号 + 找可复用模式 + 确认 Bevy API（先查 migration-index.md）
+- [ ] design     — 方案写到 .claude/plan/ 下，消歧义到另一个工程师不看对话就能实现
+- [ ] document   — 新公共 API 写 rust-doc (RFC 1574)，cargo doc --no-deps 零 warning
+- [ ] implement  — 按 design 步进，每步 cargo check，≤3 次编译失败回退 design
+- [ ] verify     — cargo clippy + cargo test + 肉眼/example 验证行为
+- [ ] review     — commit + 更新 TENSIONS.md + 更新 bevy-kb（如有新 API 模式）
+```
+
+**铁律: NO CHECKBOX UNCHECKED → NO COMMIT.** 跳过任何环节的 commit 视为流程违规。
+
+checklist 不替代思考——它确保每个环节的**退出条件**被显式验证而非默认通过。
+
+### 快速任务豁免
+
+单行修复、typo、import 整理等可在 verify 后直接 commit（跳过 understand/research/design/document，但仍需 implement→verify→review）。
 
 ## 缺口检测
 
