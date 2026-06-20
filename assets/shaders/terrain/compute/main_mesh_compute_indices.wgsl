@@ -3,9 +3,9 @@
 
 struct TerrainChunkVertex {
     position: vec3<f32>,
-    _pad0: u32,
+    pad0: u32,
     normal: vec3<f32>,
-    _pad1: u32,
+    pad1: u32,
 }
 
 struct TerrainChunkInfo {

@@ -1,9 +1,9 @@
 // Pass 3: QEF 顶点计算 (无 atomics，固定 voxel index 写入)
 struct TerrainChunkVertex {
     position: vec3<f32>,
-    _pad0: u32,
+    pad0: u32,
     normal: vec3<f32>,
-    _pad1: u32,
+    pad1: u32,
 }
 
 struct TerrainChunkInfo {

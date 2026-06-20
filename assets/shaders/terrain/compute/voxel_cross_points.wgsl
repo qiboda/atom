@@ -4,9 +4,9 @@
 
 struct VoxelEdgeCrossPoint {
     position: vec3<f32>,
-    _pad0: u32,
+    vpad0: u32,
     normal: vec3<f32>,
-    _pad1: u32,
+    vpad1: u32,
 }
 
 struct TerrainChunkInfo {
@@ -21,7 +21,7 @@ struct TerrainChunkInfo {
 }
 
 @group(0) @binding(0) var<uniform> chunk_info: TerrainChunkInfo;
-@group(0) @binding(1) var<storage, read> density: array<f32>;
+@group(0) @binding(1) var<storage, read_write> density: array<f32>;
 @group(0) @binding(2) var<storage, read_write> cross_points: array<u32>;
 
 // ── density query ──
@@ -104,9 +104,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let c0_x = gid.x + corner.x;
         let c0_y = gid.y + corner.y;
         let c0_z = gid.z + corner.z;
-        let mut c1_x = c0_x;
-        let mut c1_y = c0_y;
-        let mut c1_z = c0_z;
+        var c1_x: u32 = c0_x;
+        var c1_y: u32 = c0_y;
+        var c1_z: u32 = c0_z;
         if axis == 0u { c1_x += 1u; }
         else if axis == 1u { c1_y += 1u; }
         else { c1_z += 1u; }

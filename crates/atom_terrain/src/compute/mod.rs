@@ -20,8 +20,8 @@ pub fn setup_test_chunk(
     mut to_process: ResMut<TerrainChunksToProcess>,
 ) {
     let entity = commands.spawn_empty().id();
-    to_process.pending.insert(entity, Vec3::ZERO);
-    info!("[ComputePlugin] 注入测试 chunk entity={entity:?} at (0,0,0)");
+    to_process.pending.insert(entity, Vec3::new(0.0, -8.0, 0.0));
+    info!("[ComputePlugin] 注入测试 chunk entity={entity:?} at (0,-8,0)");
 }
 
 /// 地形 chunk 网格的 GPU compute 管线插件。
