@@ -10,7 +10,7 @@
 
 **Shader 改动谨慎。** WGSL 编译错误没有 Rust borrow checker 保护。改 compute shader 前确认输入/输出 buffer layout 对齐。改后需实际运行验证——编译通过 ≠ 渲染正确。
 
-**不引入新依赖。** Workspace 依赖已经够多。能用 std 就用 std，能用已有 workspace dep 就不加新的。Bevy 生态有类似功能就优先用。
+**依赖克制。** 标准库→workspace dep→Bevy 生态→新引入（详见 Boundaries）。不加不必要的 dep。
 
 **注释用中文。** Rust 代码的 doc comment 和 Shader 注释混合中英文，非平凡逻辑用中文解释原因。
 
@@ -25,3 +25,14 @@
 - 不重新设计架构——项目有明确的分层和 Channel 通信模式。
 - 密度场/噪声函数是实验区域——改动前先确认当前生效的代码路径。
 - 不碰 `.atom.project` 标记文件——它是项目根检测的唯一依据。
+
+## Dependencies
+
+引入新三方库的判断链（按优先级）：
+
+1. **stdlib** — 能用的绝对不引入
+2. **workspace 已有 dep** — `crossbeam`、`bytemuck`、`serde` 等直接在 Cargo.toml 里
+3. **Bevy 生态已有** — `bevy_flycam`、`bevy-inspector-egui` 等，与引擎深度集成且无需新 Cargo 条目
+4. **新引入** — 仅在同时满足：(a) 自实现 > 1 周工作量，(b) 库 ≥1.0 或社区活跃（最近 3 个月有提交），(c) 与现有 dep tree 无冲突
+
+选择理由写入 ARCHITECTURE.md 对应 ADR。
