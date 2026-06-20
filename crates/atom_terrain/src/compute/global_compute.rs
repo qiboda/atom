@@ -99,8 +99,10 @@ struct GlobalStaging {
     vertices: Buffer,
     indices: Buffer,
     counters: Buffer,
-    vertex_cap: u64, // vertex buffer 总字节数
-    index_cap: u64,  // index buffer 总字节数
+    voxel_alloc: Buffer,     // fixed slot → compact index mapping
+    vertex_cap: u64,         // vertex buffer 总字节数
+    index_cap: u64,          // index buffer 总字节数
+    voxel_alloc_size: u64,   // voxel_alloc buffer 总字节数
     mapped: Arc<AtomicBool>,
     map_started: bool,
     grid_min: Vec3,
@@ -305,6 +307,7 @@ pub fn global_compute_system(
         let vertex_cap = vc as u64 * vc as u64 * vc as u64
             * size_of::<TerrainChunkVertex>() as u64;
         let index_cap = vc as u64 * vc as u64 * vc as u64 * 6 * 4;
+        let voxel_alloc_size = vc as u64 * vc as u64 * vc as u64 * 4;
 
         let mk_staging = |label: &str, size: u64| {
             device.create_buffer(&BufferDescriptor {
@@ -318,17 +321,21 @@ pub fn global_compute_system(
         let sv = mk_staging("global_staging_v", vertex_cap);
         let si = mk_staging("global_staging_i", index_cap);
         let sc = mk_staging("global_staging_c", 16);
+        let sva = mk_staging("global_staging_va", voxel_alloc_size);
 
         encoder.copy_buffer_to_buffer(&pool.vertices, 0, &sv, 0, vertex_cap);
         encoder.copy_buffer_to_buffer(&pool.indices, 0, &si, 0, index_cap);
         encoder.copy_buffer_to_buffer(&pool.counters, 0, &sc, 0, 16);
+        encoder.copy_buffer_to_buffer(&pool.voxel_alloc, 0, &sva, 0, voxel_alloc_size);
 
         staging_state.staging = Some(GlobalStaging {
             vertices: sv,
             indices: si,
             counters: sc,
+            voxel_alloc: sva,
             vertex_cap,
             index_cap,
+            voxel_alloc_size,
             mapped: Arc::new(AtomicBool::new(false)),
             map_started: false,
             grid_min: state.grid_min,
@@ -435,9 +442,30 @@ fn do_readback(
     let all_indices: &[u32] =
         bytemuck::cast_slice(&index_view[..s.index_cap as usize]);
 
+    // 读 voxel_alloc 用于 fixed slot → compact index remap
+    let va_flag = Arc::new(AtomicBool::new(false));
+    {
+        let vaf = va_flag.clone();
+        s.voxel_alloc.slice(..).map_async(MapMode::Read, move |result| {
+            if result.is_ok() { vaf.store(true, std::sync::atomic::Ordering::Release); }
+        });
+    }
+    let _ = wgpu_device.poll(bevy::render::render_resource::PollType::Poll);
+    let voxel_alloc_data: Option<Vec<u32>> = if va_flag.load(std::sync::atomic::Ordering::Acquire) {
+        let va_view = s.voxel_alloc.slice(..).get_mapped_range();
+        let data = bytemuck::cast_slice(&va_view[..s.voxel_alloc_size as usize]).to_vec();
+        drop(va_view);
+        s.voxel_alloc.unmap();
+        Some(data)
+    } else {
+        warn!("Global DC: voxel_alloc map timed out");
+        None
+    };
+
     let mesh = build_global_mesh(
         all_vertices, all_indices,
         vertex_count as usize, index_count as usize,
+        voxel_alloc_data.as_deref(),
         s.grid_min, vs,
     );
 
@@ -459,23 +487,42 @@ fn do_readback(
     // 保持 rebuild_triggered = true，后续只在 observer 移动时触发
 }
 
-/// 从 GPU readback 数据构建单个 Mesh。
+/// 从 GPU readback 数据构建单个 Mesh（fixed slot → compact remap，同 Phase 2）。
 ///
-/// 顶点已 compacted（只有有效 vertex），索引也已 compacted。
-/// 只需要 clamp QEF 外溢顶点并构建 Mesh。
+/// GPU index buffer 存的是 fixed slot 索引（vx + vy*gs + vz*gs*gs），
+/// CPU 端通过 voxel_alloc 将 fixed slot 映射到 compact vertex index。
 fn build_global_mesh(
     all_vertices: &[TerrainChunkVertex],
     all_indices: &[u32],
     vertex_count: usize,
     index_count: usize,
+    voxel_alloc: Option<&[u32]>,  // fixed slot → compact index
     grid_min: Vec3,
     voxel_size: f32,
 ) -> Option<Mesh> {
-    let gs = (all_vertices.len() as f64).cbrt() as u32; // 反推 grid_size
-    // 实际: 从 GlobalMeshPool 的 vertex_capacity 反推
-    // 这里 vertex_count 是实际顶点数，all_vertices.len() 是 capacity
+    let gs = (all_vertices.len() as f64).cbrt() as u32;
     let grid_max = grid_min + Vec3::splat((gs) as f32 * voxel_size);
 
+    // 构建 fixed slot → compact index 映射（同 Phase 2 的 remap 表）
+    let remap: Vec<Option<u32>> = if let Some(va) = voxel_alloc {
+        let valid_slots = va.iter().filter(|&&ci| ci != !0u32).count();
+        let dead_slots = va.iter().filter(|&&ci| ci == !0u32).count();
+        info!("  voxel_alloc: {valid_slots} valid, {dead_slots} empty, {vertex_count} vertex_count");
+        let total_slots = (gs as usize).pow(3).min(va.len());
+        let mut r = vec![None; total_slots];
+        for slot in 0..total_slots {
+            let ci = va[slot];
+            if ci != !0u32 && (ci as usize) < vertex_count {
+                r[slot] = Some(ci);
+            }
+        }
+        r
+    } else {
+        // 无 voxel_alloc 时 fallback：直接使用 compact indices
+        return build_global_mesh_direct(all_vertices, all_indices, vertex_count, index_count, grid_min, voxel_size);
+    };
+
+    // compact vertices（保持 compact index 顺序）
     let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
     let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
     let mut clamped = 0u32;
@@ -498,16 +545,24 @@ fn build_global_mesh(
 
     if positions.is_empty() { return None; }
 
+    // remap fixed slot indices → compact indices（同 Phase 2）
     let idx_count = index_count.min(all_indices.len());
     let mut tri_indices: Vec<u32> = Vec::with_capacity(idx_count);
     for i in (0..idx_count).step_by(3) {
         if i + 2 >= idx_count { break; }
-        let i0 = all_indices[i] as usize;
-        let i1 = all_indices[i + 1] as usize;
-        let i2 = all_indices[i + 2] as usize;
-        if i0 >= vertex_count || i1 >= vertex_count || i2 >= vertex_count { continue; }
-        if i0 == i1 || i1 == i2 || i0 == i2 { continue; }
-        tri_indices.extend_from_slice(&[i0 as u32, i1 as u32, i2 as u32]);
+        let s0 = all_indices[i] as usize;
+        let s1 = all_indices[i + 1] as usize;
+        let s2 = all_indices[i + 2] as usize;
+
+        let r0 = remap.get(s0).copied().flatten();
+        let r1 = remap.get(s1).copied().flatten();
+        let r2 = remap.get(s2).copied().flatten();
+
+        if let (Some(r0), Some(r1), Some(r2)) = (r0, r1, r2) {
+            if r0 != r1 && r1 != r2 && r0 != r2 {
+                tri_indices.extend_from_slice(&[r0, r1, r2]);
+            }
+        }
     }
 
     if tri_indices.is_empty() { return None; }
@@ -527,6 +582,58 @@ fn build_global_mesh(
         bmin.x, bmin.y, bmin.z,
         bmax.x, bmax.y, bmax.z,
     );
+
+    let mut mesh = Mesh::new(
+        bevy::mesh::PrimitiveTopology::TriangleList,
+        bevy::asset::RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_indices(bevy::mesh::Indices::U32(tri_indices));
+    Some(mesh)
+}
+
+/// fallback: 无 voxel_alloc 时直接使用 compact indices
+fn build_global_mesh_direct(
+    all_vertices: &[TerrainChunkVertex],
+    all_indices: &[u32],
+    vertex_count: usize,
+    index_count: usize,
+    grid_min: Vec3,
+    voxel_size: f32,
+) -> Option<Mesh> {
+    let gs = (all_vertices.len() as f64).cbrt() as u32;
+    let grid_max = grid_min + Vec3::splat((gs) as f32 * voxel_size);
+
+    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
+    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
+
+    for i in 0..vertex_count.min(all_vertices.len()) {
+        let v = &all_vertices[i];
+        let p = [
+            v.position[0].clamp(grid_min.x, grid_max.x),
+            v.position[1].clamp(grid_min.y, grid_max.y),
+            v.position[2].clamp(grid_min.z, grid_max.z),
+        ];
+        positions.push(p);
+        normals.push(v.normal);
+    }
+
+    if positions.is_empty() { return None; }
+
+    let idx_count = index_count.min(all_indices.len());
+    let mut tri_indices: Vec<u32> = Vec::with_capacity(idx_count);
+    for i in (0..idx_count).step_by(3) {
+        if i + 2 >= idx_count { break; }
+        let i0 = all_indices[i] as usize;
+        let i1 = all_indices[i + 1] as usize;
+        let i2 = all_indices[i + 2] as usize;
+        if i0 >= vertex_count || i1 >= vertex_count || i2 >= vertex_count { continue; }
+        if i0 == i1 || i1 == i2 || i0 == i2 { continue; }
+        tri_indices.extend_from_slice(&[i0 as u32, i1 as u32, i2 as u32]);
+    }
+
+    if tri_indices.is_empty() { return None; }
 
     let mut mesh = Mesh::new(
         bevy::mesh::PrimitiveTopology::TriangleList,

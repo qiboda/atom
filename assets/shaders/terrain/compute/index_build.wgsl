@@ -59,39 +59,21 @@ fn get_vertex_index(vx: u32, vy: u32, vz: u32) -> u32 {
 // ── quad voxels ──
 // 返回共享该 edge 的 4 个体素坐标（以 edge 起始 corner 为基准）
 
-fn quad_voxels(axis: u32, cx: i32, cy: i32, cz: i32) -> array<vec4<i32>, 4> {
+// 与 Phase 2 完全一致的 quad_voxels（u32 入参，vec3 输出）
+fn quad_voxels(axis: u32, cx: u32, cy: u32, cz: u32) -> array<vec3<i32>, 4> {
+    let x = i32(cx); let y = i32(cy); let z = i32(cz);
     if axis == 0u {
-        // X-edge: 4 voxels share the X-direction edge
-        return array(
-            vec4(cx, cy-1, cz-1, 1),
-            vec4(cx, cy,   cz-1, 1),
-            vec4(cx, cy,   cz,   1),
-            vec4(cx, cy-1, cz,   1),
-        );
+        return array(vec3(x, y-1, z-1), vec3(x, y, z-1), vec3(x, y, z), vec3(x, y-1, z));
     } else if axis == 1u {
-        // Y-edge
-        return array(
-            vec4(cx-1, cy, cz-1, 1),
-            vec4(cx,   cy, cz-1, 1),
-            vec4(cx,   cy, cz,   1),
-            vec4(cx-1, cy, cz,   1),
-        );
+        return array(vec3(x-1, y, z-1), vec3(x, y, z-1), vec3(x, y, z), vec3(x-1, y, z));
     } else {
-        // Z-edge
-        return array(
-            vec4(cx-1, cy-1, cz, 1),
-            vec4(cx,   cy-1, cz, 1),
-            vec4(cx,   cy,   cz, 1),
-            vec4(cx-1, cy,   cz, 1),
-        );
+        return array(vec3(x-1, y-1, z), vec3(x, y-1, z), vec3(x, y, z), vec3(x-1, y, z));
     }
 }
 
 @compute @workgroup_size(8, 8, 8)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let gs = info.grid_size;
-    if gid.x >= gs || gid.y >= gs || gid.z >= gs { return; }
-
     if gid.x >= gs || gid.y >= gs || gid.z >= gs { return; }
 
     let voxel_idx = gid.x + gid.y * gs + gid.z * gs * gs;
@@ -110,11 +92,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let edge_id = voxel_idx * 12u + e;
         if !has_cross(edge_id) { continue; }
 
-        // 以 edge 起始 corner 为基准计算 4 个 quad voxels
-        let qv = quad_voxels(axis, i32(cx), i32(cy), i32(cz));
+        // 以 edge 起始 corner 为基准计算 4 个 quad voxels（u32 入参，同 Phase 2）
+        let qv = quad_voxels(axis, cx, cy, cz);
 
-        // 查询 4 个 voxel 的 vertex index
-        var vidx: array<u32, 4>;
+        // 查询 4 个 voxel 是否有顶点，使用 fixed slot 索引（同 Phase 2）
+        var fixed_slots: array<u32, 4>;
         var all = true;
         for (var i = 0u; i < 4u; i++) {
             let qx = u32(qv[i].x);
@@ -124,9 +106,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             // 边界检查: quad voxel 超出 grid → 跳过此 quad
             if qx >= gs || qy >= gs || qz >= gs { all = false; break; }
 
-            let vi = voxel_alloc[qx + qy * gs + qz * gs * gs];
-            if vi == ~0u { all = false; break; }
-            vidx[i] = vi;
+            // 用 fixed slot index（同 Phase 2），CPU 端通过 voxel_alloc remap
+            let slot = qx + qy * gs + qz * gs * gs;
+            if voxel_alloc[slot] == ~0u { all = false; break; }
+            fixed_slots[i] = slot;
         }
         if !all { continue; }
 
@@ -135,11 +118,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
         // winding: 默认 face_n = (+X, -Y, +Z) → 翻转后 = (-X, +Y, -Z)
         // 对 heightfield (Y 朝上) Y 轴必需翻转。全部翻转（同 Phase 2）。
-        indices[base + 0u] = vidx[0];
-        indices[base + 1u] = vidx[2];
-        indices[base + 2u] = vidx[1];
-        indices[base + 3u] = vidx[0];
-        indices[base + 4u] = vidx[3];
-        indices[base + 5u] = vidx[2];
+        indices[base + 0u] = fixed_slots[0];
+        indices[base + 1u] = fixed_slots[2];
+        indices[base + 2u] = fixed_slots[1];
+        indices[base + 3u] = fixed_slots[0];
+        indices[base + 4u] = fixed_slots[3];
+        indices[base + 5u] = fixed_slots[2];
     }
 }
