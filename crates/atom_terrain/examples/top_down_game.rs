@@ -6,7 +6,7 @@
 //! 启动后控制：
 //! - WASD: 移动玩家（蓝色球体）
 //! - F1: 切换地形线框模式
-//! - F2: 截取当前帧到 screenshots/ 目录
+//! - F4: 截取当前帧到 screenshots/ 目录
 //!
 //! 远程访问：
 //! ```bash
@@ -50,7 +50,7 @@ fn main() {
         mut commands: Commands,
         input: Res<ButtonInput<KeyCode>>,
     ) {
-        if input.just_pressed(KeyCode::F2) {
+        if input.just_pressed(KeyCode::F4) {
             let stamp = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()

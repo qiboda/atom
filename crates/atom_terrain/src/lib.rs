@@ -24,6 +24,7 @@ pub mod setting;
 pub mod render;
 /// 屏幕空间坐标轴指示器
 pub mod axis_gizmo;
+pub mod screenshot;
 use bevy::pbr::wireframe::WireframePlugin;
 use bevy::prelude::*;
 
@@ -88,6 +89,10 @@ impl Plugin for TerrainPlugin {
         app.add_plugins(WireframePlugin {
             debug_flags: Default::default(),
         });
+
+        // ── 远程截图触发（Agent via BRP）──
+        app.register_type::<screenshot::TakeScreenshot>();
+        app.add_systems(Update, screenshot::screenshot_trigger_system);
 
         // ── GPU compute 管线 ──
         app.add_plugins(TerrainChunkMeshComputePlugin);
