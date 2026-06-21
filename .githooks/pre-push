@@ -5,11 +5,12 @@
 
 set -e
 
-echo "=== pre-push: cargo check --workspace ==="
+echo "=== pre-push: cargo check (workspace) ==="
 cargo check --workspace 2>&1
-
+echo "=== pre-push: cargo check (atom_terrain, -Dwarnings) ==="
+cargo check -p atom_terrain -- -D warnings 2>&1
 echo "=== pre-push: cargo clippy --workspace ==="
-cargo clippy --workspace -- -A dead_code 2>&1
+cargo clippy --workspace -- -A dead_code -D warnings 2>&1
 
 
 echo "=== pre-push: cargo doc --no-deps ==="

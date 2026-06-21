@@ -7,7 +7,6 @@ set -e
 
 echo "=== pre-commit: cargo check --workspace ==="
 cargo check --workspace 2>&1
-
 echo "=== pre-commit: cargo doc --no-deps ==="
 RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain 2>&1
 
