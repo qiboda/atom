@@ -14,6 +14,18 @@
 
 **注释用中文。** Rust 代码的 doc comment 和 Shader 注释混合中英文，非平凡逻辑用中文解释原因。公共 API 强制 `#[deny(missing_docs)]` + `///` rust-doc（RFC 1574: Summary/Examples/Panics/Safety）。文档描述当前实现行为，spec 定义验收标准——两者互补不冲突。
 
+## TypeScript 规范（Agent Sidecar）
+
+**运行时 tsx。** Agent sidecar 使用 `npx tsx` 零配置执行 `.ts` 文件。ESM 模块（`"type": "module"`），零运行时 npm 依赖。
+
+**严格类型。** `strict: true`，所有函数显式标注返回类型。BRP 返回值 `unknown` → 类型守卫收窄。
+
+**错误不吞。** BRP 调用 `try/catch` 包裹，异常至少 `console.error`。`brp()` helper 自动 throw on JSON-RPC error。
+
+**BRP 先行验。** `world.spawn_entity` 无法创建 asset handle，需 Bevy 侧 decorate 系统补 mesh/material。改 Agent 前先确认目标组件是否支持 BRP 序列化（`#[reflect(Component)]`）。
+
+**轮询非实时。** 2s 轮询间隔，适合策略/逻辑层，不适合战斗帧同步。
+
 
 ## Habit: Log Before Fixing
 遭遇架构不一致、工具链问题、或流程阻碍时，**先记录到 `.omp/TENSIONS.md` 对应分类下**，再处理。不跳过信号采集直接修复。

@@ -1,0 +1,12 @@
+{
+  "name": "atom-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "tsx": "^4.0.0"
+  }
+}

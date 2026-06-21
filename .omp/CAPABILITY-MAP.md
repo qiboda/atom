@@ -1,12 +1,13 @@
 # Capability Map — Atom 项目
 
-## ✅ 现在能做的
 
+## ✅ 现在能做的
 - Rust 代码编写与重构（当前仅 atom_terrain，其余 11 个 crate 待迁入 Bevy 0.19）
 - WGSL compute/render shader 编写
 - Bevy ECS 系统、状态机、SystemParam 实现
 - GPU buffer 管理（直接 wgpu，atom_render 待迁回）
 - 数据表配置（atom_datatables / Luban 生成代码 — 待迁回）
+- Agent sidecar（TypeScript/BRP）：远程查询 ECS、spawn 实体
 - 项目构建、Clippy、测试
 - 文件结构导航和代码搜索
 

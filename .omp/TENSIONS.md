@@ -55,3 +55,9 @@
 - **2026-06-20**: `atom_pqef` crate（Rust + WGSL）已有正确的概率 quadric 实现，但 `atom_terrain` 的 terrain shader (`qef_solve.wgsl`, `main_mesh_compute_vertices.wgsl`) 使用独立 inline 实现 — 同一算法两套代码，存在 divergence 风险。已记录分歧原因（性能/复杂度）在 `qef.spec`。
 
 - **2026-06-20**: 回顾发现 `edge_detect.wgsl` 的 `round()` bug 从 Phase 0 存在、多人审阅未发现。根因: 数学密集型函数缺乏 spec 对参。已创建 `.omp/specs/math/` 目录 + `density-sampling.spec` + `qef.spec`。
+
+## 2026-06-21: Agent Sidecar 验收发现
+
+- **2026-06-21**: [agent] `top_down_game.rs` 缺少 `app.run()` — `main()` 构建 App 后直接退出，从未进入游戏循环。exit code 0 无 crash log，难以排查。
+- **2026-06-21**: [agent] `cleanup_agent` 注册在 `Last` schedule 每帧运行 — 首帧即 kill agent 进程。修复：改用 `Drop` trait 实现 App 退出时自动清理。
+- **2026-06-21**: [agent] BRP `world.spawn_entity` 无法创建 asset handle（Mesh/Material）— NPC 只有 `Transform`，不可见。修复：Agent spawn 时附带 `Name("NPC")`，Bevy 侧 `decorate_agent_entities` 系统自动补 cube mesh + 红色 material。

@@ -19,6 +19,25 @@
   - - WGSL shader 调试困难（无断点），compute dispatch 需手动验证
 
 > 以下所有子系统的设计（GPU compute pipeline、buffer 管理、数据表系统、技能图）均继承自有代码。不做追溯 ADR——从我们的介入点 forward。
+
+### Agent Sidecar: TypeScript + BRP 远程控制
+
+- **日期**: 2026-06-21
+- **状态**: accepted
+- **决策**: 使用 TypeScript sidecar 进程 + Bevy Remote Protocol (BRP) 实现游戏逻辑的外部脚本化。Agent 通过 HTTP JSON-RPC 与 Bevy 通信（`world.query`、`world.spawn_entity`），在主循环中轮询玩家位置并触发 NPC 生成。
+- **背景**: 需要将游戏逻辑从 Rust 编译时分离，支持热更新和快速迭代。Rust 编译慢（release ~2min），脚本层修改秒级生效。
+- **选项**:
+  - 方案 A (selected): TypeScript sidecar + BRP — 独立进程，HTTP JSON-RPC 通信，零编译开销，TypeScript 生态成熟
+  - 方案 B: Rust 脚本（rhai/mlua）— 嵌入引擎内，减少通信延迟，但脚本 API 需手动绑定，生态弱
+  - 方案 C: WASM 组件模型 — 跨语言沙箱，但 Bevy 无原生 WASM host 支持，接入成本高
+- **后果**:
+  - + TypeScript 修改秒级生效，无需重新编译 Rust
+  - + BRP 自动暴露所有 `#[reflect(Component)]` 组件，零绑定代码
+  - + Agent 进程独立，崩溃不影响引擎
+  - - HTTP 轮询延迟 ≥2s，不适合实时战斗
+  - - BRP `world.spawn_entity` 无法创建 asset handle（Mesh/Material），需 Bevy 侧系统补全可视组件
+  - - Agent 进程需 Bevy 管理生命周期（spawn/kill）
+- **关联**: `agent/src/index.ts`, `crates/atom_terrain/examples/top_down_game.rs`
 ---
 
 ## ADR 模板
