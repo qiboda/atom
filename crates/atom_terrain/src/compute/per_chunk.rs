@@ -118,7 +118,7 @@ pub fn init_per_chunk_compute(
 
     for i in 0..MAX_SLOTS {
         let tag = format!("pc{i}");
-        let uniform = make_buf(&render_device, &format!("{tag}_uniform"), 32,
+        let uniform = make_buf(&render_device, &format!("{tag}_uniform"), 64,
             BufferUsages::UNIFORM | BufferUsages::COPY_DST);
         let sdf = make_buf(&render_device, &format!("{tag}_sdf"), sdf_sz, BufferUsages::STORAGE);
         let cross = make_buf(&render_device, &format!("{tag}_cross"), cross_sz, BufferUsages::STORAGE);

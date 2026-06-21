@@ -120,12 +120,15 @@ impl Plugin for PerChunkTerrainPlugin {
         app.init_resource::<ChunkLoadRequest>();
         app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<TerrainObserver>::default());
         app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<ChunkManager>::default());
+        app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<ChunkLoadRequest>::default());
 
         // 主世界每帧更新 observer + chunk 加载决策
         app.add_systems(Update, (update_observer_from_camera, chunk_management_system));
 
         // ── 渲染世界：compute ──
         let render_app = app.sub_app_mut(RenderApp);
+        // ChunkManager 会被 ExtractResourcePlugin 每帧覆盖
+        render_app.insert_resource(ChunkManager::new(64.0, -32.0, 32.0));
         render_app.init_resource::<ChunkLoadRequest>();
         render_app.add_systems(RenderStartup, init_per_chunk_compute);
         render_app.add_systems(Render, (
@@ -133,7 +136,6 @@ impl Plugin for PerChunkTerrainPlugin {
             per_chunk_compute_system,
             advance_chunk_states,
         ).chain());
-
         // ── per-chunk 渲染 ──
         app.add_plugins(render::PerChunkRenderPlugin);
     }

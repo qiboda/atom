@@ -58,7 +58,7 @@ pub enum ChunkState {
 }
 
 /// 加载/卸载请求（主世界 → 渲染世界通信）
-#[derive(Default, Resource)]
+#[derive(Resource, ExtractResource, Clone, Default)]
 pub struct ChunkLoadRequest {
     /// 待加载的 chunk 列表
     pub to_load: Vec<ChunkId>,
@@ -147,9 +147,8 @@ impl ChunkManager {
                 }
                 for dy in y_start..=y_end {
                     let cid = ChunkId::new(center.x + dx, dy, center.z + dz);
-                    if Self::chunk_has_surface(cid.world_min(), 33, self.voxel_size) {
-                        self.wanted.insert(cid);
-                    }
+                    // 先全部加载，不做表面过滤（精度不够会漏掉有效 chunk）
+                    self.wanted.insert(cid);
                 }
             }
         }
