@@ -7,10 +7,9 @@
   ;; ── 不变式 ──
   (invariants
     "每个 phase 完成前不可跳转；阻塞时显式声明缺失信息及已尝试路径"
-    "快速任务(typo/import整理)可豁免 understand→design→document，但仍需 implement→verify→review"
+    "快速任务(typo/import/纯重构)可豁免 understand→design→document，但仍需 implement→verify→review"
     "所有公共 API 强制 #[deny(missing_docs)] + rust-doc RFC 1574"
     "不引入第二种惯例做同一件事；复用现有模式"
-    "诊断 protocol: 症状描述 → 量化(录屏/截帧/计数) → 隔离变量 → 下结论。禁止凭症状描述直接改代码。")
   ;; ── 已发生的流程违规 ──
   (anti-patterns
     (implement-sprawl

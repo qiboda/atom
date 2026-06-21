@@ -42,8 +42,6 @@
 | ECS 系统 | 集成测试 (headless App) | `bevy::app::App` 无窗口 |
 | GPU compute / Shader | 手动验证 | example + 肉眼 + 记入 TENSIONS.md |
 
-流程：**spec → Completion Criteria → 可自动化？→ (Y) 先测试 (red) 后实现 (green) / (N) 实现后跑 example**。
-
 测试只测行为不测 plumbing——不测默认值、不测内部中间状态。断言逻辑行为而非当前值。
 
 ## Spec Lifecycle
