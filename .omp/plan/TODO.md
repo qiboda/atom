@@ -4,8 +4,7 @@
 
 ## 阶段 A：管线收尾
 
-- [ ] **合并 GPU indirect draw** — `.worktrees/feature/gpu-indirect-draw` 编译通过，审查后合并
-- [ ] **验证 readback → mesh 渲染无 regress** — `chunk_loader` example 启动确认
+- [x] **合并 GPU indirect draw** — `.worktrees/feature/gpu-indirect-draw` 审查后合并
 - [ ] **消除 bevy_ui_widgets 编译警告** — 等 Bevy 升级后消掉
 
 ## 阶段 B：Agent 集成
