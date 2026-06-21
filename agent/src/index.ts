@@ -2,6 +2,11 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/// 直接 stdout.write，绕过 Node.js 的管道缓冲。
+function log(...args: unknown[]) {
+  process.stdout.write(args.map(String).join(' ') + '\n');
+}
+
 // ── Config ──
 
 interface Config {
@@ -17,18 +22,15 @@ interface Config {
 
 function loadConfig(): Config {
   const dir = dirname(fileURLToPath(import.meta.url));
-  // 优先读 config.json（用户实际配置，已 gitignore）
   const configPath = resolve(dir, '../config.json');
   if (existsSync(configPath)) {
     return JSON.parse(readFileSync(configPath, 'utf-8')) as Config;
   }
-  // 没有则读模板文件
   const examplePath = resolve(dir, '../config.example.json');
   if (existsSync(examplePath)) {
-    console.warn('[agent] config.json not found, using config.example.json — copy it to config.json and add your API key');
+    log('[agent] config.json not found, using config.example.json — copy to config.json and add your API key');
     return JSON.parse(readFileSync(examplePath, 'utf-8')) as Config;
   }
-  // 纯 fallback
   return {
     brp: { url: 'http://127.0.0.1:15702' },
     ollama: { url: 'http://127.0.0.1:11434', model: 'qwen3:4b' },
@@ -148,7 +150,7 @@ async function runFactExtraction(): Promise<void> {
   for (const summary of extracted) {
     if (!facts.some(f => f.summary === summary)) {
       facts.push({ summary, time: now });
-      console.log('[agent] Fact:', summary);
+      log('[agent] Fact:', summary);
     }
   }
 
@@ -225,10 +227,11 @@ async function waitForBevy(maxRetries = 30): Promise<void> {
 // ── Main loop ──
 
 async function main(): Promise<void> {
-  console.log('[agent] Starting...');
-  console.log('[agent] Local model:', LOCAL_MODEL, `(${OLLAMA_URL})`);
-  console.log('[agent] DeepSeek:', DEEPSEEK_API_KEY ? 'configured' : 'fallback only');
+  log('[agent] Starting...');
+  log('[agent] Local model:', LOCAL_MODEL, `(${OLLAMA_URL})`);
+  log('[agent] DeepSeek:', DEEPSEEK_API_KEY ? 'configured' : 'fallback only');
   await waitForBevy();
+  log('[agent] Connected to Bevy, loop started');
 
   while (true) {
     const pos = await getPlayerPosition();
@@ -241,7 +244,7 @@ async function main(): Promise<void> {
       for (const f of facts.slice(-15)) lines.push(`- ${f.summary}`);
 
       const action = await callDeepSeek(lines.join('\n'));
-      console.log('[agent] DeepSeek:', JSON.stringify(action));
+      log('[agent] DeepSeek:', JSON.stringify(action));
 
       if (action.action === 'spawn_npc' && !npcSpawned && action.npc) {
         try {
@@ -253,8 +256,8 @@ async function main(): Promise<void> {
               },
             },
           });
-          console.log('[agent] NPC spawned:', action.npc.name);
-        } catch (e) { console.error('[agent] spawn failed:', e); }
+          log('[agent] NPC spawned:', action.npc.name);
+        } catch (e) { log('[error] spawn failed:', e); }
         npcSpawned = true;
       }
     }
@@ -265,4 +268,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(console.error);
+main().catch(e => log('[error] agent crashed:', e));
