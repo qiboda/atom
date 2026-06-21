@@ -1,3 +1,5 @@
+pub mod chunk;
+pub mod per_chunk;
 pub mod global_compute;
 pub mod global_pool;
 pub mod gpu;

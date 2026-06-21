@@ -13,7 +13,12 @@
 - [ ] **Agent 输入/交互** — 按键打开输入框召唤 agent
 - [ ] **丰富游戏事件** — 把更多游戏事件 push 到 agent（item pickup、NPC 交互等）
 
-## 阶段 C：游戏内容
+## 阶段 C：开放世界地形重构
+
+- [ ] **全局 → 32³ per-chunk** — 从单个 global grid 改为多 chunk 独立加载/卸载，支持开放世界
+- [ ] **chunk 过渡/LOD** — chunk 间边界和平滑过渡，待上一项完成后评估方案
+
+## 阶段 D：游戏内容
 
 - [ ] NPC 交互基础（对话、交易）
 - [ ] 物品系统（拾取、背包）
@@ -23,11 +28,10 @@
 - [ ] 技能系统与地形交互
 - [ ] CSG 洞穴/构造物生成
 
-## 阶段 D：工程
+## 阶段 E：工程
 
 - [ ] 分支模型约定（feature/fix/hotfix 前缀、PR merge 策略）
 - [ ] CI 冒烟测试（截图 diff）
-- [ ] GPU indirect draw 最终确认（移除 `do_readback` → `build_global_mesh` 路径）
 
 ---
 
