@@ -22,8 +22,8 @@ else
     echo "WARN: bevy_lint not installed, skipping"
 fi
 echo "=== pre-commit: agent-spec lifecycle ==="
-if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d .claude/specs ]; then
-    for spec in .claude/specs/*.spec; do
+if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d .omp/specs ]; then
+    for spec in .omp/specs/*.spec; do
         echo "  lifecycle: $spec"
         "$HOME/.cargo/bin/agent-spec" lifecycle "$spec" --code . 2>&1 | python3 -c "
 import sys, json
@@ -38,8 +38,8 @@ else
     echo "WARN: agent-spec not available, skipping lifecycle check"
 fi
 echo "=== pre-commit: agent-spec guard ==="
-if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d .claude/specs ]; then
-    "$HOME/.cargo/bin/agent-spec" guard --spec-dir .claude/specs --code . --change-scope staged 2>&1 || echo "WARN: spec guard issues (non-blocking)"
+if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d .omp/specs ]; then
+    "$HOME/.cargo/bin/agent-spec" guard --spec-dir .omp/specs --code . --change-scope staged 2>&1 || echo "WARN: spec guard issues (non-blocking)"
 fi
 
 echo "=== pre-commit: OK ==="

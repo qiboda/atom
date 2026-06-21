@@ -27,7 +27,7 @@ Exit: 可见绿色地形 mesh。✅ GPU readback 完成，mesh 通过 crossbeam 
 
 ## Phase 2 — 多 chunk 动态加载 ✅
 
-> Spec: `.claude/specs/terrain-shape.spec`
+> Spec: `.omp/specs/terrain-shape.spec`
 
 - [x] 2.1 `TerrainObserver` + `update_grid_chunks` 功能验证
 - [x] 2.2 多 chunk 同时 compute（buffer pool 复用）

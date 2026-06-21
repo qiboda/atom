@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+
+# 构建检查流程
+
+## 门禁顺序
+
+```
+cargo check --workspace    # 先确保编译通过
+cargo clippy --workspace   # 再检查代码质量
+cargo test --workspace     # 最后跑测试
+```
+
+## 何时运行
+
+- 任何 Rust 代码变更后 → `cargo check --workspace`
+- 触及公共 API 或新增文件 → 上述全流程
+- 修改 Shader（`.wgsl`）→ 提示用户实际运行验证（编译通过 ≠ 渲染正确）
+
+## 失败处理
+
+- Check 失败 → 读错误，修复，重试
+- 连续 ≥3 轮编译失败 → 回退 design 重审方案
+- Clippy 警告 → 按项目 clippy 配置处理；`unwrap_used` 必须修复
+- 测试失败 → 分析根因，修复逻辑。绝不压制测试来让代码通过

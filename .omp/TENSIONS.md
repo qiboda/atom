@@ -34,7 +34,7 @@
 ## 流程
 
 - **2026-06-20**: intent.lisp、APPEND_SYSTEM.md 全量过时。手工维护的元文档总是落后于代码修改。待方案：自动生成 intent.lisp，APPEND_SYSTEM.md 改为指针索引。
-- **2026-06-20**: 旧 specs/lod.spec 已删，specs/terrain-shape.spec 和 specs/terrain-material.spec 重写为 MVP 现状。specs/ → .claude/specs/，.plan/ → .claude/plan/。
+- **2026-06-20**: 旧 specs/lod.spec 已删，specs/terrain-shape.spec 和 specs/terrain-material.spec 重写为 MVP 现状。specs/ → .omp/specs/，.plan/ → .omp/plan/。
 - **2026-06-20**: Workspace 仅保留 atom_terrain。其他 11 个 crate 暂时移出，待逐步迁入 Bevy 0.19。
 - **2026-06-20**: Workflow 加 document phase + bevy-kb 更新 + verify-references 检查。Phase-Gate Protocol 防止阶段跳过。
 
@@ -54,4 +54,4 @@
 - **2026-06-20**: `edge_detect.wgsl` 密度采样用 `round()` 最近邻 — 将连续密度场量化为阶梯函数，二分搜索收敛到体素边界而非真实 isosurface。根因修复：替换为三线性插值 `trilinear_sample()`。
 - **2026-06-20**: `atom_pqef` crate（Rust + WGSL）已有正确的概率 quadric 实现，但 `atom_terrain` 的 terrain shader (`qef_solve.wgsl`, `main_mesh_compute_vertices.wgsl`) 使用独立 inline 实现 — 同一算法两套代码，存在 divergence 风险。已记录分歧原因（性能/复杂度）在 `qef.spec`。
 
-- **2026-06-20**: 回顾发现 `edge_detect.wgsl` 的 `round()` bug 从 Phase 0 存在、多人审阅未发现。根因: 数学密集型函数缺乏 spec 对参。已创建 `.claude/specs/math/` 目录 + `density-sampling.spec` + `qef.spec`。
+- **2026-06-20**: 回顾发现 `edge_detect.wgsl` 的 `round()` bug 从 Phase 0 存在、多人审阅未发现。根因: 数学密集型函数缺乏 spec 对参。已创建 `.omp/specs/math/` 目录 + `density-sampling.spec` + `qef.spec`。

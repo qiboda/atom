@@ -9,7 +9,7 @@
 - 更新 workflow.lisp：加 Phase-Gate Protocol、document phase、anti-patterns
 - 强制 `#[deny(missing_docs)]` + 全量 rust-doc (RFC 1574)
 - Spec 文件重写为 MVP 现状，LOD spec 删除
-- 合并 `.plan/` 和 `specs/` 到 `.claude/plan/` 和 `.claude/specs/`
+- 合并 `.plan/` 和 `specs/` 到 `.omp/plan/` 和 `.omp/specs/`
 
 ## 2026-06-20 — mesh 形状稳定化
 
@@ -17,7 +17,7 @@
 - **修复 1**: `grid_idx_from_world` → `trilinear_sample()` 三线性插值（全局 + per-chunk 两个 shader）
 - **修复 2**: QEF 求解加 Probabilistic Quadrics 正则化 `A += ncross·σ²I`, `b += σ²·Σp`（全局 + per-chunk 两个 shader）
 - **修复 3**: grid_min world-aligned（对齐 grid_size*voxel_size=25m 边界），不再跟 observer 0.5m 移动
-- **附带**: `.omo/` work plan 整合进 `.claude/plan/completed/`
+- **附带**: `.omo/` work plan 整合进 `.omp/plan/completed/`
 - **验证**: `cargo check` / `cargo clippy` / `cargo test` 全绿，runtime smoke test 通过 (3450 verts, 6664 tris)
 - **Handoff**: 已合并到 `main`；下一步考虑 terrain shader 直接 `#import quadric` 消除 atom_pqef 重复实现
 
@@ -38,7 +38,7 @@
 - 用户一句"qef里应该有引用原始论文的标题" + "看看这个"（概率 quadric 论文）比十轮代码阅读更快定位根因。**外部知识引用链比代码内 grep 更有效**。
 
 ### Improvements (actionable)
-1. **数学函数 spec**: 对 `grid_idx_from_world`/`trilinear_sample`/估计法线/QEF 求解等数学密集型函数，写 mini-spec：输入空间、输出精度、可接受近似误差、边界行为。存在 `.claude/specs/math/` 下。
+1. **数学函数 spec**: 对 `grid_idx_from_world`/`trilinear_sample`/估计法线/QEF 求解等数学密集型函数，写 mini-spec：输入空间、输出精度、可接受近似误差、边界行为。存在 `.omp/specs/math/` 下。
 2. **shader 对照 review**: 新增 shader 时，MUST grep 是否存在同一算法的其他实现（Rust/WGSL/旧 shader），存在则要么统一到一处，要么显式记录 diverged reason。
 3. **诊断 protocol**: 对"看起来像 X"的症状描述 → 先量化（录屏/截帧/count 变化频率） → 再隔离变量（关 wireframe / 改 noise / 固定 camera） → 最后下结论。写入 workflow 不变式。
 4. **edit 工具纪律**: 每次 edit 必须用上一步返回的 `#TAG`，不得跨 edit 复用旧 tag；连续 edit ≥3 步时中间插入 `read` 确认状态。
@@ -46,7 +46,7 @@
 
 ## 2026-06-19 — 工作流初始化
 
-- 创建 `.claude/`：CLAUDE.md, AGENTS.md, APPEND_SYSTEM.md, SOUL.md, CAPABILITY-MAP.md
+- 创建 `.omp/`：CLAUDE.md, AGENTS.md, APPEND_SYSTEM.md, SOUL.md, CAPABILITY-MAP.md
 - 创建 `specs/`：vision, terrain-shape, terrain-material, lod
 - 创建 `.plan/`：PLAN, MEMORY, DRIFT, SESSION-LOG
 - 初始化 TENSIONS.md

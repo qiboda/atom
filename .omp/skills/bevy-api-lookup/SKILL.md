@@ -20,7 +20,7 @@ description: |
 ### 1. 查 migration-index（3 秒）
 
 ```bash
-grep -i "<关键词>" .claude/bevy-kb/migration-index.md
+grep -i "<关键词>" .omp/bevy-kb/migration-index.md
 ```
 
 `migration-index.md` 是按主题组织的 0.18→0.19 变更速查表。命中 → 读取对应行拿到答案。
@@ -28,7 +28,7 @@ grep -i "<关键词>" .claude/bevy-kb/migration-index.md
 ### 2. 查 patterns（10 秒）
 
 ```bash
-grep -i "<关键词>" .claude/bevy-kb/0-19/patterns.md
+grep -i "<关键词>" .omp/bevy-kb/0-19/patterns.md
 ```
 
 `patterns.md` 是已验证的可编译代码模式。命中 → 直接复用代码片段。
@@ -54,7 +54,7 @@ find /data/codes/Bevy/examples -name "*.rs" | xargs grep -l "$KEYWORD"
 ### 5. 查 release-notes
 
 ```bash
-grep -i "<关键词>" .claude/bevy-kb/0-19/release-notes.md
+grep -i "<关键词>" .omp/bevy-kb/0-19/release-notes.md
 ```
 
 ## 常见问题速查

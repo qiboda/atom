@@ -6,7 +6,7 @@
 ## 结构
 
 ```
-.claude/bevy-kb/
+.omp/bevy-kb/
   README.md              — 本文件
   migration-index.md     — 快速查表: "X 变了 → 改成 Y"
   0-19/

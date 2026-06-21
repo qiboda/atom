@@ -1,20 +1,21 @@
 ---
 name: claude-maintainer
 description: |
-  CRITICAL: Use when adding, moving, or reorganizing files under .claude/.
+  CRITICAL: Use when adding, moving, or reorganizing files under .omp/.
   Triggers on:
-  claude setup, .claude management, agent config, context maintenance,
-  add to claude, move claude, reorganize claude, claude directory,
+  omp setup, .omp management, agent config, context maintenance,
+  add to omp, move omp, reorganize omp, omp directory,
+  claude setup, .claude management,
   knowledge base, skill definition, spec, plan, workflow,
-  "维护 claude", "加 skill", "放哪里", "怎么分类",
+  "维护 omp", "维护 claude", "加 skill", "放哪里", "怎么分类",
   KB vs skill, 知识库 vs 技能, 分类规则
 ---
 
-# Claude Maintainer
+# OMP Maintainer
 
 > **Version:** 0.1.0 | **Last Updated:** 2026-06-21
 
-你是 `.claude/` 目录的维护者。新增/移动/整理任何文件前，必须先按以下规则分类。
+你是 `.omp/` 目录的维护者。新增/移动/整理任何文件前，必须先按以下规则分类。
 
 ## 核心分类
 
@@ -37,9 +38,9 @@ description: |
 ## 目录职责
 
 ```
-.claude/
-├── CLAUDE.md              META   项目总上下文 + 编码约定 + 文档索引
-├── AGENTS.md              META   操作协议（Task List 模板）+ 缺口检测
+.omp/
+├── AGENTS.md              META   项目上下文 + 文档索引 + 工作流协议（OMP 自动加载）
+├── APPEND_SYSTEM.md       META   编码铁律（OMP 自动注入 system prompt）
 ├── SOUL.md                META   Agent 行为规范 + 边界 + spec 生命周期
 ├── workflow.lisp          META   不变式 + 反模式 + 质量门 + reflect 协议
 ├── ARCHITECTURE.md         KB    架构决策记录 (ADR)
@@ -80,9 +81,8 @@ description: |
 │   ├── vision.md               项目方向
 │   └── completed/              已完成工作
 │
-├── rules/                 META   Cursor/enforced 规则
-│   ├── build-check.mdc
-│   └── code-style.mdc
+├── rules/                 META   OMP 结构化规则（alwaysApply/globs/condition）
+│   └── build-check.mdc         构建检查流程
 │
 ├── commands/              CONFIG 快捷命令
 │   ├── check.md
@@ -106,8 +106,9 @@ description: |
 │       └─ 是项目方向？ → plan/vision.md
 ├─ 是 spec 合同？
 │   └─ → specs/
-├─ 是规则/约束？
-│   └─ → rules/ 或根目录（CLAUDE/SOUL/AGENTS/workflow）
+├─ 是编码规则/约束？
+│   ├─ 简洁铁律（永远适用）→ APPEND_SYSTEM.md
+│   └─ 结构化规则（globs/condition）→ rules/
 └─ 是会话记录？
     └─ → plan/
 ```
@@ -117,16 +118,16 @@ description: |
 | 反模式 | 为何错误 | 正确做法 |
 |--------|---------|---------|
 | 把参考文档写成 Skill | 静态信息不可调用，Skill 要有输入→流程→输出 | 放入 `bevy-kb/` |
-| 把流程写成 CLAUDE.md 里的句子 | "遇到不确定先查 migration-index" 是可调用流程 | 写成 skill `bevy-api-lookup` |
+| 把流程写成 AGENTS.md 里的句子 | "遇到不确定先查 migration-index" 是可调用流程 | 写成 skill `bevy-api-lookup` |
 | Skill 里写大量背景知识 | Skill 变"论文"，行为不清晰 | 背景进 KB，Skill 引用 KB |
 | 同概念两处定义 | divergence 风险 | 一个源，别处引用 |
 | 过时文件不删不标 | 误导 agent | 标 `⚠️ OBSOLETE` 或直接删除 |
 
 ## 维护检查清单
 
-每次改动 `.claude/` 后:
+每次改动 `.omp/` 后:
 - [ ] 新文件分类正确？（KB / Skill / META / SPEC / ARTIFACT）
-- [ ] CLAUDE.md 文档索引需要更新？
+- [ ] AGENTS.md 文档索引需要更新？
 - [ ] 无重复定义？
 - [ ] 无过时代码模式引用？
 - [ ] Skill 格式正确？（frontmatter + 可执行步骤 + 输出格式）
@@ -134,5 +135,5 @@ description: |
 ## 引用
 
 - 分类原则: `memory://root/skills/claude-maintainer/SKILL.md`（本文）
-- 已有 skill 格式: `.claude/skills/agent-spec-authoring/SKILL.md`
-- Bevy KB 索引: `.claude/bevy-kb/README.md`
+- 已有 skill 格式: `.omp/skills/agent-spec-authoring/SKILL.md`
+- Bevy KB 索引: `.omp/bevy-kb/README.md`

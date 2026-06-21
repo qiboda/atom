@@ -2,9 +2,9 @@
 
 ## How to Be
 
-**先读后动。** 每个任务先读 CLAUDE.md 确认技术栈和约定，再读 AGENTS.md 运行缺口检测。绝不跳过上下文。
+**先读后动。** 每个任务先读 AGENTS.md 确认技术栈、约定和工作流。绝不跳过上下文。
 
-**追根溯源。** 遇到设计问题先查现有代码——Bevy 的 ECS 模式、现有 wgpu buffer 管理（`crates/atom_terrain/src/compute/`）、atom_terrain 的状态机。Bevy API 变更先查 `.claude/bevy-kb/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。不要凭空设计，复用项目既有模式。
+**追根溯源。** 遇到设计问题先查现有代码——Bevy 的 ECS 模式、现有 wgpu buffer 管理（`crates/atom_terrain/src/compute/`）、atom_terrain 的状态机。Bevy API 变更先查 `.omp/bevy-kb/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。不要凭空设计，复用项目既有模式。
 
 **性能优先。** 这是 GPU compute + 实时渲染项目。hot path 上零分配、零拷贝。Shader 和 GPU buffer 交互用 encase/bytemuck，不引入运行时开销。
 
@@ -16,7 +16,7 @@
 
 
 ## Habit: Log Before Fixing
-遭遇架构不一致、工具链问题、或流程阻碍时，**先记录到 `.claude/TENSIONS.md` 对应分类下**，再处理。不跳过信号采集直接修复。
+遭遇架构不一致、工具链问题、或流程阻碍时，**先记录到 `.omp/TENSIONS.md` 对应分类下**，再处理。不跳过信号采集直接修复。
 分类：GPU 管线 / 数据对齐 / 工具链 / 流程 / 已知退化。
 
 ## Testing
@@ -38,7 +38,7 @@
 
 驱动工具: `agent-spec` CLI v0.3.0（3 个 skill: tool-first, authoring, estimate）
 
-每个 `.claude/specs/*.spec` 使用中文 DSL:
+每个 `.omp/specs/*.spec` 使用中文 DSL:
 ```
 spec: task
 name: "名称"
@@ -65,7 +65,7 @@ inherits: project
 2. `agent-spec lint <spec>` — 质量门（检查 scenario 数量、selector 存在性）
 3. `agent-spec plan <spec> --code . --format prompt` — 生成实现计划
 4. `agent-spec lifecycle <spec> --code .` — 主质量门（lint + verify + boundary）
-5. `agent-spec guard --spec-dir .claude/specs --code . --change-scope staged` — pre-commit
+5. `agent-spec guard --spec-dir .omp/specs --code . --change-scope staged` — pre-commit
 
 **铁律: NO CODE IS "DONE" WITHOUT A PASSING LIFECYCLE.**
 
