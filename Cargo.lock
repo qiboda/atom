@@ -333,6 +333,7 @@ name = "atom_terrain"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_camera",
  "bytemuck",
  "crossbeam",
  "log",

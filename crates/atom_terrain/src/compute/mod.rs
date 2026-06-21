@@ -23,6 +23,7 @@ use gpu::{
     init_compute_pipeline, terrain_compute_system,
 };
 
+use crate::render::IndirectTerrainRenderPlugin;
 /// 地形 chunk 网格的 GPU compute 管线插件 (Phase 2: per-chunk)。
 pub struct TerrainChunkMeshComputePlugin;
 
@@ -53,17 +54,23 @@ impl Plugin for GlobalTerrainMeshPlugin {
         app.add_plugins(ExtractResourcePlugin::<TerrainObserver>::default());
 
         // ── 渲染世界 ──
-        let render_app = app.sub_app_mut(RenderApp);
-        render_app.insert_resource(TerrainSetting::default());
-        render_app.init_resource::<GlobalComputeState>();
-        render_app.init_resource::<GlobalStagingState>();
+        // Scope block to drop render_app borrow before add_plugins below
+        {
+            let render_app = app.sub_app_mut(RenderApp);
+            render_app.insert_resource(TerrainSetting::default());
+            render_app.init_resource::<GlobalComputeState>();
+            render_app.init_resource::<GlobalStagingState>();
 
-        // RenderStartup: 创建 GlobalMeshPool → 初始化 compute pipeline
-        render_app.add_systems(
-            RenderStartup,
-            (init_global_pool, init_global_compute_pipeline).chain(),
-        );
-        render_app.add_systems(Render, global_compute_system);
+            // RenderStartup: 创建 GlobalMeshPool → 初始化 compute pipeline
+            render_app.add_systems(
+                RenderStartup,
+                (init_global_pool, init_global_compute_pipeline).chain(),
+            );
+            render_app.add_systems(Render, global_compute_system);
+        }
+
+        // ── GPU indirect draw render 管线 ──
+        app.add_plugins(IndirectTerrainRenderPlugin);
     }
 }
 

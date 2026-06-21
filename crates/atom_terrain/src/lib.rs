@@ -20,14 +20,18 @@ pub mod mesh;
 pub mod noise;
 /// 地形全局配置
 pub mod setting;
-
+/// GPU indirect draw render pipeline
+pub mod render;
+/// 屏幕空间坐标轴指示器
+pub mod axis_gizmo;
 use bevy::pbr::wireframe::WireframePlugin;
 use bevy::prelude::*;
 
 use chunk::{ChunkLoadMsg, ChunkUnloadMsg, TerrainLoadedChunks};
-use compute::global_compute::TerrainObserver;
 use compute::sync::{TerrainChunkProcessReceiver, TerrainChunkProcessSender};
+use compute::global_compute::TerrainObserver;
 use compute::{GlobalTerrainMeshPlugin, TerrainChunkMeshComputePlugin};
+use axis_gizmo::AxisGizmoPlugin;
 use debug::{TerrainDebugConfig, apply_debug_wireframe, debug_keyboard_toggle};
 use loader::update_grid_chunks;
 use mesh::{
@@ -123,15 +127,10 @@ impl Plugin for GlobalTerrainPlugin {
                 update_observer_from_camera,
                 handle_global_mesh_data,
                 debug_keyboard_toggle,
-                apply_debug_wireframe,
             )
-                .chain(),
         );
 
-        // ── 调试：wireframe 渲染 ──
-        app.add_plugins(WireframePlugin {
-            debug_flags: Default::default(),
-        });
+        app.add_plugins(AxisGizmoPlugin);
 
         // ── 全局 GPU compute 管线 ──
         app.add_plugins(GlobalTerrainMeshPlugin);

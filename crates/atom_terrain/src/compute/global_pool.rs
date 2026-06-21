@@ -92,15 +92,18 @@ impl GlobalMeshPool {
 
         let s = BufferUsages::STORAGE | BufferUsages::COPY_DST;
         let so = BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC;
+        let sv = so | BufferUsages::VERTEX;
+        let si = so | BufferUsages::INDEX;
+        let sid = so | BufferUsages::INDIRECT;
 
         Self {
             sdf: mk("global_sdf", dg * 4, s),
             cross: mk("global_cross", cn * 12 * 32, s),
             voxel_alloc: mk("global_voxel_alloc", cn * 4, so),
-            vertices: mk("global_verts", vertex_cap as u64 * 32, so),
-            indices: mk("global_indices", index_cap as u64 * 4, so),
+            vertices: mk("global_verts", vertex_cap as u64 * 32, sv),
+            indices: mk("global_indices", index_cap as u64 * 4, si),
             counters: mk("global_counters", 16, so),
-            indirect: mk("global_indirect", 24, so),
+            indirect: mk("global_indirect", 24, sid),
             grid_size,
             vertex_capacity: vertex_cap,
             index_capacity: index_cap,

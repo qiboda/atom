@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
+bevy_camera = { path = "/data/codes/Bevy/crates/bevy_camera" }
 tracing = { workspace = true }
 log = { workspace = true }
 bytemuck = { workspace = true }
