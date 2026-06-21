@@ -60,10 +60,8 @@ pub enum ChunkState {
 /// 加载/卸载请求（主世界 → 渲染世界通信）
 #[derive(Resource, ExtractResource, Clone, Default)]
 pub struct ChunkLoadRequest {
-    /// 待加载的 chunk 列表
-    pub to_load: Vec<ChunkId>,
-    /// 待卸载的 chunk 列表
-    pub to_unload: Vec<ChunkId>,
+    /// 主世界计算出的"应当加载"的 chunk 集合
+    pub wanted: std::collections::HashSet<ChunkId>,
 }
 
 /// 管理多 chunk 生命周期（主世界 Resource，Extract 到渲染世界）
@@ -130,7 +128,7 @@ impl ChunkManager {
         false
     }
 
-    /// 根据观察者位置更新 ChunkManager 内状态，填充 ChunkLoadRequest
+    /// 根据观察者位置更新 ChunkManager，填充 wanted 到 ChunkLoadRequest
     pub fn update_for_observer(&mut self, observer: Vec3, req: &mut ChunkLoadRequest) {
         let center = self.world_to_chunk(observer);
         self.wanted.clear();
@@ -147,27 +145,13 @@ impl ChunkManager {
                 }
                 for dy in y_start..=y_end {
                     let cid = ChunkId::new(center.x + dx, dy, center.z + dz);
-                    // 先全部加载，不做表面过滤（精度不够会漏掉有效 chunk）
                     self.wanted.insert(cid);
                 }
             }
         }
 
-        req.to_load.clear();
-        req.to_unload.clear();
-
-        for cid in self.active.keys() {
-            if !self.wanted.contains(cid) {
-                req.to_unload.push(*cid);
-            }
-        }
-
-        for cid in &self.wanted {
-            if !self.active.contains_key(cid) {
-                req.to_load.push(*cid);
-            }
-        }
-
+        req.wanted.clear();
+        req.wanted.extend(self.wanted.iter().copied());
         self.last_observer = observer;
     }
 }

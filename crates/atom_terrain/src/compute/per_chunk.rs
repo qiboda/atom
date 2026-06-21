@@ -95,11 +95,11 @@ pub fn init_per_chunk_compute(
             uniform_buffer::<ChunkUniform>(false),
             storage_buffer::<Vec<f32>>(false),
             storage_buffer::<Vec<u32>>(false),
-            storage_buffer::<Vec<u32>>(true),
-            storage_buffer::<Vec<TerrainChunkVertex>>(true),
-            storage_buffer::<Vec<u32>>(true),
-            storage_buffer::<Vec<u32>>(true),
-            storage_buffer::<Vec<u32>>(true),
+            storage_buffer::<Vec<u32>>(false),
+            storage_buffer::<Vec<TerrainChunkVertex>>(false),
+            storage_buffer::<Vec<u32>>(false),
+            storage_buffer::<Vec<u32>>(false),
+            storage_buffer::<Vec<u32>>(false),
         ),
     );
     let bgl_desc = BindGroupLayoutDescriptor::new("pc_bgl_compute", &entries);
@@ -125,12 +125,13 @@ pub fn init_per_chunk_compute(
         let voxel_alloc = make_buf(&render_device, &format!("{tag}_va"), va_sz,
             BufferUsages::STORAGE | BufferUsages::COPY_SRC);
         let vertices = make_buf(&render_device, &format!("{tag}_vert"), vert_sz,
-            BufferUsages::STORAGE | BufferUsages::COPY_SRC);
+            BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::VERTEX);
         let indices = make_buf(&render_device, &format!("{tag}_idx"), idx_sz,
-            BufferUsages::STORAGE | BufferUsages::COPY_SRC);
+            BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::INDEX);
         let counters = make_buf(&render_device, &format!("{tag}_ctr"), 16,
             BufferUsages::STORAGE | BufferUsages::COPY_SRC);
-        let indirect = make_buf(&render_device, &format!("{tag}_ind"), 24, BufferUsages::STORAGE);
+        let indirect = make_buf(&render_device, &format!("{tag}_ind"), 24,
+            BufferUsages::STORAGE | BufferUsages::INDIRECT);
 
         let lbl = format!("{tag}_bgc");
         let bg_compute = render_device.create_bind_group(lbl.as_str(), &bgl, &[
@@ -239,12 +240,18 @@ pub fn chunk_management_system(
 }
 
 /// Render world: process load/unload requests, allocate/free GPU slots
+/// Render world: process wanted set from main world, load/unload chunks
 pub fn slot_sync_system(
     mut pipeline: ResMut<PerChunkComputePipeline>,
     mut manager: ResMut<ChunkManager>,
-    mut req: ResMut<ChunkLoadRequest>,
+    req: Res<ChunkLoadRequest>,
 ) {
-    for cid in req.to_unload.drain(..) {
+    // 卸载：active 中有但 wanted 中没有的
+    let to_unload: Vec<ChunkId> = manager.active.keys()
+        .filter(|cid| !req.wanted.contains(cid))
+        .copied()
+        .collect();
+    for cid in to_unload {
         if let Some(slot_idx) = manager.active.remove(&cid) {
             if let Some(slot) = &mut pipeline.slots[slot_idx] {
                 slot.chunk_id = None;
@@ -254,13 +261,17 @@ pub fn slot_sync_system(
         }
     }
 
-    for cid in req.to_load.drain(..) {
+    // 加载：wanted 中有但 active 中没有的
+    for cid in req.wanted.iter() {
+        if manager.active.contains_key(cid) {
+            continue;
+        }
         if let Some(slot_idx) = pipeline.free.pop() {
             if let Some(slot) = &mut pipeline.slots[slot_idx] {
-                slot.chunk_id = Some(cid);
+                slot.chunk_id = Some(*cid);
                 slot.pass = 0;
             }
-            manager.active.insert(cid, slot_idx);
+            manager.active.insert(*cid, slot_idx);
         }
     }
 }
