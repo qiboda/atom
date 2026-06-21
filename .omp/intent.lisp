@@ -3,9 +3,9 @@
 ;; 符号级导航 → cargo doc --open
 
 (intent atom
-  (workspace "crates/atom_terrain only; other crates pending 0.19 migration")
+  (workspace "crates/atom_terrain + agent/ (TypeScript sidecar)")
 
-  (data-flow "observer → update_grid_chunks → ChunkLoadMsg → handle_load_requests → TerrainChunksToProcess (ExtractResource) → terrain_compute_system (Render) → crossbeam → handle_mesh_data → Mesh3d"
+  (data-flow "observer → update_grid_chunks → ChunkLoadMsg → handle_load_requests → TerrainChunksToProcess (ExtractResource) → terrain_compute_system (Render) → crossbeam → handle_mesh_data → Mesh3D"
     (sync-mechanism "TerrainChunksToProcess: ExtractResource clones main→render each frame; idempotent allocation check prevents double-init")
     (mesh-readback "GPU sparse vertices (voxel index) → CPU compact + remap → Mesh"))
 
@@ -21,6 +21,16 @@
   (density-field "y - height_at(x,z), positive=air, negative=solid"
     (noise "value noise 3-octave FBM (MVP); replace with OpenSimplex when biome phase begins"))
 
+  (agent-sidecar "TypeScript + BRP remote scripting"
+    (runtime "npx tsx agent/src/index.ts — Bevy spawns as child process")
+    (protocol "Bevy Remote Protocol (BRP) — HTTP JSON-RPC at 127.0.0.1:15702")
+    (lifecycle "start_agent (Startup) spawns → AgentProcess(Child) resource → Drop kills on App exit")
+    (data-flow "Agent → brp('world.query', Player+Transform) → player position → brp('world.spawn_entity') → NPC entity")
+    (npc-visualize "Agent spawns entity with Name('NPC') + Transform only; Bevy decorate_agent_entities system adds Cube mesh + red Material")
+    (constraints
+      (brp-no-handles "world.spawn_entity cannot create Mesh/Material handles → Bevy-side system patches")
+      (poll-delay "2s polling; not real-time → suitable for strategic/logic layer, not combat")))
+
   (constraints
     (no-unwrap "expect(\"reason\") required by clippy")
     (no-async-runtime "std-only futures; Bevy-compatible")
@@ -28,5 +38,6 @@
     (no-touch ".atom.project"))
 
   (build
-    (entry "cargo run -p atom_terrain --example chunk_loader")
+    (entry "cargo run -p atom_terrain --example top_down_game --release")
+    (agent-entry "npx tsx agent/src/index.ts (auto-launched by Bevy)")
     (ci "just ci = check → clippy → bevy_lint → nextest")))

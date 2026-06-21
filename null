@@ -1,7 +1,0 @@
-error: unexpected argument '--ex' found
-
-  tip: a similar argument exists: '--example'
-
-Usage: cargo check --example [<NAME>]
-
-For more information, try '--help'.
