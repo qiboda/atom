@@ -17,12 +17,13 @@ use bevy::{
             RenderPassDescriptor, RenderPipelineDescriptor, ShaderStages, StencilState, StoreOp,
             TextureFormat, VertexAttribute, VertexFormat, VertexState, VertexStepMode,
         },
-        renderer::{RenderContext, RenderDevice, RenderQueue, ViewQuery},
+        renderer::{RenderContext, RenderDevice, RenderQueue, ViewQuery, CurrentView},
         view::{ExtractedView, ViewDepthTexture, ViewTarget},
         RenderApp, RenderStartup,
     },
 };
 
+use crate::axis_gizmo::GizmoCamera;
 use crate::debug::TerrainDebugConfig;
 use crate::compute::{
     global_compute::GlobalComputeState,
@@ -169,12 +170,11 @@ fn init_indirect_terrain_pipeline(
     };
 
     let no_bias = DepthBiasState::default();
-    let wire_bias = DepthBiasState { constant: -1, slope_scale: 0.0, clamp: 0.0 };
 
     let solid_culled = mk_pipeline("terrain_indirect_solid_culled", PolygonMode::Fill, Some(Face::Back), vec![], no_bias);
     let solid_double = mk_pipeline("terrain_indirect_solid_double", PolygonMode::Fill, None, vec![], no_bias);
-    let wire_culled  = mk_pipeline("terrain_indirect_wire_culled",  PolygonMode::Line, Some(Face::Back), vec!["WIREFRAME"], wire_bias);
-    let wire_double  = mk_pipeline("terrain_indirect_wire_double",  PolygonMode::Line, None, vec!["WIREFRAME"], wire_bias);
+    let wire_culled  = mk_pipeline("terrain_indirect_wire_culled",  PolygonMode::Line, Some(Face::Back), vec!["WIREFRAME"], no_bias);
+    let wire_double  = mk_pipeline("terrain_indirect_wire_double",  PolygonMode::Line, None, vec!["WIREFRAME"], no_bias);
 
     commands.insert_resource(IndirectTerrainPipeline {
         pipeline_solid_culled: solid_culled,
@@ -195,7 +195,7 @@ fn init_indirect_terrain_pipeline(
 /// binds vertex/index buffers from [`GlobalMeshPool`], and issues
 /// `draw_indexed_indirect` using the pool's indirect command buffer.
 fn indirect_terrain_render_system(
-    _world: &World,
+    world: &World,
     view: ViewQuery<(&ExtractedView, &ViewTarget, &ViewDepthTexture)>,
     pipeline: Res<IndirectTerrainPipeline>,
     pool: Res<GlobalMeshPool>,
@@ -205,11 +205,15 @@ fn indirect_terrain_render_system(
     queue: Res<RenderQueue>,
     mut ctx: RenderContext,
 ) {
+    // 跳过 gizmo 相机 — 地形只渲染到主相机
+    if world.get::<GizmoCamera>(world.resource::<CurrentView>().0).is_some() {
+        return;
+    }
+
     // Nothing to draw until the first rebuild completes.
     if !state.has_valid_data {
         return;
     }
-
     let (extracted_view, target, depth) = view.into_inner();
 
     // Build clip_from_world from the extracted view.

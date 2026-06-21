@@ -7,9 +7,12 @@ use bevy::{
     camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
     prelude::*,
 };
+use bevy_camera::visibility::RenderLayers;
 
 fn main() {
     let mut app = App::new();
+    // RenderDoc 必须在 DefaultPlugins 之前
+    app.add_plugins(atom_renderdoc::RenderDocPlugin);
     app.add_plugins(DefaultPlugins);
     app.add_plugins(GlobalTerrainPlugin::default());
     app.add_plugins(FreeCameraPlugin);
@@ -18,15 +21,14 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    // 调试开关
     commands.insert_resource(TerrainDebugConfig {
-        wireframe: true,
+        wireframe: false,
         double_sided: true,
     });
-
     // 摄像机 + FreeCamera（TerrainObserver 资源由 GlobalTerrainPlugin 自动更新）
     commands.spawn((
         Camera3d::default(),
+        RenderLayers::layer(0),
         Transform::from_xyz(15.0, -18.0, 15.0).looking_at(Vec3::new(0.0, -24.0, 0.0), Vec3::Y),
         FreeCamera {
             walk_speed: 5.0,

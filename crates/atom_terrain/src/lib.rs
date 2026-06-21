@@ -128,6 +128,7 @@ impl Plugin for GlobalTerrainPlugin {
                 handle_global_mesh_data,
                 debug_keyboard_toggle,
             )
+                .chain(),
         );
 
         app.add_plugins(AxisGizmoPlugin);
@@ -136,10 +137,9 @@ impl Plugin for GlobalTerrainPlugin {
         app.add_plugins(GlobalTerrainMeshPlugin);
     }
 }
-
 /// 从主相机 Transform 更新 TerrainObserver 资源。
 fn update_observer_from_camera(
-    camera: Query<&Transform, With<Camera3d>>,
+    camera: Query<&Transform, (With<Camera3d>, Without<axis_gizmo::GizmoCamera>)>,
     mut observer: ResMut<TerrainObserver>,
 ) {
     if let Ok(t) = camera.single() {

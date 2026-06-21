@@ -14,6 +14,7 @@ bytemuck = { workspace = true }
 crossbeam = { workspace = true }
 
 [dev-dependencies]
+atom_renderdoc = { path = "../atom_renderdoc" }
 
 [[example]]
 name = "chunk_loader"
