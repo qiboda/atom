@@ -99,8 +99,11 @@ impl Plugin for TerrainPlugin {
     }
 }
 
-use compute::chunk::ChunkManager;
-use compute::per_chunk::{advance_chunk_states, chunk_management_system, per_chunk_compute_system, init_per_chunk_compute};
+use compute::chunk::{ChunkLoadRequest, ChunkManager};
+use compute::per_chunk::{
+    advance_chunk_states, chunk_management_system, init_per_chunk_compute,
+    per_chunk_compute_system, slot_sync_system,
+};
 
 /// Per-chunk 32³ 地形插件（开放世界，取代 GlobalTerrainPlugin）
 pub struct PerChunkTerrainPlugin;
@@ -112,15 +115,24 @@ impl Plugin for PerChunkTerrainPlugin {
         // ── 主世界 ──
         app.insert_resource(TerrainSetting::default());
         app.init_resource::<TerrainDebugConfig>();
-        app.insert_resource(ChunkManager::new(128, 64.0, -32.0, 32.0));
+        app.insert_resource(ChunkManager::new(64.0, -32.0, 32.0));
         app.insert_resource(TerrainObserver::default());
+        app.init_resource::<ChunkLoadRequest>();
         app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<TerrainObserver>::default());
+        app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<ChunkManager>::default());
+
+        // 主世界每帧更新 observer + chunk 加载决策
         app.add_systems(Update, (update_observer_from_camera, chunk_management_system));
 
         // ── 渲染世界：compute ──
         let render_app = app.sub_app_mut(RenderApp);
+        render_app.init_resource::<ChunkLoadRequest>();
         render_app.add_systems(RenderStartup, init_per_chunk_compute);
-        render_app.add_systems(Render, (per_chunk_compute_system, advance_chunk_states).chain());
+        render_app.add_systems(Render, (
+            slot_sync_system,
+            per_chunk_compute_system,
+            advance_chunk_states,
+        ).chain());
 
         // ── per-chunk 渲染 ──
         app.add_plugins(render::PerChunkRenderPlugin);
@@ -132,16 +144,12 @@ impl Default for PerChunkTerrainPlugin {
 }
 
 /// 全局 Edge Graph DC 地形插件 (Phase 3: observer-centric)。
-///
-/// 使用全局 edge graph + atomic counter + 单次 mesh 渲染，
-/// 替代 per-chunk 管线，消除 chunk 边界 seam。
 pub struct GlobalTerrainPlugin;
 
 impl Default for GlobalTerrainPlugin {
-    fn default() -> Self {
-        Self
-    }
+    fn default() -> Self { Self }
 }
+
 
 impl Plugin for GlobalTerrainPlugin {
     fn build(&self, app: &mut App) {

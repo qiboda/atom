@@ -16,7 +16,7 @@ use bevy::{
     },
 };
 
-use super::chunk::{ChunkId, ChunkManager};
+use super::chunk::{ChunkId, ChunkLoadRequest, ChunkManager};
 use super::types::TerrainChunkVertex;
 
 const GRID_SIZE: u32 = 33;
@@ -71,7 +71,7 @@ pub struct PerChunkComputePipeline {
     pub free: Vec<usize>,
 }
 
-/// Helper: create a GPU buffer with the given label, size, and usage
+/// Helper: create a GPU buffer
 fn make_buf(device: &RenderDevice, label: &str, size: u64, usage: BufferUsages) -> Buffer {
     device.create_buffer(&BufferDescriptor {
         label: Some(label),
@@ -103,19 +103,18 @@ pub fn init_per_chunk_compute(
         ),
     );
     let bgl_desc = BindGroupLayoutDescriptor::new("pc_bgl_compute", &entries);
+    let bgl = render_device.create_bind_group_layout("pc_bgl_compute", &entries);
 
-    // ── Render bind group layout ──
+    // ── Render bind group layout (1 uniform for view-projection) ──
     let r_entries = BindGroupLayoutEntries::sequential(
         ShaderStages::VERTEX,
         (uniform_buffer::<Mat4>(false),),
     );
+    let r_bgl = render_device.create_bind_group_layout("pc_bgl_render", &r_entries);
 
     let (sdf_sz, cross_sz, va_sz, vert_sz, idx_sz) = slot_bytes();
     let mut slots: Vec<Option<GpuSlot>> = (0..MAX_SLOTS).map(|_| None).collect();
     let free: Vec<usize> = (0..MAX_SLOTS).rev().collect();
-
-    let bgl = render_device.create_bind_group_layout("pc_bgl_compute", &entries);
-    let r_bgl = render_device.create_bind_group_layout("pc_bgl_render", &r_entries);
 
     for i in 0..MAX_SLOTS {
         let tag = format!("pc{i}");
@@ -177,7 +176,7 @@ pub fn init_per_chunk_compute(
     commands.insert_resource(PerChunkComputePipeline { passes, slots, free });
 }
 
-/// 每帧 dispatch compute passes for all active chunks
+/// Dispatch compute passes for all active chunks (render world)
 pub fn per_chunk_compute_system(
     pipeline: Res<PerChunkComputePipeline>,
     manager: Res<ChunkManager>,
@@ -216,10 +215,10 @@ pub fn per_chunk_compute_system(
     }
 }
 
-/// 每帧推进 slot 状态
+/// Advance per-chunk compute states (render world)
 pub fn advance_chunk_states(
     mut pipeline: ResMut<PerChunkComputePipeline>,
-    manager: ResMut<ChunkManager>,
+    manager: Res<ChunkManager>,
 ) {
     for (&cid, &slot_idx) in &manager.active {
         let Some(slot) = &mut pipeline.slots[slot_idx] else { continue };
@@ -230,15 +229,22 @@ pub fn advance_chunk_states(
     }
 }
 
-/// 加载/卸载 chunk（主世界）
+/// Main world: update ChunkManager based on observer, produce load/unload requests
 pub fn chunk_management_system(
     observer: Res<super::global_compute::TerrainObserver>,
     mut manager: ResMut<ChunkManager>,
-    mut pipeline: ResMut<PerChunkComputePipeline>,
+    mut req: ResMut<ChunkLoadRequest>,
 ) {
-    let (to_load, to_unload) = manager.update_for_observer(observer.position);
+    manager.update_for_observer(observer.position, &mut req);
+}
 
-    for cid in to_unload {
+/// Render world: process load/unload requests, allocate/free GPU slots
+pub fn slot_sync_system(
+    mut pipeline: ResMut<PerChunkComputePipeline>,
+    mut manager: ResMut<ChunkManager>,
+    mut req: ResMut<ChunkLoadRequest>,
+) {
+    for cid in req.to_unload.drain(..) {
         if let Some(slot_idx) = manager.active.remove(&cid) {
             if let Some(slot) = &mut pipeline.slots[slot_idx] {
                 slot.chunk_id = None;
@@ -248,7 +254,7 @@ pub fn chunk_management_system(
         }
     }
 
-    for cid in to_load {
+    for cid in req.to_load.drain(..) {
         if let Some(slot_idx) = pipeline.free.pop() {
             if let Some(slot) = &mut pipeline.slots[slot_idx] {
                 slot.chunk_id = Some(cid);

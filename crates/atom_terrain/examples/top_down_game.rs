@@ -15,7 +15,6 @@
 //!   -d '{"jsonrpc":"2.0","method":"world.query","id":0,"params":{"data":{"components":["atom_terrain::game::player::Player"]}}}'
 //! ```
 use atom_terrain::{
-    GlobalTerrainPlugin,
     debug::TerrainDebugConfig,
     game::{GamePlugin, Health, MoveSpeed, Name, Player, TopDownCamera},
 };
@@ -30,7 +29,7 @@ fn main() {
     app.add_plugins(DefaultPlugins);
 
     // 地形系统
-    app.add_plugins(GlobalTerrainPlugin);
+    app.add_plugins(atom_terrain::PerChunkTerrainPlugin);
 
     // 游戏框架
     app.add_plugins(GamePlugin);
