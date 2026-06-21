@@ -73,9 +73,15 @@ pub struct GlobalComputePipeline {
 ///   1 (dispatched, 等 GPU) → staging copy → 2
 ///   2 (staging, 等 GPU copy) → (等一帧) → map → readback → 3
 ///   3 (readback done) → build mesh → send → 0 (回到 idle)
+/// 全局管线的当前阶段
+///
+/// 状态机:
+///   0 (idle) → 触发重建 → 清 buffer → dispatch pass0-5 → 1
+///   1 (dispatched, 等 GPU) → (readback_enabled ? staging → 2 : 0)
+///   2 (staging, 等 GPU copy) → (等一帧) → map → readback → 0
 #[derive(Resource, Default)]
 pub struct GlobalComputeState {
-    /// 当前 pass: 0=idle, 1=wait_gpu, 2=staging, 3=readback
+    /// 当前 pass: 0=idle, 1=dispatched, 2=staging
     pub pass: u32,
     /// 上次重建时的 world-aligned grid_min
     pub last_grid_min: Vec3,
@@ -85,6 +91,10 @@ pub struct GlobalComputeState {
     pub rebuild_triggered: bool,
     /// 上次 force_rebuild 计数器值
     pub last_force_rebuild: u32,
+    /// 自上次重建以来有有效的 GPU 地形数据（供 indirect draw 使用）
+    pub has_valid_data: bool,
+    /// 是否启用 CPU readback（用于碰撞/导航数据）；关闭时跳过 staging & readback
+    pub readback_enabled: bool,
 }
 
 /// GPU→CPU readback staging
@@ -326,51 +336,56 @@ pub fn global_compute_system(
         dispatch(encoder, pipeline.pass3, wg);
         dispatch(encoder, pipeline.pass4, wg);
         dispatch(encoder, pipeline.pass5, (1, 1, 1));
-
+        state.has_valid_data = true;
         state.pass = 1;
         info!("Global DC: rebuild at grid_min={grid_min:?} observer={observer_pos:?}");
     }
-    // ── 阶段 1: 等 GPU → staging copy ──
+    // ── 阶段 1: 等 GPU → staging copy (仅当 readback_enabled) ──
     else if state.pass == 1 {
-        let encoder = render_context.command_encoder();
+        if state.readback_enabled {
+            let encoder = render_context.command_encoder();
 
-        let vertex_cap = vc as u64 * vc as u64 * vc as u64 * size_of::<TerrainChunkVertex>() as u64;
-        let index_cap = vc as u64 * vc as u64 * vc as u64 * 72 * 4; // Phase 2: 12 edges × 6
-        let voxel_alloc_size = vc as u64 * vc as u64 * vc as u64 * 4;
+            let vertex_cap = vc as u64 * vc as u64 * vc as u64 * size_of::<TerrainChunkVertex>() as u64;
+            let index_cap = vc as u64 * vc as u64 * vc as u64 * 72 * 4;
+            let voxel_alloc_size = vc as u64 * vc as u64 * vc as u64 * 4;
 
-        let mk_staging = |label: &str, size: u64| {
-            device.create_buffer(&BufferDescriptor {
-                label: Some(label),
-                size,
-                usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
-                mapped_at_creation: false,
-            })
-        };
+            let mk_staging = |label: &str, size: u64| {
+                device.create_buffer(&BufferDescriptor {
+                    label: Some(label),
+                    size,
+                    usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
+                    mapped_at_creation: false,
+                })
+            };
 
-        let sv = mk_staging("global_staging_v", vertex_cap);
-        let si = mk_staging("global_staging_i", index_cap);
-        let sc = mk_staging("global_staging_c", 16);
-        let sva = mk_staging("global_staging_va", voxel_alloc_size);
+            let sv = mk_staging("global_staging_v", vertex_cap);
+            let si = mk_staging("global_staging_i", index_cap);
+            let sc = mk_staging("global_staging_c", 16);
+            let sva = mk_staging("global_staging_va", voxel_alloc_size);
 
-        encoder.copy_buffer_to_buffer(&pool.vertices, 0, &sv, 0, vertex_cap);
-        encoder.copy_buffer_to_buffer(&pool.indices, 0, &si, 0, index_cap);
-        encoder.copy_buffer_to_buffer(&pool.counters, 0, &sc, 0, 16);
-        encoder.copy_buffer_to_buffer(&pool.voxel_alloc, 0, &sva, 0, voxel_alloc_size);
+            encoder.copy_buffer_to_buffer(&pool.vertices, 0, &sv, 0, vertex_cap);
+            encoder.copy_buffer_to_buffer(&pool.indices, 0, &si, 0, index_cap);
+            encoder.copy_buffer_to_buffer(&pool.counters, 0, &sc, 0, 16);
+            encoder.copy_buffer_to_buffer(&pool.voxel_alloc, 0, &sva, 0, voxel_alloc_size);
 
-        staging_state.staging = Some(GlobalStaging {
-            vertices: sv,
-            indices: si,
-            counters: sc,
-            voxel_alloc: sva,
-            vertex_cap,
-            index_cap,
-            voxel_alloc_size,
-            mapped: Arc::new(AtomicBool::new(false)),
-            map_started: false,
-            grid_min: state.grid_min,
-        });
+            staging_state.staging = Some(GlobalStaging {
+                vertices: sv,
+                indices: si,
+                counters: sc,
+                voxel_alloc: sva,
+                vertex_cap,
+                index_cap,
+                voxel_alloc_size,
+                mapped: Arc::new(AtomicBool::new(false)),
+                map_started: false,
+                grid_min: state.grid_min,
+            });
 
-        state.pass = 2;
+            state.pass = 2;
+        } else {
+            // GPU indirect mode: skip staging + readback, go straight back to idle
+            state.pass = 0;
+        }
     }
     // ── 阶段 2: 等 staging copy → readback → mesh ──
     else if state.pass == 2 {
