@@ -8,3 +8,4 @@ tools/Multi-Channel-Image-Tool
 # AI tooling
 .omo/
 .worktrees/
+config.json

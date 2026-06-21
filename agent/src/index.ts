@@ -1,11 +1,54 @@
-import { env } from 'node:process';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const BRP_URL = 'http://127.0.0.1:15702';
-const POLL_INTERVAL_MS = 2000;
-const FACT_INTERVAL_MS = 30_000;   // 本地事实提取周期
-const LLM_COOLDOWN_MS = 60_000;    // DeepSeek 冷却时间
-const LOCAL_MODEL = env.LOCAL_MODEL ?? 'qwen3:4b';
-const OLLAMA_URL = env.OLLAMA_URL ?? 'http://127.0.0.1:11434';
+// ── Config ──
+
+interface Config {
+  brp: { url: string };
+  ollama: { url: string; model: string };
+  deepseek: { api_key: string; model: string };
+  timing: {
+    poll_interval_ms: number;
+    fact_interval_ms: number;
+    deepseek_cooldown_ms: number;
+  };
+}
+
+function loadConfig(): Config {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  // 优先读 config.json（用户实际配置，已 gitignore）
+  const configPath = resolve(dir, '../config.json');
+  if (existsSync(configPath)) {
+    return JSON.parse(readFileSync(configPath, 'utf-8')) as Config;
+  }
+  // 没有则读模板文件
+  const examplePath = resolve(dir, '../config.example.json');
+  if (existsSync(examplePath)) {
+    console.warn('[agent] config.json not found, using config.example.json — copy it to config.json and add your API key');
+    return JSON.parse(readFileSync(examplePath, 'utf-8')) as Config;
+  }
+  // 纯 fallback
+  return {
+    brp: { url: 'http://127.0.0.1:15702' },
+    ollama: { url: 'http://127.0.0.1:11434', model: 'qwen3:4b' },
+    deepseek: { api_key: '', model: 'deepseek-chat' },
+    timing: { poll_interval_ms: 2000, fact_interval_ms: 30000, deepseek_cooldown_ms: 60000 },
+  };
+}
+
+const cfg = loadConfig();
+
+const BRP_URL = cfg.brp.url;
+const POLL_INTERVAL_MS = cfg.timing.poll_interval_ms;
+const FACT_INTERVAL_MS = cfg.timing.fact_interval_ms;
+const LLM_COOLDOWN_MS = cfg.timing.deepseek_cooldown_ms;
+const LOCAL_MODEL = cfg.ollama.model;
+const OLLAMA_URL = cfg.ollama.url;
+const DEEPSEEK_API_KEY = cfg.deepseek.api_key;
+const DEEPSEEK_MODEL = cfg.deepseek.model;
+
+// ── Types ──
 
 interface Position { x: number; y: number; z: number }
 interface BrpResponse { jsonrpc: string; result?: unknown; error?: { message: string; code: number } }
@@ -33,7 +76,6 @@ async function brp(method: string, params: unknown): Promise<unknown> {
 
 let localModelBusy = false;
 
-/** 用本地模型（Qwen3）从事件日志中提取事实，纯文本摘要 */
 async function extractFactsWithLocalModel(events: string): Promise<string[]> {
   if (localModelBusy) return [];
   localModelBusy = true;
@@ -97,9 +139,8 @@ async function runFactExtraction(): Promise<void> {
   if (now - lastFactTime < FACT_INTERVAL_MS) return;
   lastFactTime = now;
 
-  // 取最近 30 秒的事件作为上下文
   const recent = eventLog.filter(e => now - e.time < 60_000);
-  if (recent.length < 3) return; // 事件太少，没必要提取
+  if (recent.length < 3) return;
 
   const lines = recent.map(e => `[${new Date(e.time).toISOString().slice(11, 19)}] ${e.kind} @ ${String(e.data.x)},${String(e.data.z)}`);
   const extracted = await extractFactsWithLocalModel(lines.join('\n'));
@@ -116,8 +157,6 @@ async function runFactExtraction(): Promise<void> {
 
 // ── DeepSeek 决策 ──
 
-const DEEPSEEK_API_KEY = env.DEEPSEEK_API_KEY ?? '';
-const DEEPSEEK_MODEL = env.DEEPSEEK_MODEL ?? 'deepseek-chat';
 let llmLastCall = 0;
 let npcSpawned = false;
 
@@ -125,7 +164,6 @@ function shouldTriggerDeepSeek(): boolean {
   const now = Date.now();
   if (now - llmLastCall < LLM_COOLDOWN_MS) return false;
   if (npcSpawned) return false;
-  // 有足够的新事实才触发
   const recentFacts = facts.filter(f => now - f.time < 120_000);
   return recentFacts.length >= 2;
 }
@@ -141,10 +179,7 @@ async function callDeepSeek(context: string): Promise<LlmAction> {
     body: JSON.stringify({
       model: DEEPSEEK_MODEL,
       messages: [
-        {
-          role: 'system',
-          content: '你是一个游戏世界 Agent。根据世界状态返回 JSON action。',
-        },
+        { role: 'system', content: '你是一个游戏世界 Agent。根据世界状态返回 JSON action。' },
         { role: 'user', content: `世界：\n${context}\n动作？` },
       ],
       temperature: 0.7,
@@ -199,10 +234,8 @@ async function main(): Promise<void> {
     const pos = await getPlayerPosition();
     if (pos) recordMovement(pos);
 
-    // 用本地模型提取事实
     await runFactExtraction();
 
-    // 满足条件时调 DeepSeek
     if (shouldTriggerDeepSeek()) {
       const lines: string[] = ['事实摘要:'];
       for (const f of facts.slice(-15)) lines.push(`- ${f.summary}`);
