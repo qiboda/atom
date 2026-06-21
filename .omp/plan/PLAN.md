@@ -46,3 +46,5 @@ Exit: 移动摄像机可见连续无缝的多 chunk 地形。✅ 100 chunk 动�
 - CSG 洞穴/构造物生成（系统驱动，非玩家编辑）
 - **CI 冒烟测试**: `chunk_loader` 启动 → 截图 → 与基准截图 diff。可自动捕获 mesh 几何回归。需确定截图方案（headless render / PIX / RenderDoc）。
 - **Git 分支模型约定**: 确定 `feature/` / `fix/` / `hotfix/` 分支前缀、PR merge 策略、是否 squash、与现有多 crate workspace 的冲突避免。写入 `.omp/` 后实施。 [backlog]
+- **GPU indirect draw**: 移除 `do_readback` → `build_global_mesh` → `Mesh3d` 渲染路径，改为自定义渲染管线从 `pool.vertices`/`pool.indices`/`pool.indirect` 直接 indirect draw。readback 仅保留用于碰撞/寻路 CPU mesh。 [backlog]
+- **游戏内 Agent 控制台**: 在 HUD 上实时显示 agent 日志（事实提取、DeepSeek 决策、NPC spawn）。按键（如 `/`）打开输入框召唤 agent。 [backlog]

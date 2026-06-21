@@ -27,6 +27,7 @@ use bevy::{
 
 fn main() {
     let mut app = App::new();
+    app.add_plugins(DefaultPlugins);
 
     // 地形系统
     app.add_plugins(GlobalTerrainPlugin);

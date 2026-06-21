@@ -99,6 +99,38 @@ impl Plugin for TerrainPlugin {
     }
 }
 
+use compute::chunk::ChunkManager;
+use compute::per_chunk::{advance_chunk_states, chunk_management_system, per_chunk_compute_system, init_per_chunk_compute};
+
+/// Per-chunk 32³ 地形插件（开放世界，取代 GlobalTerrainPlugin）
+pub struct PerChunkTerrainPlugin;
+
+impl Plugin for PerChunkTerrainPlugin {
+    fn build(&self, app: &mut App) {
+        use bevy::render::{Render, RenderApp, RenderStartup};
+
+        // ── 主世界 ──
+        app.insert_resource(TerrainSetting::default());
+        app.init_resource::<TerrainDebugConfig>();
+        app.insert_resource(ChunkManager::new(128, 64.0, -32.0, 32.0));
+        app.insert_resource(TerrainObserver::default());
+        app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<TerrainObserver>::default());
+        app.add_systems(Update, (update_observer_from_camera, chunk_management_system));
+
+        // ── 渲染世界：compute ──
+        let render_app = app.sub_app_mut(RenderApp);
+        render_app.add_systems(RenderStartup, init_per_chunk_compute);
+        render_app.add_systems(Render, (per_chunk_compute_system, advance_chunk_states).chain());
+
+        // ── per-chunk 渲染 ──
+        app.add_plugins(render::PerChunkRenderPlugin);
+    }
+}
+
+impl Default for PerChunkTerrainPlugin {
+    fn default() -> Self { Self }
+}
+
 /// 全局 Edge Graph DC 地形插件 (Phase 3: observer-centric)。
 ///
 /// 使用全局 edge graph + atomic counter + 单次 mesh 渲染，

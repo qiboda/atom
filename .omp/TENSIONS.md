@@ -30,6 +30,7 @@
 - **2026-06-20**: Bevy 0.19 需要 Rust nightly + `#![feature(cfg_select)]`。本地 Bevy checkout v0.19.0 的 `bevy_app` 和 `bevy_winit` 缺失该 feature flag，需手动补丁。
 - **2026-06-20**: `cargo doc -Dwarnings` 会把 Bevy 依赖的 warning 也当 error。已限定 `-p atom_terrain` 范围。
 - **2026-06-20**: WGSL 无断点 — compute shader 调试全靠肉眼。
+- **2026-06-21**: `bevy_ui_widgets::list.rs:213` 有一行 `if let` 必然匹配警告 (`irrefutable_let_patterns`)。上游依赖，无法在本 workspace 压制。等 Bevy 升级后如果修复了，就可以给 cargo check 加 `-D warnings` 全量强制零警告。
 
 ## 流程
 
