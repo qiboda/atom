@@ -6,10 +6,12 @@
 //! 密度场 = y - height_at(x,z)，正值 = air，负值 = solid。
 /// Chunk 加载/卸载管理
 pub mod chunk;
-/// 调试开关（wireframe 等）
-pub mod debug;
 /// GPU Mesh compute 管线
 pub mod compute;
+/// 调试开关（wireframe 等）
+pub mod debug;
+/// 游戏框架系统（俯视角玩家、摄像机、ECS 组件体系）
+pub mod game;
 /// 观察者驱动的动态加载系统
 pub mod loader;
 /// Mesh 数据跨线程收发
@@ -19,19 +21,18 @@ pub mod noise;
 /// 地形全局配置
 pub mod setting;
 
-use bevy::prelude::*;
 use bevy::pbr::wireframe::WireframePlugin;
+use bevy::prelude::*;
 
 use chunk::{ChunkLoadMsg, ChunkUnloadMsg, TerrainLoadedChunks};
 use compute::global_compute::TerrainObserver;
 use compute::sync::{TerrainChunkProcessReceiver, TerrainChunkProcessSender};
 use compute::{GlobalTerrainMeshPlugin, TerrainChunkMeshComputePlugin};
-use debug::{apply_debug_wireframe, debug_keyboard_toggle, TerrainDebugConfig};
+use debug::{TerrainDebugConfig, apply_debug_wireframe, debug_keyboard_toggle};
 use loader::update_grid_chunks;
 use mesh::{
-    handle_global_mesh_data, handle_load_requests, handle_mesh_data,
-    handle_unload_requests, GlobalTerrainMaterial,
-    TerrainChunkMeshReceiver, TerrainChunkMeshSender,
+    GlobalTerrainMaterial, TerrainChunkMeshReceiver, TerrainChunkMeshSender,
+    handle_global_mesh_data, handle_load_requests, handle_mesh_data, handle_unload_requests,
 };
 use setting::TerrainSetting;
 

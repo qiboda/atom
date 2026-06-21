@@ -172,3 +172,64 @@ struct 总大小: 16 的倍数 (不是按字段紧凑排列)
 - `MAP_READ` 只能与 `COPY_DST` 组合（不能与 `COPY_SRC` 或 `STORAGE`）
 - CPU 读回 GBU buffer 需要 staging buffer: compute writes → `STORAGE|COPY_SRC`, then copy to `COPY_DST|MAP_READ`
 - `queue.write_buffer()` 需要 `COPY_DST` flag
+
+## Game Framework: Mesh + Material Components (0.19)
+
+在 Bevy 0.19 中，`Mesh3d` 和 `MeshMaterial3d` 替换了旧的 `Material3d`：
+
+```rust
+// ❌ 旧 API (0.18-): Material3d::from(Color::srgb(...))
+// ❌ 旧 API: Mesh3d::from(mesh)
+
+// ✅ 0.19 正确用法：
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.spawn((
+        Mesh3d(meshes.add(Sphere::new(0.5).mesh().ico(3).unwrap())),
+        MeshMaterial3d(materials.add(Color::srgb(0.2, 0.6, 1.0))),
+        Transform::from_xyz(0.0, -20.0, 0.0),
+    ));
+}
+```
+
+重点:
+- `Mesh3d(pub Handle<Mesh>)` — 不是 `From<Mesh>`
+- `MeshMaterial3d<M: Material>(pub Handle<M>)` — 不是 `Material3d::from(Color)`
+- `Sphere::new(0.5).mesh().ico(3).unwrap()` 创建 ICO 球体 mesh
+
+## Game Framework: Orthographic Camera Setup (0.19)
+
+```rust
+// ❌ OrthographicProjection 不实现 Default trait（只有 FromWorld）
+
+// ✅ 使用 default_3d() 构造器：
+commands.spawn((
+    Camera3d::default(),
+    Projection::from(OrthographicProjection {
+        scaling_mode: ScalingMode::WindowSize,
+        ..OrthographicProjection::default_3d()
+    }),
+    Transform::from_xyz(0.0, -10.0, 0.0).looking_at(Vec3::new(0.0, -20.0, 0.0), Vec3::Z),
+));
+```
+
+类型路径:
+- `ScalingMode` → `bevy::camera::ScalingMode`（不在 prelude 中）
+- `OrthographicProjection::default_3d()` → 标准 3D 正交投影构造器
+- `OrthographicProjection::default_2d()` → 2D 版本
+
+## #![deny(missing_docs)] 与模块声明
+
+当 crate 设置了 `#![deny(missing_docs)]` 时，`pub mod` 声明也需要文档注释：
+
+```rust
+// ❌ error: missing documentation for a module
+pub mod camera;
+
+// ✅ 必须加文档注释
+/// 俯视角摄像机系统。
+pub mod camera;
+```
