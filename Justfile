@@ -1,8 +1,8 @@
 # Atom 项目任务编排
 # 用法: just <task>
 
-# 列出所有可用命令
-commands:
+# 列出所有可用 recipe
+list:
     @just --list
 
 # 快速检查（编译，不生成二进制）
