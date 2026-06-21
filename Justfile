@@ -38,6 +38,10 @@ spec-guard:
 spec-explain spec:
     agent-spec explain .omp/specs/{{spec}}.spec --code . --format markdown
 
+# 生成并打开 workspace 文档（不含依赖）
+doc:
+    cargo doc --no-deps --open --workspace
+
 # 构建所有 release
 build:
     cargo build --workspace --release
