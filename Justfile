@@ -1,6 +1,10 @@
 # Atom 项目任务编排
 # 用法: just <task>
 
+# 列出所有可用命令
+commands:
+    @just --list
+
 # 快速检查（编译，不生成二进制）
 check:
     cargo check --workspace
@@ -54,7 +58,7 @@ fmt:
 deny:
     cargo deny check
 
-# 构建所有 release
+# 运行地形示例 (release)
 run:
     cargo run -p atom_terrain --example chunk_loader --release
 
