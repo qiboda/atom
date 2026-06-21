@@ -4,11 +4,12 @@ const BRP_URL = 'http://127.0.0.1:15702';
 const POLL_INTERVAL_MS = 2000;
 const FACT_INTERVAL_MS = 30_000;   // 本地事实提取周期
 const LLM_COOLDOWN_MS = 60_000;    // DeepSeek 冷却时间
+const LOCAL_MODEL = env.LOCAL_MODEL ?? 'qwen3:4b';
+const OLLAMA_URL = env.OLLAMA_URL ?? 'http://127.0.0.1:11434';
 
 interface Position { x: number; y: number; z: number }
 interface BrpResponse { jsonrpc: string; result?: unknown; error?: { message: string; code: number } }
 interface QueryResultItem { entity: number; components: Record<string, unknown> }
-
 interface LlmAction {
   action: 'nothing' | 'spawn_npc';
   reason: string;
@@ -28,10 +29,42 @@ async function brp(method: string, params: unknown): Promise<unknown> {
   return data.result;
 }
 
+// ── Ollama local model ──
+
+let localModelBusy = false;
+
+/** 用本地模型（Qwen3）从事件日志中提取事实，纯文本摘要 */
+async function extractFactsWithLocalModel(events: string): Promise<string[]> {
+  if (localModelBusy) return [];
+  localModelBusy = true;
+  try {
+    const resp = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: LOCAL_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个游戏世界的观察者。分析玩家的移动记录，提取出有意义的事实。每条事实用一行文本表示，不要编号，不要额外说明。如果没有有意义的信息，返回空。',
+          },
+          { role: 'user', content: `玩家移动记录（最近 30 秒）：\n${events}\n\n提取的事实：` },
+        ],
+        stream: false,
+      }),
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json() as { message: { content: string } };
+    return data.message.content.split('\n').map((l: string) => l.trim()).filter(Boolean);
+  } finally {
+    localModelBusy = false;
+  }
+}
+
 // ── Event accumulator ──
 
 interface GameEvent {
-  kind: 'player_moved' | 'player_stopped' | string;
+  kind: string;
   time: number;
   data: Record<string, unknown>;
 }
@@ -39,20 +72,17 @@ interface GameEvent {
 const eventLog: GameEvent[] = [];
 let lastPlayerPos: Position | null = null;
 
-/** 记录玩家移动事件（带距离门限，避免阻塞 buffer） */
 function recordMovement(pos: Position): void {
   if (lastPlayerPos) {
-    const dx = pos.x - lastPlayerPos.x;
-    const dz = pos.z - lastPlayerPos.z;
-    const dist = Math.sqrt(dx * dx + dz * dz);
-    if (dist < 1.0) return; // 太小不记
+    const dist = Math.hypot(pos.x - lastPlayerPos.x, pos.z - lastPlayerPos.z);
+    if (dist < 1.0) return;
   }
   eventLog.push({ kind: 'player_moved', time: Date.now(), data: { x: pos.x, z: pos.z } });
   lastPlayerPos = pos;
-  if (eventLog.length > 200) eventLog.splice(0, eventLog.length - 200); // 上限
+  if (eventLog.length > 200) eventLog.splice(0, eventLog.length - 200);
 }
 
-// ── Local fact extraction（纯规则，无本地模型） ──
+// ── Fact store ──
 
 interface Fact {
   summary: string;
@@ -62,40 +92,29 @@ interface Fact {
 let facts: Fact[] = [];
 let lastFactTime = 0;
 
-function extractFacts(): Fact[] {
+async function runFactExtraction(): Promise<void> {
   const now = Date.now();
-  if (now - lastFactTime < FACT_INTERVAL_MS) return [];
+  if (now - lastFactTime < FACT_INTERVAL_MS) return;
   lastFactTime = now;
 
-  const newFacts: Fact[] = [];
+  // 取最近 30 秒的事件作为上下文
+  const recent = eventLog.filter(e => now - e.time < 60_000);
+  if (recent.length < 3) return; // 事件太少，没必要提取
 
-  // 统计玩家到过的不同区域（以 10 为粒度）
-  const areas = new Set<string>();
-  for (const e of eventLog) {
-    if (e.kind === 'player_moved') {
-      const gx = Math.round((e.data.x as number) / 10);
-      const gz = Math.round((e.data.z as number) / 10);
-      areas.add(`${gx},${gz}`);
+  const lines = recent.map(e => `[${new Date(e.time).toISOString().slice(11, 19)}] ${e.kind} @ ${String(e.data.x)},${String(e.data.z)}`);
+  const extracted = await extractFactsWithLocalModel(lines.join('\n'));
+
+  for (const summary of extracted) {
+    if (!facts.some(f => f.summary === summary)) {
+      facts.push({ summary, time: now });
+      console.log('[agent] Fact:', summary);
     }
   }
 
-  if (areas.size > 0) {
-    newFacts.push({ summary: `玩家探索了 ${areas.size} 个区域`, time: now });
-  }
-
-  // 判断是否应该触发 DeepSeek
-  const totalEvents = eventLog.length;
-  if (totalEvents > 5 && facts.length === 0) {
-    newFacts.push({ summary: '首次积累足够事件', time: now });
-  }
-  if (areas.size >= 3) {
-    newFacts.push({ summary: '玩家探索了 3 个以上不同区域', time: now });
-  }
-
-  return newFacts;
+  if (facts.length > 50) facts = facts.slice(-50);
 }
 
-// ── DeepSeek 决策（带冷却 + 触发条件） ──
+// ── DeepSeek 决策 ──
 
 const DEEPSEEK_API_KEY = env.DEEPSEEK_API_KEY ?? '';
 const DEEPSEEK_MODEL = env.DEEPSEEK_MODEL ?? 'deepseek-chat';
@@ -104,14 +123,11 @@ let npcSpawned = false;
 
 function shouldTriggerDeepSeek(): boolean {
   const now = Date.now();
-  if (now - llmLastCall < LLM_COOLDOWN_MS) return false;     // 冷却中
-  if (npcSpawned) return false;                                // 已经 spawn 过了，暂时没新目标
-
-  // 有值得关注的新事实才触发
-  const interesting = facts.some(f =>
-    f.summary.includes('首次') || f.summary.includes('3 个')
-  );
-  return interesting;
+  if (now - llmLastCall < LLM_COOLDOWN_MS) return false;
+  if (npcSpawned) return false;
+  // 有足够的新事实才触发
+  const recentFacts = facts.filter(f => now - f.time < 120_000);
+  return recentFacts.length >= 2;
 }
 
 async function callDeepSeek(context: string): Promise<LlmAction> {
@@ -119,7 +135,6 @@ async function callDeepSeek(context: string): Promise<LlmAction> {
   if (!DEEPSEEK_API_KEY) {
     return { action: 'spawn_npc', reason: 'no api key fallback', npc: { name: 'NPC', offset_x: 3, offset_z: 3 } };
   }
-
   const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_API_KEY}` },
@@ -176,30 +191,21 @@ async function waitForBevy(maxRetries = 30): Promise<void> {
 
 async function main(): Promise<void> {
   console.log('[agent] Starting...');
+  console.log('[agent] Local model:', LOCAL_MODEL, `(${OLLAMA_URL})`);
   console.log('[agent] DeepSeek:', DEEPSEEK_API_KEY ? 'configured' : 'fallback only');
   await waitForBevy();
 
   while (true) {
     const pos = await getPlayerPosition();
-    if (pos) {
-      recordMovement(pos);
-    }
+    if (pos) recordMovement(pos);
 
-    // 定期提取本地事实
-    for (const f of extractFacts()) {
-      facts.push(f);
-      console.log('[agent] Fact:', f.summary);
-    }
-    if (facts.length > 50) facts = facts.slice(-50);
+    // 用本地模型提取事实
+    await runFactExtraction();
 
     // 满足条件时调 DeepSeek
     if (shouldTriggerDeepSeek()) {
-      const lines: string[] = ['玩家移动记录（最近 20 条）:'];
-      for (const e of eventLog.slice(-20)) {
-        lines.push(`- ${e.kind} @ (${String(e.data.x)}, ${String(e.data.z)})`);
-      }
-      lines.push('', `当前事实（${facts.length} 条）:`);
-      for (const f of facts.slice(-10)) lines.push(`- ${f.summary}`);
+      const lines: string[] = ['事实摘要:'];
+      for (const f of facts.slice(-15)) lines.push(`- ${f.summary}`);
 
       const action = await callDeepSeek(lines.join('\n'));
       console.log('[agent] DeepSeek:', JSON.stringify(action));
