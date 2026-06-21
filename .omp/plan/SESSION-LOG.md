@@ -1,3 +1,43 @@
+# 2026-06-21 — 游戏框架 MVP
+
+## 完成事项
+
+- 讨论并确定整体游戏方向：Agent-as-god 的程序化游戏框架
+- 确认核心架构：Bevy engine + BRP (JSON-RPC) ↔ Agent sidecar
+- 实现游戏框架 MVP:
+  - 俯视角正交摄像机系统（跟随玩家，lerp 平滑）
+  - 玩家实体 + WASD 移动
+  - ECS 组件体系（Player/Name/Health/MoveSpeed/TopDownCamera，全部 `#[reflect(Component)]`）
+  - `top_down_game.rs` example 端到端验证
+- 更新 bevy-kb 为新增的三个 Bevy 0.19 API 模式
+- 提交 9814956 (8 files +765 -7)
+
+## What went well
+
+- 方向讨论高效，一次对话厘清了 agent 角色、通信协议、初始范围
+- 子代理驱动机械性文件创建工作良好，减少了上下文切换
+- 设计文档 → 实现计划 → 子代理 → 验证 → 提交，流程完整走了一遍
+
+## What was hard / went wrong
+
+- **Bevy 0.19 API 差异导致两轮编译失败**：`Mesh3d::from()` / `Material3d` / `OrthographicProjection::default()` 都是旧 API 假设。下次应先查 bevy-kb 或 Bevy examples。
+- **子代理生成的 example 有重复行**（旧行未清理干净）。子代理写文件后应 read 验证再合并。
+- **Edit 工具在代码块内的意外匹配**：编辑计划 markdown 时 SWAP 模式吞掉了代码块内容。编辑 markdown 文件中的代码块要格外小心。
+- `PLAN.md` 中的 Git flow 条目也被提交了（之前加的），非本次目标。
+
+## Surprising
+
+- `OrthographicProjection` 不实现 `Default`，而是用 `default_3d()` / `default_2d()` 构造器模式。
+- `ScalingMode` 不在 prelude 中，需要 `bevy::camera::ScalingMode` 显式导入。
+
+## Improvements (actionable)
+
+1. **先查 bevy-kb 再写 example**: 本会话中发现 3 个新 API 模式，已写入 patterns.md。下次涉及 Bevy API 时先 grep patterns.md。
+2. **子代理产出需验证**: 子代理完成任务后，主 agent 应 read 验证文件内容再合并，避免重复行/遗漏行。
+3. **Release build 耗时管理**: LTO + codegen-units=1 编译极慢。验证期用 debug 快速检查，发布前再 release。
+4. **思维脑暴提前锁定 Agent 方案**: `bevy_remote` 是 key 基础设施，在方向讨论时尽早确认，避免后续方案翻车。
+
+---
 # SESSION LOG
 
 ## 2026-06-20 — 全量重写 + 流程加固

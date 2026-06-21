@@ -15,17 +15,17 @@
 //! - GPU atomic counters → 精确分配 vertex/index slot
 //! - 观察者驱动 → 只在观察者移动时触发重建
 
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::{Arc, atomic::AtomicBool};
 
 use bevy::{
     prelude::*,
     render::{
         extract_resource::ExtractResource,
         render_resource::{
-            binding_types::*, BindGroup, BindGroupEntry, BindGroupLayout,
-            BindGroupLayoutDescriptor, BindGroupLayoutEntries, Buffer, BufferDescriptor,
-            BufferUsages, CachedComputePipelineId, ComputePassDescriptor,
-            ComputePipelineDescriptor, MapMode, PipelineCache, ShaderStages, ShaderType,
+            BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+            BindGroupLayoutEntries, Buffer, BufferDescriptor, BufferUsages,
+            CachedComputePipelineId, ComputePassDescriptor, ComputePipelineDescriptor, MapMode,
+            PipelineCache, ShaderStages, ShaderType, binding_types::*,
         },
         renderer::{RenderContext, RenderDevice, RenderQueue},
     },

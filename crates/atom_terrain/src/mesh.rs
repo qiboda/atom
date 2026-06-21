@@ -2,17 +2,11 @@
 //!
 //! 定义从渲染世界回传到主世界的 mesh 数据结构与 channel 收发器。
 
-use bevy::{
-    prelude::*,
-    render::render_resource::Face,
-};
+use bevy::{prelude::*, render::render_resource::Face};
 use crossbeam::channel::{Receiver, Sender};
 
 use crate::{
-    chunk::{
-        ChunkLoadMsg, ChunkUnloadMsg, TerrainChunk, TerrainChunkCoord,
-        TerrainLoadedChunks,
-    },
+    chunk::{ChunkLoadMsg, ChunkUnloadMsg, TerrainChunk, TerrainChunkCoord, TerrainLoadedChunks},
     compute::sync::{ChunkProcessRequest, TerrainChunkProcessSender},
     debug::TerrainDebugConfig,
     setting::TerrainSetting,
@@ -120,7 +114,9 @@ pub fn handle_mesh_data(
                     Visibility::default(),
                 ));
             });
-            commands.entity(chunk_entity).insert(TerrainChunkMeshingState::Done);
+            commands
+                .entity(chunk_entity)
+                .insert(TerrainChunkMeshingState::Done);
         }
     }
 }
@@ -151,25 +147,30 @@ pub fn handle_global_mesh_data(
         let mat = materials.add(StandardMaterial {
             base_color: Color::srgb(0.7, 0.75, 0.8),
             perceptual_roughness: 0.3,
-            cull_mode: if debug_config.double_sided { None } else { Some(Face::Back) },
+            cull_mode: if debug_config.double_sided {
+                None
+            } else {
+                Some(Face::Back)
+            },
             ..default()
         });
 
         // 存储 material handle，供 debug toggle 更新
         global_mat.0 = Some(mat.clone());
 
-        // 如果已有旧 mesh 实体，despawn 它
-        if let Some(old) = mesh_entity.take() {
+        let entity = commands
+            .spawn((
+                Mesh3d(mesh),
+                MeshMaterial3d(mat),
+                Transform::IDENTITY,
+                Visibility::default(),
+                GlobalTerrainMesh,
+            ))
+            .id();
+
+        // 新 mesh 就绪后再 despawn 旧的 → 避免空窗期
+        if let Some(old) = mesh_entity.replace(entity) {
             commands.entity(old).despawn();
         }
-
-        let entity = commands.spawn((
-            Mesh3d(mesh),
-            MeshMaterial3d(mat),
-            Transform::IDENTITY,
-            Visibility::default(),
-            GlobalTerrainMesh,
-        )).id();
-        *mesh_entity = Some(entity);
     }
 }

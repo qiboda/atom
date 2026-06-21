@@ -3,8 +3,8 @@
 //! `TerrainDebugConfig` 控制 wireframe、双面渲染等调试选项。
 //! 快捷键：F1 切 wireframe，F2 切 double_sided。
 
-use bevy::prelude::*;
 use bevy::pbr::wireframe::{Wireframe, WireframeColor};
+use bevy::prelude::*;
 
 use crate::chunk::TerrainChunk;
 use crate::mesh::GlobalTerrainMesh;
@@ -41,7 +41,9 @@ pub fn debug_keyboard_toggle(
                     if mesh_children.contains(child) {
                         commands.entity(child).insert((
                             Wireframe,
-                            WireframeColor { color: Color::srgba(0.3, 0.9, 0.4, 1.0) },
+                            WireframeColor {
+                                color: Color::srgba(0.3, 0.9, 0.4, 1.0),
+                            },
                         ));
                     }
                 }
@@ -49,17 +51,25 @@ pub fn debug_keyboard_toggle(
             for entity in global_meshes.iter() {
                 commands.entity(entity).insert((
                     Wireframe,
-                    WireframeColor { color: Color::srgba(0.3, 0.9, 0.4, 1.0) },
+                    WireframeColor {
+                        color: Color::srgba(0.3, 0.9, 0.4, 1.0),
+                    },
                 ));
             }
         } else {
             for chunk_children in chunks.iter() {
                 for child in chunk_children.iter() {
-                    commands.entity(child).remove::<Wireframe>().remove::<WireframeColor>();
+                    commands
+                        .entity(child)
+                        .remove::<Wireframe>()
+                        .remove::<WireframeColor>();
                 }
             }
             for entity in global_meshes.iter() {
-                commands.entity(entity).remove::<Wireframe>().remove::<WireframeColor>();
+                commands
+                    .entity(entity)
+                    .remove::<Wireframe>()
+                    .remove::<WireframeColor>();
             }
         }
     }

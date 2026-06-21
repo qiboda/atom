@@ -36,7 +36,12 @@ fn xorshift_128_with_seed(state: &mut UVec4) -> u32 {
 /// XorShift128 随机数生成器生成的置换表，用于噪声哈希
 /// 生成见 `open_simplex_seed.wgsl` 的 GPU 端等价实现
 pub fn generate_permutation_table(seed: u32) -> [u32; TABLE_SIZE] {
-    let mut state = UVec4::new(seed, seed ^ 0x9E37_79B9, seed ^ 0x6A09_E667, seed ^ 0xBB67_AE85);
+    let mut state = UVec4::new(
+        seed,
+        seed ^ 0x9E37_79B9,
+        seed ^ 0x6A09_E667,
+        seed ^ 0xBB67_AE85,
+    );
     for _ in 0..8 {
         xorshift_128_with_seed(&mut state);
     }
@@ -103,10 +108,16 @@ pub fn open_simplex_2d(point: Vec2, perm: &[u32; TABLE_SIZE]) -> f32 {
     let dy0 = rel.y + STRETCH_CONSTANT_2D;
     let dx_ext = rel.x + STRETCH_CONSTANT_2D - 1.0;
     let dy_ext = rel.y + STRETCH_CONSTANT_2D - 1.0;
-    let attn0 = surflet_2d(hash_21(perm, floor.as_ivec2()) as usize, Vec2::new(dx0, dy0));
+    let attn0 = surflet_2d(
+        hash_21(perm, floor.as_ivec2()) as usize,
+        Vec2::new(dx0, dy0),
+    );
     let attn1 = surflet_2d(
         hash_21(perm, (floor + Vec2::new(xsv, ysv)).as_ivec2()) as usize,
-        Vec2::new(dx0 - xsv + SQUISH_CONSTANT_2D, dy0 - ysv + SQUISH_CONSTANT_2D),
+        Vec2::new(
+            dx0 - xsv + SQUISH_CONSTANT_2D,
+            dy0 - ysv + SQUISH_CONSTANT_2D,
+        ),
     );
     let attn2 = surflet_2d(
         hash_21(perm, (floor + Vec2::ONE).as_ivec2()) as usize,
@@ -122,11 +133,7 @@ fn revert_scale_factor(octaves: u32, persistence: f32) -> f32 {
         gain += amp;
         amp *= persistence;
     }
-    if gain == 0.0 {
-        1.0
-    } else {
-        1.0 / gain
-    }
+    if gain == 0.0 { 1.0 } else { 1.0 / gain }
 }
 
 /// FBM (Fractional Brownian Motion) 叠加多层 OpenSimplex 2D 噪声。

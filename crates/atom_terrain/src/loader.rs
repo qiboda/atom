@@ -28,7 +28,11 @@ pub struct TerrainObserverConfig {
 
 impl Default for TerrainObserverConfig {
     fn default() -> Self {
-        Self { load_radius: 3, height_range: -2..=2, margin: 1 }
+        Self {
+            load_radius: 3,
+            height_range: -2..=2,
+            margin: 1,
+        }
     }
 }
 
@@ -50,7 +54,9 @@ pub fn update_grid_chunks(
         let margin = config.margin as i32;
         let unload_r = r + margin;
 
-        for y in center_chunk.0.y + *config.height_range.start()..=center_chunk.0.y + *config.height_range.end() {
+        for y in center_chunk.0.y + *config.height_range.start()
+            ..=center_chunk.0.y + *config.height_range.end()
+        {
             for x in center_chunk.0.x - unload_r..=center_chunk.0.x + unload_r {
                 for z in center_chunk.0.z - unload_r..=center_chunk.0.z + unload_r {
                     let coord = TerrainChunkCoord::new(x, y, z);

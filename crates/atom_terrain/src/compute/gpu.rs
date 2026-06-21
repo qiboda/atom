@@ -24,8 +24,8 @@
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -33,10 +33,10 @@ use bevy::{
     prelude::*,
     render::{
         render_resource::{
-            binding_types::*, BindGroup, BindGroupEntry, BindGroupLayout,
-            BindGroupLayoutDescriptor, BindGroupLayoutEntries, Buffer, BufferDescriptor,
-            BufferUsages, CachedComputePipelineId, ComputePassDescriptor,
-            ComputePipelineDescriptor, PipelineCache, ShaderStages,
+            BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+            BindGroupLayoutEntries, Buffer, BufferDescriptor, BufferUsages,
+            CachedComputePipelineId, ComputePassDescriptor, ComputePipelineDescriptor,
+            PipelineCache, ShaderStages, binding_types::*,
         },
         renderer::{RenderContext, RenderDevice, RenderQueue},
     },

@@ -7,20 +7,20 @@ pub mod types;
 use bevy::{
     prelude::*,
     render::{
-        extract_resource::ExtractResourcePlugin, renderer::RenderDevice, Render, RenderApp,
-        RenderStartup,
+        Render, RenderApp, RenderStartup, extract_resource::ExtractResourcePlugin,
+        renderer::RenderDevice,
     },
 };
 
 use crate::setting::TerrainSetting;
 use global_compute::{
-    global_compute_system, init_global_compute_pipeline, GlobalComputeState, GlobalStagingState,
-    TerrainObserver,
+    GlobalComputeState, GlobalStagingState, TerrainObserver, global_compute_system,
+    init_global_compute_pipeline,
 };
 use global_pool::GlobalMeshPool;
 use gpu::{
-    init_compute_pipeline, terrain_compute_system, TerrainChunkComputeProgress,
-    TerrainChunkMeshBuffers, TerrainChunkStagingBuffers,
+    TerrainChunkComputeProgress, TerrainChunkMeshBuffers, TerrainChunkStagingBuffers,
+    init_compute_pipeline, terrain_compute_system,
 };
 
 /// 地形 chunk 网格的 GPU compute 管线插件 (Phase 2: per-chunk)。

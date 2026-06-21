@@ -29,7 +29,7 @@ impl Default for TopDownCamera {
 /// 使用 lerp 平滑插值避免硬跟随。
 pub fn top_down_camera_follow(
     time: Res<Time>,
-    player: Query<&Transform, (With<Player>, Changed<Transform>)>,
+    player: Query<&Transform, With<Player>>,
     mut camera: Query<(&mut Transform, &TopDownCamera), (Without<Player>, With<Camera3d>)>,
 ) {
     let dt = time.delta_secs();

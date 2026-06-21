@@ -2,13 +2,10 @@
 //! 摄像机移动时自动重建全局 mesh。
 //! `TerrainDebugConfig.wireframe` 控制线框显示。
 //! Bevy 内置 FreeCamera: 鼠标旋转，WASD/QE 移动，右键按住锁定光标。
+use atom_terrain::{GlobalTerrainPlugin, debug::TerrainDebugConfig};
 use bevy::{
     camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
     prelude::*,
-};
-use atom_terrain::{
-    debug::TerrainDebugConfig,
-    GlobalTerrainPlugin,
 };
 
 fn main() {
