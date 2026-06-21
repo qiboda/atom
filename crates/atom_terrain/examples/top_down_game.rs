@@ -22,15 +22,11 @@ use atom_terrain::{
 use bevy::{
     prelude::*,
     remote::{RemotePlugin, http::RemoteHttpPlugin},
-    render::view::window::screenshot::{save_to_disk, Screenshot, ScreenshotPlugin},
+    render::view::window::screenshot::{save_to_disk, Screenshot},
 };
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins);
-
-    // 截图支持 (F2)
-    app.add_plugins(ScreenshotPlugin);
 
     // 地形系统
     app.add_plugins(GlobalTerrainPlugin);
