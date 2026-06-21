@@ -6,6 +6,7 @@
 //! 启动后控制：
 //! - WASD: 移动玩家（蓝色球体）
 //! - F1: 切换地形线框模式
+//! - F2: 截取当前帧到 screenshots/ 目录
 //!
 //! 远程访问：
 //! ```bash
@@ -21,11 +22,15 @@ use atom_terrain::{
 use bevy::{
     prelude::*,
     remote::{RemotePlugin, http::RemoteHttpPlugin},
+    render::view::window::screenshot::{save_to_disk, Screenshot, ScreenshotPlugin},
 };
 
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
+
+    // 截图支持 (F2)
+    app.add_plugins(ScreenshotPlugin);
 
     // 地形系统
     app.add_plugins(GlobalTerrainPlugin);
@@ -38,6 +43,23 @@ fn main() {
 
     app.add_systems(Startup, (setup, start_agent).chain());
     app.add_systems(Update, decorate_agent_entities);
+    app.add_systems(Update, take_screenshot);
+
+    // 截图系统
+    fn take_screenshot(
+        mut commands: Commands,
+        input: Res<ButtonInput<KeyCode>>,
+    ) {
+        if input.just_pressed(KeyCode::F2) {
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
+            commands
+                .spawn(Screenshot::primary_window())
+                .observe(save_to_disk(format!("screenshots/terrain-{stamp}.png")));
+        }
+    }
     app.run();
 }
 
