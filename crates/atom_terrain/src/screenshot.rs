@@ -27,7 +27,7 @@ pub fn screenshot_trigger_system(
     for entity in &trigger_query {
         let stamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .expect("SystemTime before UNIX_EPOCH — clock is wrong")
             .as_millis();
         commands
             .spawn(Screenshot::primary_window())

@@ -136,11 +136,20 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         else { c1z += 1u; }
 
         let n = gs + 1u; // density grid points per axis
-        if c1x >= n || c1y >= n || c1z >= n { continue; }
+        let edge_id = voxel_idx * 12u + e;
+
+        // 边界外或无 sign change → 清零 cross entry，防止 stale 数据被误判
+        if c1x >= n || c1y >= n || c1z >= n {
+            write_cross(edge_id, vec3(0.0), vec3(0.0), false);
+            continue;
+        }
 
         let d0 = read_density(grid_idx(c0x, c0y, c0z));
         let d1 = read_density(grid_idx(c1x, c1y, c1z));
-        if (d0 > 0.0) == (d1 > 0.0) { continue; }
+        if (d0 > 0.0) == (d1 > 0.0) {
+            write_cross(edge_id, vec3(0.0), vec3(0.0), false);
+            continue;
+        }
 
         // binary search 定位交叉点（8 次迭代）
         let p0 = world_pos(c0x, c0y, c0z);
@@ -156,7 +165,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let cross_pos = (lo + hi) * 0.5;
         let normal = estimate_normal(cross_pos);
 
-        let edge_id = voxel_idx * 12u + e;
         write_cross(edge_id, cross_pos, normal, d1 < 0.0);
     }
 }

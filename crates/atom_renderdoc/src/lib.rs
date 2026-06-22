@@ -26,7 +26,7 @@ impl Plugin for RenderDocPlugin {
                 rd.set_capture_file_path_template("saved/renderdoc/bevy_capture");
                 rd.mask_overlay_bits(OverlayBits::NONE, OverlayBits::NONE);
 
-                app.world_mut().insert_non_send_resource(rd);
+                app.world_mut().insert_non_send(rd);
                 app.add_systems(Startup, || info!("Initialized RenderDoc successfully!"));
                 app.add_systems(Update, trigger_capture);
             }

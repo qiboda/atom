@@ -9,7 +9,6 @@ struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
 };
-
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) world_normal: vec3<f32>,
@@ -23,7 +22,6 @@ fn vertex(in: VertexInput) -> VertexOutput {
     return out;
 }
 
-// Simple ambient + directional diffuse (solid), or green (wireframe overlay)
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 #ifdef WIREFRAME

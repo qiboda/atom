@@ -34,7 +34,7 @@ pub fn player_movement(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut params: ParamSet<(
-        Query<&Transform, (With<Camera3d>, With<crate::game::camera::TopDownCamera>)>,
+        Query<&Transform, With<Camera3d>>,
         Query<(&mut Transform, &MoveSpeed), With<Player>>,
     )>,
 ) {

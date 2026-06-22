@@ -139,10 +139,6 @@ impl ChunkManager {
 
         for dx in -chunk_radius..=chunk_radius {
             for dz in -chunk_radius..=chunk_radius {
-                let dist = ((dx * dx + dz * dz) as f64).sqrt() * 16.0;
-                if dist > self.radius as f64 {
-                    continue;
-                }
                 for dy in y_start..=y_end {
                     let cid = ChunkId::new(center.x + dx, dy, center.z + dz);
                     self.wanted.insert(cid);

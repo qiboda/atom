@@ -1,16 +1,15 @@
-//! Per-chunk GPU terrain compute pipeline。
+//! Per-chunk GPU terrain compute pipeline.
 //!
-//! 每 chunk 33³ voxels（32 active + 1 ghost border），独立 buffer + bind group。
-//! 共享 compute pipeline 对象，per-chunk dispatch 推进状态机。
+//! Per-slot buffers, shared pipeline objects, 6-pass state machine.
 
 use bevy::{
     prelude::*,
     render::{
         render_resource::{
-            BindGroup, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntries,
-            Buffer, BufferDescriptor, BufferUsages, CachedComputePipelineId,
-            ComputePassDescriptor, ComputePipelineDescriptor, PipelineCache,
-            ShaderStages, ShaderType, binding_types::*,
+            BindGroup, BindGroupEntry, BindGroupLayoutDescriptor,
+            BindGroupLayoutEntries, Buffer, BufferDescriptor, BufferUsages,
+            CachedComputePipelineId, ComputePassDescriptor, ComputePipelineDescriptor,
+            PipelineCache, ShaderStages, ShaderType, binding_types::*,
         },
         renderer::{RenderContext, RenderDevice, RenderQueue},
     },
@@ -42,14 +41,24 @@ struct ChunkUniform {
 
 /// Per-chunk GPU compute slot
 pub struct GpuSlot {
-    /// Uniform buffer (per-chunk, written each frame)
+    /// Compute uniform buffer (grid_min, voxel_size, grid_size)
     pub uniform: Buffer,
-    /// Vertex buffer (storage, output from compute)
+    /// Render uniform buffer (view-projection Mat4)
+    pub uniform_render: Buffer,
+    /// SDF density buffer (34³ f32)
+    pub sdf: Buffer,
+    /// Cross-point buffer
+    pub cross: Buffer,
+    /// Voxel allocation buffer (33³ u32)
+    pub voxel_alloc: Buffer,
+    /// Vertex buffer (output from compute)
     pub vertices: Buffer,
-    /// Index buffer (storage, output from compute)
+    /// Index buffer (output from compute)
     pub indices: Buffer,
-    /// Indirect draw command buffer (DrawIndexedIndirect)
+    /// Indirect draw command buffer
     pub indirect: Buffer,
+    /// Counter buffer (vertex_count, index_count)
+    pub counters: Buffer,
     /// Compute bind group (8 entries)
     pub bg_compute: BindGroup,
     /// Render bind group (1 uniform)
@@ -59,79 +68,54 @@ pub struct GpuSlot {
     /// Current pass index (0..5 = computing, 6 = ready)
     pub pass: u32,
 }
-
-/// Per-chunk compute pipeline resource
 #[derive(Resource)]
+/// Per-chunk compute pipeline resource
 pub struct PerChunkComputePipeline {
-    /// 6 compute pipeline IDs (sdf_fill through fill_indirect)
+    /// 6 compute pipeline IDs
     pub passes: [CachedComputePipelineId; 6],
-    /// All GPU slots (Some = allocated + in use, None = free)
+    /// All GPU slots
     pub slots: Vec<Option<GpuSlot>>,
     /// Free slot indices (LIFO)
     pub free: Vec<usize>,
 }
 
-/// Helper: create a GPU buffer
 fn make_buf(device: &RenderDevice, label: &str, size: u64, usage: BufferUsages) -> Buffer {
-    device.create_buffer(&BufferDescriptor {
-        label: Some(label),
-        size,
-        usage,
-        mapped_at_creation: false,
-    })
+    device.create_buffer(&BufferDescriptor { label: Some(label), size, usage, mapped_at_creation: false })
 }
 
-/// Initialize per-chunk compute pipeline: 6 compute passes + 128 slot pool
+/// Initialize per-chunk compute pipeline
 pub fn init_per_chunk_compute(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     render_device: Res<RenderDevice>,
     pipeline_cache: Res<PipelineCache>,
 ) {
-    // ── Compute bind group layout ──
-    let entries = BindGroupLayoutEntries::sequential(
-        ShaderStages::COMPUTE,
-        (
-            uniform_buffer::<ChunkUniform>(false),
-            storage_buffer::<Vec<f32>>(false),
-            storage_buffer::<Vec<u32>>(false),
-            storage_buffer::<Vec<u32>>(false),
-            storage_buffer::<Vec<TerrainChunkVertex>>(false),
-            storage_buffer::<Vec<u32>>(false),
-            storage_buffer::<Vec<u32>>(false),
-            storage_buffer::<Vec<u32>>(false),
-        ),
-    );
+    let entries = BindGroupLayoutEntries::sequential(ShaderStages::COMPUTE, (
+        uniform_buffer::<ChunkUniform>(false), storage_buffer::<Vec<f32>>(false),
+        storage_buffer::<Vec<u32>>(false), storage_buffer::<Vec<u32>>(false),
+        storage_buffer::<Vec<TerrainChunkVertex>>(false), storage_buffer::<Vec<u32>>(false),
+        storage_buffer::<Vec<u32>>(false), storage_buffer::<Vec<u32>>(false),
+    ));
     let bgl_desc = BindGroupLayoutDescriptor::new("pc_bgl_compute", &entries);
     let bgl = render_device.create_bind_group_layout("pc_bgl_compute", &entries);
-
-    // ── Render bind group layout (1 uniform for view-projection) ──
-    let r_entries = BindGroupLayoutEntries::sequential(
-        ShaderStages::VERTEX,
-        (uniform_buffer::<Mat4>(false),),
-    );
+    let r_entries = BindGroupLayoutEntries::sequential(ShaderStages::VERTEX, (uniform_buffer::<Mat4>(false),));
     let r_bgl = render_device.create_bind_group_layout("pc_bgl_render", &r_entries);
 
     let (sdf_sz, cross_sz, va_sz, vert_sz, idx_sz) = slot_bytes();
     let mut slots: Vec<Option<GpuSlot>> = (0..MAX_SLOTS).map(|_| None).collect();
     let free: Vec<usize> = (0..MAX_SLOTS).rev().collect();
 
-    for i in 0..MAX_SLOTS {
+    for (i, slot) in slots.iter_mut().enumerate() {
         let tag = format!("pc{i}");
-        let uniform = make_buf(&render_device, &format!("{tag}_uniform"), 64,
-            BufferUsages::UNIFORM | BufferUsages::COPY_DST);
-        let sdf = make_buf(&render_device, &format!("{tag}_sdf"), sdf_sz, BufferUsages::STORAGE);
-        let cross = make_buf(&render_device, &format!("{tag}_cross"), cross_sz, BufferUsages::STORAGE);
-        let voxel_alloc = make_buf(&render_device, &format!("{tag}_va"), va_sz,
-            BufferUsages::STORAGE | BufferUsages::COPY_SRC);
-        let vertices = make_buf(&render_device, &format!("{tag}_vert"), vert_sz,
-            BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::VERTEX);
-        let indices = make_buf(&render_device, &format!("{tag}_idx"), idx_sz,
-            BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::INDEX);
-        let counters = make_buf(&render_device, &format!("{tag}_ctr"), 16,
-            BufferUsages::STORAGE | BufferUsages::COPY_SRC);
-        let indirect = make_buf(&render_device, &format!("{tag}_ind"), 24,
-            BufferUsages::STORAGE | BufferUsages::INDIRECT);
+        let uniform = make_buf(&render_device, &format!("{tag}_uniform"), 32, BufferUsages::UNIFORM | BufferUsages::COPY_DST);
+        let uniform_render = make_buf(&render_device, &format!("{tag}_urender"), 64, BufferUsages::UNIFORM | BufferUsages::COPY_DST);
+        let sdf = make_buf(&render_device, &format!("{tag}_sdf"), sdf_sz, BufferUsages::STORAGE | BufferUsages::COPY_DST);
+        let cross = make_buf(&render_device, &format!("{tag}_cross"), cross_sz, BufferUsages::STORAGE | BufferUsages::COPY_DST);
+        let voxel_alloc = make_buf(&render_device, &format!("{tag}_va"), va_sz, BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST);
+        let vertices = make_buf(&render_device, &format!("{tag}_vert"), vert_sz, BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::VERTEX | BufferUsages::COPY_DST);
+        let indices = make_buf(&render_device, &format!("{tag}_idx"), idx_sz, BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::INDEX | BufferUsages::COPY_DST);
+        let counters = make_buf(&render_device, &format!("{tag}_ctr"), 16, BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST);
+        let indirect = make_buf(&render_device, &format!("{tag}_ind"), 24, BufferUsages::STORAGE | BufferUsages::INDIRECT);
 
         let lbl = format!("{tag}_bgc");
         let bg_compute = render_device.create_bind_group(lbl.as_str(), &bgl, &[
@@ -144,19 +128,16 @@ pub fn init_per_chunk_compute(
             BindGroupEntry { binding: 6, resource: indices.as_entire_binding() },
             BindGroupEntry { binding: 7, resource: indirect.as_entire_binding() },
         ]);
-
         let lbl = format!("{tag}_bgr");
         let bg_render = render_device.create_bind_group(lbl.as_str(), &r_bgl, &[
-            BindGroupEntry { binding: 0, resource: uniform.as_entire_binding() },
+            BindGroupEntry { binding: 0, resource: uniform_render.as_entire_binding() },
         ]);
-
-        slots[i] = Some(GpuSlot {
-            uniform, vertices, indices, indirect,
+        *slot = Some(GpuSlot {
+            uniform, uniform_render, sdf, cross, voxel_alloc, vertices, indices, indirect, counters,
             bg_compute, bg_render, chunk_id: None, pass: 0,
         });
     }
 
-    // ── Compute pipelines ──
     let pass_data = [
         ("pc_sdf", "shaders/terrain/compute/sdf_fill.wgsl"),
         ("pc_edge", "shaders/terrain/compute/edge_detect.wgsl"),
@@ -167,43 +148,39 @@ pub fn init_per_chunk_compute(
     ];
     let passes = pass_data.map(|(label, path)| {
         pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
-            label: Some(label.into()),
-            layout: vec![bgl_desc.clone()],
-            shader: asset_server.load(path),
-            ..default()
+            label: Some(label.into()), layout: vec![bgl_desc.clone()], shader: asset_server.load(path), ..default()
         })
     });
-
     commands.insert_resource(PerChunkComputePipeline { passes, slots, free });
 }
 
-/// Dispatch compute passes for all active chunks (render world)
+/// Dispatch compute passes for all active chunks
 pub fn per_chunk_compute_system(
-    pipeline: Res<PerChunkComputePipeline>,
-    manager: Res<ChunkManager>,
-    cache: Res<PipelineCache>,
-    queue: Res<RenderQueue>,
-    mut ctx: RenderContext,
+    pipeline: Res<PerChunkComputePipeline>, manager: Res<ChunkManager>,
+    cache: Res<PipelineCache>, queue: Res<RenderQueue>, mut ctx: RenderContext,
 ) {
     let encoder = ctx.command_encoder();
-    let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-        label: Some("pc_compute"),
-        ..default()
-    });
-
+    for (&_cid, &slot_idx) in &manager.active {
+        let Some(slot) = &pipeline.slots[slot_idx] else { continue };
+        if slot.pass != 0 { continue; }
+        encoder.clear_buffer(&slot.sdf, 0, None);
+        encoder.clear_buffer(&slot.cross, 0, None);
+        encoder.clear_buffer(&slot.voxel_alloc, 0, None);
+        encoder.clear_buffer(&slot.vertices, 0, None);
+        encoder.clear_buffer(&slot.indices, 0, None);
+    }
+    let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor { label: Some("pc_compute"), ..default() });
     for (&cid, &slot_idx) in &manager.active {
         let Some(slot) = &pipeline.slots[slot_idx] else { continue };
         if slot.pass >= 6 { continue; }
-
         let min = cid.world_min();
         queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&ChunkUniform {
-            grid_min: min.to_array(),
-            pad0: 0,
-            voxel_size: VOXEL_SIZE,
-            grid_size: GRID_SIZE,
-            pad1: [0; 2],
+            grid_min: min.to_array(), pad0: 0, voxel_size: VOXEL_SIZE, grid_size: GRID_SIZE, pad1: [0; 2],
         }));
-
+        if slot.pass == 0 {
+            let zero: [u32; 4] = [0, 0, 0, 0];
+            queue.write_buffer(&slot.counters, 0, bytemuck::bytes_of(&zero));
+        }
         let pid = pipeline.passes[slot.pass as usize];
         let Some(pso) = cache.get_compute_pipeline(pid) else { continue };
         pass.set_pipeline(pso);
@@ -216,61 +193,45 @@ pub fn per_chunk_compute_system(
     }
 }
 
-/// Advance per-chunk compute states (render world)
+/// Advance per-chunk compute states
 pub fn advance_chunk_states(
-    mut pipeline: ResMut<PerChunkComputePipeline>,
-    manager: Res<ChunkManager>,
+    mut pipeline: ResMut<PerChunkComputePipeline>, manager: Res<ChunkManager>, cache: Res<PipelineCache>,
 ) {
     for (&cid, &slot_idx) in &manager.active {
-        let Some(slot) = &mut pipeline.slots[slot_idx] else { continue };
-        slot.chunk_id.get_or_insert(cid);
-        if slot.pass < 6 {
-            slot.pass += 1;
+        let current_pass = pipeline.slots[slot_idx].as_ref().map(|s| s.pass).unwrap_or(6);
+        if current_pass < 6 {
+            let pid = pipeline.passes[current_pass as usize];
+            if cache.get_compute_pipeline(pid).is_some() {
+                if let Some(slot) = &mut pipeline.slots[slot_idx] {
+                    slot.chunk_id.get_or_insert(cid);
+                    slot.pass += 1;
+                }
+            }
         }
     }
 }
 
-/// Main world: update ChunkManager based on observer, produce load/unload requests
+/// Main world: update ChunkManager based on observer
 pub fn chunk_management_system(
     observer: Res<super::global_compute::TerrainObserver>,
-    mut manager: ResMut<ChunkManager>,
-    mut req: ResMut<ChunkLoadRequest>,
-) {
-    manager.update_for_observer(observer.position, &mut req);
-}
+    mut manager: ResMut<ChunkManager>, mut req: ResMut<ChunkLoadRequest>,
+) { manager.update_for_observer(observer.position, &mut req); }
 
-/// Render world: process load/unload requests, allocate/free GPU slots
-/// Render world: process wanted set from main world, load/unload chunks
+/// Render world: process load/unload requests
 pub fn slot_sync_system(
-    mut pipeline: ResMut<PerChunkComputePipeline>,
-    mut manager: ResMut<ChunkManager>,
-    req: Res<ChunkLoadRequest>,
+    mut pipeline: ResMut<PerChunkComputePipeline>, mut manager: ResMut<ChunkManager>, req: Res<ChunkLoadRequest>,
 ) {
-    // 卸载：active 中有但 wanted 中没有的
-    let to_unload: Vec<ChunkId> = manager.active.keys()
-        .filter(|cid| !req.wanted.contains(cid))
-        .copied()
-        .collect();
+    let to_unload: Vec<ChunkId> = manager.active.keys().filter(|cid| !req.wanted.contains(cid)).copied().collect();
     for cid in to_unload {
         if let Some(slot_idx) = manager.active.remove(&cid) {
-            if let Some(slot) = &mut pipeline.slots[slot_idx] {
-                slot.chunk_id = None;
-                slot.pass = 0;
-            }
+            if let Some(slot) = &mut pipeline.slots[slot_idx] { slot.chunk_id = None; slot.pass = 0; }
             pipeline.free.push(slot_idx);
         }
     }
-
-    // 加载：wanted 中有但 active 中没有的
     for cid in req.wanted.iter() {
-        if manager.active.contains_key(cid) {
-            continue;
-        }
+        if manager.active.contains_key(cid) { continue; }
         if let Some(slot_idx) = pipeline.free.pop() {
-            if let Some(slot) = &mut pipeline.slots[slot_idx] {
-                slot.chunk_id = Some(*cid);
-                slot.pass = 0;
-            }
+            if let Some(slot) = &mut pipeline.slots[slot_idx] { slot.chunk_id = Some(*cid); slot.pass = 0; }
             manager.active.insert(*cid, slot_idx);
         }
     }

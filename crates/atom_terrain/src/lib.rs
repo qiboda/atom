@@ -115,19 +115,19 @@ impl Plugin for PerChunkTerrainPlugin {
         // ── 主世界 ──
         app.insert_resource(TerrainSetting::default());
         app.init_resource::<TerrainDebugConfig>();
-        app.insert_resource(ChunkManager::new(64.0, -32.0, 32.0));
+        app.insert_resource(ChunkManager::new(80.0, -32.0, -32.0));
         app.insert_resource(TerrainObserver::default());
         app.init_resource::<ChunkLoadRequest>();
         app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<TerrainObserver>::default());
         app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<ChunkLoadRequest>::default());
 
         // 主世界每帧更新 observer + chunk 加载决策
-        app.add_systems(Update, (update_observer_from_camera, chunk_management_system));
+        app.add_systems(Update, (update_observer_from_camera, chunk_management_system, debug::debug_keyboard_toggle));
 
         // ── 渲染世界：compute ──
         let render_app = app.sub_app_mut(RenderApp);
         // ChunkManager 不 Extract（由 slot_sync_system 在 render world 独立维护）
-        render_app.insert_resource(ChunkManager::new(64.0, -32.0, 32.0));
+        render_app.insert_resource(ChunkManager::new(80.0, -32.0, -32.0));
         render_app.init_resource::<ChunkLoadRequest>();
         render_app.add_systems(RenderStartup, init_per_chunk_compute);
         render_app.add_systems(Render, (
@@ -137,6 +137,8 @@ impl Plugin for PerChunkTerrainPlugin {
         ).chain());
         // ── per-chunk 渲染 ──
         app.add_plugins(render::PerChunkRenderPlugin);
+        // ── 左下角坐标轴指示器 ──
+        app.add_plugins(axis_gizmo::AxisGizmoPlugin);
     }
 }
 

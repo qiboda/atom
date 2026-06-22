@@ -90,9 +90,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let corner = EDGE_CORNERS[e];
         let axis = EDGE_DIRS[e];
 
-        let cx = vx + corner.x;
-        let cy = vy + corner.y;
-        let cz = vz + corner.z;
+        var cx = vx + corner.x;
+        var cy = vy + corner.y;
+        var cz = vz + corner.z;
 
         // 去重：若 canonical owner 存在且 ≠ 当前 voxel → 跳过
         let owner_exists = cx < gs && cy < gs && cz < gs;
@@ -103,8 +103,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let edge_id = voxel_idx * 12u + e;
         if !has_cross(edge_id) { continue; }
 
-        // 以 edge 起始 corner 为基准计算 4 个 quad voxels（u32 入参，同 Phase 2）
         let qv = quad_voxels(axis, cx, cy, cz);
+
 
         // 查询 4 个 voxel 是否有顶点，使用 fixed slot 索引（同 Phase 2）
         var fixed_slots: array<u32, 4>;

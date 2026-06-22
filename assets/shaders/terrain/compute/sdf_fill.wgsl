@@ -13,7 +13,7 @@ struct GlobalUniforms {
 @group(0) @binding(1) var<storage, read_write> density: array<f32>;
 
 fn height_at(xz: vec2<f32>) -> f32 {
-    return sin(xz.x * 0.15) * 6.0 - 24.0;
+    return sin(xz.x * 0.08) * cos(xz.y * 0.08) * 8.0 - 24.0;
 }
 
 @compute @workgroup_size(8, 8, 8)
