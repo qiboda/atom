@@ -44,7 +44,6 @@ Agent 验证: `cargo run -p atom_terrain --example top_down_game --release`（�
 
 **发现摩擦/不一致 → 先记 `.omp/TENSIONS.md`，再处理。** 不跳过信号采集直接修复。
 
-**注释用中文。** 非平凡逻辑解释原因。
 
 **依赖克制。** 能不用就不加。新引入需过四关：stdlib 有？→ workspace 有？→ Bevy 生态有？→ 自实现 < 1 周？
 
