@@ -38,9 +38,7 @@ description: |
 ```
 .omp/
 ├── AGENTS.md              META   项目上下文 + 文档索引（OMP 自动加载）
-├── SOUL.md                META   Agent 行为规范 + 边界
 ├── ARCHITECTURE.md         KB    架构不变量 + ADR
-├── CAPABILITY-MAP.md       KB    当前能力边界
 ├── TENSIONS.md             KB    摩擦日志
 │
 ├── kb/                     KB    统一知识库
@@ -85,7 +83,7 @@ description: |
 │       ├─ 是 Bevy / BRP 相关？ → kb/bevy/
 │       ├─ 是 Pi / TS 规范？ → kb/pi/
 │       ├─ 是项目业务知识？ → kb/project/（agent/ 或 game/）
-│       ├─ 是架构/摩擦/能力？ → 根目录（ARCHITECTURE/TENSIONS/CAPABILITY）
+│       ├─ 是架构/摩擦？ → 根目录（ARCHITECTURE/TENSIONS）
 ├─ 是编码规则/约束？
 │   ├─ 简洁铁律（永远适用）→ AGENTS.md 编码规范节
 │   └─ 结构化规则（globs/condition）→ rules/
