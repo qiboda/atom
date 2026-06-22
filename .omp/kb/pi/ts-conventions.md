@@ -1,4 +1,4 @@
-# TypeScript 编码规范 — Agent Sidecar
+# TypeScript 编码规范 — Pi Agent
 
 ## 运行时
 
@@ -66,10 +66,3 @@ agent/
 └── src/
     └── index.ts          # 单文件（MVP）；未来按功能拆
 ```
-
-## 与 Bevy 集成
-
-- Agent 由 Bevy 的 `start_agent` 系统启动（`npx tsx src/index.ts`）
-- Agent 目录相对于 Bevy 的 `current_dir()`（workspace 根）
-- Agent 进程 PID 存入 `AgentProcess` resource，App 退出时 `Drop` 自动 kill
-- Agent 通过 `waitForBevy()` 轮询 `rpc.discover` 等待 Bevy 就绪

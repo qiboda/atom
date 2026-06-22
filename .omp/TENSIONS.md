@@ -34,10 +34,10 @@
 
 ## 流程
 
-- **2026-06-20**: intent.lisp、APPEND_SYSTEM.md 全量过时。手工维护的元文档总是落后于代码修改。待方案：自动生成 intent.lisp，APPEND_SYSTEM.md 改为指针索引。
-- **2026-06-20**: 旧 specs/lod.spec 已删，specs/terrain-shape.spec 和 specs/terrain-material.spec 重写为 MVP 现状。specs/ → .omp/specs/，.plan/ → .omp/plan/。
+- **2026-06-22**: [restructure] intent.lisp、specs/、plan/ 删除。架构约束并入 ARCHITECTURE.md；BDD spec 全量过时（shader 名/pass 数/网格尺寸不对）；plan/ 四件套（PLAN/MEMORY/DRIFT/SESSION-LOG）是旧 OMP 工作流残余，决策已在 ARCHITECTURE.md。bevy-kb + agent-kb 合并为 kb/。
+- **2026-06-22**: [cleanup] APPEND_SYSTEM.md、RULES.md 删除。session 日志清理 798MB，plugins node_modules prune 45MB。
 - **2026-06-20**: Workspace 仅保留 atom_terrain。其他 11 个 crate 暂时移出，待逐步迁入 Bevy 0.19。
-- **2026-06-20**: Workflow 加 document phase + bevy-kb 更新 + verify-references 检查。Phase-Gate Protocol 防止阶段跳过。
+- **2026-06-20**: Workflow 加 document phase + bevy-kb 更新 + verify-references 检查。
 
 ## 已知退化
 
@@ -53,9 +53,9 @@
 - **Staging buffer readback 两帧等待**: dispatch→(1帧等GPU执行)→copy→(1帧等GPU执行)→map→read。同一帧内 dispatch+copy 会读到全零。
 - **CPU/GPU 噪声不匹配**: GPU 用 value noise（hash-based），CPU 用 OpenSimplex2D。同一坐标高度不同，无法直接对比验证。测试 chunk 位置需根据 GPU noise 单独定位。
 - **2026-06-20**: `edge_detect.wgsl` 密度采样用 `round()` 最近邻 — 将连续密度场量化为阶梯函数，二分搜索收敛到体素边界而非真实 isosurface。根因修复：替换为三线性插值 `trilinear_sample()`。
-- **2026-06-20**: `atom_pqef` crate（Rust + WGSL）已有正确的概率 quadric 实现，但 `atom_terrain` 的 terrain shader (`qef_solve.wgsl`, `main_mesh_compute_vertices.wgsl`) 使用独立 inline 实现 — 同一算法两套代码，存在 divergence 风险。已记录分歧原因（性能/复杂度）在 `qef.spec`。
+- **2026-06-20**: `atom_pqef` crate（Rust + WGSL）已有正确的概率 quadric 实现，但 `atom_terrain` 的 terrain shader (`qef_solve.wgsl`, `main_mesh_compute_vertices.wgsl`) 使用独立 inline 实现 — 同一算法两套代码，存在 divergence 风险。（当时记录在 `qef.spec`，该 spec 于 2026-06-22 随所有 spec 一同删除）
 
-- **2026-06-20**: 回顾发现 `edge_detect.wgsl` 的 `round()` bug 从 Phase 0 存在、多人审阅未发现。根因: 数学密集型函数缺乏 spec 对参。已创建 `.omp/specs/math/` 目录 + `density-sampling.spec` + `qef.spec`。
+- **2026-06-20**: 回顾发现 `edge_detect.wgsl` 的 `round()` bug 从 Phase 0 存在、多人审阅未发现。根因: 数学密集型函数缺乏 spec 对参。（当时创建了 `.omp/specs/math/` + `density-sampling.spec` + `qef.spec`，2026-06-22 已删除）
 
 ## 2026-06-21: Agent Sidecar 验收发现
 

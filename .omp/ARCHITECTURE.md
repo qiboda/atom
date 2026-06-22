@@ -1,9 +1,46 @@
-# Architecture Decision Records — Atom
+# Architecture — Atom Terrain Engine
 
-> 记录关键架构决策及其理由。每条记录解决一个问题，说明背景、选项、决策和后果。
+> 架构不变量（跨子系统约束）+ 架构决策记录 (ADR)。
 
+## 架构不变量
 
-## Foundation
+### 数据流
+
+```
+Main world:  observer → update_grid_chunks → ChunkLoadMsg (Message)
+             → handle_load_requests
+             → TerrainChunksToProcess (ExtractResource, main→render each frame)
+
+Render world: per_chunk_compute_system (6-pass state machine)
+              → staging buffer → crossbeam channel
+
+Main world:  handle_mesh_data → Mesh3d + MeshMaterial3d
+```
+
+- **同步**: TerrainChunksToProcess 通过 ExtractResource 克隆，每帧 idempotent alloc 防止 double-init
+- **回读**: GPU sparse → CPU compact + remap via crossbeam
+
+### GPU 管线
+
+- **策略**: per-chunk Dual Contouring，33³ ghost voxel (N+1 overlap)
+- **接缝**: ghost voxel + QEF 确定性求解 → 无可见缝隙（<2cm micro-gap 接受）
+- **缓冲**: per-slot ring buffer，~25MB/slot，128 slots — chunk 卸载不重置计数器
+
+### 密度场
+
+- **定义**: `density = y - height_at(x,z)`，positive=air, negative=solid
+- **噪声**: value noise 3-octave FBM (MVP)；→ OpenSimplex when biome phase begins
+- **真值源**: CPU SDF 是唯一地形真值。GPU mesh 仅视觉；物理/寻路查询 SDF，不查 mesh。
+
+### 跨子系统约束
+
+- **GPU mesh 边界**: 视觉 only；永远不用于物理或寻路
+- **异步**: std-only futures；不用 tokio/async-std（Bevy 兼容）
+- **Agent sidecar**: TypeScript + BRP HTTP JSON-RPC，2s 轮询延迟（战略层，非战斗）
+
+---
+
+## 架构决策记录 (ADR)
 
 ### Foundation: Rust + Bevy 0.19
 
@@ -38,6 +75,7 @@
   - - BRP `world.spawn_entity` 无法创建 asset handle（Mesh/Material），需 Bevy 侧系统补全可视组件
   - - Agent 进程需 Bevy 管理生命周期（spawn/kill）
 - **关联**: `agent/src/index.ts`, `crates/atom_terrain/examples/top_down_game.rs`
+
 ---
 
 ## ADR 模板

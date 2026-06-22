@@ -4,7 +4,7 @@
 
 **先读后动。** 每个任务先读 AGENTS.md 确认技术栈、约定和工作流。绝不跳过上下文。
 
-**追根溯源。** 遇到设计问题先查现有代码——Bevy 的 ECS 模式、现有 wgpu buffer 管理（`crates/atom_terrain/src/compute/`）、atom_terrain 的状态机。Bevy API 变更先查 `.omp/bevy-kb/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。不要凭空设计，复用项目既有模式。
+**追根溯源。** 遇到设计问题先查现有代码——Bevy 的 ECS 模式、现有 wgpu buffer 管理（`crates/atom_terrain/src/compute/`）、atom_terrain 的状态机。Bevy API 变更先查 `.omp/kb/bevy/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。不要凭空设计，复用项目既有模式。
 
 **性能优先。** 这是 GPU compute + 实时渲染项目。hot path 上零分配、零拷贝。Shader 和 GPU buffer 交互用 encase/bytemuck，不引入运行时开销。
 
@@ -12,7 +12,7 @@
 
 **依赖克制。** 标准库→workspace dep→Bevy 生态→新引入（详见 Boundaries）。不加不必要的 dep。
 
-**注释用中文。** Rust 代码的 doc comment 和 Shader 注释混合中英文，非平凡逻辑用中文解释原因。公共 API 强制 `#[deny(missing_docs)]` + `///` rust-doc（RFC 1574: Summary/Examples/Panics/Safety）。文档描述当前实现行为，spec 定义验收标准——两者互补不冲突。
+**注释用中文。** Rust 代码的 doc comment 和 Shader 注释混合中英文，非平凡逻辑用中文解释原因。公共 API 强制 `#[deny(missing_docs)]` + `///` rust-doc（RFC 1574: Summary/Examples/Panics/Safety）。
 
 ## TypeScript 规范（Agent Sidecar）
 
@@ -33,60 +33,16 @@
 
 ## Testing
 
-按代码层级选择验证策略。Spec 的 Completion Criteria 先行——每个 spec 完成时逐条对账。
+按代码层级选择验证策略。
 
 | 层级 | 方法 | 工具 |
 |------|------|------|
-| Spec 验收 | BDD 场景对账 (C1-C6) | spec 文件 + 手动/自动判定 |
 | 纯 Rust 数学/逻辑 | 红绿 TDD | `#[test]`, `cargo test` |
 | ECS 系统 | 集成测试 (headless App) | `bevy::app::App` 无窗口 |
 | GPU compute / Shader | 手动验证 | example + 肉眼 + 记入 TENSIONS.md |
 
 测试只测行为不测 plumbing——不测默认值、不测内部中间状态。断言逻辑行为而非当前值。
 
-## Spec Lifecycle
-
-驱动工具: `agent-spec` CLI v0.3.0（3 个 skill: tool-first, authoring, estimate）
-
-每个 `.omp/specs/*.spec` 使用中文 DSL:
-```
-spec: task
-name: "名称"
-inherits: project
----
-
-## 意图
-## 已定决策
-## 边界
-  ### 禁止更改
-  ### 允许更改
-## 完成条件
-
-场景: <名称>
-  测试: <#[test] 函数名>
-  假设 ...
-  当 ...
-  那么 ...
-```
-
-### 工作流
-
-1. `agent-spec init --level task --lang zh --name "名称"` — 生成骨架
-2. `agent-spec lint <spec>` — 质量门（检查 scenario 数量、selector 存在性）
-3. `agent-spec plan <spec> --code . --format prompt` — 生成实现计划
-4. `agent-spec lifecycle <spec> --code .` — 主质量门（lint + verify + boundary）
-5. `agent-spec guard --spec-dir .omp/specs --code . --change-scope staged` — pre-commit
-
-**铁律: NO CODE IS "DONE" WITHOUT A PASSING LIFECYCLE.**
-
-| verdict | 含义 | 行动 |
-|---------|------|------|
-| pass | 测试通过 | none |
-| fail | 测试失败 | 修代码 |
-| skip | 测试不存在 | 补测试或修正 selector |
-| uncertain | AI 验证待定 | 手动审查 |
-
-skip ≠ pass。未绑定测试的场景不算完成。
 
 ## Boundaries
 
