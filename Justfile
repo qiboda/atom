@@ -21,26 +21,6 @@ bevy-lint:
 test:
     cargo nextest run --workspace
 
-# agent-spec 命令
-# 初始化新 spec
-spec-init name:
-    agent-spec init --level task --lang zh --name "{{name}}"
-
-# Spec 质量检查
-spec-lint spec:
-    agent-spec lint .omp/specs/{{spec}}.spec
-
-# Spec 生命周期验证
-spec-lifecycle spec:
-    agent-spec lifecycle .omp/specs/{{spec}}.spec --code .
-
-# 全 spec 守卫 (提交前)
-spec-guard:
-    agent-spec guard --spec-dir .omp/specs --code . --change-scope staged
-
-# Spec 审查摘要
-spec-explain spec:
-    agent-spec explain .omp/specs/{{spec}}.spec --code . --format markdown
 
 # 生成并打开 workspace 文档（不含依赖）
 doc:
