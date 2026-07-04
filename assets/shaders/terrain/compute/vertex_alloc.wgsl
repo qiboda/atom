@@ -1,6 +1,5 @@
 // Pass 2: Vertex Allocation — atomic count + compact.
-// 统计每个 voxel 的 crossing edge 数量，为有交叉的 voxel 分配 vertex_index。
-//
+// 仅对 ncross > 0（有表面穿过的）voxel 分配 vertex index。
 // voxel_alloc[voxel_idx] = vertex_index (compact) 或 ~0u (无交叉)
 // counters[0] = total_vertices（原子递增）
 
@@ -10,6 +9,8 @@ struct GlobalUniforms {
     voxel_size: f32,
     grid_size: u32,
     pad1: vec2<u32>,
+    neighbor_mask: u32,
+    pad3: u32,
 }
 
 @group(0) @binding(0) var<uniform> info: GlobalUniforms;
@@ -31,18 +32,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     let voxel_idx = gid.x + gid.y * gs + gid.z * gs * gs;
 
-    // 统计该 voxel 有多少条边穿过 isosurface
+    // 统计 ncross：仅对有表面穿过的 cell 分配 vertex
     var ncross = 0u;
     for (var e = 0u; e < 12u; e++) {
         if has_cross(voxel_idx * 12u + e) { ncross += 1u; }
     }
 
-    if ncross == 0u {
-        voxel_alloc[voxel_idx] = ~0u; // sentinel: 无顶点
-        return;
+    if ncross > 0u {
+        let vi = atomicAdd(&counters[0], 1u);
+        voxel_alloc[voxel_idx] = vi;
+    } else {
+        voxel_alloc[voxel_idx] = ~0u;
     }
-
-    // atomic 分配 vertex index
-    let vi = atomicAdd(&counters[0], 1u);
-    voxel_alloc[voxel_idx] = vi;
 }

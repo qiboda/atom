@@ -7,6 +7,8 @@ struct GlobalUniforms {
     voxel_size: f32,
     grid_size: u32,
     pad1: vec2<u32>,
+    neighbor_mask: u32,
+    pad3: u32,
 }
 
 @group(0) @binding(0) var<uniform> info: GlobalUniforms;

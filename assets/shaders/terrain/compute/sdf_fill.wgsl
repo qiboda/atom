@@ -7,18 +7,19 @@ struct GlobalUniforms {
     voxel_size: f32,
     grid_size: u32,    // grid points per axis = n-1
     pad1: vec2<u32>,
+    neighbor_mask: u32,
+    pad3: u32,
 }
 
 @group(0) @binding(0) var<uniform> info: GlobalUniforms;
 @group(0) @binding(1) var<storage, read_write> density: array<f32>;
-
 fn height_at(xz: vec2<f32>) -> f32 {
     return sin(xz.x * 0.08) * cos(xz.y * 0.08) * 8.0 - 24.0;
 }
 
 @compute @workgroup_size(8, 8, 8)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let n = info.grid_size + 1u;
+    let n = info.grid_size + 2u;
     if gid.x >= n || gid.y >= n || gid.z >= n { return; }
     let idx = gid.x + gid.y * n + gid.z * n * n;
     let pos = info.grid_min + vec3<f32>(f32(gid.x), f32(gid.y), f32(gid.z)) * info.voxel_size;

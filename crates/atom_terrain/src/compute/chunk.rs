@@ -1,7 +1,6 @@
 //! Per-chunk 管理：ChunkId、ChunkState、ChunkManager。
-//!
-//! 32³ voxel per chunk，+1 ghost border → grid_size = 33。
-//! 水平 64m 半径，垂直 -32~32。
+//! 32³ voxel per chunk，+1 ghost border → grid_size = 32。
+//! 水平 80m 半径，垂直 -64~32。
 
 use bevy::{
     prelude::*,
@@ -26,12 +25,12 @@ impl ChunkId {
         Self { x, y, z }
     }
 
-    /// Chunk 原点世界坐标（ghost border 不计入，原点在真实 32³ 起始处）
+    /// Chunk 原点世界坐标（ghost border 不计入）
     pub fn world_min(&self) -> Vec3 {
         Vec3::new(
-            self.x as f32 * 16.0,
-            self.y as f32 * 16.0,
-            self.z as f32 * 16.0,
+            self.x as f32 * 15.0,
+            self.y as f32 * 15.0,
+            self.z as f32 * 15.0,
         )
     }
 
@@ -40,7 +39,12 @@ impl ChunkId {
         let dx = (self.x - other.x) as f32;
         let dy = (self.y - other.y) as f32;
         let dz = (self.z - other.z) as f32;
-        (dx * dx + dy * dy + dz * dz).sqrt() * 16.0
+        (dx * dx + dy * dy + dz * dz).sqrt() * 15.0
+    }
+
+    /// 偏移此 ChunkId (dx, dy, dz) 个 chunk 单位
+    pub fn offset(&self, dx: i32, dy: i32, dz: i32) -> Self {
+        Self::new(self.x + dx, self.y + dy, self.z + dz)
     }
 }
 
@@ -99,13 +103,13 @@ impl ChunkManager {
 
     /// 世界坐标 → ChunkId
     pub fn world_to_chunk(&self, pos: Vec3) -> ChunkId {
-        let c = |v: f32| (v / 16.0).floor() as i32;
+        let c = |v: f32| (v / 15.0).floor() as i32;
         ChunkId::new(c(pos.x), c(pos.y).clamp(-2, 2), c(pos.z))
     }
 
     /// 判定 chunk 8 角点是否有表面穿过
     pub fn chunk_has_surface(min: Vec3, _grid_size: u32, voxel_size: f32) -> bool {
-        let max = min + Vec3::splat(32.0 * voxel_size);
+        let max = min + Vec3::splat(30.0 * voxel_size);
         let mut first_sign = None;
         for xi in 0..=1 {
             for yi in 0..=1 {
@@ -133,9 +137,9 @@ impl ChunkManager {
         let center = self.world_to_chunk(observer);
         self.wanted.clear();
 
-        let chunk_radius = (self.radius / 16.0).ceil() as i32;
-        let y_start = (self.height_min / 16.0).floor() as i32;
-        let y_end = (self.height_max / 16.0).ceil() as i32;
+        let chunk_radius = (self.radius / 15.0).ceil() as i32;
+        let y_start = (self.height_min / 15.0).floor() as i32;
+        let y_end = (self.height_max / 15.0).ceil() as i32;
 
         for dx in -chunk_radius..=chunk_radius {
             for dz in -chunk_radius..=chunk_radius {
@@ -149,5 +153,24 @@ impl ChunkManager {
         req.wanted.clear();
         req.wanted.extend(self.wanted.iter().copied());
         self.last_observer = observer;
+    }
+
+    /// 计算邻居掩码：bit 0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z
+    pub fn neighbor_mask(&self, cid: &ChunkId) -> u32 {
+        let neighbors = [
+            (cid.offset(1, 0, 0), 0u32),   // +X
+            (cid.offset(-1, 0, 0), 1u32),  // -X
+            (cid.offset(0, 1, 0), 2u32),   // +Y
+            (cid.offset(0, -1, 0), 3u32),  // -Y
+            (cid.offset(0, 0, 1), 4u32),   // +Z
+            (cid.offset(0, 0, -1), 5u32),  // -Z
+        ];
+        let mut mask = 0u32;
+        for (nbr, bit) in &neighbors {
+            if self.active.contains_key(nbr) {
+                mask |= 1u32 << bit;
+            }
+        }
+        mask
     }
 }

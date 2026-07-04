@@ -8,8 +8,10 @@ struct GlobalUniforms {
     grid_min: vec3<f32>,
     pad0: u32,
     voxel_size: f32,
-    grid_size: u32,       // voxels per axis (density grid is grid_size+1)
+    grid_size: u32,       // voxels per axis (density grid is grid_size+2)
     pad1: vec2<u32>,
+    neighbor_mask: u32,
+    pad3: u32,
 }
 
 @group(0) @binding(0) var<uniform> info: GlobalUniforms;
@@ -17,10 +19,10 @@ struct GlobalUniforms {
 @group(0) @binding(2) var<storage, read_write> cross: array<u32>;
 
 // ── density grid 索引 ──
-// density grid 为 (grid_size+1)³ 个采样点
+// density grid 为 (grid_size+2)³ 个采样点
 
 fn grid_idx(gx: u32, gy: u32, gz: u32) -> u32 {
-    let n = info.grid_size + 1u;
+    let n = info.grid_size + 2u;
     return gx + gy * n + gz * n * n;
 }
 
@@ -35,7 +37,7 @@ fn world_pos(gx: u32, gy: u32, gz: u32) -> vec3<f32> {
 
 fn trilinear_sample(p: vec3<f32>) -> f32 {
     let rel = (p - info.grid_min) / info.voxel_size;
-    let n = info.grid_size + 1u;
+    let n = info.grid_size + 2u;
 
     let fx = clamp(rel.x, 0.0, f32(n - 1u));
     let fy = clamp(rel.y, 0.0, f32(n - 1u));
@@ -135,7 +137,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         else if axis == 1u { c1y += 1u; }
         else { c1z += 1u; }
 
-        let n = gs + 1u; // density grid points per axis
+        let n = gs + 2u; // density grid points per axis
         let edge_id = voxel_idx * 12u + e;
 
         // 边界外或无 sign change → 清零 cross entry，防止 stale 数据被误判
@@ -146,7 +148,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
         let d0 = read_density(grid_idx(c0x, c0y, c0z));
         let d1 = read_density(grid_idx(c1x, c1y, c1z));
-        if (d0 > 0.0) == (d1 > 0.0) {
+        if d0 * d1 > 0.0 {
             write_cross(edge_id, vec3(0.0), vec3(0.0), false);
             continue;
         }

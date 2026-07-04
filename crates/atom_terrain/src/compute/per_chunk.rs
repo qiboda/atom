@@ -18,13 +18,13 @@ use bevy::{
 use super::chunk::{ChunkId, ChunkLoadRequest, ChunkManager};
 use super::types::TerrainChunkVertex;
 
-const GRID_SIZE: u32 = 33;
+const GRID_SIZE: u32 = 32;
 const VOXEL_SIZE: f32 = 0.5;
-const MAX_SLOTS: usize = 128;
+const MAX_SLOTS: usize = 512;
 
 fn slot_bytes() -> (u64, u64, u64, u64, u64) {
     let gs = GRID_SIZE as u64;
-    let n = gs + 1;
+    let n = gs + 2;
     let vc = gs * gs * gs;
     (n * n * n * 4, vc * 12 * 8 * 4, vc * 4, vc * 32, vc * 12 * 6 * 4)
 }
@@ -33,10 +33,13 @@ fn slot_bytes() -> (u64, u64, u64, u64, u64) {
 #[derive(Clone, Copy, ShaderType, bytemuck::Pod, bytemuck::Zeroable)]
 struct ChunkUniform {
     grid_min: [f32; 3],
-    pad0: u32,
+    pad0: u32,           // → 16
     voxel_size: f32,
     grid_size: u32,
-    pad1: [u32; 2],
+    pad1: [u32; 2],      // → 32
+    neighbor_mask: u32,
+    pad3: u32,           // → 40
+    pad4: [u32; 2],      // → 48
 }
 
 /// Per-chunk GPU compute slot
@@ -49,7 +52,7 @@ pub struct GpuSlot {
     pub sdf: Buffer,
     /// Cross-point buffer
     pub cross: Buffer,
-    /// Voxel allocation buffer (33³ u32)
+    /// Voxel allocation buffer (32³ u32)
     pub voxel_alloc: Buffer,
     /// Vertex buffer (output from compute)
     pub vertices: Buffer,
@@ -107,7 +110,7 @@ pub fn init_per_chunk_compute(
 
     for (i, slot) in slots.iter_mut().enumerate() {
         let tag = format!("pc{i}");
-        let uniform = make_buf(&render_device, &format!("{tag}_uniform"), 32, BufferUsages::UNIFORM | BufferUsages::COPY_DST);
+        let uniform = make_buf(&render_device, &format!("{tag}_uniform"), 48, BufferUsages::UNIFORM | BufferUsages::COPY_DST);
         let uniform_render = make_buf(&render_device, &format!("{tag}_urender"), 64, BufferUsages::UNIFORM | BufferUsages::COPY_DST);
         let sdf = make_buf(&render_device, &format!("{tag}_sdf"), sdf_sz, BufferUsages::STORAGE | BufferUsages::COPY_DST);
         let cross = make_buf(&render_device, &format!("{tag}_cross"), cross_sz, BufferUsages::STORAGE | BufferUsages::COPY_DST);
@@ -174,8 +177,10 @@ pub fn per_chunk_compute_system(
         let Some(slot) = &pipeline.slots[slot_idx] else { continue };
         if slot.pass >= 6 { continue; }
         let min = cid.world_min();
+        let mask = manager.neighbor_mask(&cid);
         queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&ChunkUniform {
-            grid_min: min.to_array(), pad0: 0, voxel_size: VOXEL_SIZE, grid_size: GRID_SIZE, pad1: [0; 2],
+            grid_min: min.to_array(), pad0: 0, voxel_size: VOXEL_SIZE, grid_size: GRID_SIZE,
+            pad1: [0; 2], neighbor_mask: mask, pad3: 0, pad4: [0; 2],
         }));
         if slot.pass == 0 {
             let zero: [u32; 4] = [0, 0, 0, 0];
@@ -186,7 +191,9 @@ pub fn per_chunk_compute_system(
         pass.set_pipeline(pso);
         pass.set_bind_group(0, &slot.bg_compute, &[]);
         if slot.pass == 0 {
-            pass.dispatch_workgroups(GRID_SIZE + 1, GRID_SIZE + 1, GRID_SIZE + 1);
+            pass.dispatch_workgroups(GRID_SIZE + 2, GRID_SIZE + 2, GRID_SIZE + 2);
+        } else if slot.pass == 5 {
+            pass.dispatch_workgroups(1, 1, 1);
         } else {
             pass.dispatch_workgroups(GRID_SIZE, GRID_SIZE, GRID_SIZE);
         }
@@ -233,6 +240,8 @@ pub fn slot_sync_system(
         if let Some(slot_idx) = pipeline.free.pop() {
             if let Some(slot) = &mut pipeline.slots[slot_idx] { slot.chunk_id = Some(*cid); slot.pass = 0; }
             manager.active.insert(*cid, slot_idx);
+        } else {
+            bevy::log::warn!("No free GPU slot for chunk {:?} (MAX_SLOTS={})", cid, MAX_SLOTS);
         }
     }
 }

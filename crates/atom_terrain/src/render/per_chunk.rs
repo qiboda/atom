@@ -31,6 +31,8 @@ pub struct PerChunkRenderPipeline {
     pub solid_double: CachedRenderPipelineId,
     pub wire_culled: CachedRenderPipelineId,
     pub wire_double: CachedRenderPipelineId,
+    pub tint_culled: CachedRenderPipelineId,
+    pub tint_double: CachedRenderPipelineId,
 }
 
 pub fn init_per_chunk_render(
@@ -62,10 +64,12 @@ pub fn init_per_chunk_render(
         })
     };
     commands.insert_resource(PerChunkRenderPipeline {
-        solid_culled: mk("pc_solid_culled", PolygonMode::Fill, Some(Face::Back), vec![]),
         solid_double: mk("pc_solid_double", PolygonMode::Fill, None, vec![]),
+        solid_culled: mk("pc_solid_culled", PolygonMode::Fill, Some(Face::Back), vec![]),
         wire_culled: mk("pc_wire_culled", PolygonMode::Line, Some(Face::Back), vec!["WIREFRAME"]),
         wire_double: mk("pc_wire_double", PolygonMode::Line, None, vec!["WIREFRAME"]),
+        tint_culled: mk("pc_tint_culled", PolygonMode::Fill, Some(Face::Back), vec!["TINT_CHUNK"]),
+        tint_double: mk("pc_tint_double", PolygonMode::Fill, None, vec!["TINT_CHUNK"]),
     });
 }
 
@@ -81,12 +85,12 @@ pub fn per_chunk_render_system(
     mut ctx: RenderContext,
 ) {
     if world.get::<GizmoCamera>(world.resource::<CurrentView>().0).is_some() { return; }
+    let solid_id = if debug_config.show_chunk_bounds { if debug_config.double_sided { render_pipeline.tint_double } else { render_pipeline.tint_culled } } else { if debug_config.double_sided { render_pipeline.solid_double } else { render_pipeline.solid_culled } };
     let (extracted_view, target, depth) = view.into_inner();
     let clip_from_world = extracted_view.clip_from_world.unwrap_or_else(|| {
         let view_from_world = extracted_view.world_from_view.affine().inverse();
         extracted_view.clip_from_view * view_from_world
     });
-    let solid_id = if debug_config.double_sided { render_pipeline.solid_double } else { render_pipeline.solid_culled };
     let Some(solid_pso) = pipeline_cache.get_render_pipeline(solid_id) else { return; };
 
     let color_attachments = [Some(target.get_color_attachment())];

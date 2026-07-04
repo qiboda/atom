@@ -24,6 +24,8 @@ fn setup(mut commands: Commands) {
     commands.insert_resource(TerrainDebugConfig {
         wireframe: false,
         double_sided: true,
+        show_chunk_bounds: true,
+        show_world_axes: true,
     });
     // 摄像机 + FreeCamera（TerrainObserver 资源由 GlobalTerrainPlugin 自动更新）
     commands.spawn((

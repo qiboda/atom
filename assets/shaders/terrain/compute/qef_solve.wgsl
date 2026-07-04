@@ -15,6 +15,8 @@ struct GlobalUniforms {
     voxel_size: f32,
     grid_size: u32,
     pad1: vec2<u32>,
+    neighbor_mask: u32,
+    pad3: u32,
 }
 
 @group(0) @binding(0) var<uniform> info: GlobalUniforms;
@@ -95,18 +97,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         b0 += n.x*d; b1 += n.y*d; b2 += n.z*d;
     }
 
-    if ncross == 0u { return; } // 同 Phase 2: no crossings → no vertex
-
     // ── Probabilistic Quadrics 正则化 (Trettner & Kobbelt 2020) ──
     // A += ncross·σ²I,  b += σ²·Σp_i
-    // σ_n = 0.1·voxel_size → det(A) ≥ ncross³·σ⁴ > 1e-5 for ncross≥2
     let sigma_n = info.voxel_size * 0.1;
     let sigma2 = sigma_n * sigma_n;
-    let nc = f32(ncross);
+    let nc = f32(ncross);  // vertex_alloc 保证 ncross > 0
     a00 += nc * sigma2;
     a11 += nc * sigma2;
     a22 += nc * sigma2;
-    b0 += sigma2 * avg_pos.x;   // avg_pos = Σ p_i (未除 ncross)
+    b0 += sigma2 * avg_pos.x;
     b1 += sigma2 * avg_pos.y;
     b2 += sigma2 * avg_pos.z;
 

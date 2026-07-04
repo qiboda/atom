@@ -21,7 +21,7 @@ impl Default for TerrainSetting {
     fn default() -> Self {
         Self {
             voxel_size: 0.5,
-            voxel_count: 16,
+            voxel_count: 30,
             terrain_size: 4096.0,
             seed: 42,
         }

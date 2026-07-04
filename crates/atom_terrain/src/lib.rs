@@ -25,6 +25,8 @@ pub mod render;
 /// 屏幕空间坐标轴指示器
 pub mod axis_gizmo;
 pub mod screenshot;
+/// 鼠标点击 SDF 调试
+pub mod debug_click;
 use bevy::pbr::wireframe::WireframePlugin;
 use bevy::prelude::*;
 
@@ -33,7 +35,7 @@ use compute::sync::{TerrainChunkProcessReceiver, TerrainChunkProcessSender};
 use compute::global_compute::TerrainObserver;
 use compute::{GlobalTerrainMeshPlugin, TerrainChunkMeshComputePlugin};
 use axis_gizmo::AxisGizmoPlugin;
-use debug::{TerrainDebugConfig, apply_debug_wireframe, debug_keyboard_toggle};
+use debug::{TerrainDebugConfig, debug_keyboard_toggle};
 use loader::update_grid_chunks;
 use mesh::{
     GlobalTerrainMaterial, TerrainChunkMeshReceiver, TerrainChunkMeshSender,
@@ -80,7 +82,6 @@ impl Plugin for TerrainPlugin {
                 handle_unload_requests,
                 handle_mesh_data,
                 debug_keyboard_toggle,
-                apply_debug_wireframe,
             )
                 .chain(),
         );
@@ -113,21 +114,18 @@ impl Plugin for PerChunkTerrainPlugin {
         use bevy::render::{Render, RenderApp, RenderStartup};
 
         // ── 主世界 ──
-        app.insert_resource(TerrainSetting::default());
+        app.insert_resource(ChunkManager::new(50.0, -50.0, 10.0));
         app.init_resource::<TerrainDebugConfig>();
-        app.insert_resource(ChunkManager::new(80.0, -32.0, -32.0));
         app.insert_resource(TerrainObserver::default());
         app.init_resource::<ChunkLoadRequest>();
         app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<TerrainObserver>::default());
         app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<ChunkLoadRequest>::default());
 
-        // 主世界每帧更新 observer + chunk 加载决策
-        app.add_systems(Update, (update_observer_from_camera, chunk_management_system, debug::debug_keyboard_toggle));
+        app.add_systems(Update, (update_observer_from_camera, chunk_management_system, debug::debug_keyboard_toggle, debug::draw_debug_gizmos, debug_click::debug_click_system));
 
-        // ── 渲染世界：compute ──
+        // ── 渲染世界 ──
         let render_app = app.sub_app_mut(RenderApp);
-        // ChunkManager 不 Extract（由 slot_sync_system 在 render world 独立维护）
-        render_app.insert_resource(ChunkManager::new(80.0, -32.0, -32.0));
+        render_app.insert_resource(ChunkManager::new(50.0, -50.0, 10.0));
         render_app.init_resource::<ChunkLoadRequest>();
         render_app.add_systems(RenderStartup, init_per_chunk_compute);
         render_app.add_systems(Render, (
@@ -135,9 +133,7 @@ impl Plugin for PerChunkTerrainPlugin {
             per_chunk_compute_system,
             advance_chunk_states,
         ).chain());
-        // ── per-chunk 渲染 ──
         app.add_plugins(render::PerChunkRenderPlugin);
-        // ── 左下角坐标轴指示器 ──
         app.add_plugins(axis_gizmo::AxisGizmoPlugin);
     }
 }
