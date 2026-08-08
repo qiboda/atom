@@ -177,7 +177,7 @@ atom_ability 全面迁移到 atom_data，datatables 系列不再被引用。含 
 
 | # | 任务 | 产出 |
 |---|---|---|
-| B3-0 | **manifest 修复（前置）**：atom_ability 当前无法构建——workspace.dependencies 缺 once_cell/smallvec/thiserror/paste/dotenv；迁移后依赖链变为 atom_data + atom_layertag；补齐缺失 workspace deps 或改 inline，atom_ability + atom_layertag 加入 workspace members | `cargo check --workspace` 全绿 |
+| B3-0 | **manifest 校验（前置）**：已随 rebase 同步 main（`4e87f59` workspace 迁移 11 crates 完成，workspace.dependencies 已补齐 once_cell/smallvec/thiserror/dotenv/paste/serde——atom_ability 在 main 上可构建）。仅需确认 `cargo check --workspace` 全绿 + 移除 atom_datatables 依赖后构建仍通过 | `cargo check --workspace` 全绿 |
 | B3-1 | 用 serde 结构体 + `#[derive(DataAsset)]` 定义原子表类型：`AbilityConfig` / `BuffConfig` / `LayerTagConfig`（字段与现有 Bean 一致：id/name/desc/graph_class/cd/activation_type/start_required_layertags…；layertag 用 `#[data_ref]`） | 3 个数据表类型 |
 | B3-2 | 替换 `TableReader<T>` SystemParam → `DataRegistry` 查询（stateset/mod.rs、buff/event.rs、examples/ability/main.rs 三处） | TableReader 零引用 |
 | B3-3 | 删除 `TbAbilityRow`/`TbBuffRow`（key+data 分离组件）→ 数据直接 + 索引（handoff 锁定）；`AbilityBundle`/`BuffBundle` 改为携带行数据/键，observer 经 registry 查数据 | Row 组件删除 |
@@ -232,7 +232,8 @@ RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_data   # 新 pub 项时
 | `DataTable<T>` 泛型 TypePath 唯一性 | 高——若 Bevy 按 TypePath 区分 asset 类型，不同 T 冲突 | batch 1 spike 先验证（查 kb + /data/codes/Bevy 源码）；fallback：宏生成具名表类型 |
 | csv 格式多行表反序列化 | 中——csv 是记录流，`Vec<T>` 反序列化语义需确认 | spike 验证 bevy_common_assets 0.17 csv loader 行为 |
 | 复合键宏语法 | 低——`#[index(key = ("a","b"))]` 解析 | 宏解析用 syn 完整支持 tuple 字面量 |
-| atom_ability 依赖链（atom_layertag 引 once_cell） | 中——workspace 修复涉及多 crate | B3-0 先行，逐 crate 验证构建 |
+| bevy 子 crate patch 覆盖 | 中——第三方库直接依赖 bevy_app/bevy_asset 等子 crate 时 crates.io 版本缺 cfg_select | 已解决：patch 增补 bevy_app/bevy_asset/bevy_reflect（记录于 TENSIONS 2026-08-08） |
+| workspace members 合并 | 低——main 迁移 11 crates 与本分支新增 atom_data 的合并 | 已解决：rebase + 手动合并 Cargo.toml（12 members） |
 
 ---
 
