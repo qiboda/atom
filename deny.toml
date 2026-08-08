@@ -71,14 +71,12 @@ feature-depth = 1
 # output a note when they are encountered.
 ignore = [
     { id = "RUSTSEC-2026-0007", reason = "bytes: transitive dep, not directly impacted" },
-    { id = "RUSTSEC-2026-0105", reason = "core2: transitive dep from rav1e, low risk" },
     { id = "RUSTSEC-2021-0141", reason = "dotenv: transitive dep, not used at runtime" },
-    { id = "RUSTSEC-2026-0115", reason = "image: fragile bounds check, low risk for our use" },
-    { id = "RUSTSEC-2026-0116", reason = "image: improper invariant check, low risk" },
-    { id = "RUSTSEC-2026-0117", reason = "image: fragile bounds check variant, low risk" },
     { id = "RUSTSEC-2024-0436", reason = "paste: unmaintained but stable proc-macro dep" },
-    { id = "RUSTSEC-2026-0097", reason = "rand: custom logger issue, not using custom logger" },
     { id = "RUSTSEC-2026-0009", reason = "DoS via recursion, transitive dep" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser: unmaintained, transitive via ab_glyph (imageproc dev-dep / sctk-adwaita), font parsing only" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml: quadratic attr check, locked to 0.37 by wayland-scanner (winit chain, Bevy 0.19); fix needs >=0.41 which breaks the lock" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml: NsReader DoS, locked to 0.37 by wayland-scanner (winit chain, Bevy 0.19); fix needs >=0.41 which breaks the lock" },
 ]
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.

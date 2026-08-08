@@ -1,0 +1,31 @@
+diff --git a/crates/bevy_app/src/lib.rs b/crates/bevy_app/src/lib.rs
+index 0d29d343e..40b93cac4 100644
+--- a/crates/bevy_app/src/lib.rs
++++ b/crates/bevy_app/src/lib.rs
+@@ -1,3 +1,4 @@
++#![feature(cfg_select)]
+ #![cfg_attr(
+     any(docsrs, docsrs_dep),
+     expect(
+diff --git a/crates/bevy_asset/src/io/embedded/mod.rs b/crates/bevy_asset/src/io/embedded/mod.rs
+index 3d830b364..cb0f2a812 100644
+--- a/crates/bevy_asset/src/io/embedded/mod.rs
++++ b/crates/bevy_asset/src/io/embedded/mod.rs
+@@ -426,7 +426,7 @@ macro_rules! load_internal_binary_asset {
+ 
+ #[cfg(test)]
+ mod tests {
+-    use super::{_embedded_asset_path, EmbeddedAssetRegistry};
++    use super::{EmbeddedAssetRegistry, _embedded_asset_path};
+     use std::path::Path;
+ 
+     // Relative paths show up if this macro is being invoked by a local crate.
+diff --git a/crates/bevy_winit/src/lib.rs b/crates/bevy_winit/src/lib.rs
+index faa105233..f46dcf2dc 100644
+--- a/crates/bevy_winit/src/lib.rs
++++ b/crates/bevy_winit/src/lib.rs
+@@ -1,3 +1,4 @@
++#![feature(cfg_select)]
+ #![cfg_attr(docsrs, feature(doc_cfg))]
+ #![forbid(unsafe_code)]
+ #![doc(

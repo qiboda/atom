@@ -32,8 +32,8 @@ if ! cargo clippy --workspace -- -A dead_code -D warnings 2>&1; then
 fi
 
 # --- Quality gate: cargo doc ---
-echo "pre-push: cargo doc --no-deps (must be warning-free)..."
-if ! RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain 2>&1; then
+echo "pre-push: cargo doc --no-deps --workspace (must be warning-free)..."
+if ! RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps --workspace 2>&1; then
     echo ""
     echo "ERROR: cargo doc produced warnings or errors."
     echo "  Add /// doc comments to all public items and re-run."
@@ -52,6 +52,19 @@ if command -v bevy_lint &>/dev/null; then
     fi
 else
     echo "  WARN: bevy_lint not installed, skipping"
+fi
+
+# --- Quality gate: cargo deny ---
+echo "pre-push: cargo deny check..."
+if command -v cargo-deny &>/dev/null; then
+    if ! cargo deny check 2>&1; then
+        echo ""
+        echo "ERROR: cargo deny found issues (advisories/bans/licenses)."
+        echo ""
+        has_error=1
+    fi
+else
+    echo "  WARN: cargo-deny not installed, skipping"
 fi
 
 # --- Quality gate: cargo test ---

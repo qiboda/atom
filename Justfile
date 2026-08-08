@@ -15,7 +15,7 @@ clippy:
 
 # Bevy linter 检查 (需要 bevy_lint v0.6.0 + nightly-2026-01-22)
 bevy-lint:
-    $HOME/.cargo/bin/bevy_lint
+    @if command -v bevy_lint >/dev/null 2>&1; then bevy_lint; else echo "WARN: bevy_lint not installed, skipping"; fi
 
 # 测试 (nextest 并行执行)
 test:
@@ -46,5 +46,5 @@ run:
 run-debug:
     cargo run -p atom_terrain --example chunk_loader
 
-# CI: 全量检查
-ci: check clippy bevy-lint test
+# CI: 全量检查（对齐 .github/workflows/ci.yml）
+ci: check clippy bevy-lint test deny doc

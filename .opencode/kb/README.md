@@ -27,6 +27,10 @@ kb/
 
 ## 使用方式
 
+Bevy API 检索与 shader 审查走 `bevy` skill（`.opencode/skills/bevy/SKILL.md`）——它定义了完整的查找链（migration-index → patterns → Bevy 源码 → 示例）。本文件不重复。
+
+快速入口：
+
 1. Bevy API 问题 → `grep -i "<关键词>" kb/bevy/migration-index.md`
 2. 需要代码示例 → `grep -i "<关键词>" kb/bevy/0-19/patterns.md`
 3. BRP 协议本身 → 查 `kb/bevy/brp-protocol.md`

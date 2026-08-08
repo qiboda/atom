@@ -20,7 +20,7 @@ if ! cargo check --workspace 2>&1; then
 fi
 
 echo "pre-commit: cargo doc --no-deps (missing_docs)..."
-if ! RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain 2>&1; then
+if ! RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps --workspace 2>&1; then
     echo "  ERROR: cargo doc found missing docs or warnings."
     echo "  Add /// doc comments to all public items and re-run."
     has_error=1

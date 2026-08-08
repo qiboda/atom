@@ -1,12 +1,12 @@
 # Atom Terrain Engine
 
-基于 Bevy 的体素平滑地形引擎。
+基于 Bevy 0.19 的体素平滑地形引擎（GPU Dual Contouring + QEF）。
 
 ## 安装
 
 ```toml
 [dependencies]
-atom_terrain = { git = "https://...", branch = "main" }
+atom_terrain = { git = "https://github.com/qiboda/atom", branch = "main" }
 ```
 
 ## 使用
@@ -26,3 +26,8 @@ cargo run -p atom_terrain --example chunk_loader
 | `atom_cel_shader` | 赛璐璐渲染 |
 | `atom_ability` | 技能系统 |
 | `atom_datatables` | 数据表加载 |
+| `atom_core` | 日志、基础工具 |
+| `atom_math` | 数学工具 |
+| `atom_utils` | 通用工具 |
+| `atom_layertag` | 图层/标签系统 |
+| `atom_renderdoc` | RenderDoc 集成 |

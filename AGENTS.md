@@ -67,13 +67,16 @@ PR/功能分支开发使用 git worktree，位于 `.worktrees/<name>/`（gitigno
 
 ## Workspace 当前状态
 
-目前 workspace **包含 `crates/atom_terrain`**。其他 crate（atom_render, atom_shader_lib,
+workspace 含 11 个 crate（`crates/` 下）：atom_terrain, atom_render, atom_shader_lib,
 atom_ability, atom_layertag, atom_datatables, atom_core, atom_math, atom_renderdoc,
-atom_cel_shader, atom_pqef, atom_utils）暂时移出，后续逐步迁入 Bevy 0.19。
+atom_cel_shader, atom_pqef, atom_utils。Bevy 0.19 通过 `[patch.crates-io]` path 依赖
+本地源码 `/data/codes/Bevy`（含 3 处手动补丁，见 `scripts/bevy-0.19.patch`；CI 用同
+一补丁复现环境）。
 
 **重要**: Bevy debug 构建极慢（~19s 启动，30s+ 出首帧）。运行/测试必须用 `--release`。
 地形验证: `cargo run -p atom_terrain --example chunk_loader --release`（超时 30s）。
 直接跑二进制需先 `ln -sf $(pwd)/assets target/release/examples/assets`（Bevy 从 exe 目录找 assets）。
+toolchain 为 nightly-2026-01-22（bevy_lint v0.6.0 + cfg_select feature）。
 
 ## 编码规范
 
@@ -86,7 +89,7 @@ atom_cel_shader, atom_pqef, atom_utils）暂时移出，后续逐步迁入 Bevy 
 
 ### Rustdoc 合规
 
-- 新增 pub 项后运行 `RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain`——`#[deny(missing_docs)]` 下缺失文档即编译错误
+- 新增 pub 项后运行 `RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps --workspace`——`#[deny(missing_docs)]` 下缺失文档即编译错误
 - 需文档的项：`pub fn/struct/enum/trait/type/mod`、enum 变体、`pub const/static`、trait 方法
 - 只识别缺失项并报告，不自动生成 `///` 文档；绝不加 `#[allow(missing_docs)]`
 

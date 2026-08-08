@@ -20,7 +20,7 @@ Issue 和 PR 标签遵循 [Bevy](https://github.com/bevyengine/bevy) 分类法�
 | `A-Compute` | GPU compute 管线、WGSL shader、buffer 管理（`src/compute/`、`assets/shaders/`） |
 | `A-Render` | 渲染管线、mesh、material、相机（`src/mesh/`、`src/loader/`） |
 | `A-Game` | 游戏系统、玩家、NPC、camera controller（`src/game/`） |
-| `A-Agent` | Agent sidecar、BRP 集成（`agent/`） |
+| `A-Agent` | Agent sidecar、BRP 集成（`crates/atom_terrain/src/game/`、`.opencode/kb/bevy/brp-protocol.md`） |
 | `A-CI` | CI 工作流、hooks、构建系统（`.github/`、`.githooks/`） |
 | `A-Docs` | 项目书（`.opencode/kb/`）、`AGENTS.md`、README |
 

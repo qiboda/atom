@@ -262,11 +262,9 @@ feat/xxx      ●──●──●──┘   (worktree 分支，通过 PR 合�
 
 ### 10. 标签强制
 
-创建 GitHub issue 或 PR 时：
-- 必须附加至少一个 **A-**（area，领域）和一个 **C-**（category，分类）标签。
-- **D-**（difficulty，难度）、**P-**（priority，优先级）和 **S-**（status，状态）可选但建议添加。
+创建 GitHub issue 或 PR 时，必须附加至少一个 **A-**（area）和一个 **C-**（category）标签；**D-**/**P-**/**S-** 可选但建议添加。
 
-完整分类体系见 `.opencode/kb/github/labels.md`。
+完整分类体系（前缀含义、全部标签表）见 `.opencode/kb/github/labels.md`——单一数据源，此处不重复。
 
 `gh issue create --label "C-Bug,A-Terrain"` 或 `gh pr create --label "C-Feature,A-Compute"`。
 
@@ -386,8 +384,4 @@ ref #N"
 
 ## 代码风格
 
-- Rust edition 2024；错误处理 `expect("原因")` 不用 `unwrap()`；不用 thiserror/anyhow
-- 公共 API 强制 `#[deny(missing_docs)]`；clippy 零警告
-- Bevy API 不确定时先查 `.opencode/kb/bevy/migration-index.md`
-- Shader 通过 `AssetServer::load` 加载，不用 `DirectAssetAccessExt`
-- 遵循所编辑文件中的现有约定
+遵循 AGENTS.md「编码规范」与「Rustdoc 合规」——单一数据源，此处不重复。要点：Rust edition 2024；错误处理 `expect("原因")` 不用 `unwrap()`；公共 API 强制 `#[deny(missing_docs)]`；clippy 零警告；Bevy API 不确定先查 `.opencode/kb/bevy/migration-index.md`；Shader 通过 `AssetServer::load` 加载。
