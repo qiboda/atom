@@ -23,7 +23,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-          components: clippy, rustfmt
+          # rustc-dev + llvm-tools 官方要求：bevy_lint 用 rustc_private 内部 crate（见 TheBevyFlock/bevy_cli README）
+          components: clippy, rustfmt, rustc-dev, llvm-tools
       - uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
