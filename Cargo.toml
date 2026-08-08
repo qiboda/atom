@@ -4,6 +4,7 @@ members = [
     "crates/atom_ability",
     "crates/atom_cel_shader",
     "crates/atom_core",
+    "crates/atom_data",
     "crates/atom_layertag",
     "crates/atom_math",
     "crates/atom_pqef",
@@ -51,6 +52,9 @@ bitflags = { version = "2.6" }
 
 [patch.crates-io]
 bevy = { path = "/data/codes/Bevy" }
+bevy_app = { path = "/data/codes/Bevy/crates/bevy_app" }
+bevy_asset = { path = "/data/codes/Bevy/crates/bevy_asset" }
+bevy_reflect = { path = "/data/codes/Bevy/crates/bevy_reflect" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"

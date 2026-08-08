@@ -1,0 +1,29 @@
+[package]
+name = "atom_data"
+version = "0.1.0"
+edition = "2024"
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+bevy = { workspace = true }
+bevy_common_assets = { version = "0.17", features = [
+    "json",
+    "ron",
+    "toml",
+    "yaml",
+    "csv",
+    "msgpack",
+    "cbor",
+    "xml",
+    "postcard",
+] }
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = "1"
+ron = "0.12"
+toml = "1.1"
+
+[lints]
+workspace = true
