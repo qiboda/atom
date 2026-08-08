@@ -17,7 +17,6 @@ bevy_common_assets = { version = "0.17", features = [
     "msgpack",
     "cbor",
     "xml",
-    "postcard",
 ] }
 serde = { workspace = true }
 

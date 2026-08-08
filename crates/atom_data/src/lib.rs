@@ -11,11 +11,12 @@
 //!   字段保持原始类型，宏生成 `resolve_{field}` 惰性解析方法。
 //! - **D4**（设计，Batch 2）：[`DataRegistry`] 资源——按行类型 `TypeId` 擦除存储，
 //!   同步查询 `get::<T>(&pk)` 惰性（未加载 None）。
-//! - Q3：全部格式支持（json/ron/toml/yaml/csv/msgpack/cbor/xml/postcard），格式由使用方
-//!   bevy_common_assets 插件选择，框架不绑定。**已验证可直接加载 `DataTable<T>` 的格式：
-//!   json/ron/toml**（`tests/deserialize.rs` + `examples/full_formats.rs` 实证）；
-//!   yaml/msgpack/cbor/xml 为自描述格式理论上可行但未逐格式验证；postcard/csv 因
-//!   `Deserialize` 走 `deserialize_any`（非自描述格式不支持）与 loader 架构限制
+//! - Q3：格式由使用方选择（json/ron/toml/yaml/csv/msgpack/cbor/xml——bevy_common_assets
+//!   features 开启，**postcard 不启用**：其 `deserialize_any` 对非自描述格式必失败且经
+//!   heapless 引入 unmaintained advisory，见 TENSIONS 2026-08-08）。**已验证可直接加载
+//!   `DataTable<T>` 的格式：json/ron/toml**（`tests/deserialize.rs` +
+//!   `examples/full_formats.rs` 实证）；yaml/msgpack/cbor/xml 为自描述格式理论上可行但
+//!   未逐格式验证；csv 因 bevy_common_assets loader 架构（`LoadedCsv<A>` 逐行容器）限制
 //!   **不保证**整表加载——使用前请自行验证。
 //!
 //! # 使用示例

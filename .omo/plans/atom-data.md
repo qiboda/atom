@@ -22,7 +22,7 @@ Luban 生成的二进制 datatables 体系（atom_datatables / atom_cfg / atom_m
 |---|---|
 | Q1 | **B** 全面替代——atom_ability 数据访问层重写，datatables 系列不再被引用（文件保留原状，不引入 workspace） |
 | Q2 | **A** 新建 `atom_data` crate，基于 bevy_common_assets |
-| Q3 | **全部格式**支持（json/ron/toml/yaml/csv/msgpack/cbor/xml/postcard），格式由使用方选择，框架不绑定 |
+| Q3 | **格式由使用方选择**（json/ron/toml/yaml/csv/msgpack/cbor/xml——**postcard 不启用**：`deserialize_any` 对非自描述格式必失败且经 heapless 引入 unmaintained advisory，见 TENSIONS 2026-08-08），框架不绑定 |
 | Q5 | **A** 索引 = 可选 trait + derive，支持单/多重/复合/多值索引 |
 | Q6 | **A** `DataAsset` = Asset + 内建索引，`data.get(id)` 直接查 |
 | Q7 | **A** 声明式 `data_ref` 字段级跨表引用 |
@@ -35,7 +35,7 @@ Luban 生成的二进制 datatables 体系（atom_datatables / atom_cfg / atom_m
 | 项 | 结论 |
 |---|---|
 | 依赖 | `bevy_common_assets 0.17.0`（2026-06-21 发布，依赖 `bevy_app/bevy_asset/bevy_reflect ^0.19.0`，**原生兼容 Bevy 0.19**，无需 fork） |
-| 格式 | 9 格式全支持：json/ron/toml/yaml/csv/msgpack/cbor/xml/postcard，**0 默认 feature**，使用方按需开启 |
+| 格式 | 8 格式：json/ron/toml/yaml/csv/msgpack/cbor/xml（**postcard 不启用**——`deserialize_any` 对非自描述格式必失败且经 heapless 引入 unmaintained advisory，见 TENSIONS 2026-08-08），**0 默认 feature**，使用方按需开启 |
 | 加载器 | bevy_common_assets 提供 `XxxAssetPlugin::<A>::new(&["ext"])` 泛型插件；`app.init_asset::<A>()` + 多格式插件可共存（同一 asset 类型多扩展名路由） |
 | 索引挂载点 | `AssetEvent::<T>::LoadedWithDependencies`（本体 + 全部递归依赖就绪）→ 构建索引 |
 | AssetLoader 0.19 | trait 签名含 `TypePath` supertrait（0.18 新增）；注册用 `init_asset_loader`（需 FromWorld）或 `register_asset_loader`（实例）；`LoadContext::load_builder()` 取代旧 `NestedLoader`/`load_direct` |
@@ -102,11 +102,11 @@ impl DataRegistry {
 
 | # | 任务 | 产出 |
 |---|---|---|
-| B1-1 | 创建 `crates/atom_data` + `crates/atom_data_macros`（proc-macro），加入 workspace members；依赖 bevy_common_assets 0.17（全 9 格式 feature）+ serde | 两个 crate 骨架，`cargo check` 通过 |
+| B1-1 | 创建 `crates/atom_data` + `crates/atom_data_macros`（proc-macro），加入 workspace members；依赖 bevy_common_assets 0.17（8 格式 feature，postcard 除外）+ serde | 两个 crate 骨架，`cargo check` 通过 |
 | B1-2 | 实现 `DataIndexed` trait + `DataIndex` trait（get/get_all/iter 查询接口） | trait 定义 + rustdoc |
 | B1-3 | 实现 `DataTable<T: DataIndexed>` 泛型 Asset（rows + index + Deserialize 手动 impl：Vec<T> → build index） | DataTable 可反序列化 |
 | B1-4 | 实现 `DataAsset` derive 宏：解析 `#[index(...)]` 属性 → 生成 `T::Index` 容器类型 + `DataIndexed`/`DataIndex` impl | 宏生成正确代码 |
-| B1-5 | 全格式加载验证：json/ron/toml/yaml/csv/msgpack/cbor/xml/postcard 各一个 `XxxAssetPlugin::<DataTable<T>>` 注册示例 + 加载测试 | 全格式可加载 |
+| B1-5 | 全格式加载验证：json/ron/toml/yaml/csv/msgpack/cbor/xml 各一个 `XxxAssetPlugin::<DataTable<T>>` 注册示例 + 加载测试（postcard 不启用，见 Q3） | 全格式可加载 |
 | B1-6 | 目录约定：`DataTable` 加载路径按 `datatables/<表类型名>.json` 约定（示例/测试用） | 约定落地 |
 | B1-7 | kb 同步（见 §7） | kb 更新随 commit |
 
@@ -114,7 +114,7 @@ impl DataRegistry {
 
 - [ ] `#[derive(DataAsset)]` + `#[index(key = "id")]` 生成可编译、可查询的行类型
 - [ ] 单键/复合键/多值/多索引/无索引五种形态均有测试覆盖
-- [ ] 9 格式全部可加载同一 `DataTable<T>`（格式由使用方注册插件选择，框架不绑定）
+- [ ] 8 格式（json/ron/toml/yaml/csv/msgpack/cbor/xml，postcard 不启用）中已验证格式可加载同一 `DataTable<T>`（格式由使用方注册插件选择，框架不绑定）
 - [ ] 新 pub API 全带 `///` rustdoc，`RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_data` 无警告
 - [ ] 全门禁通过（§6）
 
@@ -246,7 +246,7 @@ RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_data   # 新 pub 项时
 | done | #3 | B1-2 DataIndexed/DataIndex trait | B1-1 |
 | done | #3 | B1-3 DataTable<T> 泛型 Asset | B1-2 |
 | done | #3 | B1-4 DataAsset derive 宏（index 属性解析） | B1-2 |
-| done | #3 | B1-5 全格式加载验证（9 格式） | B1-3, B1-4 |
+| done | #3 | B1-5 全格式加载验证（8 格式，postcard 不启用） | B1-3, B1-4 |
 | done | #3 | B1-6 目录约定 datatables/<表类型名>.json | B1-3 |
 | done | #3 | B1-7 kb 同步 | B1-5 |
 
