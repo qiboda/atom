@@ -54,7 +54,8 @@ jobs:
       - name: Run tests (nextest)
         run: cargo nextest run --workspace
       - name: Install bevy_lint
-        run: cargo install bevy_lint --version 0.6.0 --locked
+        # bevy_lint 0.6.0 不在 crates.io，需从 TheBevyFlock/bevy_cli git tag 安装
+        run: cargo install bevy_lint --git https://github.com/TheBevyFlock/bevy_cli.git --tag lint-v0.6.0 --locked
       - name: Run bevy_lint
         run: bevy_lint
       - uses: taiki-e/install-action@cargo-deny
