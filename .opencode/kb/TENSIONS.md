@@ -31,6 +31,7 @@
 - **2026-06-20**: `cargo doc -Dwarnings` 会把 Bevy 依赖的 warning 也当 error。已限定 `-p atom_terrain` 范围。
 - **2026-06-20**: WGSL 无断点 — compute shader 调试全靠肉眼。
 - **2026-06-21**: `bevy_ui_widgets::list.rs:213` 有一行 `if let` 必然匹配警告 (`irrefutable_let_patterns`)。上游依赖，无法在本 workspace 压制。等 Bevy 升级后如果修复了，就可以给 cargo check 加 `-D warnings` 全量强制零警告。
+- **2026-08-08**: 排查路径——`cargo doc/check/clippy -p atom_ability` 报 `atom_luban_lib/src/lib.rs:346 unexpected closing delimiter`。根因：`atom_luban_lib` 未提交编辑中 `ByteBuf::read_ulong` 的函数签名行被误删（doc 注释下直接是函数体），`impl ByteBuf` 大括号失衡。修复 = 从 HEAD 还原该行签名（纯恢复，零行为变更）。教训：编辑代码时先 diff 检查非预期删除行；纯加注释的改动不应伴随函数签名消失。
 
 ## 流程
 
@@ -62,3 +63,10 @@
 - **2026-06-21**: [agent] `top_down_game.rs` 缺少 `app.run()` — `main()` 构建 App 后直接退出，从未进入游戏循环。exit code 0 无 crash log，难以排查。
 - **2026-06-21**: [agent] `cleanup_agent` 注册在 `Last` schedule 每帧运行 — 首帧即 kill agent 进程。修复：改用 `Drop` trait 实现 App 退出时自动清理。
 - **2026-06-21**: [agent] BRP `world.spawn_entity` 无法创建 asset handle（Mesh/Material）— NPC 只有 `Transform`，不可见。修复：Agent spawn 时附带 `Name("NPC")`，Bevy 侧 `decorate_agent_entities` 系统自动补 cube mesh + 红色 material。
+
+## 2026-08-08: time 0.3.55 编译回归（parse_borrowed 泛型化）
+
+- **2026-08-08**: workspace 迁移后 Cargo.lock 重新解析，`time` 升到 0.3.55 — `time::format_description::parse_borrowed` 增加了 const 泛型 `VERSION` 参数，`atom_core/src/logger.rs:35` 的调用无法推断类型，E0283/E0284 编译失败，阻塞全部依赖 atom_core 的 crate（atom_shader_lib / atom_cel_shader / atom_terrain 等）的 check/clippy/doc。
+- **排查路径**: `cargo tree -i time` 确认依赖方 → 确认 `atom_core/Cargo.toml` 用 workspace 级 `time = "0.3"`（宽松约束，无上限）→ `cargo update -p time --precise 0.3.36`（该版本 `parse_borrowed` 尚无 VERSION 泛型）→ 编译恢复。
+- **处理**: 仅 pin Cargo.lock（time 0.3.36 + time-core 0.1.2 + time-macros 0.2.18），未改任何 crate 源码。根因修复（logger.rs 显式标注 VERSION 或升级写法）留待 atom_core 维护时处理。
+- **2026-08-08**: [tooling] `lsp-daemon`（rust-analyzer）在长时间 cargo 构建后无响应（30s 超时），`pkill lsp-daemon` 重启也无改善。期间以 `cargo check/clippy -D warnings` 作为权威诊断替代。疑似 daemon 正全量索引 /data/codes/Bevy 巨型 workspace，属环境问题非代码问题。

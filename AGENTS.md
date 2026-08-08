@@ -11,7 +11,7 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.opencode/kb/bevy/migrati
 | `.opencode/kb/TENSIONS.md` | 摩擦日志（发现不一致时记录，不立即解决） |
 | `.opencode/kb/` | **知识库**（Bevy 生态 + 项目知识 + GitHub 约定） |
 | `.opencode/kb/github/` | **GitHub 约定**（labels 标签体系 / comments 评论规范） |
-| `.opencode/skills/` | **Agent 技能**（atom-workflow / test / reflect / worktree / bevy） |
+| `.opencode/skills/` | **Agent 技能**（atom-workflow / test / reflect / worktree / bevy / grill-me） |
 | `.opencode/agent/` | **Subagent**（test-agent：独立 QA 验证者——从 spec 设计测试、独立复验实现） |
 | `.githooks/` | **git hooks**（commit-msg: ref #N 强制；pre-commit: fmt/check/doc/bevy_lint；pre-push: 全门禁 + ref #N 验证） |
 | `.github/` | **CI**（ci.yml：fmt/clippy/doc/nextest 门禁） |
@@ -36,6 +36,7 @@ ref #26
 
 精益求精，追求完美。每一行代码、每一次提交、每一个决策，都应以最高标准衡量。
 
+- **重大决策先 grill-me（强制）**：架构方向变更、库选型/替换、数据流变更、2+ 模块的改造、范围模糊的需求——动手前必须先触发 `grill-me` skill 逐项确认决策树（一次一问、带推荐答案、深度优先走完所有分支），达成 shared understanding 后才允许实施。禁止凭单条消息直接开做。触发词示例：「代替」「替换」「迁移」「重构」「引入」「方案」+ 影响面超出单文件的描述。完整规则见 `grill-me` skill。
 - 代码不行就重构，不要留着凑合；设计不对就推翻，不要叠加补丁
 - **问题处理闭环（强制）**：执行中遇到**任何**异常，禁止静默绕过或静默降级。依次完成感知 → 诊断 → 处理 → 记录（沉淀到 `.opencode/kb/TENSIONS.md`）。完整规则见 `atom-workflow` skill §1——绕行本身就是违规。
 - **agent 可自行完善项目书**：发现重复摩擦或可预防的失误时，agent 有权在 AGENTS.md / `.opencode/kb/` 中添加或修订规则以改善自身行为——规则变更随当次 commit 提交并在 commit message 中说明理由。

@@ -1,5 +1,12 @@
+#![deny(missing_docs)]
+//! Luban 数据表二进制读写基础库。
+//!
+//! 提供 [`ByteBuf`] 字节缓冲读写器，以及数据表访问接口 [`table`] 中的各 trait。
+
+/// 数据表访问接口：单表 / 列表表 / 映射表 / 索引表等。
 pub mod table;
 
+/// 常用项预导入。
 pub mod prelude {
     pub use crate::table::*;
     pub use crate::*;
@@ -7,10 +14,14 @@ pub mod prelude {
 
 use std::cell::UnsafeCell;
 
+/// 字节缓冲读写器：维护读写游标，支持按 Luban 二进制协议读取各类标量。
 #[derive(Debug)]
 pub struct ByteBuf {
+    /// 读取游标位置。
     pub reader_index: usize,
+    /// 写入游标位置。
     pub writer_index: usize,
+    /// 底层字节存储。
     pub bytes: Vec<u8>,
 }
 
@@ -18,6 +29,7 @@ impl ByteBuf {
     #[allow(dead_code)]
     const MIN_CAPACITY: usize = 16;
 
+    /// 从已有字节创建 [`ByteBuf`]：读取游标归零，写入游标指向末尾。
     pub fn new(bytes: Vec<u8>) -> Self {
         ByteBuf {
             reader_index: 0,
@@ -26,6 +38,7 @@ impl ByteBuf {
         }
     }
 
+    /// 创建指定容量、内容为空的 [`ByteBuf`]。
     pub fn with_capacity(capacity: usize) -> Self {
         ByteBuf {
             reader_index: 0,
@@ -34,24 +47,29 @@ impl ByteBuf {
         }
     }
 
+    /// 整体替换底层字节，并重置读写游标到 `begin_pos` / `end_pos`。
     pub fn replace(&mut self, bytes: Vec<u8>, begin_pos: usize, end_pos: usize) {
         self.bytes = bytes;
         self.reader_index = begin_pos;
         self.writer_index = end_pos;
     }
 
+    /// 返回底层字节的分配容量。
     pub fn capacity(&self) -> usize {
         self.bytes.capacity()
     }
 
+    /// 返回可读取的字节数（写入游标与读取游标之差）。
     pub fn size(&self) -> usize {
         self.writer_index - self.reader_index
     }
 
+    /// 复制当前可读区间为新的字节向量。
     pub fn copy_data(&self) -> Vec<u8> {
         self.bytes[self.reader_index..self.writer_index].to_vec()
     }
 
+    /// 读取一个布尔值（1 字节，非零为真）。
     pub fn read_bool(&mut self) -> bool {
         self.ensure_read(1);
         let result = self.bytes[self.reader_index] != 0;
@@ -59,6 +77,7 @@ impl ByteBuf {
         result
     }
 
+    /// 读取一个无符号字节。
     pub fn read_byte(&mut self) -> u8 {
         self.ensure_read(1);
         let result = self.bytes[self.reader_index];
@@ -66,6 +85,7 @@ impl ByteBuf {
         result
     }
 
+    /// 按变长编码读取一个有符号短整型（1-3 字节）。
     pub fn read_short(&mut self) -> i16 {
         self.ensure_read(1);
         let h = self.bytes[self.reader_index];
@@ -92,6 +112,7 @@ impl ByteBuf {
         panic!("Invalid data")
     }
 
+    /// 按变长编码读取一个无符号 32 位整数（1-5 字节）。
     pub fn read_uint(&mut self) -> u32 {
         self.ensure_read(1);
         let h = self.bytes[self.reader_index] as u32;
@@ -132,10 +153,12 @@ impl ByteBuf {
         }
     }
 
+    /// 读取一个无符号 32 位整数（变长编码的别名，见 [`ByteBuf::read_uint`]）。
     pub fn read_int(&mut self) -> i32 {
         self.read_uint() as i32
     }
 
+    /// 按变长编码读取一个无符号 64 位整数（1-9 字节）。
     pub fn read_ulong(&mut self) -> u64 {
         self.ensure_read(1);
         let h = self.bytes[self.reader_index];
@@ -224,10 +247,12 @@ impl ByteBuf {
         }
     }
 
+    /// 读取一个有符号 64 位整数（变长编码的别名，见 [`ByteBuf::read_ulong`]）。
     pub fn read_long(&mut self) -> i64 {
         self.read_ulong() as i64
     }
 
+    /// 读取一个 32 位浮点数（4 字节小端序，支持非对齐地址）。
     pub fn read_float(&mut self) -> f32 {
         self.ensure_read(4);
         let b = &self.bytes[self.reader_index] as *const u8;
@@ -248,6 +273,7 @@ impl ByteBuf {
         x
     }
 
+    /// 读取一个 64 位浮点数（8 字节小端序，支持非对齐地址）。
     pub fn read_double(&mut self) -> f64 {
         self.ensure_read(8);
         let b = &self.bytes[self.reader_index] as *const u8;
@@ -273,10 +299,12 @@ impl ByteBuf {
         x
     }
 
+    /// 读取一个 `usize`（变长编码的别名，见 [`ByteBuf::read_uint`]）。
     pub fn read_size(&mut self) -> usize {
         self.read_uint() as usize
     }
 
+    /// 读取一个 UTF-8 字符串：先读长度，再读对应字节；长度为零返回空串。
     pub fn read_string(&mut self) -> String {
         let n = self.read_size();
         if n > 0 {
