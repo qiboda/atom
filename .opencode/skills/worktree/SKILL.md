@@ -20,8 +20,7 @@ Git 工作树为 PR/功能分支开发提供隔离的工作目录。
 
 | 工作树路径 | 用途 |
 |---|---|
-| `.worktrees/<name>` | 临时 PR 工作空间——每个 PR 一个 |
-| `.worktrees/<name>` | 短期存在：PR 创建时建立，合并后删除 |
+| `.worktrees/<name>` | 临时 PR 工作空间——PR 创建时建立，合并后删除 |
 
 ## 创建时机（MANDATORY）
 
@@ -121,9 +120,6 @@ scripts/open-worktrees.sh --close <name>   # 关闭指定区域
 scripts/open-worktrees.sh --close          # 关闭所有区域
 ```
 
-探测链：`$TERMINAL` → kitty/gnome-terminal/konsole/xfce4-terminal/xterm。
-无探测到终端时脚本打印手动运行命令。
-
 ### 列出
 
 ```bash
@@ -191,10 +187,6 @@ git checkout fix/ci-fix-issue-only && git cherry-pick <fix-commit-sha>
 git push origin fix/ci-fix-issue-only
 ```
 
-**然后**（同一回合，`git worktree add` 成功后立即执行）：
-
-1. 将用途简述（一句话 + 对应 issue URL + 已锁定决策）写入 `.worktrees/<name>/.omo/handoff.md`
-2. 运行 `scripts/open-worktrees.sh <name>` 自动启动（setsid 脱离进程组，无需手动解绑）
-3. 告知用户：worktree 区域已在默认终端中打开，后续工作由 worktree 内的 agent 自主完成
+任何 `git worktree add` 成功后，**立即按上方「创建后步骤」执行**（写 handoff → 运行 `scripts/open-worktrees.sh <name>` 启动 → 移交 worktree agent）。
 
 工作树是临时的——PR 合并后清理。

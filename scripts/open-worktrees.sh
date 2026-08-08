@@ -250,6 +250,13 @@ close_worktree() {
 # ---------------------------------------------------------------------------
 
 has_worktree() {
+    # Strict name validation: worktree names must be a single path segment
+    # (no /, no .., no whitespace). This prevents `--close ../foo` from
+    # escaping .worktrees/ and deleting an arbitrary registered worktree
+    # (security review finding — realpath checks alone are defeated by `..`).
+    case "$1" in
+        */*|*..*|*[[:space:]]*|"") return 1 ;;
+    esac
     [ -d "$WT_DIR/$1" ] && git -C "$WT_DIR/$1" rev-parse --git-dir &>/dev/null
 }
 

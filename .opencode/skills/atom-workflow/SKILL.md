@@ -116,15 +116,7 @@ reached"。如果尚未调用 `/grill-me`，请返回并先完成。
 
 任何影响行为、公开 API、数据结构、配置或工作流的代码变更，必须在同一次 commit 中更新相关 `.opencode/kb/` 文件和 `AGENTS.md`。
 
-权威的「变更类型 → kb/ 文件」映射表见 `AGENTS.md` § kb 映射表——单一数据源，此处不重复。速查：
-
-| 变更类型 | 需更新的 kb/ 文件 |
-|---|---|
-| Bevy API / ECS / 渲染管线变更 | `.opencode/kb/bevy/migration-index.md` + `patterns.md` |
-| 新发现的 API 陷阱 | `.opencode/kb/bevy/migration-index.md` |
-| 架构决策、数据流、ADR | `.opencode/kb/ARCHITECTURE.md` |
-| 问题排查、工具链摩擦 | `.opencode/kb/TENSIONS.md` |
-| 项目级约定 | `AGENTS.md` |
+权威的「变更类型 → kb/ 文件」映射表见 `AGENTS.md` § kb 映射表——单一数据源，此处不重复。高频项：Bevy API 变更 → `kb/bevy/migration-index.md`；架构决策 → `kb/ARCHITECTURE.md`；摩擦 → `kb/TENSIONS.md`。
 
 ### 3. 需求流程（关键）
 
@@ -293,7 +285,7 @@ Atom 项目为特定工作流步骤提供以下 opencode skills：
 
 | Skill / Agent | 斜杠命令 | 用途 | 门禁步骤 |
 |---|---|---|---|
-| test-agent | `task(subagent_type="test")` | 独立 QA 验证者——从 spec 设计测试、独立复验实现 | 第 3 步 — TESTS |
+| test-agent | `task(subagent_type="test-agent")` | 独立 QA 验证者——从 spec 设计测试、独立复验实现 | 第 3 步 — TESTS |
 | test | `/test` | 测试约定与模式（TDD/BDD 写法、nextest 命令） | 第 3 步 — TESTS |
 | reflect | `/reflect` | 编写实现后反思（含 User corrections） | 实现后 |
 | worktree | `/worktree` | 管理 git worktrees（创建/删除） | 第 0.5 步 — WORKTREE |

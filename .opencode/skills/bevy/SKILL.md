@@ -12,8 +12,6 @@ description: |
 
 # Bevy 技术查询与验证
 
-> **Version:** 0.2.0 | **Last Updated:** 2026-08-08
-
 本项目基于 Bevy 0.19。遇到 Bevy API 问题或需要修改 WGSL shader 时，按本 skill 流程处理。
 
 ---

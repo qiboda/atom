@@ -37,7 +37,7 @@ description: 编写实施后反思并追加到 .opencode/kb/project/reflections.
    - 范围/方向纠偏
 2. **逐条对照反思条目**：每条用户纠正必须出现在 User corrections 章节（逐字引用用户原话）。遗漏任何一条 = 反思不完整。
 3. **git 客观流程验证**（命令可查，不凭印象）：
-   - `git branch --contains <commit>` — 本次 commit 落在哪个分支？存在活跃 worktree 而 commit 在 master = 流程偏差
+   - `git branch --contains <commit>` — 本次 commit 落在哪个分支？存在活跃 worktree 而 commit 在 main = 流程偏差
    - `git worktree list` — 是否有"创建了但从未使用"的 worktree？
 
 ### 第 1 步：收集上下文
