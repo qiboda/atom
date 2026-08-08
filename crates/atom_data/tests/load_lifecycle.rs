@@ -39,6 +39,10 @@ fn test_app() -> App {
 
 /// 推进帧直到 ItemConfig 表进入 registry（AssetEvent 异步：任务池读取 → PreUpdate 事件
 /// 处理 → Update sync）。帧上限防死循环。
+///
+/// 每帧 sleep 5ms：`app.update()` 本身不消耗真实时间，而 AssetServer 的文件读取在
+/// `IoTaskPool` 上异步执行——nextest 并发运行时 IO 线程调度可能被延迟，纯帧推进会在
+/// 几毫秒内耗尽帧上限而资产尚未到达。sleep 让异步 IO 有真实时间完成（flaky 修复）。
 fn wait_until_loaded(app: &mut App, max_frames: usize) -> bool {
     for _ in 0..max_frames {
         app.update();
@@ -49,6 +53,7 @@ fn wait_until_loaded(app: &mut App, max_frames: usize) -> bool {
         {
             return true;
         }
+        std::thread::sleep(std::time::Duration::from_millis(5));
     }
     false
 }
