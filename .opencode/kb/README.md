@@ -17,6 +17,9 @@ kb/
 │       ├── release-notes.md     — 0.19 对 atom 相关的变更摘要
 │       ├── migration.md         — 0.18→0.19 迁移要点
 │       └── patterns.md          — 已验证可编译模式
+├── github/                      — GitHub 约定
+│   ├── labels.md                — Issue/PR 标签分类（C-/A-/D-/P-/S-）
+│   └── comments.md              — 评论规范（永远追加）
 └── project/                     — Atom 项目知识
     └── game/
         └── README.md            — 游戏系统（待填充）
@@ -27,4 +30,5 @@ kb/
 1. Bevy API 问题 → `grep -i "<关键词>" kb/bevy/migration-index.md`
 2. 需要代码示例 → `grep -i "<关键词>" kb/bevy/0-19/patterns.md`
 3. BRP 协议本身 → 查 `kb/bevy/brp-protocol.md`
-4. 以上都没有 → 读 `/data/codes/Bevy` 源码，**然后补一条到对应文件**
+4. GitHub 标签/评论约定 → 查 `kb/github/`
+5. 以上都没有 → 读 `/data/codes/Bevy` 源码，**然后补一条到对应文件**

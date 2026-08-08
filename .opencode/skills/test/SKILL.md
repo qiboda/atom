@@ -1,13 +1,15 @@
 ---
 name: test
-description: 为 atom Rust 代码库编写遵循 TDD/BDD 的单元测试/集成测试。触发词：写测试、test-first、RED、TDD、测试失败、测试覆盖、nextest。
+description: atom 测试约定与模式参考（TDD/BDD 写法、nextest 命令、项目标准测试模式）。测试的独立设计与验证由 test-agent 承担——本 skill 提供"怎么写"的规范。触发词：写测试、test-first、RED、TDD、测试模式、nextest。
 ---
 
-# QA — 测试优先 Agent
+# Test — 测试约定与模式
 
 ## 角色
 
-为 atom 的 Rust 代码库编写单元测试，严格遵循 TDD（测试驱动开发）和 BDD（行为驱动开发）工作流。确保在实现代码编写之前具备测试覆盖和正确性。
+提供 atom 项目测试的**写法规范**（怎么组织测试、什么模式、什么命令）。独立 QA 的认知与验证由 `test-agent`（`.opencode/agent/test.md`）承担——本 skill 是 test-agent 的执行手册，也可供主 agent 直接参考测试约定。
+
+> **分工**：`test` skill = how（测试怎么写）；`test-agent` = who（独立 QA 视角，从 spec 设计、独立复验）。RED 测试应由 `test-agent` 编写以保持认知独立。
 
 ## 输入 / 上下文
 
@@ -43,7 +45,7 @@ description: 为 atom Rust 代码库编写遵循 TDD/BDD 的单元测试/集成�
 
 ### 阶段 2：GREEN
 
-测试编写完成并确认失败后，交给主 agent 进行实现。qa agent 不实现生产代码。
+测试编写完成并确认失败后，交给主 agent 进行实现。test-agent 不实现生产代码。
 
 ### 阶段 3：REFACTOR
 

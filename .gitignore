@@ -6,6 +6,10 @@ tools/tracy
 tools/Multi-Channel-Image-Tool
 
 # AI tooling
-.omo/
+.omo/*
+!.omo/plans/
+!.omo/designs/
+!.omo/evidence/
 .worktrees/
 config.json
+logs/

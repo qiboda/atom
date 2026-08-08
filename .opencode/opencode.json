@@ -2,10 +2,5 @@
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
     "./plugins/trash-rm.ts"
-  ],
-  "permission": {
-    "bash": {
-      "kill %1": "allow"
-    }
-  }
+  ]
 }

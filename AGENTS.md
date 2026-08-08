@@ -11,7 +11,8 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.opencode/kb/bevy/migrati
 | `.opencode/kb/TENSIONS.md` | 摩擦日志（发现不一致时记录，不立即解决） |
 | `.opencode/kb/` | **知识库**（Bevy 生态 + 项目知识 + GitHub 约定） |
 | `.opencode/kb/github/` | **GitHub 约定**（labels 标签体系 / comments 评论规范） |
-| `.opencode/skills/` | **Agent 技能**（atom-workflow / issue-workflow / test / rustdoc / docs / reflect / worktree / bevy-api-lookup / bevy-shader-review / opencode-maintainer） |
+| `.opencode/skills/` | **Agent 技能**（atom-workflow / test / reflect / worktree / bevy） |
+| `.opencode/agent/` | **Subagent**（test-agent：独立 QA 验证者——从 spec 设计测试、独立复验实现） |
 | `.githooks/` | **git hooks**（commit-msg: ref #N 强制；pre-commit: fmt/check/doc/bevy_lint；pre-push: 全门禁 + ref #N 验证） |
 | `.github/` | **CI**（ci.yml：fmt/clippy/doc/nextest 门禁） |
 
@@ -36,21 +37,16 @@ ref #26
 精益求精，追求完美。每一行代码、每一次提交、每一个决策，都应以最高标准衡量。
 
 - 代码不行就重构，不要留着凑合；设计不对就推翻，不要叠加补丁
-- **问题处理闭环（强制）**：执行中遇到**任何**异常（工具失败、命令报错、编译错误、测试失败、hook 拒绝、数据不一致、流程障碍）时，**禁止静默绕过或静默降级**——包括"改用替代工具""忽略错误继续""跳过步骤""换个说法糊弄过去"。必须依次完成：
-  1. **感知**：停下，识别这是问题，不把绕行当解决
-  2. **诊断**：用客观证据定位根因（日志、环境变量、复现实验、对比验证），不猜
-  3. **处理**：修复根因；仅在确认根因无法修复时允许 fallback，且必须在记录中说明
-  4. **记录**：根因与排查路径沉淀到 `.opencode/kb/TENSIONS.md`，使其可复用
-  - 绕行本身就是违规，无论结果多顺利。本规则覆盖编译错误、测试失败、hook 拒绝等一切异常。
+- **问题处理闭环（强制）**：执行中遇到**任何**异常，禁止静默绕过或静默降级。依次完成感知 → 诊断 → 处理 → 记录（沉淀到 `.opencode/kb/TENSIONS.md`）。完整规则见 `atom-workflow` skill §1——绕行本身就是违规。
 - **agent 可自行完善项目书**：发现重复摩擦或可预防的失误时，agent 有权在 AGENTS.md / `.opencode/kb/` 中添加或修订规则以改善自身行为——规则变更随当次 commit 提交并在 commit message 中说明理由。
-- **测试先行**：feature/bugfix 变更优先从能复现问题的失败测试开始（RED），再做让它通过的修复（GREEN）。先写修复再写失败测试是反模式。
+- **测试先行**：feature/bugfix 变更从失败测试开始（RED），再做修复（GREEN）。先写修复再写失败测试是反模式。见 `test` skill。
 
 ## 变更前 SELF-CHECK（每次代码编辑前问自己）
 
-0. **"这项工作有 GitHub issue 吗？"** — feature/bugfix 工作没有就先用 `/issue-workflow` 创建。
-1. **"我先写了失败测试吗？"** — 没有就先用 `/test` skill 写测试再实现。
-2. **"我更新了相关 kb/ 文件吗？"** — 没有就确定文件并更新（用 `/docs` skill）。
-3. **"公共 API 有 `///` 文档吗？"** — 新增 pub 项时先验证 `#[deny(missing_docs)]` 合规（用 `/rustdoc` skill）。
+0. **"这项工作有 GitHub issue 吗？"** — feature/bugfix 工作没有就按 `atom-workflow` skill §3 创建。
+1. **"我先写了失败测试吗？"** — 没有就委派 `test-agent`（独立 QA）从 spec 写失败测试再实现。
+2. **"我更新了相关 kb/ 文件吗？"** — 没有就对照「kb 映射表」确定文件并更新。
+3. **"公共 API 有 `///` 文档吗？"** — 新增 pub 项时先验证 `#[deny(missing_docs)]` 合规（见「Rustdoc 合规」）。
 4. **"当前工作在正确的分支/worktree 上吗？"** — 存在活跃 worktree 时（`git worktree list`），实现工作必须在 worktree 内进行；main 只允许 docs/lint/typo/反思类提交直推。不确认分支归属就不开始。
 5. **"发现摩擦/不一致了吗？"** — 有就先记 `.opencode/kb/TENSIONS.md`，再处理。不跳过信号采集直接修复。
 
@@ -58,10 +54,11 @@ ref #26
 
 PR/功能分支开发使用 git worktree，位于 `.worktrees/<name>/`（gitignored），每个 worktree 对应一个功能分支，合并后清理。
 
-- **创建时机**：多模块 feature/epic 类工作（2+ 模块、将产出设计/计划文档）时创建并切换；单文件修复/纯文档不需要。
-- **流程**：`git worktree add -b feat/<name> .worktrees/<name> main` → 在 worktree 内完成实现/验证 → 合并后清理（`git worktree remove` + `git branch -D`）。
-- **强制规则**：worktree 一旦创建，后续实现工作必须在 worktree 内完成；main 上不再继续实现。main 只允许 docs/lint/typo/反思类提交直推。存在活跃 worktree 时实现类提交落在 main 即流程违规，在 TENSIONS.md 记录。
-- 详细命令见 `.opencode/skills/worktree/SKILL.md`。
+- **创建时机（强制）**：需求经 grill-me 确认是需要 worktree 的工作（feature/epic、2+ 模块、将产出 `.omo/plans/*.md` 或 `.omo/designs/*.md`）时，**grill 共识达成后立即创建并切换**；单文件修复/纯文档不需要。判断口诀：**一旦确定"这次要产出 .omo 文件"→ 先开 worktree 再写文件**（untracked 文件不会跨 checkout 迁移）。
+- **主 session 移交（强制）**：创建后主 session 只做两件事——写 `.worktrees/<name>/.omo/handoff.md`（用途 + issue URL + 已锁定决策），然后运行 `scripts/open-worktrees.sh <name>` 自动启动（新终端 + setsid 脱离进程组）。剩余工作全部移交 worktree 内 agent，主 session 不再参与。
+- **会话启动规则（强制）**：worktree 内 opencode 会话启动后第一步必须读取 `.omo/handoff.md` 获取上下文契约，之后才允许开始任何工作。
+- **强制规则**：worktree 一旦创建，后续实现工作必须在 worktree 内完成；main 只允许 docs/lint/typo/反思类提交直推。存在活跃 worktree 时实现类提交落在 main 即流程违规，在 TENSIONS.md 记录。
+- 完整流程、命令与清理（含 `--close` 终止进程 + 删 worktree）见 `.opencode/skills/worktree/SKILL.md`。
 
 ## 决策记录
 
@@ -84,29 +81,30 @@ atom_cel_shader, atom_pqef, atom_utils）暂时移出，后续逐步迁入 Bevy 
 - Shader: 通过 `AssetServer::load` 在 Startup system 加载，不用 `DirectAssetAccessExt`
 - 格式化: `rustfmt.toml` (Unix 换行, edition 2024)；clippy 零警告
 - 代码模式以 `crates/atom_terrain/src/` 实际代码为准
+- **构建门禁**（cargo check/clippy/test 何时跑、失败怎么处理）见 `atom-workflow` skill §6-7
 
-## 构建检查流程
+### Rustdoc 合规
 
-### 门禁顺序
+- 新增 pub 项后运行 `RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain`——`#[deny(missing_docs)]` 下缺失文档即编译错误
+- 需文档的项：`pub fn/struct/enum/trait/type/mod`、enum 变体、`pub const/static`、trait 方法
+- 只识别缺失项并报告，不自动生成 `///` 文档；绝不加 `#[allow(missing_docs)]`
 
-```
-cargo check --workspace    # 先确保编译通过
-cargo clippy --workspace   # 再检查代码质量
-cargo test --workspace     # 最后跑测试
-```
+### kb 映射表（变更 → 需更新的 kb/ 文件）
 
-### 何时运行
+| 变更类型 | 需更新的文件 |
+|---|---|
+| Bevy API / ECS / 渲染管线变更 | `kb/bevy/migration-index.md` + `kb/bevy/0-19/patterns.md` |
+| 新发现的 API 陷阱 | `kb/bevy/migration-index.md`（grep 命中则更新对应行） |
+| 架构决策、数据流、ADR | `kb/ARCHITECTURE.md`（ADR 章节，what + why + why-not） |
+| 问题排查、工具链摩擦 | `kb/TENSIONS.md`（格式 `- **YYYY-MM-DD**: <问题>`，只捕获信号不解决） |
+| 游戏系统实现 | `kb/project/game/README.md` |
+| 项目级约定 | `AGENTS.md`（索引——一句话摘要，绝不重复内容） |
+| 新 skill / 插件 / workflow | `AGENTS.md`（文档索引 + skills 列表） |
+| 标签约定 / 评论约定 | `kb/github/labels.md` / `kb/github/comments.md` |
 
-- 任何 Rust 代码变更后 → `cargo check --workspace`
-- 触及公共 API 或新增文件 → 上述全流程
-- 修改 Shader（`.wgsl`）→ 提示用户实际运行验证（编译通过 ≠ 渲染正确）
+**命令/术语全仓搜索（强制）**：变更涉及命令、API 名称、组件路径、crate 名等被其他文档引用的标识符时，必须全仓 grep 找全所有引用点逐一核对，不能只更新"主要"文件。
 
-### 失败处理
-
-- Check 失败 → 读错误，修复，重试
-- 连续 ≥3 轮编译失败 → 回退 design 重审方案
-- Clippy 警告 → 按项目 clippy 配置处理；`unwrap_used` 必须修复
-- 测试失败 → 分析根因，修复逻辑。绝不压制测试来让代码通过
+**kb 维护纪律**：不创建新 kb/ 文件（优先并入现有文件）；无代码变更上下文不修改 kb/；AGENTS.md 是索引，kb/ 是唯一数据源；不硬编码版本号。
 
 ## 工作习惯
 

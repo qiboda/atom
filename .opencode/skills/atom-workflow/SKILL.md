@@ -32,27 +32,31 @@ reached"。如果尚未调用 `/grill-me`，请返回并先完成。
    或 .omo/designs/*.md）
    → 需要则**立即创建并切换**（/worktree）：grill 共识达成后、产出任何 .omo
      文件之前。plan/design 直接在 worktree 内创建，随实现 PR 提交。
+   → 创建后写 `.worktrees/<name>/.omo/handoff.md`（用途 + issue URL + 决策），
+     运行 `scripts/open-worktrees.sh <name>` 启动，剩余工作移交 worktree agent。
    → 不需要（单文件修复/纯 docs）→ 跳过，继续 main 工作区。
-   → [必须展示 worktree 名称]
+   → [必须展示 worktree 名称 + handoff 已写入]
 
 ☐ 第 1 步 — ISSUE
-   → 调用 /issue-workflow 创建/管理 issues
+   → 按 §3 需求流程创建/管理 issues
    → [必须向用户展示 issue URL，或 epic + 子 issue 列表]
 
 ☐ 第 2 步 — PLAN（仅单文件变更可跳过）
    计划 agent 已运行且已获批准
    → [必须展示计划摘要]
 
-☐ 第 3 步 — TESTS（RED 阶段）
-   → 调用 /test（test skill）编写失败测试
-   → [必须展示测试失败输出]
+☐ 第 3 步 — TESTS（RED 阶段，独立 QA）
+   → 委派 `test-agent`（独立 QA，认知独立于实现）从 spec 设计并编写失败测试
+   → GREEN 后由 `test-agent` 独立复验（不携带实现偏见的再验证 + spec 偏差报告）
+   → 测试约定/模式见 `test` skill
+   → [必须展示测试失败输出 + 复验通过]
 
 ☐ 第 4a 步 — RUSTDOC
-   → 调用 /rustdoc 验证 #[deny(missing_docs)] 合规
-   → [必须展示 cargo doc --no-deps 无警告]
+   → `RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain` 无警告
+   → [必须展示无警告输出]
 
 ☐ 第 4b 步 — DOCS（kb/）
-   → 调用 /docs 识别并更新 kb/ 文件
+   → 对照 AGENTS.md「kb 映射表」识别并更新 kb/ 文件
    → [必须列出文件清单]
 
 ☐ 第 4c 步 — 决策记录
@@ -112,7 +116,7 @@ reached"。如果尚未调用 `/grill-me`，请返回并先完成。
 
 任何影响行为、公开 API、数据结构、配置或工作流的代码变更，必须在同一次 commit 中更新相关 `.opencode/kb/` 文件和 `AGENTS.md`。
 
-权威的「变更类型 → kb/ 文件」映射表见 `.opencode/skills/docs/SKILL.md`。速查：
+权威的「变更类型 → kb/ 文件」映射表见 `AGENTS.md` § kb 映射表——单一数据源，此处不重复。速查：
 
 | 变更类型 | 需更新的 kb/ 文件 |
 |---|---|
@@ -124,13 +128,72 @@ reached"。如果尚未调用 `/grill-me`，请返回并先完成。
 
 ### 3. 需求流程（关键）
 
-编写任何 feature 或 bugfix 代码之前：
-a) 调用 `/issue-workflow` 处理 issue 创建和管理
-b) issue-workflow skill 决定单 issue 还是 epic/子 issue 模式
-c) 确认 issue(s) 已创建且可见
-d) 然后才实现
+编写任何 feature 或 bugfix 代码之前，必须走完整 Issue 生命周期。
 
-以下情况跳过：重构、文档、lint 修复、typo。
+#### 3a. 模式选择
+
+- 计划有 2+ 任务批次且各批次有独立交付物 → **Epic 模式**（epic + 子 issues）
+- 否则 → **单 issue 模式**
+
+#### 3b. 单 issue 创建
+
+```sh
+gh issue create --title "<title>" --body-file /tmp/issue-body.md --label "A-<area>,C-<category>"
+```
+
+用 `gh issue view <N>` 验证，记录 issue 编号，返回 URL。
+
+#### 3c. Epic 模式
+
+1. 创建 epic（父 issue）：
+   ```sh
+   gh issue create --title "<epic title>" --body-file /tmp/epic-body.md --label "A-<area>,C-Feature"
+   ```
+2. 对每个子 issue 用 `--parent` 创建：
+   ```sh
+   gh issue create --title "<sub-issue title>" --body-file /tmp/sub-issue-body.md --label "A-<area>,C-Feature" --parent <epic-N>
+   ```
+3. 子 issue body 模板：
+   ```markdown
+   > **Parent**: #<epic-N>
+   > **Plan**: .omo/plans/<epic-name>.md
+   > **Batch**: <N>
+   > **Depends on**: #<sub-X>（如无则为 "—"）
+
+   ## 描述
+   <任务描述>
+
+   ## 验收标准
+   <验收标准>
+   ```
+
+#### 3d. 批次跟踪（Epic）
+
+计划文件（`.omo/plans/<epic>.md`）是权威跟踪文档，用 `## Tasks` 表格：
+
+```markdown
+### Batch <N>
+| Status | Issue | Task | Depends On |
+|--------|-------|------|------------|
+| pending | #<N> | <单行描述> | — |
+| in_progress | #<N> | <单行描述> | #<X> |
+| done | #<N> | <单行描述> | #<X>, #<Y> |
+```
+
+- `Status`：`pending` | `in_progress` | `done`；只更新状态，绝不删除行
+- **批次切换**：完成当前批次全部子 issues → 状态改 `done` → 向用户报告 → 等确认再开下一批
+- **新增子 issue**：实现中发现新工作 → 加任务行 + `--parent` 建 issue + 重估 DAG 依赖
+
+#### 3e. 批次/最终关闭（PR 合并到 main 后）
+
+```sh
+gh issue close <sub-N1> <sub-N2> <sub-N3>     # 先关子 issues
+gh issue comment <sub-N> --body "Fixed by #<PR-N>"
+gh issue close <epic-N>                        # 再关 epic
+gh issue comment <epic-N> --body "All sub-issues completed:\n- #<sub-N1>: <title>..."
+```
+
+以下情况跳过 issue 流程：重构、文档、lint 修复、typo。
 
 提交引用：`ref #N`（feat/fix），不使用 `fixes #N` / `closes #N`（避免自动关闭）。
 Epic 工作中，每个 commit 引用其子 issue（`ref #<sub-N>`）。
@@ -163,6 +226,12 @@ Feature 和 bugfix 工作遵循 RED → GREEN → REFACTOR：
   `cargo run -p atom_terrain --example chunk_loader --release`（超时 30s）。
   冒烟输出要有"渲染终态证据"（Global DC mesh sent 日志、地形非黑屏），
   不能只看 exit 0。
+
+**失败处理**：
+- Check 失败 → 读错误，修复，重试
+- 连续 ≥3 轮编译失败 → 回退 design 重审方案
+- Clippy 警告 → 按项目 clippy 配置处理；`unwrap_used` 必须修复
+- 测试失败 → 分析根因，修复逻辑。**绝不压制测试来让代码通过**
 
 ### 7. 提交前本地验证
 
@@ -222,14 +291,15 @@ feat/xxx      ●──●──●──┘   (worktree 分支，通过 PR 合�
 
 Atom 项目为特定工作流步骤提供以下 opencode skills：
 
-| Skill | 斜杠命令 | 用途 | 门禁步骤 |
+| Skill / Agent | 斜杠命令 | 用途 | 门禁步骤 |
 |---|---|---|---|
-| issue-workflow | `/issue-workflow` | 创建和管理 issues（单 issue + epic/子 issue） | 第 1 步 — ISSUE |
-| test | `/test` | 编写失败测试（TDD/BDD）、测试覆盖 | 第 3 步 — TESTS |
-| rustdoc | `/rustdoc` | 验证 `#[deny(missing_docs)]` 合规 | 第 4a 步 — RUSTDOC |
-| docs | `/docs` | 识别并更新 kb/ 文件 | 第 4b 步 — DOCS |
+| test-agent | `task(subagent_type="test")` | 独立 QA 验证者——从 spec 设计测试、独立复验实现 | 第 3 步 — TESTS |
+| test | `/test` | 测试约定与模式（TDD/BDD 写法、nextest 命令） | 第 3 步 — TESTS |
 | reflect | `/reflect` | 编写实现后反思（含 User corrections） | 实现后 |
 | worktree | `/worktree` | 管理 git worktrees（创建/删除） | 第 0.5 步 — WORKTREE |
+| bevy | `/bevy` | Bevy API 检索 + Shader 审查 | 编码规范 §Bevy API |
+
+> Issue 生命周期（§3）与 rustdoc/docs 检查已并入本 skill——不再单独成 skill。
 
 当门禁清单显示 `→ 调用 /<command>` 时，加载对应的 skill 并按其工作流执行。
 每个 skill 的详细说明见 `.opencode/skills/<name>/SKILL.md`。
