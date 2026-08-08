@@ -81,10 +81,16 @@ fn json_array_deserializes_to_indexed_table() {
     assert_eq!(row.name, "fireball");
     assert_eq!(row.a, 1);
     assert_eq!(row.b, 2);
-    assert_eq!(row.r#type, 1, "r#type 字段应经 serde unraw 从 JSON key \"type\" 反序列化");
+    assert_eq!(
+        row.r#type, 1,
+        "r#type 字段应经 serde unraw 从 JSON key \"type\" 反序列化"
+    );
 
     assert_eq!(
-        table.get_by_name(&"ice".to_string()).expect("次索引 name 应命中").id,
+        table
+            .get_by_name(&"ice".to_string())
+            .expect("次索引 name 应命中")
+            .id,
         2
     );
 
@@ -97,8 +103,7 @@ fn json_array_deserializes_to_indexed_table() {
 /// 盲区探测（空输入）：`[]` → 空表，查询全空，不 panic。
 #[test]
 fn json_empty_array_yields_empty_table() {
-    let table: DataTable<ItemConfig> =
-        serde_json::from_str("[]").expect("空数组应反序列化为空表");
+    let table: DataTable<ItemConfig> = serde_json::from_str("[]").expect("空数组应反序列化为空表");
 
     assert!(table.get(&1).is_none());
     assert_eq!(table.iter().count(), 0);
@@ -142,8 +147,14 @@ fn toml_and_json_produce_identical_query_results() {
 
     assert_eq!(from_toml.get(&2).expect("toml id=2").name, "ice");
     assert_eq!(
-        from_json.get_by_name(&"thunder".to_string()).expect("json name 命中").id,
-        from_toml.get_by_name(&"thunder".to_string()).expect("toml name 命中").id
+        from_json
+            .get_by_name(&"thunder".to_string())
+            .expect("json name 命中")
+            .id,
+        from_toml
+            .get_by_name(&"thunder".to_string())
+            .expect("toml name 命中")
+            .id
     );
 }
 
@@ -157,7 +168,10 @@ fn three_formats_agree_on_query_results() {
     for table in [&from_json, &from_ron, &from_toml] {
         assert_eq!(table.iter().count(), 3, "三种格式行数应一致");
         assert_eq!(table.get(&1).expect("id=1 命中").name, "fireball");
-        assert_eq!(table.get_by_name(&"ice".to_string()).expect("name 命中").id, 2);
+        assert_eq!(
+            table.get_by_name(&"ice".to_string()).expect("name 命中").id,
+            2
+        );
         let kind1: Vec<i32> = table.get_all_by_kind(&1).iter().map(|r| r.id).collect();
         assert_eq!(kind1, vec![1, 3], "multi 查询结果应一致且保持行序");
     }

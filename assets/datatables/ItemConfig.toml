@@ -1,0 +1,5 @@
+rows = [
+  { id = 1, name = "fireball", kind = 1 },
+  { id = 2, name = "ice", kind = 2 },
+  { id = 3, name = "thunder", kind = 1 },
+]

@@ -90,7 +90,9 @@ fn primary_get_hit_and_miss() {
 fn secondary_name_index_get() {
     let table = DataTable::from_rows(sample_rows()).expect("合法数据构建索引不应失败");
 
-    let hit = table.get_by_name(&"ice".to_string()).expect("次索引 name=ice 应命中");
+    let hit = table
+        .get_by_name(&"ice".to_string())
+        .expect("次索引 name=ice 应命中");
     assert_eq!(hit.id, 2);
 
     assert!(
@@ -104,10 +106,15 @@ fn secondary_name_index_get() {
 fn composite_key_get_by_pair() {
     let table = DataTable::from_rows(sample_rows()).expect("合法数据构建索引不应失败");
 
-    let hit = table.get_by_pair(&(3, 4)).expect("复合键 (a,b)=(3,4) 应命中");
+    let hit = table
+        .get_by_pair(&(3, 4))
+        .expect("复合键 (a,b)=(3,4) 应命中");
     assert_eq!(hit.id, 2);
 
-    assert!(table.get_by_pair(&(3, 99)).is_none(), "复合键未命中应返回 None");
+    assert!(
+        table.get_by_pair(&(3, 99)).is_none(),
+        "复合键未命中应返回 None"
+    );
 }
 
 /// §4.4「多值」：`multi` 一 key 多行，`get_all` 返回全部匹配行且保持行插入顺序。
@@ -126,7 +133,10 @@ fn multi_index_get_all_returns_all_matches_in_row_order() {
 fn multi_index_get_all_unknown_key_returns_empty() {
     let table = DataTable::from_rows(sample_rows()).expect("合法数据构建索引不应失败");
 
-    assert!(table.get_all_by_type(&7).is_empty(), "未知 type 应返回空 Vec");
+    assert!(
+        table.get_all_by_type(&7).is_empty(),
+        "未知 type 应返回空 Vec"
+    );
 }
 
 /// §4.4「无索引」：不加 `#[index]` → `iter()` 全量迭代（保持插入顺序）。
@@ -169,7 +179,10 @@ fn duplicate_unique_key_is_rejected() {
     ];
 
     let err = DataTable::from_rows(rows).expect_err("唯一索引重复 key 必须被拒绝（error 分支）");
-    assert!(!err.is_empty(), "错误信息不应为空（建议包含重复 key 的值与索引字段名）");
+    assert!(
+        !err.is_empty(),
+        "错误信息不应为空（建议包含重复 key 的值与索引字段名）"
+    );
 }
 
 /// 盲区探测：multi 索引允许一 key 多行——重复 key 在 multi 索引下**不得**报错。
@@ -199,8 +212,7 @@ fn duplicate_multi_key_is_allowed() {
 /// 盲区探测（空输入）：空表所有查询形态均返回空/None，构建不 panic。
 #[test]
 fn empty_table_returns_none_for_every_query() {
-    let table: DataTable<AbilityConfig> =
-        DataTable::from_rows(vec![]).expect("空表构建不应失败");
+    let table: DataTable<AbilityConfig> = DataTable::from_rows(vec![]).expect("空表构建不应失败");
 
     assert!(table.get(&1).is_none());
     assert!(table.get_by_name(&"x".to_string()).is_none());
@@ -215,8 +227,17 @@ fn all_index_forms_coexist_on_one_table() {
     let table = DataTable::from_rows(sample_rows()).expect("合法数据构建索引不应失败");
 
     assert_eq!(table.get(&2).expect("id=2 命中").name, "ice");
-    assert_eq!(table.get_by_name(&"thunder".to_string()).expect("name 命中").id, 3);
-    assert_eq!(table.get_by_pair(&(1, 2)).expect("复合键命中").name, "fireball");
+    assert_eq!(
+        table
+            .get_by_name(&"thunder".to_string())
+            .expect("name 命中")
+            .id,
+        3
+    );
+    assert_eq!(
+        table.get_by_pair(&(1, 2)).expect("复合键命中").name,
+        "fireball"
+    );
     assert_eq!(table.get_all_by_type(&2).len(), 1);
     assert_eq!(table.iter().count(), 3, "全量迭代应覆盖所有行");
 }

@@ -56,6 +56,24 @@ Main world:  handle_mesh_data → Mesh3d + MeshMaterial3d
 
 > 以下所有子系统的设计（GPU compute pipeline、buffer 管理、数据表系统、技能图）均继承自有代码。不做追溯 ADR——从我们的介入点 forward。
 
+### atom_data: bevy_common_assets 驱动的数据表框架
+
+- **日期**: 2026-08-08
+- **状态**: accepted
+- **决策**: 新建 `atom_data` crate 作为声明式数据表框架，全面替代 Luban 二进制 datatables 体系（atom_datatables / atom_cfg / atom_macros / atom_luban_lib）。行类型 = `#[derive(DataAsset)]`（仅要求 serde::Deserialize + DataIndexed），表 Asset = 泛型容器 `DataTable<T: DataIndexed>`（`rows: Vec<T>` + 索引容器）；格式由使用方选择，通过 bevy_common_assets 0.17 的 `XxxAssetPlugin::<DataTable<T>>::new(&["ext"])` 注册 loader；索引挂载点 = `AssetEvent::LoadedWithDependencies`（Q8 惰性查询）；目录约定 `assets/datatables/<表类型名>.json`（文件名 = 行类型名，扩展名定格式）。
+- **背景**: Luban 生成的二进制 `.bytes` 表不可读、不可手工编辑；访问依赖 `TableReader<T>` SystemParam + 手写 trait 族（MapTable/OneTable/MultiIndexListTable…）；跨表引用是字符串外键 + 运行时手动解析，无声明式支持。
+- **选项**:
+  - 方案 A (selected): bevy_common_assets 全格式（9 种）加载 + 自研索引 derive 宏。格式支持广且可扩展，数据源（JSON/RON/TOML/YAML…）对美术/策划可读可编辑；索引声明化（单/多/复合/多值/无五种形态），查询 O(1)。
+  - 方案 B: 维持 Luban 二进制体系。不可读、Luban 生成代码重、格式扩展需改生成器，与项目「数据声明化」方向冲突。
+  - 方案 C: 自研 loader 仅支持 JSON。实现量可控但违背 Q3「全部格式、格式由使用方选择」；bevy_common_assets 已覆盖全部格式且原生兼容 Bevy 0.19，无重造必要。
+- **后果**:
+  - + 数据文件全部可读可编辑，热重载（file_watcher）免费获得
+  - + 索引声明化：主/次/复合/多值/无索引五种形态由 `#[index(...)]` 属性驱动，查询接口由宏生成（`get`/`get_by_x`/`get_by_pair`/`get_all_by_x`）
+  - + `DataTable<T>` 泛型 Asset 单一容器，不按表类型生成独立代码——TypePath 唯一性已 spike 验证（Bevy GenericTypePathCell 按 TypeId 区分，不同 T 实例 path 不同）
+  - - 索引构建错误（重复唯一键）在反序列化时以 error 传播，加载失败需使用方监听 `AssetLoadFailedEvent` 感知
+  - - 行类型宏生成的查询 trait 是孤儿规则解法（`DataTable<T>` inherent impl 只能在 atom_data 内），调用点需 trait 在 scope（宏与行类型同模块生成，自动满足）
+- **关联**: 无（新决策点；batch 2 的 DataRegistry + data_ref 跨表引用将在此框架上扩展）
+
 ---
 
 ## ADR 模板

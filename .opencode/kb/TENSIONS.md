@@ -64,6 +64,8 @@
 - **2026-08-08**: 排查路径——`cargo doc/check/clippy -p atom_ability` 报 `atom_luban_lib/src/lib.rs:346 unexpected closing delimiter`。根因：`atom_luban_lib` 未提交编辑中 `ByteBuf::read_ulong` 的函数签名行被误删（doc 注释下直接是函数体），`impl ByteBuf` 大括号失衡。修复 = 从 HEAD 还原该行签名（纯恢复，零行为变更）。教训：编辑代码时先 diff 检查非预期删除行；纯加注释的改动不应伴随函数签名消失。
 - **2026-08-08**: 排查路径——`atom_data` 引入 `bevy_common_assets 0.17` 后编译报 `cfg_select` E0658。根因：现有 `[patch.crates-io]` 只 patch 顶层 `bevy`，而 bevy_common_assets 直接依赖 `bevy_app`/`bevy_asset`/`bevy_reflect` 子 crate（crates.io 版本缺 cfg_select patch）。修复 = patch 增补三个子 crate 指向 `/data/codes/Bevy/crates/*`。教训：引入直接依赖 bevy 子 crate 的第三方库时，需同步检查 patch.crates-io 覆盖范围。
 - **2026-08-08**: [流程] RED 阶段 commit 被 pre-commit hook 拦截——hook 的 `cargo check --workspace` 无法通过预期编译失败的 RED 测试。处理 = `git commit --no-verify` 绕过（RED 阶段正当），commit message 说明原因。教训：预实现门禁第 3 步（RED）与提交门禁（pre-commit 全量 check）冲突，后续 RED commit 需注明 --no-verify 理由。
+- **2026-08-08**: [spike 结论] `DataTable<T>` 泛型 TypePath 唯一性（`.omo/plans/atom-data.md` §3 风险表第一项）——Bevy 的 `TypePath` derive 对泛型类型生成 `GenericTypePathCell`，按 `TypeId` 缓存，不同 `T` 实例得到不同 type path，多格式注册（同一 `DataTable<T>` 多个 loader 插件）实测正常。**无需 fallback 方案**（宏生成具名表类型 `{RowName}Table` 不再需要），实现照常使用泛型容器。验证方式：`full_formats` 示例 json/ron/toml 三格式同时注册 + 加载成功。
+- **2026-08-08**: `cargo doc` 报 "File system loop" warning——根目录 `assets/assets` 是历史遗留的指向其他 worktree 的自引用符号链接（HEAD 中 blob e757a26，随 0c10a07 迁移遗留），rustdoc 遍历 asset 目录时撞上循环。非阻塞（warning 级，doc 正常完成），后续清理 worktree 时应删除该符号链接。
 
 ## 流程
 
