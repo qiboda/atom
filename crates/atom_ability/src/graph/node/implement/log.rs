@@ -1,3 +1,5 @@
+//! 日志节点：执行时打印输入消息并沿 finish 执行口继续。
+
 use std::vec::Vec;
 
 use bevy::prelude::*;
@@ -16,6 +18,7 @@ use crate::{
     impl_effect_node_pin_group,
 };
 
+/// 日志节点插件：注册 [`EffectNodeLog`] 类型反射。
 #[derive(Debug, Default)]
 pub struct EffectNodeLogPlugin;
 
@@ -27,12 +30,15 @@ impl Plugin for EffectNodeLogPlugin {
 
 ///////////////////////// Node Component /////////////////////////
 
+/// 日志即时节点：输入 `message` 槽，执行时打印消息，随后触发 finish 执行口。
 #[derive(Debug, Default, Reflect)]
 pub struct EffectNodeLog {
+    /// 即时节点基础结构（UUID）。
     pub base: InstantEffectNodeBase,
 }
 
 impl EffectNodeLog {
+    /// 创建带新 UUID 的日志节点。
     pub fn new() -> Self {
         Self {
             base: InstantEffectNodeBase::new(),

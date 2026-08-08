@@ -1,3 +1,5 @@
+//! Effect（效果）模块：技能/增益的图实例实体——状态机、状态层标签、计时与销毁。
+
 pub mod bundle;
 pub mod event;
 pub mod graph_map;
@@ -21,6 +23,7 @@ use self::{
     timer::{time_end_destroy_effect, update_effect_timer_system},
 };
 
+/// Effect 子系统插件：注册效果事件、状态更新、标签应用与计时销毁系统。
 pub struct EffectPlugin;
 
 impl Plugin for EffectPlugin {

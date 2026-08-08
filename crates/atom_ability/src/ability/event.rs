@@ -1,3 +1,5 @@
+//! 技能事件与 observer：技能的 ready/start/remove/abort/tickable 生命周期。
+
 use atom_datatables::effect::TbAbilityRow;
 use atom_layertag::container_op::{
     LayerTagContainerConditionRequired, LayerTagContainerConditionWithout, LayerTagContainerOpAdd,
@@ -25,37 +27,48 @@ use super::{
 
 use crate::graph::event::EffectGraphAddEvent;
 
+/// 技能就绪事件：技能触发 ready 检查并尝试执行入口图。
 #[derive(Debug, Event)]
 pub struct AbilityReadyEvent;
 
+/// 技能开始事件。
 #[derive(Debug, EntityEvent)]
 pub struct AbilityStartEvent {
+    /// 技能实体（事件目标）。
     #[event_target]
     pub ability_entity: Entity,
 }
 
 // 需要后续处理，等待技能执行完毕。
 // TODO: 如果处于激活状态下，需要触发中断事件。
+/// 技能移除事件：等待技能执行完毕后移除。
 #[derive(Debug, EntityEvent)]
 pub struct AbilityRemoveEvent {
+    /// 技能实体（事件目标）。
     #[event_target]
     pub ability_entity: Entity,
 }
 
 // 强制中断技能。
+/// 技能强制中断事件。
 #[derive(Debug, EntityEvent)]
 pub struct AbilityAbortEvent {
+    /// 技能实体（事件目标）。
     #[event_target]
     pub ability_entity: Entity,
 }
 
+/// 设置技能节流状态的事件。
 #[derive(Debug, EntityEvent)]
 pub struct AbilityTickableEvent {
+    /// 是否可执行。
     pub tickable: bool,
+    /// 技能实体（事件目标）。
     #[event_target]
     pub ability_entity: Entity,
 }
 
+/// 处理 [`AbilityReadyEvent`]：检查开始所需/禁用状态层标签，满足则触发图 ready 执行。
 #[allow(clippy::type_complexity)]
 pub fn trigger_ability_ready(
     trigger: On<AbilityReadyEvent>,
@@ -108,6 +121,7 @@ pub fn trigger_ability_ready(
     }
 }
 
+/// 处理 [`AbilityStartEvent`]：应用状态层标签增删并触发图 start 执行。
 #[allow(clippy::type_complexity)]
 pub fn trigger_ability_start(
     trigger: On<AbilityStartEvent>,
@@ -158,6 +172,7 @@ pub fn trigger_ability_start(
     }
 }
 
+/// 处理 [`AbilityRemoveEvent`]：标记技能待移除并触发图移除事件。
 pub fn trigger_ability_remove(
     trigger: On<AbilityRemoveEvent>,
     mut commands: Commands,
@@ -200,6 +215,7 @@ pub fn trigger_ability_remove(
 //     }
 // }
 
+/// 处理 [`AbilityAbortEvent`]：检查中断所需/禁用状态层标签，满足则触发图 abort 执行。
 pub fn trigger_ability_abort(
     trigger: On<AbilityAbortEvent>,
     mut commands: Commands,
@@ -250,6 +266,7 @@ pub fn trigger_ability_abort(
     }
 }
 
+/// 处理 [`AbilityTickableEvent`]：透传给技能下的图实例节流事件。
 pub fn trigger_ability_tickable(
     trigger: On<AbilityTickableEvent>,
     mut commands: Commands,
@@ -270,6 +287,7 @@ pub fn trigger_ability_tickable(
 }
 
 // add to ability entity observer
+/// 处理技能实体添加事件：按数据表中的图类别为技能添加 Effect Graph。
 pub fn trigger_ability_add(
     trigger: On<Add, Ability>,
     mut commands: Commands,

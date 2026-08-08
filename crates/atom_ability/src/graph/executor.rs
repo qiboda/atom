@@ -1,3 +1,5 @@
+//! Effect Graph 执行器：按执行流连接驱动节点执行，直到状态节点为止。
+
 use std::ops::Not;
 
 use bevy::prelude::*;
@@ -10,9 +12,9 @@ use super::{
     pin::EffectNodeExecPin,
 };
 
-/// 执行效果节点，直到状态节点执行。状态节点也可能会触发后续节点的执行。
-/// 执行节点，返回接下来执行的节点。
-/// 执行状态节点，执行状态的后续哪个输入pin。
+/// 执行器插件：注册执行器系统（在 [`EffectGraphUpdateSystems::Execute`] 集内）。
+///
+/// 执行效果节点直到状态节点；状态节点也可能触发后续节点继续执行。
 #[derive(Debug, Default)]
 pub struct EffectGraphExecutorPlugin;
 
@@ -25,6 +27,7 @@ impl Plugin for EffectGraphExecutorPlugin {
     }
 }
 
+/// 图的执行器组件：维护待执行的输出执行口队列，逐帧消费执行。
 #[derive(Debug, Default, Component, Reflect)]
 #[reflect(Component)]
 pub struct EffectGraphExecutor {
@@ -38,6 +41,7 @@ impl EffectGraphExecutor {
 
     // use to start execute next nodes of exec pin
     // push still to next node is state node.
+    /// 从指定输出执行口启动执行：入队并立即沿连接推进后续节点。
     pub fn start_push_output_pin(
         &mut self,
         output_exec_pin: EffectNodeExecPin,
@@ -49,6 +53,7 @@ impl EffectGraphExecutor {
     }
 
     // only use in push_execute_chain method  of instant node
+    /// 沿输出执行口的连接推进后续节点（仅供即时节点的 `push_execute_chain` 使用）。
     pub fn continue_push_next_node_output_pin(
         &mut self,
         output_exec_pin: EffectNodeExecPin,
@@ -68,6 +73,7 @@ impl EffectGraphExecutor {
     }
 
     // only use in push_execute_chain method  of instant node
+    /// 按输出执行口名称推进后续节点（仅供即时节点的 `push_execute_chain` 使用）。
     pub fn continue_push_next_node_output_pin_from_node_name(
         &mut self,
         node_id: EffectNodeId,

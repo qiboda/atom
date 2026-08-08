@@ -1,3 +1,5 @@
+//! Effect Graph 节点：状态节点（占用实体）与即时节点（纯数据）的定义。
+
 pub mod bundle;
 pub mod implement;
 pub mod pin;
@@ -12,13 +14,15 @@ use super::{
     executor::EffectGraphExecutor,
 };
 
+/// 标记 trait：Effect Graph 节点类型。
 pub trait EffectNode {}
 
-/// all non-system effect node
+/// 即时节点 trait：不占用实体的纯数据节点，通过 UUID 注册。
 pub trait InstantEffectNode: Sync + Send {
+    /// 返回节点的 UUID。
     fn get_uuid(&self) -> Uuid;
 
-    /// 设置后续执行的输出pin。
+    /// 设置后续执行的输出 pin。
     fn push_execute_chain(
         &self,
         context: &EffectGraphContext,
@@ -27,30 +31,39 @@ pub trait InstantEffectNode: Sync + Send {
         instant_nodes: &Res<InstantEffectNodeMap>,
     );
 
+    /// 收集节点输出值到上下文。
     fn collect(&self, context: &mut EffectGraphContext);
+    /// 执行节点逻辑。
     fn execute(&self, context: &mut EffectGraphContext);
 }
 
-/// all system effect node
+/// 状态节点 trait：占用实体、持有运行时状态的系统节点。
 pub trait StateEffectNode {}
 
+/// 节点执行状态：用于图整体状态的判定（全部节点 Idle 时图归为非激活）。
 #[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Reflect)]
 #[reflect(Component)]
 pub enum EffectNodeExecuteState {
+    /// 空闲（默认）。
     #[default]
     Idle,
+    /// 执行中。
     Active,
 }
 
 /// TODO: change uuid to asset id and entity to entity add asset id
+/// 节点 ID：即时节点用 [`Uuid`]，状态节点用 [`Entity`]。
 #[derive(Debug, Component, Copy, Clone, PartialEq, Eq, Hash, Reflect)]
 #[reflect(Component)]
 pub enum EffectNodeId {
+    /// 即时节点（不占实体）。
     Uuid(Uuid),
+    /// 状态节点（占实体）。
     Entity(Entity),
 }
 
 impl EffectNodeId {
+    /// 从可选的 UUID 构造；`None` 时使用 nil UUID。
     pub fn from_uuid(uuid: Option<Uuid>) -> Self {
         match uuid {
             Some(uuid) => Self::Uuid(uuid),
@@ -58,6 +71,7 @@ impl EffectNodeId {
         }
     }
 
+    /// 从可选的实体构造；`None` 时使用 [`Entity::PLACEHOLDER`]。
     pub fn from_entity(entity: Option<Entity>) -> Self {
         match entity {
             Some(entity) => Self::Entity(entity),

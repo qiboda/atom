@@ -1,3 +1,5 @@
+//! 技能插件：注册技能状态更新系统与技能事件 observer。
+
 use bevy::prelude::*;
 
 use crate::graph::{EffectGraphUpdateSystems, state::update_to_despawn_effect_graph};
@@ -10,6 +12,7 @@ use super::{
     },
 };
 
+/// 技能子系统插件：注册技能状态更新系统与全部技能事件 observer。
 #[derive(Debug, Default)]
 pub struct AbilityPlugin;
 
@@ -39,6 +42,7 @@ impl Plugin for AbilityPlugin {
     }
 }
 
+/// 销毁待移除的技能：`ToRemove` 且子图已全部清除时 despawn 技能实体。
 pub fn update_to_despawn_ability(
     mut commands: Commands,
     query: Query<(Entity, &AbilityExecuteState, &Children), With<Ability>>,

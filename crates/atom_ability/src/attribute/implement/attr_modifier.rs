@@ -1,5 +1,8 @@
+//! 内置属性修饰符：加法修饰与带上限的加法修饰。
+
 use crate::attribute::{AttributeLayer, attribute_set::AttributeSet, modifier::AttributeModifier};
 
+/// 加法修饰符：在指定层上累加属性值；若叠加后最终值超限（为负）则按误差削减。
 pub struct AddAttrModifier<T: AttributeSet> {
     attr_type: T::AttributeSetEnum,
     attr_layer: AttributeLayer,
@@ -22,6 +25,7 @@ impl<T: AttributeSet> AttributeModifier for AddAttrModifier<T> {
 }
 
 impl<T: AttributeSet> AddAttrModifier<T> {
+    /// 构造加法修饰符：作用于 `attr_type` 属性的 `attr_layer` 层，加 `value`。
     pub fn new(attr_type: T::AttributeSetEnum, attr_layer: AttributeLayer, value: f32) -> Self {
         Self {
             attr_type,
@@ -31,6 +35,7 @@ impl<T: AttributeSet> AddAttrModifier<T> {
     }
 }
 
+/// 带上限的加法修饰符：累加后不超过 `max_attr_type` 属性的最终值。
 pub struct AddAttrRangeModifier<T: AttributeSet> {
     attr_type: T::AttributeSetEnum,
     max_attr_type: T::AttributeSetEnum,

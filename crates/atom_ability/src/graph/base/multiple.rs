@@ -90,7 +90,9 @@ fn effect_node_start_event(
                 node_entity
             );
 
-            let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
+            let mut graph_context = graph_query
+                .get_mut(parent.get())
+                .expect("effect graph context must exist on parent");
 
             let a_value = graph_context.get_input_value(&EffectPinKey::new(
                 *node_entity,

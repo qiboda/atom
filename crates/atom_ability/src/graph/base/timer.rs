@@ -111,7 +111,9 @@ fn update_timer(
             return;
         }
 
-        let graph_context = graph_query.get(parent.get()).unwrap();
+        let graph_context = graph_query
+                .get(parent.get())
+                .expect("effect graph context must exist on parent");
 
         if let Some(EffectValue::F32(duration_value)) = graph_context.get_input_value(
             &EffectPinKey::new(entity, *uuid, EffectNodeTimer::INPUT_PIN_DURATION),

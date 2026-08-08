@@ -1,43 +1,66 @@
+//! Blackboard：图内节点间共享数据的黑板。
+
 use bevy::{platform::collections::HashMap, prelude::*};
 use std::borrow::Cow;
 
 use bevy::{prelude::Entity, reflect::Reflect};
 
+/// 图级共享数据容器组件：以 [`Name`] 为键存储 [`EffectValue`]。
 #[derive(Debug, Component, Default)]
 pub struct EffectBlackboard {
+    /// 键 → 值映射。
     pub blackboard: HashMap<Name, EffectValue>,
 }
 
 #[allow(unused)]
+/// 可存入 Blackboard 的运行时值：支持多种标量、实体引用与字符串。
 #[derive(Debug, Reflect, PartialEq, Clone)]
 pub enum EffectValue {
+    /// 8 位有符号整数。
     I8(i8),
+    /// 16 位有符号整数。
     I16(i16),
+    /// 32 位有符号整数。
     I32(i32),
+    /// 64 位有符号整数。
     I64(i64),
 
+    /// 8 位无符号整数。
     U8(u8),
+    /// 16 位无符号整数。
     U16(u16),
+    /// 32 位无符号整数。
     U32(u32),
+    /// 64 位无符号整数。
     U64(u64),
 
+    /// 32 位浮点数。
     F32(f32),
+    /// 64 位浮点数。
     F64(f64),
 
+    /// 单个实体引用。
     Entity(Entity),
+    /// 实体引用列表。
     VecEntity(Vec<Entity>),
 
+    /// 静态字符串（借用或拥有）。
     String(Cow<'static, str>),
     // Vec(Vec<EffectValue>),
     // TODO: add when bevy support
     // BoxReflect(Box<dyn Reflect>),
 }
 
+/// 从 Blackboard 值中按类型取出引用（不可变/可变）。
+///
+/// 通过 `T: TryFrom<&Self>` / `T: TryFrom<&mut Self>` 实现类型安全的取值。
 pub trait BlackBoardValue {
+    /// 取出类型为 `T` 的不可变引用。
     fn get<'a, T>(&'a self) -> Result<T, T::Error>
     where
         T: TryFrom<&'a Self>;
 
+    /// 取出类型为 `T` 的可变引用。
     fn get_mut<'a, T>(&'a mut self) -> Result<T, T::Error>
     where
         T: TryFrom<&'a mut Self>;

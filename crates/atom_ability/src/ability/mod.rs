@@ -1,3 +1,5 @@
+//! 技能（Ability）模块：技能组件、事件、组件包与状态层标签。
+
 pub mod bundle;
 pub mod comp;
 pub mod event;

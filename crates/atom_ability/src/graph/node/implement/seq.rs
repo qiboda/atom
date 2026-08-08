@@ -1,3 +1,5 @@
+//! 顺序分支节点：同时触发 finish_1 ~ finish_4 四条输出分支。
+
 use std::vec::Vec;
 
 use bevy::prelude::*;
@@ -12,6 +14,7 @@ use crate::{
     impl_effect_node_pin_group,
 };
 
+/// 顺序分支节点插件：注册 [`EffectNodeSeq`] 类型反射。
 #[derive(Debug, Default)]
 pub struct EffectNodeSeqPlugin;
 
@@ -23,12 +26,15 @@ impl Plugin for EffectNodeSeqPlugin {
 
 ///////////////////////// Node Component /////////////////////////
 
+/// 顺序分支即时节点：start 后同时沿 finish_1 ~ finish_4 继续执行。
 #[derive(Debug, Default, Reflect)]
 pub struct EffectNodeSeq {
+    /// 即时节点基础结构（UUID）。
     pub base: InstantEffectNodeBase,
 }
 
 impl EffectNodeSeq {
+    /// 创建带新 UUID 的顺序分支节点。
     pub fn new() -> Self {
         Self {
             base: InstantEffectNodeBase::new(),

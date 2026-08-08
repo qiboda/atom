@@ -1,3 +1,5 @@
+//! 技能入口状态节点：作为技能 Effect Graph 的起点（ready/start/abort）。
+
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 
@@ -7,6 +9,7 @@ use crate::{graph::node::StateEffectNode, impl_effect_node_pin_group};
 
 ///////////////////////// Plugin /////////////////////////
 
+/// 技能入口节点插件：向 [`TypedComponentIds`] 登记节点组件并注册类型反射。
 #[derive(Debug, Default)]
 pub struct EffectNodeAbilityEntryPlugin;
 
@@ -27,6 +30,8 @@ impl Plugin for EffectNodeAbilityEntryPlugin {
 
 ///////////////////////// Node Component /////////////////////////
 
+/// 技能入口状态节点：提供 ready / start / abort 三个输出执行口，
+/// 作为技能图的执行入口。
 #[derive(Debug, Default, Component, Reflect)]
 #[reflect(Component)]
 pub struct EffectNodeAbilityEntry;

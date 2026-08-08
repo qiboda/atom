@@ -98,7 +98,9 @@ fn effect_node_start_event(
                 node_entity
             );
 
-            let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
+            let mut graph_context = graph_query
+                .get_mut(parent.get())
+                .expect("effect graph context must exist on parent");
 
             let effect_value = graph_context.get_input_value(&EffectPinKey::new(
                 *node_entity,
@@ -110,9 +112,11 @@ fn effect_node_start_event(
                 let read_guard = type_registry.read();
                 let reflect_a_trait = read_guard
                     .get_type_data::<ReflectEffectBundleTrait>(v.type_id())
-                    .unwrap();
+                    .expect("ReflectEffectBundleTrait must be registered for the value type");
 
-                let effect_bundle: &dyn EffectBundleTrait = reflect_a_trait.get(v.deref()).unwrap();
+                let effect_bundle: &dyn EffectBundleTrait = reflect_a_trait
+                    .get(v.deref())
+                    .expect("value must be an EffectBundle");
                 let effect_entity = effect_bundle.spawn_bundle(&mut commands);
                 node.effects.push(effect_entity);
 
@@ -173,7 +177,9 @@ fn react_on_remove_effect(
             true
         });
 
-        let mut graph_context = graph_query.get_mut(parent.get()).unwrap();
+        let mut graph_context = graph_query
+                .get_mut(parent.get())
+                .expect("effect graph context must exist on parent");
         for removed in remove_success.iter() {
             // execute next node
             let entity_key = EffectPinKey {

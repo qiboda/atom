@@ -1,3 +1,10 @@
+//! Effect Graph（技能图）核心模块。
+//!
+//! 技能图由节点（[`node`]）与引脚（[`pin`]）组成，节点间通过 Blackboard
+//! （[`blackboard`]）共享数据，由执行器（[`executor`]）驱动，状态由
+//! [`state`] 管理。图的构建入口见 [`builder`]，运行时实例与上下文见
+//! [`context`]、[`graph_map`]，对外事件见 [`event`]。
+
 use bevy::{app::App, prelude::*, reflect::Reflect};
 use context::{EffectGraphContext, GraphRef, InstantEffectNodeMap};
 use event::{
@@ -21,6 +28,10 @@ pub mod node;
 pub mod pin;
 pub mod state;
 
+/// Effect Graph 子系统插件。
+///
+/// 注册图执行器、调度集（Execute → UpdateNode → UpdateState 链式）、
+/// 资源与类型反射，并挂载图生命周期相关的 observer（克隆/添加/执行/移除）。
 #[derive(Debug, Default)]
 pub struct EffectGraphPlugin;
 
@@ -63,14 +74,24 @@ impl Plugin for EffectGraphPlugin {
     }
 }
 
+/// 标记组件：标识实体拥有一个 Effect Graph。
+///
+/// 挂载在技能图根实体上，用于查询定位图实例。
 #[derive(Debug, Default, Component, Reflect, Clone, Copy)]
 #[reflect(Component)]
 pub struct EffectGraphOwner;
 
+/// Effect Graph 更新调度集。
+///
+/// 三个集合按顺序链式执行：`Execute`（执行节点）→ `UpdateNode`（节点状态更新）
+/// → `UpdateState`（图状态收尾）。
 #[derive(SystemSet, Debug, Default, Clone, Eq, PartialEq, Hash, Reflect)]
 pub enum EffectGraphUpdateSystems {
+    /// 执行图内节点。
     #[default]
     Execute,
+    /// 更新节点状态。
     UpdateNode,
+    /// 更新图状态（含状态重置）。
     UpdateState,
 }

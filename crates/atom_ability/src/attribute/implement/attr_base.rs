@@ -1,16 +1,27 @@
+//! 基础属性实现：纯数值属性（[`ValueAttribute`]）与数值+百分比属性
+//! （[`ValuePercentAttribute`]）。
+
 use crate::attribute::Attribute;
 use crate::attribute::AttributeLayer;
 use bevy::log::error;
 use bevy::reflect::Reflect;
 
+/// 基础数值层。
 pub const BASE_VALUE_LAYER: AttributeLayer = AttributeLayer("base_value");
+/// 基础百分比层。
 pub const BASE_PERCENT_LAYER: AttributeLayer = AttributeLayer("base_percent");
+/// 装备数值层。
 pub const ITEM_VALUE_LAYER: AttributeLayer = AttributeLayer("item_value");
+/// 装备百分比层。
 pub const ITEM_PERCENT_LAYER: AttributeLayer = AttributeLayer("item_percnet");
+/// 增益数值层。
 pub const BUFF_VALUE_LAYER: AttributeLayer = AttributeLayer("buff_value");
+/// 增益百分比层。
 pub const BUFF_PERCENT_LAYER: AttributeLayer = AttributeLayer("buff_percent");
+/// 无层级（占位，用于整体计算）。
 pub const NONE_LAYER: AttributeLayer = AttributeLayer("none");
 
+/// 纯数值属性：最终值 = 各数值层之和。
 #[derive(Debug, Default, Reflect)]
 pub struct ValueAttribute {
     base_value: f32,
@@ -20,6 +31,7 @@ pub struct ValueAttribute {
 }
 
 impl ValueAttribute {
+    /// 以初始层值创建属性并计算缓存最终值。
     pub fn new(base_value: f32, item_value: f32, buff_value: f32) -> Self {
         let mut s = Self {
             base_value,
@@ -90,8 +102,10 @@ impl Attribute for ValueAttribute {
     }
 }
 
+/// 纯数值属性的别名（与数值百分比属性区分的历史命名）。
 pub type PercentAttribute = ValueAttribute;
 
+/// 数值 + 百分比属性：最终值 = Σ(层值 × (1 + 层百分比))。
 #[derive(Debug, Default, Reflect)]
 pub struct ValuePercentAttribute {
     base_value: f32,

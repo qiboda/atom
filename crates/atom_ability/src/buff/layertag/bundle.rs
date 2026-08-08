@@ -1,3 +1,5 @@
+//! Buff 状态层标签组件包：从数据表原始标签构建 buff 各阶段标签组件。
+
 use atom_datatables::effect::RevertableLayerTag;
 use atom_layertag::container_op::LayerTagContainer;
 use bevy::{
@@ -14,15 +16,21 @@ use super::tag::{
     BuffStartRequiredLayerTagContainer,
 };
 
+/// Buff 开始阶段标签组件包：所需/禁用/添加/移除四类标签。
 #[derive(Debug, Default, Bundle, Reflect)]
 pub struct BuffStartTagBundle {
+    /// 开始所需标签。
     pub required_layertags: BuffStartRequiredLayerTagContainer,
+    /// 开始禁用标签。
     pub disable_layertags: BuffStartDisableLayerTagContainer,
+    /// 开始时要添加的标签。
     pub added_layertags: BuffAddedLayerTagContainer,
+    /// 开始时要移除的标签。
     pub removed_layertags: BuffRemovedLayerTagContainer,
 }
 
 impl BuffStartTagBundle {
+    /// 从数据表原始标签字符串构造组件包（未注册的标签记录 warning 并跳过）。
     pub fn new(
         required_layertags: &[String],
         disable_layertags: &[String],
@@ -94,13 +102,17 @@ impl BuffStartTagBundle {
     }
 }
 
+/// Buff 中断阶段标签组件包：所需/禁用两类标签。
 #[derive(Debug, Default, Bundle, Reflect)]
 pub struct BuffAbortTagBundle {
+    /// 中断所需标签。
     pub required_layer_tag: BuffAbortRequiredLayerTagContainer,
+    /// 中断禁用标签。
     pub disable_layer_tag: BuffAbortDisableLayerTagContainer,
 }
 
 impl BuffAbortTagBundle {
+    /// 从数据表原始标签字符串构造组件包（未注册的标签记录 warning 并跳过）。
     pub fn new(
         required_layertags: &[String],
         disable_layertags: &[String],

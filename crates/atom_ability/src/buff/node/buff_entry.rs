@@ -1,3 +1,5 @@
+//! Buff 入口状态节点：作为 buff Effect Graph 的起点（ready/start/looper/abort/end 等）。
+
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 
@@ -7,6 +9,7 @@ use crate::{graph::node::StateEffectNode, impl_effect_node_pin_group};
 
 ///////////////////////// Plugin /////////////////////////
 
+/// Buff 入口节点插件：向 [`TypedComponentIds`] 登记节点组件并注册类型反射。
 #[derive(Debug, Default)]
 pub struct EffectNodeBuffEntryPlugin;
 
@@ -27,6 +30,8 @@ impl Plugin for EffectNodeBuffEntryPlugin {
 
 ///////////////////////// Node Component /////////////////////////
 
+/// Buff 入口状态节点：提供 ready / start / looper / abort / end / add_layer /
+/// remove_layer 输出执行口，作为 buff 图的执行入口。
 #[derive(Debug, Default, Component, Reflect)]
 #[reflect(Component)]
 pub struct EffectNodeBuffEntry;

@@ -1,15 +1,22 @@
+//! 节点引脚定义：执行口（exec）与数据槽（slot）的命名与类型描述。
+
 use std::any::TypeId;
 
 use bevy::prelude::*;
 
+/// 一组引脚：一个执行口及其附属的数据槽。
 #[derive(Debug)]
 pub struct EffectNodeExecGroup {
+    /// 执行口。
     pub exec: EffectNodeExec,
+    /// 该执行口携带的数据槽列表。
     pub slots: Vec<EffectNodeSlot>,
 }
 
+/// 执行口：以静态字符串命名的执行连线端点。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Reflect)]
 pub struct EffectNodeExec {
+    /// 执行口名称。
     pub name: &'static str,
 }
 
@@ -19,13 +26,17 @@ impl From<&'static str> for EffectNodeExec {
     }
 }
 
+/// 数据槽：以名称 + 数据类型标识的数据连线端点。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 pub struct EffectNodeSlot {
+    /// 数据槽名称。
     pub name: &'static str,
+    /// 数据类型标识（运行时校验槽值类型）。
     pub pin_type: TypeId,
 }
 
 impl EffectNodeSlot {
+    /// 构造类型为 `T` 的数据槽。
     pub fn new<T: 'static>(name: &'static str) -> Self {
         Self {
             name,
@@ -34,16 +45,20 @@ impl EffectNodeSlot {
     }
 }
 
+/// 节点引脚组 trait：描述节点的输入/输出执行口与数据槽。
 #[reflect_trait]
 pub trait EffectNodePinGroup {
+    /// 返回输入引脚组列表。
     fn get_input_pin_group(&self) -> &Vec<EffectNodeExecGroup>;
 
+    /// 按执行口名称查找输入引脚组。
     fn get_input_pin_group_by_name(&self, name: &str) -> Option<&EffectNodeExecGroup> {
         self.get_input_pin_group()
             .iter()
             .find(|group| group.exec.name == name)
     }
 
+    /// 按名称查找输入执行口。
     fn get_input_exec_pin_by_name(&self, name: &str) -> Option<&EffectNodeExec> {
         for group in self.get_input_pin_group() {
             if group.exec.name == name {
@@ -53,6 +68,7 @@ pub trait EffectNodePinGroup {
         None
     }
 
+    /// 按名称查找输入数据槽。
     fn get_input_slot_pin_by_name(&self, name: &str) -> Option<&EffectNodeSlot> {
         for group in self.get_input_pin_group() {
             for slot in &group.slots {
@@ -64,18 +80,22 @@ pub trait EffectNodePinGroup {
         None
     }
 
+    /// 输入执行口数量。
     fn get_input_pin_group_num(&self) -> usize {
         self.get_input_pin_group().len()
     }
 
+    /// 返回输出引脚组列表。
     fn get_output_pin_group(&self) -> &Vec<EffectNodeExecGroup>;
 
+    /// 按执行口名称查找输出引脚组。
     fn get_output_pin_group_by_name(&self, name: &str) -> Option<&EffectNodeExecGroup> {
         self.get_output_pin_group()
             .iter()
             .find(|group| group.exec.name == name)
     }
 
+    /// 按名称查找输出执行口。
     fn get_output_exec_pin_by_name(&self, name: &str) -> Option<&EffectNodeExec> {
         for group in self.get_output_pin_group() {
             if group.exec.name == name {
@@ -85,6 +105,7 @@ pub trait EffectNodePinGroup {
         None
     }
 
+    /// 按名称查找输出数据槽。
     fn get_output_slot_pin_by_name(&self, name: &str) -> Option<&EffectNodeSlot> {
         for group in self.get_output_pin_group() {
             for slot in &group.slots {
@@ -96,11 +117,17 @@ pub trait EffectNodePinGroup {
         None
     }
 
+    /// 输出执行口数量。
     fn get_output_pin_group_num(&self) -> usize {
         self.get_output_pin_group().len()
     }
 }
 
+/// 为节点类型实现 [`EffectNodePinGroup`] 的宏。
+///
+/// 用法：`impl_effect_node_pin_group!(Node, input => (exec => (slot1: Type1)), output => (exec => ()))`。
+/// 会为节点生成输入/输出执行口与数据槽的名称常量（`INPUT_EXEC_*`/`INPUT_SLOT_*`/`OUTPUT_EXEC_*`/`OUTPUT_SLOT_*`），
+/// 并实现引脚组查询。
 #[macro_export]
 macro_rules! impl_effect_node_pin_group {
     ($node:ty) => {
@@ -117,8 +144,10 @@ macro_rules! impl_effect_node_pin_group {
         impl $node {
             $(
                 paste::paste! {
+                    /// 输入执行口名称常量。
                     pub const [<INPUT_EXEC_ $in_exec:snake:upper>]: &'static str = stringify!($in_exec);
                     $(
+                        /// 输入数据槽名称常量。
                         pub const [<INPUT_SLOT_ $in_pin:snake:upper>]: &'static str = stringify!($in_pin);
                     )*
                 }
@@ -126,8 +155,10 @@ macro_rules! impl_effect_node_pin_group {
 
             $(
                 paste::paste! {
+                    /// 输出执行口名称常量。
                     pub const [<OUTPUT_EXEC_ $out_exec:snake:upper>]: &'static str = stringify!($out_exec);
                     $(
+                        /// 输出数据槽名称常量。
                         pub const [<OUTPUT_SLOT_ $out_pin:snake:upper>]: &'static str = stringify!($out_pin);
                     )*
                 }

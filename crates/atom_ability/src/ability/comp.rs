@@ -1,26 +1,37 @@
+//! 技能组件：技能标记、执行状态与节流状态。
+
 use bevy::prelude::*;
 
 use crate::graph::state::{EffectGraphState, EffectGraphTickState};
 
 // only ability with this component
+/// 技能标记组件：只有带此组件的实体才是技能实体。
 #[derive(Debug, Component, Default, Reflect, Copy, Clone)]
 pub struct Ability;
 
+/// 技能执行状态。
 #[derive(Debug, Component, Default, PartialEq, Eq, Reflect, Copy, Clone)]
 pub enum AbilityExecuteState {
+    /// 未激活（默认）。
     #[default]
     Inactive,
+    /// 执行中。
     Active,
+    /// 待销毁（所有子图已移除）。
     ToRemove,
 }
 
+/// 技能节流状态。
 #[derive(Debug, Component, Default, PartialEq, Eq, Reflect, Copy, Clone)]
 pub enum AbilityTickState {
+    /// 正常运行（默认）。
     #[default]
     Ticked,
+    /// 暂停。
     Paused,
 }
 
+/// 技能数据占位组件。
 #[derive(Debug, Component, Default, Reflect)]
 pub struct AbilityData;
 

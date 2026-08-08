@@ -85,7 +85,9 @@ fn effect_node_check_start_event(
                 node_entity
             );
 
-            let graph_context = graph_query.get(parent.get()).unwrap();
+            let graph_context = graph_query
+                .get(parent.get())
+                .expect("effect graph context must exist on parent");
 
             graph_context.exec_next_nodes(
                 *node_entity,
@@ -110,7 +112,9 @@ fn effect_node_start_event(
                 std::any::type_name::<EffectNodeEntry>(),
                 entry
             );
-            let graph_context = graph_query.get(parent.get()).unwrap();
+            let graph_context = graph_query
+                .get(parent.get())
+                .expect("effect graph context must exist on parent");
             graph_context.exec_next_nodes(
                 *entry,
                 *node_uuid,
@@ -134,7 +138,9 @@ fn effect_node_abort_event(
                 std::any::type_name::<EffectNodeEntry>(),
                 node_entity
             );
-            let graph_context = graph_query.get(parent.get()).unwrap();
+            let graph_context = graph_query
+                .get(parent.get())
+                .expect("effect graph context must exist on parent");
             graph_context.exec_next_nodes(
                 *node_entity,
                 *node_uuid,

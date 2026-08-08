@@ -1,3 +1,5 @@
+//! Buff 事件与 observer：buff 的添加、ready/start/remove/abort/tickable 生命周期。
+
 use atom_datatables::{
     effect::{TbBuff, TbBuffKey, TbBuffRow},
     tables_system_param::TableReader,
@@ -32,30 +34,40 @@ use super::{
     state::{Buff, BuffExecuteState},
 };
 
+/// 给指定所有者添加 buff 的事件。
 #[derive(Debug, Event)]
 pub struct BuffAddEvent {
+    /// 所有者实体（buff 挂到其下）。
     pub owner_entity: Entity,
+    /// buff 数据表键。
     pub buff_id: TbBuffKey,
 }
 
+/// Buff 就绪事件。
 #[derive(Debug, Event)]
 pub struct BuffReadyEvent;
 
+/// Buff 开始事件。
 #[derive(Debug, Event)]
 pub struct BuffStartEvent;
 
+/// Buff 中断事件。
 #[derive(Debug, Event)]
 pub struct BuffAbortEvent;
 
 /// TODO: 如果激活，则abort。
+/// Buff 移除事件。
 #[derive(Debug, Event)]
 pub struct BuffRemoveEvent;
 
+/// 设置 buff 节流状态的事件。
 #[derive(Debug, Event)]
 pub struct BuffTickableEvent {
+    /// 是否可执行。
     pub tickable: bool,
 }
 
+/// 处理 buff 实体添加事件：按数据表中的图类别为 buff 添加 Effect Graph。
 pub fn trigger_buff_on_add(
     trigger: On<Add, Buff>,
     mut commands: Commands,
@@ -80,6 +92,7 @@ pub fn trigger_buff_on_add(
     }
 }
 
+/// 处理 [`BuffReadyEvent`]：检查开始所需/禁用状态层标签，满足则触发图 ready 执行。
 #[allow(clippy::type_complexity)]
 pub fn trigger_buff_ready(
     trigger: On<BuffReadyEvent>,
@@ -132,6 +145,7 @@ pub fn trigger_buff_ready(
     }
 }
 
+/// 处理 [`BuffStartEvent`]：应用状态层标签增删并触发图 start 执行。
 #[allow(clippy::type_complexity)]
 pub fn trigger_buff_start(
     trigger: On<BuffStartEvent>,
@@ -182,6 +196,7 @@ pub fn trigger_buff_start(
     }
 }
 
+/// 处理 [`BuffRemoveEvent`]：标记 buff 待移除并触发图移除事件。
 pub fn trigger_buff_remove(
     trigger: On<BuffRemoveEvent>,
     mut commands: Commands,
@@ -197,6 +212,7 @@ pub fn trigger_buff_remove(
     }
 }
 
+/// 处理 [`BuffAbortEvent`]：检查中断所需/禁用状态层标签，满足则触发图 abort 执行。
 pub fn trigger_buff_abort(
     trigger: On<BuffAbortEvent>,
     mut commands: Commands,
@@ -247,6 +263,7 @@ pub fn trigger_buff_abort(
     }
 }
 
+/// 处理 [`BuffTickableEvent`]：透传给 buff 下的图实例节流事件。
 pub fn trigger_buff_tickable(
     trigger: On<BuffTickableEvent>,
     mut commands: Commands,
@@ -266,6 +283,8 @@ pub fn trigger_buff_tickable(
     }
 }
 
+/// 处理 [`BuffAddEvent`]：已存在同 ID buff 则叠加层数并触发 ADD_LAYER 执行，
+/// 否则为所有者新建 buff 实体。
 pub fn trigger_buff_add_event(
     trigger: On<BuffAddEvent>,
     mut commands: Commands,

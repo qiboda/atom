@@ -1,3 +1,5 @@
+//! Buff 子系统插件：注册 buff 状态/计时更新系统与事件 observer。
+
 use crate::{
     buff::{
         event::{
@@ -11,6 +13,7 @@ use crate::{
 };
 use bevy::prelude::*;
 
+/// Buff 子系统插件：注册状态/计时更新系统与全部 buff 事件 observer。
 #[derive(Debug, Default)]
 pub struct BuffPlugin;
 
@@ -51,12 +54,16 @@ impl Plugin for BuffPlugin {
     }
 }
 
+/// Buff 更新调度集：计时（UpdateTime）先于状态更新（UpdateState）。
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum BuffUpdateSystems {
+    /// 状态更新。
     UpdateState,
+    /// 计时更新。
     UpdateTime,
 }
 
+/// 销毁待移除的 buff：`ToRemove` 且子图已全部清除时 despawn buff 实体。
 pub fn update_to_despawn_buff(
     mut commands: Commands,
     query: Query<(Entity, &BuffExecuteState, &Children), With<Buff>>,

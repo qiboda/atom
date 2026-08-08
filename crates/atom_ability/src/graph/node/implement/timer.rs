@@ -1,3 +1,5 @@
+//! 计时状态节点：start 时按 duration 启动计时，到时触发 finish。
+
 use bevy::{prelude::*, time::Time};
 
 use crate::{
@@ -15,6 +17,7 @@ use crate::{
     impl_effect_node_pin_group,
 };
 
+/// 计时节点插件：注册类型反射、节点事件 observer 与计时更新系统。
 #[derive(Debug)]
 pub struct EffectNodeTimerPlugin;
 
@@ -29,14 +32,18 @@ impl Plugin for EffectNodeTimerPlugin {
     }
 }
 
+/// 单个计时实例的剩余时间。
 #[derive(Clone, Debug, Default, Reflect)]
 pub struct EffectNodeTimerState {
+    /// 剩余时间（秒），递减到 0 触发 finish。
     pub elapse: f32,
 }
 
+/// 计时状态节点：维护多个并发计时实例。
 #[derive(Clone, Debug, Default, Component, Reflect)]
 #[reflect(Component)]
 pub struct EffectNodeTimer {
+    /// 正在进行的计时实例列表。
     pub states: Vec<EffectNodeTimerState>,
 }
 

@@ -1,3 +1,5 @@
+//! Effect Graph 对外事件与 observer：图实例的添加、执行、克隆、移除与节流。
+
 use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
 
 use crate::graph::pin::EffectNodeSlotPin;
@@ -13,17 +15,22 @@ use super::{
     state::{EffectGraphState, EffectGraphTickState},
 };
 
-/// run a graph node
+/// 执行图内单个节点的事件（触发 `run a graph node`）。
 #[derive(Debug, Event)]
 pub struct EffectNodeExecEvent {
+    /// 要执行的输入执行口。
     pub input_exec_pin: EffectNodeExecPin,
 }
 
+/// 图克隆开始事件：将模板图克隆为新的图实例。
 #[derive(Debug, EntityEvent, Clone, Copy)]
 pub struct CloneEffectGraphStartEvent {
+    /// 新图实例实体（事件目标）。
     #[event_target]
     pub new_graph_instance: Entity,
+    /// 源图（模板）引用。
     pub graph_ref: GraphRef,
+    /// 新图实例的根实体。
     pub destination_entity: Entity,
 }
 
@@ -37,44 +44,62 @@ impl Default for CloneEffectGraphStartEvent {
     }
 }
 
+/// 图克隆完成事件：携带新旧实体映射，用于重写新图上下文中的实体引用。
 #[derive(Debug, EntityEvent)]
 pub struct CloneEffectGraphEndEvent {
+    /// 新图的根实体。
     pub destination_root_entity: Entity,
+    /// 旧实体 → 新实体映射。
     pub old_new_entities: EntityHashMap<Entity>,
+    /// 新图实例实体（事件目标）。
     #[event_target]
     pub new_graph_instance: Entity,
 }
 
 // 添加一个EffectGraph
+/// 为技能实体添加 Effect Graph 实例的事件。
 #[derive(Debug, EntityEvent, Clone)]
 pub struct EffectGraphAddEvent {
+    /// 技能实体（事件目标）。
     #[event_target]
     pub ability_entity: Entity,
+    /// 图类别，用于查找图模板。
     pub graph_class: GraphClass,
 }
 
+/// 移除技能实体上的 Effect Graph 的事件。
 #[derive(Debug, EntityEvent, Clone, Copy)]
 pub struct EffectGraphRemoveEvent {
+    /// 技能实体（事件目标）。
     #[event_target]
     pub ability_entity: Entity,
 }
 
+/// 执行技能 Effect Graph 的事件。
 #[derive(Debug, EntityEvent, Clone)]
 pub struct EffectGraphExecEvent {
+    /// 技能实体（事件目标）。
     #[event_target]
     pub ability_entity: Entity,
+    /// 入口执行口（`"ready"` 时按技能实例复用规则执行）。
     pub entry_exec_pin: EffectNodeExec,
+    /// 仅当图处于该状态时才执行（`None` 表示无条件执行）。
     pub execute_in_graph_state: Option<EffectGraphState>,
+    /// 入口节点输入槽的初始值。
     pub slot_value_map: Option<HashMap<EffectNodeSlot, EffectValue>>,
 }
 
+/// 设置技能 Effect Graph 节流状态的事件。
 #[derive(Debug, EntityEvent, Clone, Copy)]
 pub struct EffectGraphTickableEvent {
+    /// 是否可执行。
     pub tickable: bool,
+    /// 技能实体（事件目标）。
     #[event_target]
     pub ability_entity: Entity,
 }
 
+/// 处理 [`EffectGraphTickableEvent`]：更新技能下所有图实例的节流状态。
 pub fn trigger_effect_graph_tickable(
     trigger: On<EffectGraphTickableEvent>,
     graph_owner_query: Query<&Children, With<EffectGraphOwner>>,
@@ -101,6 +126,7 @@ pub fn trigger_effect_graph_tickable(
     }
 }
 
+/// 处理 [`EffectGraphRemoveEvent`]：将技能下所有图实例标记为待销毁。
 pub fn trigger_effect_graph_to_remove(
     trigger: On<EffectGraphRemoveEvent>,
     graph_owner_query: Query<&Children, With<EffectGraphOwner>>,
@@ -122,8 +148,8 @@ pub fn trigger_effect_graph_to_remove(
     }
 }
 
-// 应该添加Ready状态，技能首先进入Ready状态(检查是否可以Start)，
-// 在Ready Pin后执行Start ability or buff Event,或者不满足条件，进入Idle状态。
+/// 处理 [`EffectGraphExecEvent`]：从入口节点开始执行图；技能激活中再次 ready
+/// 执行时会先克隆新图实例再执行，避免复用同一实例导致状态混乱。
 pub fn trigger_effect_graph_exec(
     trigger: On<EffectGraphExecEvent>,
     mut commands: Commands,
@@ -239,6 +265,7 @@ pub fn trigger_effect_graph_exec(
     }
 }
 
+/// 处理 [`EffectGraphAddEvent`]：查找/构建图模板，并为技能实体克隆一个新图实例。
 pub fn trigger_effect_graph_add(
     trigger: On<EffectGraphAddEvent>,
     mut commands: Commands,
@@ -283,6 +310,8 @@ pub fn trigger_effect_graph_add(
     });
 }
 
+/// 处理 [`CloneEffectGraphStartEvent`]：用 Bevy 的 `EntityCloner` 递归克隆
+/// 模板图实体树，完成后触发 [`CloneEffectGraphEndEvent`]。
 pub fn trigger_clone_effect_graph_start(
     trigger: On<CloneEffectGraphStartEvent>,
     mut commands: Commands,
@@ -319,8 +348,8 @@ pub fn trigger_clone_effect_graph_start(
     });
 }
 
-/// add to effect entity observer
-/// 替换所有graph context中的entities，替换为新的entities
+/// 处理 [`CloneEffectGraphEndEvent`]：为新图实例挂载执行器，并将上下文中的
+/// 实体引用从旧实体替换为新实体。
 pub fn trigger_clone_effect_graph_end(
     trigger: On<CloneEffectGraphEndEvent>,
     mut commands: Commands,
