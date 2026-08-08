@@ -10,7 +10,7 @@ use bevy::{
 use crate::config::LayerTagConfig;
 
 /// 实体状态层标签容器组件：持有该实体当前的全部状态层标签。
-#[derive(Component, Default, Debug, Reflect)]
+#[derive(Component, Default, Debug, Reflect, Clone)]
 pub struct StateLayerTagContainer(pub CountLayerTagContainer);
 
 /// 全局状态层标签注册表：从数据表加载原始标签字符串。

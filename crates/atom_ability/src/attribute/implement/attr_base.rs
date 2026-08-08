@@ -22,7 +22,7 @@ pub const BUFF_PERCENT_LAYER: AttributeLayer = AttributeLayer("buff_percent");
 pub const NONE_LAYER: AttributeLayer = AttributeLayer("none");
 
 /// 纯数值属性：最终值 = 各数值层之和。
-#[derive(Debug, Default, Reflect)]
+#[derive(Debug, Default, Reflect, Clone)]
 pub struct ValueAttribute {
     base_value: f32,
     item_value: f32,

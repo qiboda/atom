@@ -4,23 +4,23 @@ use atom_layertag::count_container::CountLayerTagContainer;
 use bevy::prelude::*;
 
 /// Buff 开始所需的状态层标签容器（全部满足才可开始）。
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, Debug, Default, Reflect, Clone)]
 pub struct BuffStartRequiredLayerTagContainer(pub CountLayerTagContainer);
 
 /// Buff 开始禁用的状态层标签容器（存在任一即不可开始）。
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, Debug, Default, Reflect, Clone)]
 pub struct BuffStartDisableLayerTagContainer(pub CountLayerTagContainer);
 
 /// Buff 中断所需的状态层标签容器（全部满足才可中断）。
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, Debug, Default, Reflect, Clone)]
 pub struct BuffAbortRequiredLayerTagContainer(pub CountLayerTagContainer);
 
 /// Buff 中断禁用的状态层标签容器（存在任一即不可中断）。
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, Debug, Default, Reflect, Clone)]
 pub struct BuffAbortDisableLayerTagContainer(pub CountLayerTagContainer);
 
 /// Buff 结束后是否回滚状态层标签。
-#[derive(Debug, Default, Reflect, PartialEq, Eq)]
+#[derive(Debug, Default, Reflect, PartialEq, Eq, Clone)]
 pub enum BuffLayerTagContainerRevert {
     /// 不回滚（默认）。
     #[default]
@@ -40,7 +40,7 @@ impl From<bool> for BuffLayerTagContainerRevert {
 }
 
 /// Buff 开始时要添加的状态层标签集合（带回滚标记）。
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, Debug, Default, Reflect, Clone)]
 pub struct BuffAddedLayerTagContainer {
     /// 要添加的标签集合。
     pub layer_tag_container: CountLayerTagContainer,
@@ -49,7 +49,7 @@ pub struct BuffAddedLayerTagContainer {
 }
 
 /// Buff 开始时要移除的状态层标签集合（带回滚标记）。
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, Debug, Default, Reflect, Clone)]
 pub struct BuffRemovedLayerTagContainer {
     /// 要移除的标签集合。
     pub layer_tag_container: CountLayerTagContainer,

@@ -4,7 +4,7 @@ use atom_ability::attribute::{
 use bevy::{prelude::Component, reflect::Reflect};
 
 // attribute set derive, to generate AttributeSetEnum with #[attribute] macro];
-#[derive(Debug, Default, Component)]
+#[derive(Debug, Default, Component, Clone)]
 pub struct BaseAttributeSet {
     pub hp: Box<ValueAttribute>,
     pub move_speed: Box<ValueAttribute>,

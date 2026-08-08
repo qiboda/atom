@@ -7,7 +7,7 @@ use atom_layertag::container_op::{
 use bevy::prelude::*;
 
 use crate::{
-    buff::node::buff_entry::EffectNodeBuffEntry,
+    buff::{bundle::spawn_buff, node::buff_entry::EffectNodeBuffEntry},
     graph::{
         event::{
             EffectGraphAddEvent, EffectGraphExecEvent, EffectGraphRemoveEvent,
@@ -274,5 +274,56 @@ pub fn trigger_buff_tickable(
             tickable: trigger.event().tickable,
             ability_entity: buff_entity,
         });
+    }
+}
+
+/// 处理 [`BuffAddEvent`]：已存在同 ID buff 则叠加层数并触发 ADD_LAYER 执行，
+/// 否则为所有者新建 buff 实体。
+pub fn trigger_buff_add_event(
+    trigger: On<BuffAddEvent>,
+    mut commands: Commands,
+    table_reader: TableReader<TbBuff>,
+    owner_query: Query<&Children>,
+    mut query: Query<(&mut BuffLayer, &TbBuffRow), With<Buff>>,
+    state_registry: Res<StateLayerTagRegistry>,
+) {
+    let event = trigger.event();
+    info!("trigger_buff_add: {:?}", event.buff_id);
+
+    let Some(new_buff_data) = table_reader.get_row(&event.buff_id) else {
+        return;
+    };
+
+    if let Ok(children) = owner_query.get(event.owner_entity) {
+        for child in children {
+            if let Ok((mut buff_layer, buff_row)) = query.get_mut(*child)
+                && buff_row.key() == &event.buff_id
+            {
+                buff_layer.add_layer(1);
+
+                let mut slot_value_map = HashMap::new();
+                slot_value_map.insert(
+                    EffectNodeSlot::new::<i32>(EffectNodeBuffEntry::OUTPUT_SLOT_ADDED_LAYER),
+                    EffectValue::I32(1),
+                );
+                commands.trigger(EffectGraphExecEvent {
+                    entry_exec_pin: EffectNodeBuffEntry::OUTPUT_EXEC_ADD_LAYER.into(),
+                    execute_in_graph_state: Some(EffectGraphState::Active),
+                    slot_value_map: Some(slot_value_map),
+                    ability_entity: *child,
+                });
+                return;
+            }
+        }
+
+        commands
+            .spawn_scene(spawn_buff(
+                TbBuffRow {
+                    key: event.buff_id,
+                    data: Some(new_buff_data),
+                },
+                &state_registry,
+            ))
+            .set_parent_in_place(event.owner_entity);
     }
 }

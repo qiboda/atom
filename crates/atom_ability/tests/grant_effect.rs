@@ -65,7 +65,7 @@ fn grant_effect_reflect_dispatch_spawns_effect_scene() {
     app.add_plugins((
         MinimalPlugins,
         AssetPlugin::default(),
-        ScenePlugin::default(),
+        ScenePlugin,
         // 初始化 InstantEffectNodeMap 等图资源（observer 的 system param 需要）。
         EffectGraphPlugin,
         EffectNodeGrantEffectPlugin,
