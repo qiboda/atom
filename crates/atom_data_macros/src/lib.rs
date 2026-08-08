@@ -358,8 +358,13 @@ fn expand(input: &DeriveInput) -> SynResult<TokenStream2> {
     Ok(quote! {
         /// 索引容器：宏生成（`#[derive(DataAsset)]` 的 `#[index(...)]` 属性驱动）。
         /// `Clone`：`DataTable<T>` 的 `Clone` derive（B2-1 集成层）要求 `T::Index: Clone`。
+        ///
+        /// 必须 `pub`：`DataIndexed::Index` 是公开关联类型（pub trait），私有 struct 会让
+        /// **pub 行类型** 触发 E0446（`private type in public interface`，rustc 1.95 为
+        /// 硬错误，allow 无法降级）——atom_ability Batch 3 集成实证（见 TENSIONS.md）；
+        /// `{Row}Queries` trait 仍保持私有（测试契约锁定，跨 crate 只能走公共 API）。
         #[derive(Debug, Default, Clone)]
-        struct #index_name {
+        pub struct #index_name {
             #(#container_fields)*
         }
 

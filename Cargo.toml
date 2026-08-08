@@ -63,6 +63,9 @@ type_complexity = "allow"
 collapsible_if = "allow"
 unwrap_used = "warn"
 panic = "allow"
+# 测试契约用 `assert_eq!(x, true/false)` 断言（失败时带 Debug 输出，比 assert! 可诊断）；
+# RED 测试文件不可修改（issue #5 契约），该 lint 属风格类，对生产代码无影响。
+bool_assert_comparison = "allow"
 
 
 [profile.dev]

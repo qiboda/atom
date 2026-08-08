@@ -75,6 +75,10 @@ atom_shader_lib、atom_utils（Bevy 0.19 workspace 迁移后全部迁回；成�
 - `atom_data` + `atom_data_macros`：声明式数据表框架（`DataTable<T>` Asset + `#[derive(DataAsset)]`
   索引宏，bevy_common_assets 0.17 全格式驱动），全面替代 Luban 二进制 datatables 体系
   （atom_datatables / atom_cfg / atom_macros / atom_luban_lib 文件保留原状但不再被引用）。
+- `atom_ability`：技能系统，数据访问层已迁移到 atom_data（issue #5）——原子表类型定义于
+  `atom_ability::config`（`AbilityConfig`/`BuffConfig`/`LayerTagConfig` + `#[data_ref]` 跨表引用），
+  查询经 `DataRegistry`；`AbilityBundle`/`BuffBundle` 携带 `AbilityConfigData`/`BuffConfigData`
+  组件（observer 数据源，须先于标记组件声明——见 TENSIONS.md）。
 - 数据文件目录约定：`assets/datatables/<表类型名>.json`（文件名 = 行类型名，扩展名定格式）。
 
 **重要**: Bevy debug 构建极慢（~19s 启动，30s+ 出首帧）。运行/测试必须用 `--release`。

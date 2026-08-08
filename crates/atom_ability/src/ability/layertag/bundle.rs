@@ -1,14 +1,9 @@
 //! 技能状态层标签组件包：从数据表原始标签构建技能各阶段标签组件。
 
-use atom_datatables::effect::RevertableLayerTag;
 use atom_layertag::container_op::LayerTagContainer;
-use bevy::{
-    log::warn,
-    prelude::{Bundle, Res},
-    reflect::Reflect,
-};
+use bevy::{log::warn, prelude::Bundle, reflect::Reflect};
 
-use crate::stateset::StateLayerTagRegistry;
+use crate::{config::RevertableLayerTag, stateset::StateLayerTagRegistry};
 
 use super::tag::{
     AbilityAbortDisableLayerTagContainer, AbilityAbortRequiredLayerTagContainer,
@@ -36,7 +31,7 @@ impl AbilityStartTagBundle {
         disable_layertags: &[String],
         added_layertags: &[RevertableLayerTag],
         removed_layertags: &[RevertableLayerTag],
-        state_registry: &Res<StateLayerTagRegistry>,
+        state_registry: &StateLayerTagRegistry,
     ) -> Self {
         let mut bundle = AbilityStartTagBundle::default();
 
@@ -116,7 +111,7 @@ impl AbilityAbortTagBundle {
     pub fn new(
         required_layertags: &[String],
         disable_layertags: &[String],
-        state_registry: &Res<StateLayerTagRegistry>,
+        state_registry: &StateLayerTagRegistry,
     ) -> Self {
         let mut bundle = AbilityAbortTagBundle::default();
 

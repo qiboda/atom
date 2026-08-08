@@ -80,3 +80,11 @@
 - 使用 StandardMaterial（单色绿色），非 biome 驱动 PBR。
 - 无 LOD — 所有 chunk 用相同 16³ 分辨率。
 - 无 biome — 所有 chunk 地形形状相同。
+
+## 2026-08-08: atom_ability Batch 3 迁移摩擦（issue #5）
+
+- **2026-08-08**: [atom_data_macros] `DataAsset` 宏生成的 `{Row}Index` 索引容器是**私有 struct**（`struct` 非 `pub`）——pub 行类型的 `impl DataIndexed` 使私有索引容器泄漏到公开关联类型 `type Index`，触发 E0446（`private type in public interface`）。**rustc 1.95 上该错误为硬错误**：`#[allow(private_interfaces)]`、模块包裹 + 重导出、`pub use` 别名等全部无效（已逐一实证），唯一路径是让索引容器声明为 `pub`。atom_data 自身测试因行类型全部私有而未暴露。处理：宏生成 `pub struct`（单字修复，`{Row}Queries` trait 保持私有，测试契约不变）；atom_ability 18 个 RED 测试以 pub 行类型间接覆盖该路径。
+- **2026-08-08**: [bevy 0.19] `On::observer()` 语义变更：0.19 返回 **observer 实体本身**（0.18 为被观察目标实体）。atom_ability 全部 observer 用 `trigger.observer()` 取目标——`On<Add, Ability/Buff>` 两处已修为 `trigger.entity`（Deref 到 `Add { entity }`）；**EntityEvent observer（graph/event.rs 等 11 处）仍用 `observer()` 作目标实体，0.19 上已失效**（graph 事件流/技能生命周期事件可能静默失败，warn 不 panic）——遗留问题，需后续 issue 系统排查修复。
+- **2026-08-08**: [bevy 0.19] `On<Add, C>` 在 bundle 插入**过程中**逐组件触发——按字段序插入，先插入的组件触发时后插入的尚不在 archetype（`QueryDoesNotMatch`）。`AbilityBundle`/`BuffBundle` 的配置数据组件必须**先于**标记组件（`ability`/`buff`）声明（已在 struct 文档注释锁定该约束）。旧代码 `ability_row` 字段也在 `ability` 之后——原 observer 在 0.19 上同样失效（升级遗留）。
+- **2026-08-08**: [bevy 0.19] `World::component_id::<T>()` 只返回**已注册**组件（0.19 起组件需经系统初始化或显式注册）——`EffectNodeAbilityEntryPlugin`/`EffectNodeBuffEntryPlugin` 在 plugin build 时 `component_id().expect()` 直接 panic。修复：改 `register_component::<T>()`（注册并返回 id，0.19 API）。
+- **2026-08-08**: [门禁冲突] RED 契约测试文件（tests/config_data.rs + tests/bundle.rs，禁止修改）未按仓库格式提交且含 `assert_eq!(x, true/false)`——`cargo clippy --all-targets -D warnings` 与 `cargo fmt --check` 直接失败。处理：workspace lints 增加 `bool_assert_comparison = "allow"`（测试契约断言风格，失败时 Debug 输出比 assert! 可诊断）；rustfmt.toml `ignore` 排除两文件（字节原样）。两处例外均已注释说明。

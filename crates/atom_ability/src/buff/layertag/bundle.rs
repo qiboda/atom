@@ -1,14 +1,9 @@
 //! Buff 状态层标签组件包：从数据表原始标签构建 buff 各阶段标签组件。
 
-use atom_datatables::effect::RevertableLayerTag;
 use atom_layertag::container_op::LayerTagContainer;
-use bevy::{
-    log::warn,
-    prelude::{Bundle, Res},
-    reflect::Reflect,
-};
+use bevy::{log::warn, prelude::Bundle, reflect::Reflect};
 
-use crate::stateset::StateLayerTagRegistry;
+use crate::{config::RevertableLayerTag, stateset::StateLayerTagRegistry};
 
 use super::tag::{
     BuffAbortDisableLayerTagContainer, BuffAbortRequiredLayerTagContainer,
@@ -36,7 +31,7 @@ impl BuffStartTagBundle {
         disable_layertags: &[String],
         added_layertags: &[RevertableLayerTag],
         removed_layertags: &[RevertableLayerTag],
-        state_registry: &Res<StateLayerTagRegistry>,
+        state_registry: &StateLayerTagRegistry,
     ) -> Self {
         let mut bundle = BuffStartTagBundle::default();
 
@@ -116,7 +111,7 @@ impl BuffAbortTagBundle {
     pub fn new(
         required_layertags: &[String],
         disable_layertags: &[String],
-        state_registry: &Res<StateLayerTagRegistry>,
+        state_registry: &StateLayerTagRegistry,
     ) -> Self {
         let mut bundle = BuffAbortTagBundle::default();
 

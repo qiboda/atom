@@ -1,6 +1,5 @@
 //! 技能事件与 observer：技能的 ready/start/remove/abort/tickable 生命周期。
 
-use atom_datatables::effect::TbAbilityRow;
 use atom_layertag::container_op::{
     LayerTagContainerConditionRequired, LayerTagContainerConditionWithout, LayerTagContainerOpAdd,
     LayerTagContainerOpRemove,
@@ -17,6 +16,7 @@ use crate::{
 };
 
 use super::{
+    bundle::AbilityConfigData,
     comp::{Ability, AbilityExecuteState},
     layertag::tag::{
         AbilityAbortDisableLayerTagContainer, AbilityAbortRequiredLayerTagContainer,
@@ -287,25 +287,25 @@ pub fn trigger_ability_tickable(
 }
 
 // add to ability entity observer
-/// 处理技能实体添加事件：按数据表中的图类别为技能添加 Effect Graph。
+/// 处理技能实体添加事件：按配置数据的图类别为技能添加 Effect Graph。
 pub fn trigger_ability_add(
     trigger: On<Add, Ability>,
     mut commands: Commands,
-    query: Query<&TbAbilityRow, With<Ability>>,
+    query: Query<&AbilityConfigData, With<Ability>>,
 ) {
-    let ability_entity = trigger.observer();
+    // Bevy 0.19: `On<Add, C>` Deref 到 `Add { entity }`（被添加组件的实体）；
+    // `trigger.observer()` 在 0.19 返回的是 observer 实体本身（语义变更，见 TENSIONS.md）。
+    let ability_entity = trigger.entity;
     match query.get(ability_entity) {
-        Ok(ability_row) => {
-            if let Some(data) = ability_row.data.clone() {
-                commands.trigger(EffectGraphAddEvent {
-                    graph_class: data.graph_class.clone(),
-                    ability_entity,
-                });
-            }
+        Ok(config_data) => {
+            commands.trigger(EffectGraphAddEvent {
+                graph_class: config_data.graph_class.clone(),
+                ability_entity,
+            });
         }
         Err(e) => {
             warn!(
-                "trigger_ability_add: ability row not found for entity {:?}: {:?}",
+                "trigger_ability_add: ability config data not found for entity {:?}: {:?}",
                 ability_entity, e
             );
         }
