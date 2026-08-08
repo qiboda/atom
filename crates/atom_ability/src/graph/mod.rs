@@ -19,7 +19,6 @@ use self::state::reset_effect_graph_state;
 
 pub mod blackboard;
 pub mod builder;
-pub mod bundle;
 pub mod context;
 pub mod event;
 pub mod executor;
