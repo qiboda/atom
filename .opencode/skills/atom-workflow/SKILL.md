@@ -343,6 +343,9 @@ ref #N"
 - 所有范围内问题已解决 → 提交，等待用户 push 指令
 - **用户确认 push 后、执行 push 前**：调用 `/reflect` 编写实现后反思，
   反思 commit（含 `ref #N`）与实现代码**同批 push**，随 PR 合并落在 main
+- **执行检查（防止遗漏）**：push 命令发出前，确认 `.opencode/kb/project/reflections.md`
+  已含本次工作的反思条目——若用户确认 push 但反思未写，先 `/reflect` 再 push。
+  push 后发现遗漏时，补写反思并追加 commit（`docs: reflection ...` + `ref #N`）再 push。
 
 ### 第 6 步：Push 后关闭 issue（强制，勿忘）
 

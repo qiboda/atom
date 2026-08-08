@@ -59,6 +59,7 @@ git worktree add -b fix/<name> .worktrees/<name> <target-branch>
    - 主 session 只需确认 worktree 的用途（一句话：做什么、对应哪个 issue）并命名
    - `<name>` 即 kebab-case 短名，与 PR 匹配
    - 将用途简述写入 `.worktrees/<name>/.omo/handoff.md`（含对应 issue URL / 已锁定的 grill-me 决策）
+   - **handoff 中必须包含「同步 main」提醒**：worktree 创建后 main 可能继续推进，会话启动后先 `git fetch origin && git merge origin/main`（或 rebase）再开始工作，避免基于过期基点开发
    - 使用 `write` 工具创建 handoff 文件（不再依赖 `/handoff` 命令）
 
 2. **自动启动工作树区域**——无需手动解绑当前 opencode session：
