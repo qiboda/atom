@@ -253,11 +253,11 @@ RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_data   # 新 pub 项时
 ### Batch 2 (#4)
 | Status | Issue | Task | Depends On |
 |--------|-------|------|------------|
-| pending | #4 | B2-1 DataRegistry + Plugin（AssetEvent 监听） | #3 |
-| pending | #4 | B2-2 data_ref 属性宏 | #3 |
-| pending | #4 | B2-3 跨表引用集成测试（顺序无关） | B2-1, B2-2 |
-| pending | #4 | B2-4 惰性语义（None/unload）测试 | B2-1 |
-| pending | #4 | B2-5 kb 同步 | B2-4 |
+| done | #4 | B2-1 DataRegistry + Plugin（AssetEvent 监听） | #3 |
+| done | #4 | B2-2 data_ref 属性宏 | #3 |
+| done | #4 | B2-3 跨表引用集成测试（顺序无关） | B2-1, B2-2 |
+| done | #4 | B2-4 惰性语义（None/unload）测试 | B2-1 |
+| done | #4 | B2-5 kb 同步 | B2-4 |
 
 ### Batch 3 (#5)
 | Status | Issue | Task | Depends On |
