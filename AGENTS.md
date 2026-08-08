@@ -56,6 +56,8 @@ ref #26
 
 PR/功能分支开发使用 git worktree，位于 `.worktrees/<name>/`（gitignored），每个 worktree 对应一个功能分支，合并后清理。
 
+- **分支同步一律 rebase，不用 merge**：worktree 分支同步 main 用 `git rebase origin/main`；PR 合并用 rebase/squash（GitHub 侧配置）；绝不用 `git merge` 引入合并提交（保持线性历史）。
+
 - **创建时机（强制）**：需求经 grill-me 确认是需要 worktree 的工作（feature/epic、2+ 模块、将产出 `.omo/plans/*.md` 或 `.omo/designs/*.md`）时，**grill 共识达成后立即创建并切换**；单文件修复/纯文档不需要。判断口诀：**一旦确定"这次要产出 .omo 文件"→ 先开 worktree 再写文件**（untracked 文件不会跨 checkout 迁移）。
 - **主 session 移交（强制）**：创建后主 session 只做两件事——写 `.worktrees/<name>/.omo/handoff.md`（用途 + issue URL + 已锁定决策），然后运行 `scripts/open-worktrees.sh <name>` 自动启动（新终端 + setsid 脱离进程组）。剩余工作全部移交 worktree 内 agent，主 session 不再参与。
 - **会话启动规则（强制）**：worktree 内 opencode 会话启动后第一步必须读取 `.omo/handoff.md` 获取上下文契约，之后才允许开始任何工作。

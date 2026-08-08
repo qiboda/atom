@@ -252,8 +252,10 @@ Feature 分支工作流：大部分工作在分支上进行，通过 PR 合并�
 后续实现工作必须在 worktree 内进行——main 上的实现继续即流程违规。
 main 只允许纯文档（docs/lint/typo/反思）直推。
 
-开始实现前用 `git worktree list` + `git branch --contains HEAD` 确认所在分支；
-不确认分支归属就不开始。
+**分支同步一律 rebase，不用 merge**：worktree 分支同步 main 用
+`git rebase origin/main`（绝不用 `git merge`，保持线性历史，避免合并提交）；
+PR 合并用 rebase/squash。开始实现前用 `git worktree list` +
+`git branch --contains HEAD` 确认所在分支；不确认分支归属就不开始。
 
 ```
 main      ●──●──●──●────────●  (主干，仅 docs/lint/typo/反思)

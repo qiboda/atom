@@ -50,7 +50,7 @@ git worktree add -b fix/<name> .worktrees/<name> <target-branch>
 **规则**：
 - `<name>` = 与 PR 匹配的 kebab-case 短名（例如 `feature/gpu-indirect-draw`、`fix-candle-rendering`）
 - 默认基于 `main`——PR 合并回 main
-- **目标分支场景**：当构建失败在某个 feature/PR 分支时，从**该分支**切修复分支（`<target-branch>`），修复后 merge/cherry-pick 回目标分支，**目标分支直接 push**（不经 PR 到 main）——目标分支自身的 PR 负责最终进入 main
+- **目标分支场景**：当构建失败在某个 feature/PR 分支时，从**该分支**切修复分支（`<target-branch>`），修复后 rebase/cherry-pick 回目标分支（**不用 merge**），**目标分支直接 push**（不经 PR 到 main）——目标分支自身的 PR 负责最终进入 main
 - 绝不在 `.worktrees/` 之外创建工作树
 
 **创建后步骤（MANDATORY）**——每次 `git worktree add` 之后：
@@ -59,7 +59,7 @@ git worktree add -b fix/<name> .worktrees/<name> <target-branch>
    - 主 session 只需确认 worktree 的用途（一句话：做什么、对应哪个 issue）并命名
    - `<name>` 即 kebab-case 短名，与 PR 匹配
    - 将用途简述写入 `.worktrees/<name>/.omo/handoff.md`（含对应 issue URL / 已锁定的 grill-me 决策）
-   - **handoff 中必须包含「同步 main」提醒**：worktree 创建后 main 可能继续推进，会话启动后先 `git fetch origin && git merge origin/main`（或 rebase）再开始工作，避免基于过期基点开发
+   - **handoff 中必须包含「同步 main」提醒**：worktree 创建后 main 可能继续推进，会话启动后先 `git fetch origin && git rebase origin/main` 再开始工作，避免基于过期基点开发（**一律 rebase，不用 merge**，保持线性历史）
    - 使用 `write` 工具创建 handoff 文件（不再依赖 `/handoff` 命令）
 
 2. **自动启动工作树区域**——无需手动解绑当前 opencode session：
@@ -178,15 +178,17 @@ git worktree add -b fix/deterministic-aggregation-test .worktrees/deterministic-
 修复完成后（`git commit` 到 `fix/<name>`），合并回目标分支：
 
 ```bash
-# 方式 A：merge（保留修复分支历史）
-git checkout fix/ci-fix-issue-only && git merge fix/deterministic-aggregation-test
+# 方式 A：rebase 回目标分支（推荐——线性历史，不用 merge）
+git checkout fix/ci-fix-issue-only && git rebase fix/deterministic-aggregation-test
 
-# 方式 B：cherry-pick（单 commit 修复，推荐——引用清晰）
+# 方式 B：cherry-pick（单 commit 修复，引用清晰）
 git checkout fix/ci-fix-issue-only && git cherry-pick <fix-commit-sha>
 
 # 目标分支直接 push（不经 PR 到 main）——其自身 PR 负责最终合并
 git push origin fix/ci-fix-issue-only
 ```
+
+**分支同步一律 rebase，不用 merge**——项目约定：绝不用 `git merge` 引入合并提交，保持线性历史。
 
 任何 `git worktree add` 成功后，**立即按上方「创建后步骤」执行**（写 handoff → 运行 `scripts/open-worktrees.sh <name>` 启动 → 移交 worktree agent）。
 
