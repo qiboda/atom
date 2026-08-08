@@ -46,7 +46,7 @@ jobs:
           git apply "$GITHUB_WORKSPACE/scripts/bevy-0.19.patch"
       - run: cargo fmt --check
       - run: cargo build --verbose
-      - run: cargo clippy --workspace -- -A dead_code -D warnings
+      - run: cargo clippy --workspace --all-targets -- -A dead_code -D warnings
       - run: cargo doc --no-deps --workspace
         env:
           RUSTDOCFLAGS: "-D warnings"

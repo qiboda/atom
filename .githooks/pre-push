@@ -22,8 +22,10 @@ if ! cargo check --workspace 2>&1; then
 fi
 
 # --- Quality gate: cargo clippy ---
-echo "pre-push: cargo clippy --workspace -- -A dead_code -D warnings..."
-if ! cargo clippy --workspace -- -A dead_code -D warnings 2>&1; then
+# --all-targets 覆盖 examples/tests：load/reload 的 #[must_use] 契约违约（丢弃 handle 静默
+# 竞态）只在 example/test 目标中暴露，默认 workspace clippy 不检查这些 target。
+echo "pre-push: cargo clippy --workspace --all-targets -- -A dead_code -D warnings..."
+if ! cargo clippy --workspace --all-targets -- -A dead_code -D warnings 2>&1; then
     echo ""
     echo "ERROR: cargo clippy produced warnings."
     echo "  Fix clippy warnings before pushing."

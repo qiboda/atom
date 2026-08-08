@@ -33,6 +33,7 @@ fn main() {
     dotenv::dotenv().ok();
 
     let mut app = App::new();
+    app.insert_resource(LoadedTables::default());
     app.add_plugins(DefaultPlugins)
         .add_plugins(JsonAssetPlugin::<DataTable<AbilityConfig>>::new(&["json"]))
         .add_plugins(DataRegistryPlugin)
@@ -51,8 +52,24 @@ fn main() {
 }
 
 /// 从 JSON 数据表加载技能配置（`assets/datatables/AbilityConfig.json`）。
-fn load_ability_table(mut registry: ResMut<DataRegistry>, server: Res<AssetServer>) {
-    registry.load::<AbilityConfig>(&server, "datatables/AbilityConfig.json");
+///
+/// handle 存入 [`LoadedTables`] 资源保持存活——`Assets::track_assets` 会移除无强引用的
+/// 资产，若丢弃 handle，表可能在 `sync_table` 读取前被回收（`#[must_use]` 契约，见
+/// `atom_data::DataRegistry::load` 文档）。
+fn load_ability_table(
+    mut registry: ResMut<DataRegistry>,
+    server: Res<AssetServer>,
+    mut loaded: ResMut<LoadedTables>,
+) {
+    loaded
+        .tables
+        .push(registry.load::<AbilityConfig>(&server, "datatables/AbilityConfig.json"));
+}
+
+/// 已加载数据表 handle 集合（保持资产存活，防 track_assets 提前回收）。
+#[derive(Resource, Default)]
+struct LoadedTables {
+    tables: Vec<Handle<DataTable<AbilityConfig>>>,
 }
 
 fn create_ability(
