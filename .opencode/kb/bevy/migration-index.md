@@ -27,6 +27,7 @@
 | 0.18 | 0.19 | 备注 |
 |------|------|------|
 | `Commands::despawn_recursive()` | `Commands::despawn()` | despawn 自动递归 |
+| `EventReader`/`EventWriter`/`Events` | `MessageReader`/`MessageWriter`/`Messages` | 0.19 事件系统改名（`Event` 保留给实体事件 `EntityEvent`）；`AssetEvent` 仍叫 `AssetEvent` 但 derive `Message` |
 | `MessageWriter::send()` | `MessageWriter::write()` | |
 | `RenderApp` | 不变 | `app.sub_app_mut(RenderApp)` 仍可用 |
 | `ExtractResource` | 不变 | 但 `Resource` 现在是 `Component` 的 subtrait |
