@@ -1,13 +1,9 @@
 //! Buff 组件包：buff 实体的完整组件集合。
 
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use atom_datatables::effect::TbBuffRow;
+use bevy::prelude::*;
 
-use crate::{
-    bundle::{BuffBundleTrait, BundleTrait, ReflectBuffBundleTrait},
-    config::BuffConfig,
-    graph::EffectGraphOwner,
-    stateset::StateLayerTagRegistry,
-};
+use crate::{graph::EffectGraphOwner, stateset::StateLayerTagRegistry};
 
 use super::{
     layer::BuffLayer,
@@ -29,7 +25,6 @@ pub struct BuffConfigData {
 /// 在 bundle 插入过程中触发（按字段序逐组件插入），此时后插入的组件尚不在实体 archetype
 /// 中（`QueryDoesNotMatch`），observer 按新数据形态查询会落空（RED 测试实证）。
 #[derive(Bundle, Reflect, Default)]
-#[reflect(BuffBundleTrait)]
 pub struct BuffBundle {
     /// Buff 配置数据（observer 数据源，替代已删除的 `TbBuffRow`；须先于 `buff` 插入）。
     pub config_data: BuffConfigData,
@@ -50,14 +45,6 @@ pub struct BuffBundle {
     /// 中断阶段状态层标签包。
     pub abort_tag_bundle: BuffAbortTagBundle,
 }
-
-impl BundleTrait for BuffBundle {
-    fn spawn_bundle<'a>(self, commands: &'a mut Commands) -> EntityCommands<'a> {
-        commands.spawn(self)
-    }
-}
-
-impl BuffBundleTrait for BuffBundle {}
 
 impl BuffBundle {
     /// 依据配置数据与状态层标签注册表构造 buff 组件包。

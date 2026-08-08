@@ -1,11 +1,10 @@
 //! 技能组件包：技能实体的完整组件集合。
 
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use atom_datatables::effect::TbAbilityRow;
+use bevy::prelude::*;
 
 use crate::{
     attribute::attribute_set::AttributeSet,
-    bundle::{AbilityBundleTrait, BundleTrait, ReflectAbilityBundleTrait},
-    config::AbilityConfig,
     graph::EffectGraphOwner,
     stateset::{StateLayerTagContainer, StateLayerTagRegistry},
 };
@@ -37,7 +36,6 @@ pub struct AbilityConfigData {
 /// 在 bundle 插入过程中触发（按字段序逐组件插入），此时后插入的组件尚不在实体 archetype
 /// 中（`QueryDoesNotMatch`），observer 按新数据形态查询会落空（RED 测试实证）。
 #[derive(Bundle, Reflect, Default)]
-#[reflect(AbilityBundleTrait)]
 pub struct AbilityBundle {
     /// 技能执行状态。
     pub execute_state: AbilityExecuteState,
@@ -82,11 +80,3 @@ impl AbilityBundle {
         }
     }
 }
-
-impl BundleTrait for AbilityBundle {
-    fn spawn_bundle<'a>(self, commands: &'a mut Commands) -> EntityCommands<'a> {
-        commands.spawn(self)
-    }
-}
-
-impl AbilityBundleTrait for AbilityBundle {}
