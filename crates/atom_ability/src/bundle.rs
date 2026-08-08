@@ -1,18 +1,19 @@
-//! 组件包 trait：统一 spawn 接口与反射标记。
+//! 效果组件包 trait：反射调度的效果 spawn 接口。
 
-use bevy::{ecs::system::EntityCommands, prelude::Commands, reflect::reflect_trait};
+use bevy::{
+    ecs::system::EntityCommands,
+    prelude::Commands,
+    reflect::reflect_trait,
+    scene::{Scene, prelude::CommandsSceneExt},
+};
 
-/// 组件包 trait：提供从 `Commands` spawn 自身的能力。
+/// 效果组件包 trait：通过反射从 `Box<dyn Reflect>` 还原并 spawn 效果场景。
 #[reflect_trait]
-pub trait BundleTrait {
-    /// 通过 `commands` spawn 该组件包。
-    fn spawn_bundle<'a>(self, commands: &'a mut Commands) -> EntityCommands<'a>;
+pub trait EffectBundleTrait {
+    /// 构建效果场景。
+    fn build_scene(&self) -> Box<dyn Scene>;
+    /// 通过 `commands` 以 BSN 场景方式 spawn 该效果。
+    fn spawn_scene<'a>(&self, commands: &'a mut Commands) -> EntityCommands<'a> {
+        commands.spawn_scene(self.build_scene())
+    }
 }
-
-/// 技能组件包 trait 标记（可反射）。
-#[reflect_trait]
-pub trait AbilityBundleTrait: BundleTrait {}
-
-/// Buff 组件包 trait 标记（可反射）。
-#[reflect_trait]
-pub trait BuffBundleTrait: BundleTrait {}

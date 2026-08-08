@@ -14,7 +14,11 @@ pub struct EffectBlackboard {
 
 #[allow(unused)]
 /// 可存入 Blackboard 的运行时值：支持多种标量、实体引用与字符串。
-#[derive(Debug, Reflect, PartialEq, Clone)]
+///
+/// `Clone`/`PartialEq` 为手写实现：`BoxReflect(Box<dyn Reflect>)` 中的 `Box<dyn Reflect>`
+/// 无 std `Clone`/`PartialEq`（Bevy 0.19 不支持原生反射，issue #3392 未关闭），
+/// 故按 `reflect_clone` / `reflect_partial_eq` 语义实现（见计划 §4.4）。
+#[derive(Debug, Reflect)]
 pub enum EffectValue {
     /// 8 位有符号整数。
     I8(i8),
@@ -47,8 +51,65 @@ pub enum EffectValue {
     /// 静态字符串（借用或拥有）。
     String(Cow<'static, str>),
     // Vec(Vec<EffectValue>),
-    // TODO: add when bevy support
-    // BoxReflect(Box<dyn Reflect>),
+    /// 反射值容器：任意实现 `Reflect` 的类型（如效果组件包）。
+    ///
+    /// `#[reflect(ignore)]` 排除反射 API；`default` 仅为满足 `FromReflect` 派生对
+    /// `Box<dyn Reflect>` 的构造需求（正常路径不会触发该默认值）。
+    BoxReflect(#[reflect(ignore, default = "box_reflect_default")] Box<dyn Reflect>),
+}
+
+/// `BoxReflect` 字段的 `FromReflect` 默认构造哨兵（实际使用中被手动构造覆盖）。
+fn box_reflect_default() -> Box<dyn Reflect> {
+    Box::new(())
+}
+
+impl Clone for EffectValue {
+    fn clone(&self) -> Self {
+        match self {
+            EffectValue::I8(v) => EffectValue::I8(*v),
+            EffectValue::I16(v) => EffectValue::I16(*v),
+            EffectValue::I32(v) => EffectValue::I32(*v),
+            EffectValue::I64(v) => EffectValue::I64(*v),
+            EffectValue::U8(v) => EffectValue::U8(*v),
+            EffectValue::U16(v) => EffectValue::U16(*v),
+            EffectValue::U32(v) => EffectValue::U32(*v),
+            EffectValue::U64(v) => EffectValue::U64(*v),
+            EffectValue::F32(v) => EffectValue::F32(*v),
+            EffectValue::F64(v) => EffectValue::F64(*v),
+            EffectValue::Entity(v) => EffectValue::Entity(*v),
+            EffectValue::VecEntity(v) => EffectValue::VecEntity(v.clone()),
+            EffectValue::String(v) => EffectValue::String(v.clone()),
+            EffectValue::BoxReflect(v) => EffectValue::BoxReflect(
+                v.as_ref()
+                    .reflect_clone()
+                    .expect("BoxReflect 内部值必须可 reflect_clone"),
+            ),
+        }
+    }
+}
+
+impl PartialEq for EffectValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (EffectValue::I8(a), EffectValue::I8(b)) => a == b,
+            (EffectValue::I16(a), EffectValue::I16(b)) => a == b,
+            (EffectValue::I32(a), EffectValue::I32(b)) => a == b,
+            (EffectValue::I64(a), EffectValue::I64(b)) => a == b,
+            (EffectValue::U8(a), EffectValue::U8(b)) => a == b,
+            (EffectValue::U16(a), EffectValue::U16(b)) => a == b,
+            (EffectValue::U32(a), EffectValue::U32(b)) => a == b,
+            (EffectValue::U64(a), EffectValue::U64(b)) => a == b,
+            (EffectValue::F32(a), EffectValue::F32(b)) => a == b,
+            (EffectValue::F64(a), EffectValue::F64(b)) => a == b,
+            (EffectValue::Entity(a), EffectValue::Entity(b)) => a == b,
+            (EffectValue::VecEntity(a), EffectValue::VecEntity(b)) => a == b,
+            (EffectValue::String(a), EffectValue::String(b)) => a == b,
+            (EffectValue::BoxReflect(a), EffectValue::BoxReflect(b)) => {
+                a.as_ref().reflect_partial_eq(b.as_ref()).unwrap_or(false)
+            }
+            _ => false,
+        }
+    }
 }
 
 /// 从 Blackboard 值中按类型取出引用（不可变/可变）。
@@ -387,27 +448,27 @@ impl<'a> TryFrom<&'a mut EffectValue> for &'a mut Vec<Entity> {
 //     }
 // }
 
-// impl<'a> TryFrom<&'a EffectValue> for &'a Box<dyn Reflect> {
-//     type Error = &'static str;
+impl<'a> TryFrom<&'a EffectValue> for &'a Box<dyn Reflect> {
+    type Error = &'static str;
 
-//     fn try_from(value: &'a EffectValue) -> Result<Self, Self::Error> {
-//         match value {
-//             EffectValue::BoxReflect(v) => Ok(v),
-//             _ => Err("not BoxReflect"),
-//         }
-//     }
-// }
+    fn try_from(value: &'a EffectValue) -> Result<Self, Self::Error> {
+        match value {
+            EffectValue::BoxReflect(v) => Ok(v),
+            _ => Err("not BoxReflect"),
+        }
+    }
+}
 
-// impl<'a> TryFrom<&'a mut EffectValue> for &'a mut Box<dyn Reflect> {
-//     type Error = &'static str;
+impl<'a> TryFrom<&'a mut EffectValue> for &'a mut Box<dyn Reflect> {
+    type Error = &'static str;
 
-//     fn try_from(value: &'a mut EffectValue) -> Result<Self, Self::Error> {
-//         match value {
-//             EffectValue::BoxReflect(v) => Ok(v),
-//             _ => Err("not BoxReflect"),
-//         }
-//     }
-// }
+    fn try_from(value: &'a mut EffectValue) -> Result<Self, Self::Error> {
+        match value {
+            EffectValue::BoxReflect(v) => Ok(v),
+            _ => Err("not BoxReflect"),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -463,5 +524,52 @@ mod tests {
     fn test_effect_value_f64() {
         let val = EffectValue::F64(9.876);
         assert_eq!(val.get::<&f64>(), Ok(&9.876));
+    }
+
+    // ===== BoxReflect（BSN 迁移新增，见计划 §4.4）=====
+    // Box<dyn Reflect> 无 std Clone/PartialEq，迁移后需手写实现（reflect_clone /
+    // reflect_partial_eq 语义）——以下测试固化这些行为。
+
+    #[derive(Debug, Reflect, PartialEq, Clone)]
+    struct BoxReflectTestData {
+        value: i32,
+    }
+
+    #[test]
+    fn test_effect_value_box_reflect_clone() {
+        let val = EffectValue::BoxReflect(Box::new(BoxReflectTestData { value: 42 }));
+        let cloned = val.clone();
+
+        let (EffectValue::BoxReflect(a), EffectValue::BoxReflect(b)) = (&val, &cloned) else {
+            panic!("clone 后仍应为 BoxReflect 变体");
+        };
+        let a = a
+            .as_ref()
+            .downcast_ref::<BoxReflectTestData>()
+            .expect("inner 类型必须可下转型");
+        let b = b
+            .as_ref()
+            .downcast_ref::<BoxReflectTestData>()
+            .expect("inner 类型必须可下转型");
+        assert_eq!(
+            a.value, b.value,
+            "clone 必须按 reflect_clone 语义拷贝内部值"
+        );
+    }
+
+    #[test]
+    fn test_effect_value_box_reflect_partial_eq() {
+        let a = EffectValue::BoxReflect(Box::new(BoxReflectTestData { value: 42 }));
+        let b = EffectValue::BoxReflect(Box::new(BoxReflectTestData { value: 42 }));
+        let c = EffectValue::BoxReflect(Box::new(BoxReflectTestData { value: 43 }));
+        assert_eq!(a, b, "内部 reflect 值相等时 BoxReflect 应相等");
+        assert_ne!(a, c, "内部 reflect 值不同时 BoxReflect 不应相等");
+    }
+
+    #[test]
+    fn test_effect_value_box_reflect_differs_from_scalar_variant() {
+        let boxed = EffectValue::BoxReflect(Box::new(42i32));
+        let scalar = EffectValue::I32(42);
+        assert_ne!(boxed, scalar, "BoxReflect 与标量变体必须是不同值");
     }
 }
