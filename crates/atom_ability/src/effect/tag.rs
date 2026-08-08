@@ -2,34 +2,37 @@
 
 use std::ops::Not;
 
-use bevy::prelude::*;
-use atom_layertag::container::{
-    LayerTagContainer, LayerTagContainerConditionRequired, LayerTagContainerConditionWithout,
-    LayerTagContainerOpAdd, LayerTagContainerOpRemove,
+use atom_layertag::{
+    container_op::{
+        LayerTagContainerConditionRequired, LayerTagContainerConditionWithout,
+        LayerTagContainerOpAdd, LayerTagContainerOpRemove,
+    },
+    count_container::CountLayerTagContainer,
 };
+use bevy::prelude::*;
 
 use crate::stateset::StateLayerTagContainer;
 
 use super::state::EffectState;
 
 /// Effect 开始所需的状态层标签容器（全部满足才可开始）。
-#[derive(Component, Debug, Default, Reflect)]
-pub struct EffectStartRequiredLayerTagContainer(pub LayerTagContainer);
+#[derive(Component, Debug, Default, Reflect, Clone)]
+pub struct EffectStartRequiredLayerTagContainer(pub CountLayerTagContainer);
 
 /// Effect 开始禁用的状态层标签容器（存在任一即不可开始）。
-#[derive(Component, Debug, Default, Reflect)]
-pub struct EffectStartDisableLayerTagContainer(pub LayerTagContainer);
+#[derive(Component, Debug, Default, Reflect, Clone)]
+pub struct EffectStartDisableLayerTagContainer(pub CountLayerTagContainer);
 
 /// Effect 中断所需的状态层标签容器（全部满足才可中断）。
-#[derive(Component, Debug, Default, Reflect)]
-pub struct EffectAbortRequiredLayerTagContainer(pub LayerTagContainer);
+#[derive(Component, Debug, Default, Reflect, Clone)]
+pub struct EffectAbortRequiredLayerTagContainer(pub CountLayerTagContainer);
 
 /// Effect 中断禁用的状态层标签容器（存在任一即不可中断）。
-#[derive(Component, Debug, Default, Reflect)]
-pub struct EffectAbortDisableLayerTagContainer(pub LayerTagContainer);
+#[derive(Component, Debug, Default, Reflect, Clone)]
+pub struct EffectAbortDisableLayerTagContainer(pub CountLayerTagContainer);
 
 /// Effect 结束后是否回滚状态层标签。
-#[derive(Debug, Default, Reflect, PartialEq, Eq)]
+#[derive(Debug, Default, Reflect, PartialEq, Eq, Clone)]
 pub enum EffectLayerTagContainerRevert {
     /// 不回滚（默认）。
     #[default]
@@ -38,20 +41,30 @@ pub enum EffectLayerTagContainerRevert {
     Yes,
 }
 
+impl From<bool> for EffectLayerTagContainerRevert {
+    fn from(value: bool) -> Self {
+        if value {
+            EffectLayerTagContainerRevert::Yes
+        } else {
+            EffectLayerTagContainerRevert::No
+        }
+    }
+}
+
 /// Effect 开始时要添加的状态层标签集合（带回滚标记）。
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, Debug, Default, Reflect, Clone)]
 pub struct EffectAddedLayerTagContainer {
     /// 要添加的标签集合。
-    pub layer_tag_container: LayerTagContainer,
+    pub layer_tag_container: CountLayerTagContainer,
     /// 结束后是否回滚。
     pub revert: EffectLayerTagContainerRevert,
 }
 
 /// Effect 开始时要移除的状态层标签集合（带回滚标记）。
-#[derive(Component, Debug, Default, Reflect)]
+#[derive(Component, Debug, Default, Reflect, Clone)]
 pub struct EffectRemovedLayerTagContainer {
     /// 要移除的标签集合。
-    pub layer_tag_container: LayerTagContainer,
+    pub layer_tag_container: CountLayerTagContainer,
     /// 结束后是否回滚。
     pub revert: EffectLayerTagContainerRevert,
 }
@@ -69,7 +82,7 @@ pub fn effect_tag_start_check_system(
     for (parent, mut effect_state, required_tag, disable_tag) in query.iter_mut() {
         if *effect_state == EffectState::CheckCanActive {
             let state_layer_tag_container = state_set_query
-                .get(parent.get())
+                .get(parent.parent())
                 .expect("state layer tag container must exist on parent");
 
             let can_start = state_layer_tag_container
@@ -98,8 +111,8 @@ pub fn effect_tag_start_apply_system(
     for (parent, effect_state, added_tag, removed_tag) in query.iter() {
         if *effect_state == EffectState::ActiveBefore {
             let mut state_layer_tag_container = state_set_query
-                    .get_mut(parent.get())
-                    .expect("state layer tag container must exist on parent");
+                .get_mut(parent.parent())
+                .expect("state layer tag container must exist on parent");
 
             state_layer_tag_container
                 .0
@@ -125,8 +138,8 @@ pub fn effect_tag_revert_apply_system(
     for (parent, effect_state, added_tag, removed_tag) in query.iter() {
         if *effect_state == EffectState::BeforeInactive {
             let mut state_layer_tag_container = state_set_query
-                    .get_mut(parent.get())
-                    .expect("state layer tag container must exist on parent");
+                .get_mut(parent.parent())
+                .expect("state layer tag container must exist on parent");
 
             if added_tag.revert == EffectLayerTagContainerRevert::Yes {
                 state_layer_tag_container

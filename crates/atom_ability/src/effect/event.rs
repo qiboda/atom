@@ -1,7 +1,7 @@
-//! Effect 事件：开始/中断/暂停/恢复。
+//! Effect 事件与 observer：效果开始/中断/暂停/恢复。
 
 use bevy::{
-    prelude::{Entity, Event, EventReader, Query},
+    prelude::{Entity, Event, On, Query},
     reflect::Reflect,
 };
 
@@ -50,15 +50,43 @@ pub struct EffectResumeEvent {
 }
 
 /// 处理 [`EffectStartEvent`]：非激活的效果进入 `CheckCanActive` 检查阶段。
-pub fn receive_start_effect(
-    mut event_reader: EventReader<EffectStartEvent>,
+pub fn trigger_effect_start(
+    trigger: On<EffectStartEvent>,
     mut effect_query: Query<&mut EffectState>,
 ) {
-    for event in event_reader.read() {
-        if let Ok(mut state) = effect_query.get_mut(event.effect) {
-            if *state == EffectState::Inactive {
-                *state = EffectState::CheckCanActive;
-            }
+    let effect_entity = trigger.event().effect;
+    if let Ok(mut state) = effect_query.get_mut(effect_entity) {
+        if *state == EffectState::Inactive {
+            *state = EffectState::CheckCanActive;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::prelude::*;
+
+    #[test]
+    fn effect_start_event_moves_inactive_to_check_can_active() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_observer(trigger_effect_start);
+
+        let entity = app.world_mut().spawn(EffectState::Inactive).id();
+        app.add_systems(Update, move |mut commands: Commands| {
+            commands.trigger(EffectStartEvent {
+                effect: entity,
+                data: None,
+            });
+        });
+        app.update();
+
+        let state = app
+            .world()
+            .entity(entity)
+            .get::<EffectState>()
+            .expect("effect state must exist");
+        assert_eq!(*state, EffectState::CheckCanActive);
     }
 }

@@ -3,12 +3,11 @@
 use bevy::prelude::*;
 
 use crate::graph::{
-    context::EffectGraphContext,
-    event::{EffectNodeEvent, EffectNodeStartEvent},
+    event::{EffectGraphExecEvent, EffectGraphRemoveEvent},
     state::EffectGraphState,
 };
 
-use super::graph_map::EffectGraphMap;
+use super::node::effect_entry::EffectNodeEffectEntry;
 
 /// add ability to entity
 /// active ability
@@ -49,12 +48,13 @@ pub fn update_to_inactive_state(mut effect_query: Query<&mut EffectState>) {
     }
 }
 
-/// 推进激活流程：CheckCanActive → ActiveBefore → Active，激活时向图的入口节点发送开始事件。
+/// 推进激活流程：CheckCanActive → ActiveBefore → Active，激活时向图入口节点触发 start 执行。
+///
+/// 图实例是效果的子实体（经 [`crate::graph::event::EffectGraphAddEvent`] 挂载），
+/// 此处通过 [`EffectGraphExecEvent`] 以效果实体为事件目标触发图 start 执行。
 pub fn update_to_active_state(
+    mut commands: Commands,
     mut state_query: Query<(Entity, &mut EffectState)>,
-    graph_query: Query<&EffectGraphContext>,
-    effect_graph_map: Res<EffectGraphMap>,
-    mut event_writer: EventWriter<EffectNodeStartEvent>,
 ) {
     for (entity, mut state) in state_query.iter_mut() {
         match *state {
@@ -65,16 +65,12 @@ pub fn update_to_active_state(
             EffectState::ActiveBefore => {
                 *state = EffectState::Active;
 
-                let graph = effect_graph_map
-                    .map
-                    .get(&entity)
-                    .expect("effect graph must exist in map");
-                let graph_context = graph_query
-                    .get(graph.get_entity())
-                    .expect("effect graph context must exist");
-                if let Some(entry_node) = graph_context.entry_node {
-                    event_writer.send(EffectNodeStartEvent::new(entry_node));
-                }
+                commands.trigger(EffectGraphExecEvent {
+                    entry_exec_pin: EffectNodeEffectEntry::OUTPUT_EXEC_START.into(),
+                    execute_in_graph_state: Some(EffectGraphState::Inactive),
+                    slot_value_map: None,
+                    ability_entity: entity,
+                });
             }
             EffectState::Active => {}
             EffectState::BeforeInactive => {}
@@ -82,18 +78,76 @@ pub fn update_to_active_state(
     }
 }
 
-/// 效果移除时：将效果关联的图标记为待销毁。
+/// 效果移除时清理其图实例。
+///
+/// Bevy 0.19 的 `despawn()` 会递归 despawn 子实体，图实例作为效果的子实体随效果一起被清理；
+/// 此处额外触发 [`EffectGraphRemoveEvent`] 兜底——若 `EffectState` 被单独移除而实体仍在，
+/// 将存活的图实例标记为 `ToRemove` 走优雅退出流程。
 pub fn on_remove_effect(
-    mut removed_ability: RemovedComponents<EffectState>,
-    mut effect_graph_map: ResMut<EffectGraphMap>,
-    mut query: Query<&mut EffectGraphState>,
+    mut removed_effect: RemovedComponents<EffectState>,
+    mut commands: Commands,
 ) {
-    for ability in removed_ability.read() {
-        if let Some(graph_ref) = effect_graph_map.map.remove(&ability) {
-            let mut graph_state = query
-                    .get_mut(graph_ref.get_entity())
-                    .expect("effect graph state must exist");
-            *graph_state = EffectGraphState::ToRemove;
-        }
+    for effect in removed_effect.read() {
+        commands.trigger(EffectGraphRemoveEvent {
+            ability_entity: effect,
+        });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::MinimalPlugins;
+
+    #[test]
+    fn update_to_active_state_progresses_check_to_active() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let entity = app.world_mut().spawn(EffectState::CheckCanActive).id();
+        app.add_systems(Update, update_to_active_state);
+
+        app.update();
+        assert_eq!(
+            *app.world()
+                .entity(entity)
+                .get::<EffectState>()
+                .expect("effect state must exist"),
+            EffectState::ActiveBefore
+        );
+
+        app.update();
+        assert_eq!(
+            *app.world()
+                .entity(entity)
+                .get::<EffectState>()
+                .expect("effect state must exist"),
+            EffectState::Active
+        );
+    }
+
+    #[test]
+    fn update_to_inactive_state_progresses_to_inactive() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let entity = app.world_mut().spawn(EffectState::Active).id();
+        app.add_systems(Update, update_to_inactive_state);
+
+        app.update();
+        assert_eq!(
+            *app.world()
+                .entity(entity)
+                .get::<EffectState>()
+                .expect("effect state must exist"),
+            EffectState::BeforeInactive
+        );
+
+        app.update();
+        assert_eq!(
+            *app.world()
+                .entity(entity)
+                .get::<EffectState>()
+                .expect("effect state must exist"),
+            EffectState::Inactive
+        );
     }
 }
