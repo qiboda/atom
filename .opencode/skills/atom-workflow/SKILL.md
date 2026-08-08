@@ -207,6 +207,7 @@ Feature 和 bugfix 工作遵循 RED → GREEN → REFACTOR：
 - 然后实现
 - 探索性变更可以先写代码后补测试
 - 纯重构：先用特征测试锁定当前行为
+- **覆盖率硬门槛**：总行覆盖率 < 80% 不达标（`just coverage` 或 CI `cargo llvm-cov nextest --workspace --release --fail-under-lines 80`）。当前基线 27.54%，CI 红属预期，先补测试再合并。AGENTS.md 为单一数据源，此处不重复细节。
 
 ### 6. 逐步验证
 

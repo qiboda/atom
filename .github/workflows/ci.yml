@@ -47,6 +47,11 @@ jobs:
       - uses: taiki-e/install-action@nextest
       - name: Run tests (nextest)
         run: cargo nextest run --workspace
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
+      - name: Check coverage (fail below 80%)
+        # 覆盖率硬门槛：总行覆盖率 < 80% 即失败（当前基线 27.54%，需补测试提升）。
+        run: cargo llvm-cov nextest --workspace --release --fail-under-lines 80
       - name: Install bevy_lint
         run: cargo install bevy_lint --version 0.6.0 --locked
       - name: Run bevy_lint

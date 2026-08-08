@@ -41,6 +41,7 @@ ref #26
 - **问题处理闭环（强制）**：执行中遇到**任何**异常，禁止静默绕过或静默降级。依次完成感知 → 诊断 → 处理 → 记录（沉淀到 `.opencode/kb/TENSIONS.md`）。完整规则见 `atom-workflow` skill §1——绕行本身就是违规。
 - **agent 可自行完善项目书**：发现重复摩擦或可预防的失误时，agent 有权在 AGENTS.md / `.opencode/kb/` 中添加或修订规则以改善自身行为——规则变更随当次 commit 提交并在 commit message 中说明理由。
 - **测试先行**：feature/bugfix 变更从失败测试开始（RED），再做修复（GREEN）。先写修复再写失败测试是反模式。见 `test` skill。
+- **测试覆盖率硬门槛 80%**：总行覆盖率 < 80% 视为不达标（`just coverage` 或 CI 的 `cargo llvm-cov nextest --workspace --release --fail-under-lines 80`）。当前基线 27.54%，新增测试逐步提升；覆盖率不达标时 CI 红属预期，先补测试再合并。
 
 ## 变更前 SELF-CHECK（每次代码编辑前问自己）
 

@@ -38,6 +38,10 @@ fmt:
 deny:
     cargo deny check
 
+# 测试覆盖率 (llvm-cov, 硬门槛: 总行覆盖率 < 80% 失败)
+coverage:
+    cargo llvm-cov nextest --workspace --release --fail-under-lines 80
+
 # 运行地形示例 (release)
 run:
     cargo run -p atom_terrain --example chunk_loader --release
@@ -47,4 +51,4 @@ run-debug:
     cargo run -p atom_terrain --example chunk_loader
 
 # CI: 全量检查（对齐 .github/workflows/ci.yml）
-ci: check clippy bevy-lint test deny doc
+ci: check clippy bevy-lint test deny coverage doc
