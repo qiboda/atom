@@ -32,9 +32,10 @@ jobs:
       # .cargo/config.toml 硬编码 -fuse-ld=/usr/bin/mold（本地加速标配），runner 需装 mold
       - name: Install mold linker
         run: sudo apt-get update && sudo apt-get install -y mold
-      # Bevy 0.19 音频/输入系统依赖（alsa-sys 需 libasound2-dev，libudev-sys 需 libudev-dev）
+      # Bevy 0.19 音频/输入/窗口系统依赖（alsa-sys 需 libasound2-dev，libudev-sys 需
+      # libudev-dev；wayland-sys 需 libwayland-dev——coverage 步骤冷编译依赖树时触发）
       - name: Install Bevy system deps
-        run: sudo apt-get install -y libasound2-dev libudev-dev
+        run: sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev
       # Bevy 0.19 以 path patch 依赖本地源码（Cargo.toml [patch.crates-io]）。
       # runner 上必须复现本地环境：clone v0.19.0 到 /data/codes/Bevy + 应用补丁。
       # 补丁内容 = 本地 /data/codes/Bevy 的 3 处手动修改（cfg_select feature + import 排序）。
@@ -84,9 +85,10 @@ jobs:
       # .cargo/config.toml 硬编码 -fuse-ld=/usr/bin/mold，runner 需装 mold
       - name: Install mold linker
         run: sudo apt-get update && sudo apt-get install -y mold
-      # Bevy 0.19 音频/输入系统依赖（alsa-sys 需 libasound2-dev，libudev-sys 需 libudev-dev）
+      # Bevy 0.19 音频/输入/窗口系统依赖（alsa-sys 需 libasound2-dev，libudev-sys 需
+      # libudev-dev；wayland-sys 需 libwayland-dev——coverage 步骤冷编译依赖树时触发）
       - name: Install Bevy system deps
-        run: sudo apt-get install -y libasound2-dev libudev-dev
+        run: sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev
       - name: Setup Bevy source (clone v0.19.0 + patch)
         run: |
           sudo mkdir -p /data/codes
