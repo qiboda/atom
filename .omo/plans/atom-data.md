@@ -242,13 +242,13 @@ RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_data   # 新 pub 项时
 ### Batch 1 (#3)
 | Status | Issue | Task | Depends On |
 |--------|-------|------|------------|
-| pending | #3 | B1-1 atom_data + macros crate 骨架入 workspace | — |
-| pending | #3 | B1-2 DataIndexed/DataIndex trait | B1-1 |
-| pending | #3 | B1-3 DataTable<T> 泛型 Asset | B1-2 |
-| pending | #3 | B1-4 DataAsset derive 宏（index 属性解析） | B1-2 |
-| pending | #3 | B1-5 全格式加载验证（9 格式） | B1-3, B1-4 |
-| pending | #3 | B1-6 目录约定 datatables/<表类型名>.json | B1-3 |
-| pending | #3 | B1-7 kb 同步 | B1-5 |
+| done | #3 | B1-1 atom_data + macros crate 骨架入 workspace | — |
+| done | #3 | B1-2 DataIndexed/DataIndex trait | B1-1 |
+| done | #3 | B1-3 DataTable<T> 泛型 Asset | B1-2 |
+| done | #3 | B1-4 DataAsset derive 宏（index 属性解析） | B1-2 |
+| done | #3 | B1-5 全格式加载验证（9 格式） | B1-3, B1-4 |
+| done | #3 | B1-6 目录约定 datatables/<表类型名>.json | B1-3 |
+| done | #3 | B1-7 kb 同步 | B1-5 |
 
 ### Batch 2 (#4)
 | Status | Issue | Task | Depends On |
