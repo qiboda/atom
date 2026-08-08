@@ -262,12 +262,12 @@ RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_data   # 新 pub 项时
 ### Batch 3 (#5)
 | Status | Issue | Task | Depends On |
 |--------|-------|------|------------|
-| pending | #5 | B3-0 manifest/workspace 修复 | #4 |
-| pending | #5 | B3-1 原子表类型 serde + DataAsset 定义 | #4 |
-| pending | #5 | B3-2 TableReader → DataRegistry 替换 | B3-0, B3-1 |
-| pending | #5 | B3-3 TbAbilityRow/TbBuffRow 删除 + Bundle 重构 | B3-2 |
-| pending | #5 | B3-4 data_ref 声明化跨表引用 | B3-3 |
-| pending | #5 | B3-5 trigger_buff_add_event 死代码删除 | B3-3 |
-| pending | #5 | B3-6 示例迁移 + JSON 资产 | B3-4 |
-| pending | #5 | B3-7 datatables 依赖移除 + kb/AGENTS 同步 | B3-5 |
-| pending | #5 | B3-8 全门禁 + 冒烟 | B3-6, B3-7 |
+| done | #5 | B3-0 manifest/workspace 修复 | #4 |
+| done | #5 | B3-1 原子表类型 serde + DataAsset 定义 | #4 |
+| done | #5 | B3-2 TableReader → DataRegistry 替换 | B3-0, B3-1 |
+| done | #5 | B3-3 TbAbilityRow/TbBuffRow 删除 + Bundle 重构 | B3-2 |
+| done | #5 | B3-4 data_ref 声明化跨表引用 | B3-3 |
+| done | #5 | B3-5 trigger_buff_add_event 死代码删除 | B3-3 |
+| done | #5 | B3-6 示例迁移 + JSON 资产 | B3-4 |
+| done | #5 | B3-7 datatables 依赖移除 + kb/AGENTS 同步 | B3-5 |
+| done | #5 | B3-8 全门禁 + 冒烟 | B3-6, B3-7 |
