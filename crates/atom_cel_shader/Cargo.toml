@@ -13,7 +13,7 @@ paste = { workspace = true }
 
 [dev-dependencies]
 dotenv = { workspace = true }
-bevy_flycam = { version = "0.18" }
+# bevy_flycam = { version = "0.18" } # replaced by Bevy 0.19 built-in free_camera
 # bevy_screen_diagnostics = { version = "0.6.0" }
 
 [lints]

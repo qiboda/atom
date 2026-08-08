@@ -11,7 +11,7 @@ wgpu = { workspace = true }
 wgpu-types = { workspace = true }
 encase = { workspace = true }
 
-bytemuck ={ version = "1.14", features = ["derive"] }
+bytemuck = { workspace = true }
 
 [lints]
 workspace = true

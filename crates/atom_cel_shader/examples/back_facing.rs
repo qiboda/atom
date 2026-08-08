@@ -1,6 +1,6 @@
 use atom_cel_shader::back_facing::{BackFacingMaterial, BackFacingMaterial3d, BackFacingPlugin};
+use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::prelude::*;
-use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
 
 use dotenv::dotenv;
 
@@ -10,7 +10,7 @@ fn main() {
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins);
-    app.add_plugins(NoCameraPlayerPlugin);
+    app.add_plugins(FreeCameraPlugin);
     app.add_plugins(BackFacingPlugin);
 
     app.add_systems(Startup, startup);
@@ -66,7 +66,11 @@ fn startup(
     commands.spawn((
         Camera3d::default(),
         Transform::from_translation(Vec3::new(0.0, 5.0, 5.0)).looking_at(Vec3::ZERO, Vec3::Y),
-        FlyCam,
+        FreeCamera {
+            walk_speed: 5.0,
+            run_speed: 15.0,
+            ..default()
+        },
     ));
 
     commands.spawn((

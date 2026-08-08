@@ -1,6 +1,16 @@
 [workspace]
 members = [
     "crates/atom_terrain",
+    "crates/atom_ability",
+    "crates/atom_cel_shader",
+    "crates/atom_core",
+    "crates/atom_layertag",
+    "crates/atom_math",
+    "crates/atom_pqef",
+    "crates/atom_render",
+    "crates/atom_renderdoc",
+    "crates/atom_shader_lib",
+    "crates/atom_utils",
 ]
 resolver = "3"
 
@@ -21,8 +31,23 @@ bevy = { version = "0.19", features = [
 ] }
 log = { version = "0.4", features = ["max_level_info"] }
 tracing = { version = "0.1", features = ["max_level_info"] }
-bytemuck = { version = "1.24" }
+tracing-subscriber = { version = "0.3", features = ["local-time"] }
+tracing-appender = { version = "0.2" }
+time = { version = "0.3", features = ["local-offset", "formatting", "parsing"] }
+bytemuck = { version = "1.24", features = ["derive"] }
 crossbeam = { version = "0.8" }
+once_cell = { version = "1.20" }
+smallvec = { version = "1.13" }
+thiserror = { version = "2" }
+dotenv = { version = "0.15" }
+paste = { version = "1.0" }
+wgpu = { version = "29.0.3" }
+wgpu-types = { version = "29.0.3" }
+encase = { version = "0.12" }
+image = { version = "0.25" }
+imageproc = { version = "0.25" }
+serde = { version = "1.0", features = ["derive"] }
+bitflags = { version = "2.6" }
 
 [patch.crates-io]
 bevy = { path = "/data/codes/Bevy" }

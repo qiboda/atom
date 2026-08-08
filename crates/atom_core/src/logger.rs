@@ -10,8 +10,10 @@ use tracing_subscriber::Layer;
 
 use crate::paths::ProjectPaths;
 
+/// 日志插件使用的 Resource：持有非阻塞日志写入线程的 guard。
 #[derive(Resource)]
 pub struct LogLayerGuardRes {
+    /// 非阻塞日志写入线程的 worker guard，drop 时刷新并关闭日志文件。
     pub worker_guard_vec: Vec<WorkerGuard>,
 }
 
@@ -30,8 +32,10 @@ fn file_layer(app: &mut App) -> Option<BoxedLayer> {
     let ts = time::OffsetDateTime::now_local()
         .expect("Failed to get local time")
         .format(
-            &time::format_description::parse("[year]-[month]-[day]_[hour]-[minute]-[second]")
-                .expect("Failed to parse time format description"),
+            &time::format_description::parse_borrowed::<2>(
+                "[year]-[month]-[day]_[hour]-[minute]-[second]",
+            )
+            .expect("Failed to parse time format description"),
         )
         .unwrap_or_default();
 
@@ -66,6 +70,10 @@ fn file_layer(app: &mut App) -> Option<BoxedLayer> {
  * if you want to set specific module log level, please set it in `filter` string,
  * if you want to set global default log level, please set it in `filter` string like "info".
  */
+/// 创建 Bevy 日志插件，将日志同时输出到控制台与文件。
+/// `filter` 为全局日志过滤器字符串（如 "info"），`level` 为最低日志级别，
+/// `filename` 为日志文件前缀名（文件写入 `<saved>/logs/<filename>-<时间戳>.log`）。
+/// 本函数只能调用一次（内部通过全局静态变量记录文件名）。
 pub fn atom_log_plugin(filter: String, level: Level, filename: &str) -> LogPlugin {
     LOG_FILENAME
         .set(filename.to_string())

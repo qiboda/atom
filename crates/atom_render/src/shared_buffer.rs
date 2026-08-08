@@ -18,6 +18,12 @@ use encase::{
  * 支持stride。
  *
  * 减少buffer的申请数量。优化性能。
+ *
+ * 语义：
+ * - `push` 将数据写入 CPU 侧 scratch 缓冲，返回该数据在 buffer 内的动态偏移索引；
+ * - 每个元素按 `stride`（对齐到 `alignment`）排布，`binding` 以整块 buffer 绑定，
+ *   shader 通过动态偏移索引读取对应元素；
+ * - `reserve_buffer` / `write_buffer` 负责按需创建 GPU buffer 并上传数据。
  */
 pub struct SharedStorageBuffer<T: ShaderType> {
     scratch: DynamicStorageBuffer<Vec<u8>>,
@@ -33,6 +39,10 @@ pub struct SharedStorageBuffer<T: ShaderType> {
 }
 
 impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
+    /// 以指定的字节对齐创建共享 storage buffer。
+    ///
+    /// `alignment` 应取 `device.limits().min_storage_buffer_offset_alignment`，
+    /// 同时作为每个元素的最小 stride。
     pub fn new(alignment: u64) -> Self {
         // device.limits().min_storage_buffer_offset_alignment;
         Self {
@@ -49,19 +59,23 @@ impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
 }
 
 impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
+    /// 返回已创建的 GPU buffer 引用；尚未 `reserve_buffer` 时为 `None`。
     #[inline]
     pub fn buffer(&self) -> Option<&Buffer> {
         self.buffer.as_ref()
     }
 
+    /// 返回单个元素的 stride（`stride` 向上对齐到 `alignment` 后的字节数）。
     pub fn get_stride_alignment(&self) -> u64 {
         self.alignment_value.round_up(self.stride.get())
     }
 
+    /// 返回内部使用的对齐值。
     pub fn get_alignment_value(&self) -> &AlignmentValue {
         &self.alignment_value
     }
 
+    /// 以整块 buffer 构造绑定资源；未创建 GPU buffer 时返回 `None`。
     #[inline]
     pub fn binding<'a>(&'a self) -> Option<BindingResource<'a>> {
         Some(BindingResource::Buffer(BufferBinding {
@@ -73,11 +87,13 @@ impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
         }))
     }
 
+    /// 判断 scratch 缓冲是否为空（尚无数据写入）。
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.scratch.as_ref().is_empty()
     }
 
+    /// 将 `value` 写入 scratch 缓冲，返回其动态偏移索引（供 shader 按 stride 寻址）。
     #[inline]
     pub fn push(&mut self, value: T) -> u32 {
         self.scratch
@@ -85,6 +101,7 @@ impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
             .expect("Failed to write value into scratch buffer") as u32
     }
 
+    /// 设置 GPU buffer 的调试标签；标签变化会触发下一次 `reserve_*` 重建 buffer。
     pub fn set_label(&mut self, label: Option<&str>) {
         let label = label.map(str::to_string);
 
@@ -95,6 +112,7 @@ impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
         self.label = label;
     }
 
+    /// 返回当前设置的调试标签。
     pub fn get_label(&self) -> Option<&str> {
         self.label.as_deref()
     }
@@ -109,15 +127,20 @@ impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
         self.changed = true;
     }
 
+    /// 预分配 scratch 缓冲容量，容纳 `num` 个元素（按 stride 计算）。
     pub fn reserve_scratch(&mut self, num: usize) {
         let additional = num * self.get_stride_alignment() as usize;
         self.scratch.as_mut().reserve(additional);
     }
 
+    /// 修改元素 stride（字节数）。
     pub fn set_stride(&mut self, stride: BufferSize) {
         self.stride = stride;
     }
 
+    /// 按 `num` 个元素的大小创建或重建 GPU buffer。
+    ///
+    /// 仅在容量不足或参数变化（`changed`）时重建，返回是否发生了重建。
     pub fn reserve_buffer(&mut self, num: usize, device: &RenderDevice) -> bool {
         let capacity = self.buffer.as_deref().map(wgpu::Buffer::size).unwrap_or(0);
         let size = num as u64 * self.get_stride_alignment();
@@ -135,6 +158,9 @@ impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
         false
     }
 
+    /// 按当前 scratch 缓冲的实际数据量（对齐后）创建或重建 GPU buffer。
+    ///
+    /// 仅在容量不足或参数变化（`changed`）时重建，返回是否发生了重建。
     pub fn reserve_buffer_to_scratch(&mut self, device: &RenderDevice) -> bool {
         let capacity = self.buffer.as_deref().map(wgpu::Buffer::size).unwrap_or(0);
         let size = self.scratch.as_ref().len() as u64;
@@ -153,6 +179,7 @@ impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
         false
     }
 
+    /// 将 scratch 缓冲内容整体上传到 GPU buffer（须先 `reserve_buffer` 保证容量足够）。
     #[inline]
     pub fn write_buffer(&mut self, _device: &RenderDevice, queue: &RenderQueue) {
         let capacity = self.buffer.as_deref().map(wgpu::Buffer::size).unwrap_or(0);
@@ -164,6 +191,7 @@ impl<T: ShaderType + WriteInto> SharedStorageBuffer<T> {
         }
     }
 
+    /// 清空 scratch 缓冲（不释放 GPU buffer）。
     #[inline]
     pub fn clear(&mut self) {
         self.scratch.as_mut().clear();
@@ -182,6 +210,10 @@ impl<'a, T: ShaderType + WriteInto> IntoBinding<'a> for &'a SharedStorageBuffer<
  * 只是对bevy的DynamicUniformBuffer的一个模仿。
  * 因为bevy的版本无法知道是否有重新创建了buffer。
  * 所以添加了主动申请内存的接口，如此就可以避免写入时不知道内部是否创建的问题。
+ *
+ * 与 [`SharedStorageBuffer`] 类似：`push` 写入 CPU 侧 scratch，`reserve_buffer` / `write_buffer`
+ * 负责 GPU buffer 的创建与上传；亦可通过 `get_writer` 直接写 GPU buffer 避免中间拷贝。
+ * 默认对齐为 256 字节。
  */
 pub struct SharedUniformBuffer<T: ShaderType> {
     scratch: DynamicUniformBuffer<Vec<u8>>,
@@ -208,6 +240,7 @@ impl<T: ShaderType> Default for SharedUniformBuffer<T> {
 }
 
 impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
+    /// 以指定字节对齐创建共享 uniform buffer。
     pub fn new_with_alignment(alignment: u64) -> Self {
         Self {
             scratch: DynamicUniformBuffer::new_with_alignment(Vec::new(), alignment),
@@ -220,15 +253,18 @@ impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
         }
     }
 
+    /// 返回已创建的 GPU buffer 引用；尚未创建时为 `None`。
     #[inline]
     pub fn buffer(&self) -> Option<&Buffer> {
         self.buffer.as_ref()
     }
 
+    /// 返回单个元素的对齐后大小（`T::min_size()` 对齐到 `alignment`）。
     pub fn get_alignment(&self) -> u64 {
         self.alignment_value.round_up(T::min_size().get())
     }
 
+    /// 以整块 buffer 构造绑定资源；未创建 GPU buffer 时返回 `None`。
     #[inline]
     pub fn binding<'a>(&'a self) -> Option<BindingResource<'a>> {
         Some(BindingResource::Buffer(BufferBinding {
@@ -240,12 +276,15 @@ impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
         }))
     }
 
+    /// 判断 scratch 缓冲是否为空（尚无数据写入）。
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.scratch.as_ref().is_empty()
     }
 
     /// Push data into the `DynamicUniformBuffer`'s internal vector (residing on system RAM).
+    ///
+    /// 返回该元素在 buffer 内的动态偏移索引（供 shader 按 stride 寻址）。
     #[inline]
     pub fn push(&mut self, value: &T) -> u32 {
         self.scratch
@@ -253,6 +292,7 @@ impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
             .expect("Failed to write value into scratch buffer") as u32
     }
 
+    /// 设置 GPU buffer 的调试标签；标签变化会触发下一次创建时重建 buffer。
     pub fn set_label(&mut self, label: Option<&str>) {
         let label = label.map(str::to_string);
 
@@ -263,6 +303,7 @@ impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
         self.label = label;
     }
 
+    /// 返回当前设置的调试标签。
     pub fn get_label(&self) -> Option<&str> {
         self.label.as_deref()
     }
@@ -351,10 +392,14 @@ impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
         }
     }
 
+    /// 返回单个元素的对齐后 stride（`T::min_size()` 对齐到 `alignment`）。
     pub fn get_stride_alignment(&self) -> u64 {
         self.alignment_value.round_up(T::min_size().get())
     }
 
+    /// 按 `num` 个元素的大小创建或重建 GPU buffer。
+    ///
+    /// 仅在容量不足或参数变化（`changed`）时重建，返回是否发生了重建。
     pub fn reserve_buffer(&mut self, num: usize, device: &RenderDevice) -> bool {
         let capacity = self.buffer.as_deref().map(wgpu::Buffer::size).unwrap_or(0);
         let size = num as u64 * self.get_stride_alignment();
@@ -397,6 +442,7 @@ impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
         false
     }
 
+    /// 清空 scratch 缓冲（不释放 GPU buffer）。
     #[inline]
     pub fn clear(&mut self) {
         self.scratch.as_mut().clear();
@@ -405,12 +451,17 @@ impl<T: ShaderType + WriteInto> SharedUniformBuffer<T> {
 }
 
 /// A writer that can be used to directly write elements into the target buffer.
+///
+/// 由 [`SharedUniformBuffer::get_writer`] 创建，通过 `write` 直接写入 GPU 可写缓冲，
+/// drop 时由 `wgpu` 将写入排入 [`RenderQueue`]。与 `push` + `write_buffer` 相比
+/// 少一次 CPU 侧中间拷贝。
 pub struct DynamicUniformBufferWriter<'a, T> {
     buffer: encase::DynamicUniformBuffer<QueueWriteBufferViewWrapper>,
     _marker: PhantomData<&'a T>,
 }
 
 impl<T: ShaderType + WriteInto> DynamicUniformBufferWriter<'_, T> {
+    /// 将一个元素直接写入 GPU buffer，返回其动态偏移索引。
     pub fn write(&mut self, value: &T) -> u32 {
         self.buffer
             .write(value)
@@ -435,12 +486,16 @@ impl BufferMut for QueueWriteBufferViewWrapper {
 
     #[inline]
     fn write<const N: usize>(&mut self, offset: usize, val: &[u8; N]) {
-        self.buffer_view[offset..offset + N].copy_from_slice(val);
+        self.buffer_view
+            .slice(offset..offset + val.len())
+            .copy_from_slice(val);
     }
 
     #[inline]
     fn write_slice(&mut self, offset: usize, val: &[u8]) {
-        self.buffer_view[offset..offset + val.len()].copy_from_slice(val);
+        self.buffer_view
+            .slice(offset..offset + val.len())
+            .copy_from_slice(val);
     }
 }
 
