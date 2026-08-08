@@ -246,3 +246,27 @@
 - **2026-08-08**: [process] `subagent_type="deep"` 后台任务运行 2h19m 零产出（session 仅原始 prompt 无 assistant 消息，无 cargo/rustc 进程在跑）——判定卡死并 cancel，改由主 agent 直接实现。教训：后台实现任务若长时间无任何 assistant 消息产出即异常，不应静默等待；任务委派前应确认 agent 分类可用。
 - **2026-08-08**: [test] test-agent 写的 RED 测试 `tests/grant_effect.rs` 含 E0716（`world.entity_mut(...).get_mut(...)` 链式调用中 `EntityWorldMut` 为临时值，`&mut` 悬垂）——该错误在 RED 阶段被"缺失模块 import 错误"掩盖，实现后首次编译才暴露。处理：绑定临时值为局部变量（语义零改动）。教训：RED 测试的编译错误需区分"目标 API 缺失"与"测试自身生命周期错误"，后者应在 RED 阶段就暴露。
 - **2026-08-08**: [bevy] `#[derive(Reflect)]` 的 enum 含 `Box<dyn Reflect>` 字段时：`#[reflect(ignore)]` 只能去掉 `PartialReflect`/`GetTypeRegistration` bound，`FromReflect` 派生仍对 ignored 字段生成 `Default::default()`（`bevy_reflect/derive/src/enum_utility.rs:107` `on_ignored_field`）——需追加 `#[reflect(ignore, default = "fn")]` 提供零参构造函数（哨兵值，正常路径不触发）。`#[reflect(from_reflect = false)]` 不可用（下游 `EffectNodeSlotValue` 依赖 `EffectValue: FromReflect`）。
+
+## 2026-08-08 — #7 BSN 迁移反思（Q2 前提验证/agent 卡死/零消费者节点测试）
+
+**User corrections**:
+1. 「这个一个库，没有人调用是有可能的。但通常不好，因为居然没有测试代码。。。」——用户指出重建 grant_effect 节点（库内零消费者）必须有集成测试验证反射调度链路，否则重写完无法验证。→ 落实为 grant_effect 反射调度集成测试（RED→GREEN）。
+2. 「需要effect, 这是技能系统的buff系统，起名字为Effect了」——我把 effect 模块误判为死代码准备删除，用户纠正它是需要的活模块 → 范围修订 Q5（接入编译树）。
+3. 「网上查一下看看。」——我断言 `Box<dyn Reflect>` 不支持时，用户要求网络查证而非仅凭本地源码 → 查证确认 issue #3392 未关闭 + PR #15532 未合入，结论有据。
+
+**What went wrong**:
+1. **重大决策二次修订成本**：Q2 原前提（"反射调用点不变"）在实现前查证发现 grant_effect.rs 是死代码、依赖已注释的 BoxReflect——决策前提失效，需用户重新确认（option b 完整版）。教训：grill-me 锁定决策时若基于"存在性假设"，应在计划阶段验证假设而非实现阶段才发现。
+2. **后台 deep agent 卡死**：C2 委派 agent 运行 2h19m 零产出（无 assistant 消息、无编译进程）——判定卡死取消后主 agent 直接实现。教训：后台任务长时间无消息产出即异常，不应静默等待。
+3. **test-agent RED 测试含生命周期 bug**：grant_effect 测试有 E0716（`entity_mut()` 临时值悬垂），被"缺失模块 import 错误"掩盖，实现后才暴露。教训：RED 测试编译错误需区分"目标 API 缺失"与"测试自身错误"。
+4. **headless 环境冒烟受限**：example 冒烟被无 GPU 阻断，降级为编译验证。
+
+**Lessons learned**:
+1. **决策前提在计划阶段验证**——grill-me 锁定的"保留反射调度"基于 grant_effect 死代码的错误假设，实现前 explore 验证本可提前发现。
+2. **后台委派需超时感知**——agent 卡死（无产出 2h+）应设观察点，超时即取消改主 agent 直做，避免阻塞整条流水线。
+3. **库内零消费者节点必须有测试**（用户纠正 #1）——测试即唯一验证，也是未来接线的契约。
+4. **Bevy 0.19 反射约束**：`Box<dyn Reflect>` 无原生 Reflect/Clone/PartialEq（issue #3392），bsn! 组件需 `Clone+Default+Unpin`（FromTemplate blanket），模板函数泛型参数需显式加 bound。
+
+**Process improvements**:
+1. **TENSIONS.md 已记录**：agent 卡死判定、RED 测试生命周期 bug、BoxReflect reflect-ignore+default 陷阱、headless GPU 冒烟限制（4 条）。
+2. **kb/bsn.md 已更新**：6 个已验证 BSN 迁移模式（模板函数/组件注入三选一/spawn_scene/Box<dyn Reflect> 处理/effect 接入）。
+3. **建议**：后台实现任务委派前确认 agent 分类可用（本次 C2 卡死无先兆）；deep agent prompt 应含"无产出超时"自检。
