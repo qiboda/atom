@@ -7,6 +7,7 @@
 //!   节点通过 Blackboard 共享数据，由 executor 驱动执行。
 //! - [`ability`]：技能——持有 Effect Graph 实例与状态层标签，作为图执行的入口。
 //! - [`buff`]：增益——可叠加的临时状态，带有计时与层数逻辑。
+//! - [`effect`]：效果——技能/增益的图实例实体，状态机 + 状态层标签 + 计时。
 //! - [`attribute`]：属性——`AttributeSet` 聚合基础属性与修饰符。
 //! - [`stateset`]：状态层——技能/增益归属的状态分层。
 //!
@@ -17,6 +18,7 @@
 use ability::{node::ability_entry::EffectNodeAbilityEntryPlugin, plugin::AbilityPlugin};
 use bevy::app::{First, Plugin};
 use buff::plugin::BuffPlugin;
+use effect::EffectPlugin;
 use graph::{EffectGraphPlugin, node::plugin::EffectNodePlugin};
 use stateset::{StateLayerTagRegistry, init_state_layertag_registry};
 
@@ -24,7 +26,7 @@ pub mod ability;
 pub mod attribute;
 pub mod buff;
 pub mod bundle;
-pub mod config;
+pub mod effect;
 pub mod graph;
 pub mod stateset;
 
@@ -36,7 +38,7 @@ pub mod stateset;
 /// 技能子系统聚合插件。
 ///
 /// 一次性注册本 crate 的全部能力：`AbilityPlugin`、`BuffPlugin`、`EffectGraphPlugin`、
-/// `EffectNodePlugin`、`EffectNodeAbilityEntryPlugin`，并初始化状态层标签注册表
+/// `EffectNodePlugin`、`EffectNodeAbilityEntryPlugin`、`EffectPlugin`，并初始化状态层标签注册表
 /// （[`StateLayerTagRegistry`] + [`init_state_layertag_registry`]）。
 #[derive(Debug)]
 pub struct AbilitySubsystemPlugin;
@@ -48,6 +50,7 @@ impl Plugin for AbilitySubsystemPlugin {
             .add_plugins(EffectGraphPlugin)
             .add_plugins(EffectNodePlugin)
             .add_plugins(EffectNodeAbilityEntryPlugin)
+            .add_plugins(EffectPlugin)
             .init_resource::<StateLayerTagRegistry>()
             .add_systems(First, init_state_layertag_registry);
     }
