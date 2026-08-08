@@ -11,6 +11,7 @@ use crate::{
     layertag::LayerTag,
 };
 
+/// 去重的图层标签容器：以 `HashSet` 存储，同一 [`LayerTag`] 只保留一份。
 #[derive(Debug, Clone, Component, Default, Reflect)]
 #[reflect(Component)]
 pub struct SingleLayerTagContainer {
@@ -48,10 +49,12 @@ impl LayerTagContainer for SingleLayerTagContainer {
 }
 
 impl SingleLayerTagContainer {
+    /// 以 `apply` 容器为操作来源，对自身执行 `op` 操作。
     pub fn receive_op(&mut self, op: impl LayerTagContainerOp, apply: &SingleLayerTagContainer) {
         op.operate(self, apply);
     }
 
+    /// 以 `rhs` 容器为参照，对自身执行 `condition` 条件判断。
     pub fn condition(
         &self,
         condition: impl LayerTagContainerCondition,

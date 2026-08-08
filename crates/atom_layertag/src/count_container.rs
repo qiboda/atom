@@ -11,6 +11,9 @@ use crate::{
     layertag::LayerTag,
 };
 
+/// 带引用计数的图层标签容器。
+///
+/// 同一 [`LayerTag`] 重复添加会累加计数，移除时递减；计数归零后条目被移除。
 #[derive(Debug, Clone, Component, Default, Reflect)]
 #[reflect(Component)]
 pub struct CountLayerTagContainer {
@@ -61,16 +64,19 @@ impl LayerTagContainer for CountLayerTagContainer {
 }
 
 impl CountLayerTagContainer {
+    /// 查找与 `layertag` 完全匹配的计数标签；不存在时返回 `None`。
     pub fn get_layertag(&self, layertag: &LayerTag) -> Option<&CountLayerTag> {
         self.layertags.iter().find(|x| x.exact_match(layertag))
     }
 }
 
 impl CountLayerTagContainer {
+    /// 以 `apply` 容器为操作来源，对自身执行 `op` 操作。
     pub fn receive_op(&mut self, op: impl LayerTagContainerOp, apply: &CountLayerTagContainer) {
         op.operate(self, apply);
     }
 
+    /// 以 `rhs` 容器为参照，对自身执行 `condition` 条件判断。
     pub fn condition(
         &self,
         condition: impl LayerTagContainerCondition,

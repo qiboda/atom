@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use crate::layertag::LayerTag;
 
+/// 带引用计数的图层标签：在 [`LayerTag`] 基础上附加 `i32` 计数器。
 #[derive(Debug, Clone, Reflect)]
 pub struct CountLayerTag {
     layertag: LayerTag,
@@ -26,16 +27,19 @@ impl CountLayerTag {
         }
     }
 
+    /// 返回内部 [`LayerTag`] 的引用。
     pub fn layertag(&self) -> &LayerTag {
         &self.layertag
     }
 }
 
 impl CountLayerTag {
+    /// 计数加一。
     pub fn increase_count(&mut self) {
         self.counter += 1;
     }
 
+    /// 计数减一；减到负数时输出 trace 日志。
     pub fn decrease_count(&mut self) {
         self.counter -= 1;
         if self.counter < 0 {
@@ -46,10 +50,12 @@ impl CountLayerTag {
         }
     }
 
+    /// 返回当前计数。
     pub fn count(&self) -> i32 {
         self.counter
     }
 
+    /// 将计数重置为零。
     pub fn reset_count(&mut self) {
         self.counter = 0;
     }

@@ -70,6 +70,11 @@ fn contribute_2d(
 }
 
 // out range: [-1, 1]
+/// 计算 2D OpenSimplex 噪声值，与 GPU shader 中的 `open_simplex_2d` 实现保持一致。
+///
+/// 输出范围约为 `[-1, 1]`。`permutation_table` 为
+/// [`generate_permutation_table`](super::open_simplex_seed::generate_permutation_table)
+/// 生成的 256 项置换表，长度须为 [`TABLE_SIZE`](super::open_simplex_seed::TABLE_SIZE)。
 #[allow(dead_code)]
 pub fn open_simplex_2d(point: Vec2, permutation_table: [u32; TABLE_SIZE]) -> f32 {
     // Place input coordinates onto grid.

@@ -1,13 +1,20 @@
+#![deny(missing_docs)]
+//! RenderDoc 调试集成：提供 `RenderDocPlugin` 初始化 RenderDoc 并注入 World，支持帧捕获与 Replay UI。
+
 use bevy::{prelude::*, render::renderer::RenderDevice};
 use renderdoc::*;
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate};
 
 pub use renderdoc;
 
+/// RenderDoc API 版本，固定使用 V141。
 pub type RenderDocVersion = V141;
 
+/// RenderDoc 实例类型，作为 NonSend resource 注入 World。
 pub type RenderDocResource = RenderDoc<RenderDocVersion>;
 
+/// Bevy 插件：初始化 RenderDoc 并将实例注入 World。
+/// 必须添加在 `RenderPlugin` 之前；按 F12 启动 RenderDoc Replay UI。
 pub struct RenderDocPlugin;
 
 impl Plugin for RenderDocPlugin {

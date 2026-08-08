@@ -723,9 +723,8 @@ mod tests {
         indices[base + 4] = 26;
         indices[base + 5] = 27;
 
-        let mesh = compact_and_build_mesh(&verts, &indices, vc, Vec3::ZERO, 0.5);
-        assert!(mesh.is_some(), "should produce non-empty mesh");
-        let mesh = mesh.unwrap();
+        let mesh = compact_and_build_mesh(&verts, &indices, vc, Vec3::ZERO, 0.5)
+            .expect("compact_and_build_mesh should produce a mesh for valid quad data");
         assert!(mesh.count_vertices() > 0, "vertex_count > 0");
         assert_eq!(mesh.count_vertices(), 4, "4 valid vertices after compact");
         // 2 triangles × 3 indices = 6
@@ -786,7 +785,7 @@ mod tests {
         };
 
         // Quad: 23-22-26, 23-27-26 (两个三角形)
-        let base_a = 1 * 72;
+        let base_a = 72;
         indices_a[base_a] = 23;
         indices_a[base_a + 1] = 22;
         indices_a[base_a + 2] = 26;
@@ -934,9 +933,8 @@ mod tests {
         indices[4] = 2;
         indices[5] = 1; // degenerate (0,2,1)
 
-        let mesh = compact_and_build_mesh(&verts, &indices, vc, chunk_min, voxel_size);
-        assert!(mesh.is_some(), "should produce mesh with vertices");
-        let mesh = mesh.unwrap();
+        let mesh = compact_and_build_mesh(&verts, &indices, vc, chunk_min, voxel_size)
+            .expect("compact_and_build_mesh should produce a mesh for valid triangle data");
         let positions: Vec<[f32; 3]> = mesh
             .attribute(Mesh::ATTRIBUTE_POSITION)
             .expect("mesh has positions")

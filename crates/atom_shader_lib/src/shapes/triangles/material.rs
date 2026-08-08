@@ -10,8 +10,10 @@ use bevy::{
 
 use super::plugin::TRIANGLES_SHADER_HANDLE;
 
+/// 三角形渲染的 uniform 设置，随绑定组一并上传 GPU。
 #[derive(Debug, Clone, Copy, ShaderType)]
 pub struct TriangleShaderSettings {
+    /// 三角形填充颜色。
     pub color: LinearRgba,
 }
 
@@ -23,8 +25,10 @@ impl Default for TriangleShaderSettings {
     }
 }
 
+/// 三角形材质：以 `TriangleList` 拓扑填充渲染，双面显示。
 #[derive(AsBindGroup, Debug, Clone, Copy, TypePath, Asset, Default)]
 pub struct TriangleMaterial {
+    /// 材质 uniform 设置（填充颜色）。
     #[uniform(0)]
     pub settings: TriangleShaderSettings,
 }

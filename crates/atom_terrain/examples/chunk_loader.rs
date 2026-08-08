@@ -14,7 +14,7 @@ fn main() {
     // RenderDoc 必须在 DefaultPlugins 之前
     app.add_plugins(atom_renderdoc::RenderDocPlugin);
     app.add_plugins(DefaultPlugins);
-    app.add_plugins(GlobalTerrainPlugin::default());
+    app.add_plugins(GlobalTerrainPlugin);
     app.add_plugins(FreeCameraPlugin);
     app.add_systems(Startup, setup);
     app.add_systems(Startup, debug_map::generate_debug_maps_system);

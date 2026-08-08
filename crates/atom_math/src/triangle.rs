@@ -5,7 +5,7 @@ use bevy::{
     math::{UVec2, Vec2},
 };
 
-// return p is in p0, p1, p2 triangle
+/// 判断点 `p` 是否在三角形 `p0, p1, p2` 内（含边界）。
 pub fn point_in_triangle(p: Vec2, p0: Vec2, p1: Vec2, p2: Vec2) -> bool {
     let s = (p0.x - p2.x) * (p.y - p2.y) - (p0.y - p2.y) * (p.x - p2.x);
     let t = (p1.x - p0.x) * (p.y - p0.y) - (p1.y - p0.y) * (p.x - p0.x);
@@ -18,7 +18,7 @@ pub fn point_in_triangle(p: Vec2, p0: Vec2, p1: Vec2, p2: Vec2) -> bool {
     d == 0.0 || (d < 0.0) == (s + t <= 0.0)
 }
 
-// p is in p0, p1, p2 triangle, return the interpolation value
+/// 点 `p` 在三角形 `p0, p1, p2` 内时的重心坐标插值，`v0/v1/v2` 为三个顶点的值。
 pub fn triangle_interpolation(
     p: Vec2,
     p0: Vec2,
@@ -36,6 +36,8 @@ pub fn triangle_interpolation(
     v0 * s + v1 * t + v2 * (1.0 - s - t)
 }
 
+/// 栅格化三角形：枚举三角形内部（含边界）的所有整数坐标点。
+/// 三点不构成三角形或面积过小时退化处理（面积 ≤ 1 时返回重心点）。
 pub fn points_in_triangle(mut pt0: Vec2, mut pt1: Vec2, mut pt2: Vec2) -> Vec<UVec2> {
     let mut points = vec![];
     /*
@@ -136,6 +138,7 @@ fn get_range(y0: f32, y1: f32) -> RangeInclusive<u32> {
     }
 }
 
+/// 三角形面积（海伦公式），由三个顶点坐标计算。三点共线时返回 0。
 pub fn triangle_area(p0: Vec2, p1: Vec2, p2: Vec2) -> f32 {
     let mut a = 0.0;
     let mut b = 0.0;
@@ -152,6 +155,7 @@ pub fn triangle_area(p0: Vec2, p1: Vec2, p2: Vec2) -> f32 {
     triangle_area_edge(a, b, c)
 }
 
+/// 已知三条边长 `a, b, c` 的三角形面积（海伦公式）。
 pub fn triangle_area_edge(a: f32, b: f32, c: f32) -> f32 {
     // Thanks to: http://james-ramsden.com/area-of-a-triangle-in-3d-c-code/
 
@@ -159,11 +163,13 @@ pub fn triangle_area_edge(a: f32, b: f32, c: f32) -> f32 {
     (s * (s - a) * (s - b) * (s - c)).sqrt()
 }
 
+/// 三角形重心（三个顶点坐标的算术平均）。
 pub fn get_triangle_center(p0: Vec2, p1: Vec2, p2: Vec2) -> Vec2 {
     // Thanks to: https://stackoverflow.com/questions/524755/finding-center-of-2d-triangle
     (p0 + p1 + p2) / 3.0
 }
 
+/// 检查三点是否构成有效三角形（三角不等式），三边边长写入输出参数 `a/b/c`。
 pub fn check_if_valid_triangle(
     p0: Vec2,
     p1: Vec2,

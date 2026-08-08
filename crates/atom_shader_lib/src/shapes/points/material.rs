@@ -13,10 +13,14 @@ use bevy::{
 
 use super::plugin::POINT_SHADER_HANDLE;
 
+/// 点精灵渲染的 uniform 设置，随绑定组一并上传 GPU。
 #[derive(Debug, Clone, Copy, ShaderType)]
 pub struct PointsShaderSettings {
+    /// 点大小（世界空间尺寸）。
     pub point_size: f32,
+    /// 不透明度。
     pub opacity: f32,
+    /// 点基础颜色。
     pub color: LinearRgba,
 }
 
@@ -30,15 +34,22 @@ impl Default for PointsShaderSettings {
     }
 }
 
+/// 点精灵材质：以四边形面片模拟点，支持透视缩放、圆形裁剪与顶点颜色。
 #[derive(AsBindGroup, Debug, Clone, Copy, TypePath, Asset)]
 #[bind_group_data(PointsMaterialKey)]
 pub struct PointsMaterial {
+    /// 材质 uniform 设置（点大小、不透明度与颜色）。
     #[uniform(0)]
     pub settings: PointsShaderSettings,
+    /// 深度偏移量，用于缓解与地表相交时的 z-fighting。
     pub depth_bias: f32,
+    /// 混合模式。
     pub alpha_mode: AlphaMode,
+    /// 是否启用顶点颜色（网格需带 `ATTRIBUTE_COLOR`）。
     pub use_vertex_color: bool,
+    /// 是否按透视距离缩放点大小。
     pub perspective: bool,
+    /// 是否将四边形裁剪为圆形。
     pub circle: bool,
 }
 
@@ -55,6 +66,7 @@ impl Default for PointsMaterial {
     }
 }
 
+/// 点精灵材质的管线特化键，用于区分不同的 shader 定义组合（顶点颜色 / 透视 / 圆形）。
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct PointsMaterialKey {
     use_vertex_color: bool,

@@ -7,10 +7,14 @@ use bevy::{
     render::render_resource::PrimitiveTopology,
 };
 
+/// 点精灵网格数据：每个点展开为一个四边形面片（4 个顶点、6 个索引）。
 #[derive(Default)]
 pub struct PointsMesh {
+    /// 点位置列表。
     pub vertices: Vec<Vec3>,
+    /// 每点 UV 坐标（与 `vertices` 一一对应）。
     pub uv: Vec<Vec2>,
+    /// 可选顶点颜色（为 `None` 时不写入颜色属性）。
     pub colors: Option<Vec<Color>>,
 }
 
@@ -63,6 +67,9 @@ impl From<PointsMesh> for Mesh {
 }
 
 impl PointsMesh {
+    /// 返回网格中最后一个点的索引（按每点 4 顶点折算）。
+    ///
+    /// 网格须含 `ATTRIBUTE_POSITION` 且顶点数为 4 的倍数，否则返回 `None`。
     pub fn get_last_index(mesh: &Mesh) -> Option<usize> {
         if let Some(VertexAttributeValues::Float32x3(position)) =
             mesh.attribute(Mesh::ATTRIBUTE_POSITION)
@@ -73,6 +80,7 @@ impl PointsMesh {
         }
     }
 
+    /// 向已有网格末尾追加一个点（4 个顶点 + UV + 6 个索引）。
     pub fn add_point(mesh: &mut Mesh, point: &[f32; 3]) {
         if let Some(VertexAttributeValues::Float32x3(position)) =
             mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
@@ -100,6 +108,7 @@ impl PointsMesh {
         }
     }
 
+    /// 从网格末尾移除一个点（当前实现忽略 `index`，始终弹出最后一组顶点/UV/索引）。
     pub fn remove_point_at_index(mesh: &mut Mesh, _index: usize) {
         if let Some(VertexAttributeValues::Float32x3(position)) =
             mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)

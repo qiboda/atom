@@ -1,8 +1,11 @@
 use bevy::{asset::RenderAssetUsages, prelude::*, render::render_resource::PrimitiveTopology};
 
+/// 线段网格数据：顶点成对出现（每 2 个顶点构成一条线段）。
 #[derive(Debug, Clone, Default)]
 pub struct LineMesh {
+    /// 顶点列表，长度必须为偶数（成对构成线段）。
     pub vertices: Vec<Vec3>,
+    /// 每顶点颜色，长度须与 `vertices` 一致。
     pub colors: Vec<Color>,
 }
 

@@ -8,12 +8,15 @@ use bevy::reflect::Reflect;
 
 use crate::tag::Tag;
 
+/// 图层标签：由多个 [`Tag`] 片段以分隔符（`.`）连接组成的完整路径。
 #[derive(Debug, Clone, Reflect, PartialEq, Eq, Hash)]
 pub struct LayerTag {
+    /// 组成该图层标签的片段序列。
     pub tags: Cow<'static, [Tag]>,
 }
 
 impl LayerTag {
+    /// 图层标签片段之间的分隔符。
     pub const DELIMITER: &'static str = ".";
 }
 
@@ -42,10 +45,12 @@ impl LayerTag {
 }
 
 impl LayerTag {
+    /// 返回该图层标签的片段序列。
     pub fn tags(&self) -> &[Tag] {
         &self.tags
     }
 
+    /// 返回以分隔符连接后的完整字符串表示。
     pub fn raw_layertag(&self) -> String {
         self.tags
             .iter()
@@ -54,8 +59,9 @@ impl LayerTag {
             .join(LayerTag::DELIMITER)
     }
 
-    /// two tag exact match
-    /// for example:
+    /// 精确匹配：两个图层标签的片段序列完全相同。
+    ///
+    /// 例如：
     /// ```ignore
     /// "a.b.c" == "a.b.c"
     /// "a.b" != "a.b.c"
@@ -64,8 +70,9 @@ impl LayerTag {
         self.tags() == rhs.tags()
     }
 
-    /// two tag exact match
-    /// for example
+    /// 部分匹配：较短一方的片段序列是另一方的片段前缀时返回 `true`。
+    ///
+    /// 例如：
     /// ```ignore
     /// "a.b.c" == "a.b.c"
     /// "a.b" == "a.b.c"
@@ -86,8 +93,9 @@ impl LayerTag {
         r == ControlFlow::Continue(())
     }
 
-    /// get same prefix
-    /// for example
+    /// 取相同位置上的相同片段（两个图层标签的公共前缀）。
+    ///
+    /// 例如：
     /// ```ignore
     /// "a.b.c" -> "a.b.d" -> "a.b"
     /// "a.b.c" -> "a.b.c" -> "a.b.c"

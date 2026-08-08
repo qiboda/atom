@@ -2,25 +2,34 @@ use std::ops::Not;
 
 use crate::layertag::LayerTag;
 
+/// 图层标签容器的抽象接口。
 pub trait LayerTagContainer {
+    /// 迭代容器内所有 [`LayerTag`] 的引用。
     fn iter_layertag(&self) -> impl Iterator<Item = &LayerTag>;
 
+    /// 容器中是否存在与 `tag` 完全匹配的图层标签。
     fn exist_layertag(&self, tag: &LayerTag) -> bool;
 
+    /// 添加一个图层标签。
     fn add_layertag(&mut self, layertag: LayerTag);
 
+    /// 批量添加图层标签。
     fn add_layertags(&mut self, layertag: impl Iterator<Item = LayerTag>);
 
+    /// 移除一个图层标签。
     fn remove_layertag(&mut self, layertag: &LayerTag);
 
+    /// 批量移除图层标签。
     fn remove_layertags<'a>(&mut self, layertag: impl Iterator<Item = &'a LayerTag>);
 }
 
+/// 对图层标签容器执行的操作。
 pub trait LayerTagContainerOp {
-    /// operate apply to container.
+    /// 将本操作应用到 `container`，操作数据来源为 `apply`。
     fn operate(&self, container: &mut impl LayerTagContainer, apply: &impl LayerTagContainer);
 }
 
+/// 添加操作：将 `apply` 中的图层标签全部添加到容器。
 pub struct LayerTagContainerOpAdd;
 
 impl LayerTagContainerOp for LayerTagContainerOpAdd {
@@ -30,6 +39,7 @@ impl LayerTagContainerOp for LayerTagContainerOpAdd {
     }
 }
 
+/// 移除操作：将 `apply` 中的图层标签从容器中移除。
 pub struct LayerTagContainerOpRemove;
 
 impl LayerTagContainerOp for LayerTagContainerOpRemove {
@@ -38,10 +48,13 @@ impl LayerTagContainerOp for LayerTagContainerOpRemove {
     }
 }
 
+/// 图层标签容器之间的条件判断。
 pub trait LayerTagContainerCondition {
+    /// 判断 `lhs` 容器是否满足相对 `rhs` 容器的条件。
     fn condition(&self, lhs: &impl LayerTagContainer, rhs: &impl LayerTagContainer) -> bool;
 }
 
+/// 必需条件：`container` 必须包含 `required` 中的所有图层标签。
 pub struct LayerTagContainerConditionRequired;
 
 impl LayerTagContainerCondition for LayerTagContainerConditionRequired {
@@ -56,6 +69,7 @@ impl LayerTagContainerCondition for LayerTagContainerConditionRequired {
     }
 }
 
+/// 排除条件：`container` 必须不包含 `without` 中的任一图层标签。
 pub struct LayerTagContainerConditionWithout;
 
 impl LayerTagContainerCondition for LayerTagContainerConditionWithout {

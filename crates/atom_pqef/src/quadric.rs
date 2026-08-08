@@ -12,6 +12,9 @@ pub(crate) type Pos3A = Vec3A;
 // E[x] = x^T * A^T * A * x −2 * x^T * A^T * b + b^T * b
 // and A = n, b = p * n, x是未知数
 // Quadric中的a为A^T A, b为A^T b, c为b^T b
+/// 二次误差函数（QEF）：`E(x) = xᵀAx − 2xᵀb + c`。
+/// `A` 为对称 3×3 矩阵（仅存上三角 6 个系数），`b` 为 3 维向量，`c` 为标量。
+/// 支持加法/减法/数乘等算术运算以合并多个 quadric，并通过 [`minimizer`](Self::minimizer) 求最小化点。
 #[derive(Debug, Copy, Clone, PartialEq, Default, Reflect)]
 pub struct Quadric {
     /// a is a symmetric 3x3 matrix
@@ -30,6 +33,7 @@ pub struct Quadric {
 }
 
 impl Quadric {
+    /// 由 10 个系数直接构造 Quadric：`A` 上三角 6 项（`a00, a01, a02, a11, a12, a22`）+ `b` 3 项 + `c`。
     #[allow(clippy::too_many_arguments)]
     pub fn from_coefficients(
         a00: f32,
@@ -57,6 +61,7 @@ impl Quadric {
         }
     }
 
+    /// 由对称矩阵 `A`、向量 `b`、标量 `c` 构造 Quadric。
     pub fn from_coefficients_matrix(a: Mat3A, b: Vec3A, c: f32) -> Self {
         Self {
             a00: a.x_axis.x,
@@ -262,6 +267,7 @@ impl Quadric {
 }
 
 impl Quadric {
+    /// 返回对称矩阵 `A`。
     pub fn a(&self) -> Mat3A {
         let mut a = Mat3A::default();
 
@@ -278,12 +284,15 @@ impl Quadric {
         a
     }
 
+    /// 返回向量 `b`。
     pub fn b(&self) -> Vec3A {
         Vec3A::new(self.b0, self.b1, self.b2)
     }
 
     // Returns a point minimizing this quadric(预估点)
     // Solving Ax = r with some common subexpressions precomputed
+    /// 返回最小化该 quadric 的点（求解 `Ax = b`）。
+    /// 注意：`A` 奇异（如仅有一个平面的约束）时结果无定义。
     pub fn minimizer(&self) -> Vec3A {
         let a = self.a00;
         let b = self.a01;

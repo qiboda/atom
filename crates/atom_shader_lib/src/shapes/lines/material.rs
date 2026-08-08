@@ -8,9 +8,12 @@ use bevy::{
 
 use super::plugin::LINE_SHADER_HANDLE;
 
+/// 线段渲染的 uniform 设置，随绑定组一并上传 GPU。
 #[derive(Debug, Clone, Copy, ShaderType)]
 pub struct LineShaderSettings {
+    /// 线宽（像素，与 shader 中的 `line_size` 对齐）。
     pub line_size: f32,
+    /// 线段基础颜色。
     pub color: LinearRgba,
 }
 
@@ -23,14 +26,18 @@ impl Default for LineShaderSettings {
     }
 }
 
+/// 线段材质：以 `LineList` 拓扑 + 线框模式渲染，支持顶点颜色。
 #[derive(AsBindGroup, Debug, Clone, Copy, TypePath, Asset, Default)]
 #[bind_group_data(LineMaterialKey)]
 pub struct LineMaterial {
+    /// 材质 uniform 设置（线宽与颜色）。
     #[uniform(0)]
     pub settings: LineShaderSettings,
+    /// 是否启用顶点颜色（网格需带 `ATTRIBUTE_COLOR`）。
     pub use_vertex_color: bool,
 }
 
+/// 线段材质的管线特化键，用于区分不同的渲染管线变体。
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct LineMaterialKey {
     use_vertex_color: bool,

@@ -2,8 +2,12 @@ use bevy::math::{UVec4, Vec2};
 
 use super::{open_simplex::open_simplex_2d, xorshift_128::xorshift_128_with_seed};
 
+/// 置换表大小（256 项），与 shader 中的置换表尺寸保持一致。
 pub const TABLE_SIZE: usize = 256;
 
+/// 以 `seed` 生成置换表，用于 [`open_simplex_2d`](super::open_simplex::open_simplex_2d)。
+///
+/// 每个表项由 [`xorshift_128_with_seed`] 生成并取模 256，同一 `seed` 结果确定。
 #[allow(dead_code)]
 pub fn generate_permutation_table(seed: u32) -> [u32; TABLE_SIZE] {
     let mut permutation_table = [0; TABLE_SIZE];
@@ -16,6 +20,8 @@ pub fn generate_permutation_table(seed: u32) -> [u32; TABLE_SIZE] {
     permutation_table
 }
 
+/// 以 `seed` 生成置换表后计算 2D OpenSimplex 噪声。
+///
 /// 每次都重新生成了permutation_table，性能不好。
 /// 如果重复调用，不应该使用这个函数
 #[allow(dead_code)]

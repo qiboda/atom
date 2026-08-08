@@ -83,7 +83,9 @@ impl Future for AssetBarrierFuture {
 /// 加载状态，用于在 barrier 完成后通知主线程
 #[derive(Debug, Default)]
 pub struct AssetBarrierStatus {
+    /// 所属 barrier 的名称（与 `AllAssetBarrier::create_asset_barrier` 的 key 对应）。
     pub barrier_key: String,
+    /// 置位标记：barrier 全部完成时由外部置为 true。
     pub barrier_end: Arc<AtomicBool>,
 }
 

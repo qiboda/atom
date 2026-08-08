@@ -1,6 +1,9 @@
 use bevy::math::UVec4;
 
 // range is [1, U32_MAX]
+/// 基于 xorshift128 算法从 128 位状态中生成一个伪随机数，与 shader 中的 `xorshift_128` 对齐。
+///
+/// 原地更新 `state`（4 个 `u32` 组成），返回值为 `[1, U32_MAX]` 区间内的随机数。
 pub fn xorshift_128_with_seed(state: &mut UVec4) -> u32 {
     let st: UVec4 = *state;
     let mut t: u32 = st.w;

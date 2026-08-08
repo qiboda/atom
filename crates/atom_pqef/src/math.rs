@@ -123,12 +123,12 @@ pub(crate) fn cross_product_squared_transpose(v: Vec3A) -> Mat3A {
     m
 }
 
-// standard deviation
+/// 标准差：总体方差（`variance`）的平方根。
 pub fn standard_deviation(sampler: &[f32]) -> f32 {
     variance(sampler).sqrt()
 }
 
-// variance
+/// 总体方差：E(X²) − E(X)²。
 pub fn variance(sampler: &[f32]) -> f32 {
     let len = sampler.iter().len();
     let mean = sampler.iter().sum::<f32>() / len as f32;
@@ -140,7 +140,7 @@ pub fn variance(sampler: &[f32]) -> f32 {
     sum / len as f32 - mean * mean
 }
 
-// covariance
+/// 两个样本序列 `xs`/`ys` 的协方差（要求等长）。
 pub fn covariance(xs: &[f32], ys: &[f32]) -> f32 {
     let x_len = xs.iter().len();
     let x_mean = xs.iter().sum::<f32>() / x_len as f32;
@@ -153,7 +153,7 @@ pub fn covariance(xs: &[f32], ys: &[f32]) -> f32 {
     xy_mean - x_mean * y_mean
 }
 
-// covariance matrix
+/// 一组三维样本的 3×3 协方差矩阵（对称）。
 pub fn covariance_matrix(vec3: &[Vec3A]) -> Mat3A {
     let xs: Vec<f32> = vec3.iter().map(|v| v.x).collect();
     let ys: Vec<f32> = vec3.iter().map(|v| v.y).collect();
