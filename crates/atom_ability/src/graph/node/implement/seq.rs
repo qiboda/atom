@@ -9,7 +9,7 @@ use crate::{
     graph::{
         context::{EffectGraphContext, InstantEffectNodeMap},
         executor::EffectGraphExecutor,
-        node::{EffectNode, InstantEffectNode, bundle::InstantEffectNodeBase, pin::EffectNodeExec},
+        node::{EffectNode, InstantEffectNode, InstantEffectNodeBase, pin::EffectNodeExec},
     },
     impl_effect_node_pin_group,
 };

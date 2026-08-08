@@ -1,6 +1,5 @@
 //! Effect Graph 节点：状态节点（占用实体）与即时节点（纯数据）的定义。
 
-pub mod bundle;
 pub mod implement;
 pub mod pin;
 pub mod plugin;
@@ -39,6 +38,22 @@ pub trait InstantEffectNode: Sync + Send {
 
 /// 状态节点 trait：占用实体、持有运行时状态的系统节点。
 pub trait StateEffectNode {}
+
+/// 即时节点基础结构：为即时节点提供 UUID 标识。
+#[derive(Debug, Default, Reflect)]
+pub struct InstantEffectNodeBase {
+    /// 节点 UUID。
+    pub node_id: Uuid,
+}
+
+impl InstantEffectNodeBase {
+    /// 创建带新 UUID 的基础结构。
+    pub fn new() -> Self {
+        Self {
+            node_id: Uuid::new_v4(),
+        }
+    }
+}
 
 /// 节点执行状态：用于图整体状态的判定（全部节点 Idle 时图归为非激活）。
 #[derive(Debug, Component, Default, Copy, Clone, PartialEq, Eq, Reflect)]

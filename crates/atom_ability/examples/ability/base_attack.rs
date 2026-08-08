@@ -12,11 +12,9 @@ use atom_ability::{
     graph::{
         blackboard::EffectValue,
         builder::{EffectGraph, EffectGraphBuilder},
-        bundle::EffectGraphBundle,
         context::{EffectGraphContext, GraphRef, InstantEffectNodeMap},
         node::{
-            InstantEffectNode,
-            bundle::StateEffectNodeBundle,
+            EffectNodeExecuteState, EffectNodeId, InstantEffectNode,
             implement::{log::EffectNodeLog, timer::EffectNodeTimer},
             pin::EffectNodePinGroup,
         },
@@ -56,17 +54,23 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         let mut context = EffectGraphContext::new();
 
         // 创建节点
-        let mut entry_node = StateEffectNodeBundle::<EffectNodeAbilityEntry>::default();
         let entry_node_entity = commands.spawn_empty().id();
-        entry_node.node_id = entry_node_entity.into();
+        let entry_node = (
+            EffectNodeAbilityEntry,
+            EffectNodeExecuteState::default(),
+            EffectNodeId::Entity(entry_node_entity),
+        );
         context.insert_state_node(entry_node_entity);
         context.set_entry_node(entry_node_entity);
 
-        let mut timer_node = StateEffectNodeBundle::<EffectNodeTimer>::default();
         let timer_node_entity = commands.spawn_empty().id();
-        timer_node.node_id = timer_node_entity.into();
+        let timer_node = (
+            EffectNodeTimer::default(),
+            EffectNodeExecuteState::default(),
+            EffectNodeId::Entity(timer_node_entity),
+        );
         if let Some(slot) = timer_node
-            .state_node
+            .0
             .get_input_slot_pin_by_name(EffectNodeTimer::INPUT_SLOT_DURATION)
         {
             context.insert_input_value(
@@ -92,33 +96,33 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         context.insert_instant_node(log_node.get_uuid());
 
         let entry_output_start = entry_node
-            .state_node
+            .0
             .get_output_exec_pin_by_name(EffectNodeAbilityEntry::OUTPUT_EXEC_START);
         let timer_input_start = timer_node
-            .state_node
+            .0
             .get_input_exec_pin_by_name(EffectNodeTimer::INPUT_EXEC_START);
 
         if let (Some(entry_slot), Some(timer_slot)) = (entry_output_start, timer_input_start) {
             context.add_exec_connection(
                 EffectNodeExecPin {
-                    node_id: entry_node.node_id,
+                    node_id: entry_node.2,
                     exec: *entry_slot,
                 },
                 &[EffectNodeExecPin {
-                    node_id: timer_node.node_id,
+                    node_id: timer_node.2,
                     exec: *timer_slot,
                 }],
             );
         }
         let timer_output_finish = timer_node
-            .state_node
+            .0
             .get_output_exec_pin_by_name(EffectNodeTimer::OUTPUT_EXEC_FINISH);
 
         let log_input_start = log_node.get_input_exec_pin_by_name(EffectNodeLog::INPUT_EXEC_START);
         if let (Some(timer_slot), Some(log_slot)) = (timer_output_finish, log_input_start) {
             context.add_exec_connection(
                 EffectNodeExecPin {
-                    node_id: timer_node.node_id,
+                    node_id: timer_node.2,
                     exec: *timer_slot,
                 },
                 &[EffectNodeExecPin {
@@ -131,12 +135,12 @@ impl EffectGraphBuilder for EffectNodeGraphBaseAttack {
         let mut parent_commands = commands.spawn_empty();
         context.set_graph_ref(GraphRef::new(parent_commands.id()));
         let parent = parent_commands
-            .insert(EffectGraphBundle {
+            .insert((
                 context,
-                state: EffectGraphState::Inactive,
-                graph: *self,
-                tick_state: EffectGraphTickState::Ticked,
-            })
+                EffectGraphState::Inactive,
+                *self,
+                EffectGraphTickState::Ticked,
+            ))
             .id();
         commands
             .entity(entry_node_entity)
