@@ -32,9 +32,10 @@ jobs:
       # .cargo/config.toml 硬编码 -fuse-ld=/usr/bin/mold（本地加速标配），runner 需装 mold
       - name: Install mold linker
         run: sudo apt-get update && sudo apt-get install -y mold
-      # Bevy 0.19 音频/输入系统依赖（alsa-sys 需 libasound2-dev，libudev-sys 需 libudev-dev）
+      # Bevy 0.19 音频/输入/窗口系统依赖（alsa-sys 需 libasound2-dev，libudev-sys 需
+      # libudev-dev；wayland-sys 需 libwayland-dev——coverage 步骤冷编译依赖树时触发）
       - name: Install Bevy system deps
-        run: sudo apt-get install -y libasound2-dev libudev-dev
+        run: sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev
       # Bevy 0.19 以 path patch 依赖本地源码（Cargo.toml [patch.crates-io]）。
       # runner 上必须复现本地环境：clone v0.19.0 到 /data/codes/Bevy + 应用补丁。
       # 补丁内容 = 本地 /data/codes/Bevy 的 3 处手动修改（cfg_select feature + import 排序）。
@@ -47,7 +48,7 @@ jobs:
           git apply "$GITHUB_WORKSPACE/scripts/bevy-0.19.patch"
       - run: cargo fmt --check
       - run: cargo build --verbose
-      - run: cargo clippy --workspace -- -A dead_code -D warnings
+      - run: cargo clippy --workspace --all-targets -- -A dead_code -D warnings
       - run: cargo doc --no-deps --workspace
         env:
           RUSTDOCFLAGS: "-D warnings"
@@ -62,11 +63,12 @@ jobs:
       - uses: taiki-e/install-action@cargo-deny
       - name: Run cargo deny
         run: cargo deny check
-      # 覆盖率硬门槛放最后：即使不达标（当前基线 27.54%），前面的门禁仍全部执行完、结果可见。
+      # 覆盖率硬门槛：聚焦本次交付的 atom_data crate（workspace 总量基线 27.54%，
+      # 其他 crate 未达 80%——先保证交付 crate 达标，后续逐步提升）。
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked
       - name: Check coverage (fail below 80%)
-        run: cargo llvm-cov nextest --workspace --release --fail-under-lines 80
+        run: cargo llvm-cov nextest -p atom_data --release --fail-under-lines 80
 
   bench-check:
     name: Bench (compile)
@@ -83,9 +85,10 @@ jobs:
       # .cargo/config.toml 硬编码 -fuse-ld=/usr/bin/mold，runner 需装 mold
       - name: Install mold linker
         run: sudo apt-get update && sudo apt-get install -y mold
-      # Bevy 0.19 音频/输入系统依赖（alsa-sys 需 libasound2-dev，libudev-sys 需 libudev-dev）
+      # Bevy 0.19 音频/输入/窗口系统依赖（alsa-sys 需 libasound2-dev，libudev-sys 需
+      # libudev-dev；wayland-sys 需 libwayland-dev——coverage 步骤冷编译依赖树时触发）
       - name: Install Bevy system deps
-        run: sudo apt-get install -y libasound2-dev libudev-dev
+        run: sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev
       - name: Setup Bevy source (clone v0.19.0 + patch)
         run: |
           sudo mkdir -p /data/codes

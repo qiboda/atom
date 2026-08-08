@@ -1,10 +1,10 @@
 //! Buff 组件包：buff 实体的完整组件集合。
 
-use atom_datatables::effect::TbBuffRow;
 use bevy::{ecs::system::EntityCommands, prelude::*};
 
 use crate::{
     bundle::{BuffBundleTrait, BundleTrait, ReflectBuffBundleTrait},
+    config::BuffConfig,
     graph::EffectGraphOwner,
     stateset::StateLayerTagRegistry,
 };
@@ -16,10 +16,23 @@ use super::{
     timer::BuffTime,
 };
 
-/// Buff 实体组件包：标记、图拥有者、状态、计时、层数与状态层标签。
+/// Buff 配置数据组件：buff 实体携带的图类别数据（observer 数据源，替代已删除的 `TbBuffRow`）。
+#[derive(Component, Debug, Clone, Reflect, Default)]
+pub struct BuffConfigData {
+    /// Effect Graph 图类别（构建 buff 效果图模板用）。
+    pub graph_class: String,
+}
+
+/// Buff 实体组件包：标记、图拥有者、状态、计时、层数、配置数据与状态层标签。
+///
+/// 字段顺序有约束：`config_data` 必须在 `buff` **之前**——`On<Add, Buff>` observer
+/// 在 bundle 插入过程中触发（按字段序逐组件插入），此时后插入的组件尚不在实体 archetype
+/// 中（`QueryDoesNotMatch`），observer 按新数据形态查询会落空（RED 测试实证）。
 #[derive(Bundle, Reflect, Default)]
 #[reflect(BuffBundleTrait)]
 pub struct BuffBundle {
+    /// Buff 配置数据（observer 数据源，替代已删除的 `TbBuffRow`；须先于 `buff` 插入）。
+    pub config_data: BuffConfigData,
     /// Buff 标记组件。
     pub buff: Buff,
     /// Effect Graph 拥有者标记。
@@ -32,8 +45,6 @@ pub struct BuffBundle {
     pub buff_time: BuffTime,
     /// Buff 层数。
     pub buff_layer: BuffLayer,
-    /// Buff 数据表行。
-    pub buff_row: TbBuffRow,
     /// 开始阶段状态层标签包。
     pub start_tag_bundle: BuffStartTagBundle,
     /// 中断阶段状态层标签包。
@@ -49,35 +60,36 @@ impl BundleTrait for BuffBundle {
 impl BuffBundleTrait for BuffBundle {}
 
 impl BuffBundle {
-    /// 依据数据表行与状态层标签注册表构造 buff 组件包。
-    pub fn new(buff_row: TbBuffRow, state_registry: &Res<StateLayerTagRegistry>) -> Self {
-        let data = buff_row.data();
+    /// 依据配置数据与状态层标签注册表构造 buff 组件包。
+    pub fn new(config: &BuffConfig, state_registry: &StateLayerTagRegistry) -> Self {
         let start_tag_bundle = BuffStartTagBundle::new(
-            &data.start_required_layertags,
-            &data.start_disabled_layertags,
-            &data.start_added_layertags,
-            &data.start_removed_layertags,
+            &config.start_required_layertags,
+            &config.start_disabled_layertags,
+            &config.start_added_layertags,
+            &config.start_removed_layertags,
             state_registry,
         );
 
         let abort_tag_bundle = BuffAbortTagBundle::new(
-            &data.abort_required_layertags,
-            &data.abort_disabled_layertags,
+            &config.abort_required_layertags,
+            &config.abort_disabled_layertags,
             state_registry,
         );
 
         let buff_time = BuffTime::new(
-            data.duration,
-            if data.interval > 0.0 {
-                Some(data.interval)
+            config.duration,
+            if config.interval > 0.0 {
+                Some(config.interval)
             } else {
                 None
             },
         );
-        let buff_layer = BuffLayer::new(data.max_layer);
+        let buff_layer = BuffLayer::new(config.max_layer);
 
         Self {
-            buff_row,
+            config_data: BuffConfigData {
+                graph_class: config.graph_class.clone(),
+            },
             start_tag_bundle,
             abort_tag_bundle,
             buff_time,

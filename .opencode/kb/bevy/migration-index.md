@@ -27,11 +27,23 @@
 | 0.18 | 0.19 | 备注 |
 |------|------|------|
 | `Commands::despawn_recursive()` | `Commands::despawn()` | despawn 自动递归 |
+| `EventReader`/`EventWriter`/`Events` | `MessageReader`/`MessageWriter`/`Messages` | 0.19 事件系统改名（`Event` 保留给实体事件 `EntityEvent`）；`AssetEvent` 仍叫 `AssetEvent` 但 derive `Message` |
 | `MessageWriter::send()` | `MessageWriter::write()` | |
 | `RenderApp` | 不变 | `app.sub_app_mut(RenderApp)` 仍可用 |
 | `ExtractResource` | 不变 | 但 `Resource` 现在是 `Component` 的 subtrait |
 | `RenderStartup` | 新 | render world 一次性初始化 |
 | `Render` | 新 | 替代旧 render graph node，render world systems |
+
+## Asset / 数据加载（bevy_common_assets）
+
+| 0.18 / 旧 | 0.19 | 备注 |
+|------|------|------|
+| — | `bevy_common_assets 0.17.0` | 原生兼容 Bevy 0.19（依赖 bevy_app/bevy_asset/bevy_reflect ^0.19）；9 格式 feature 全开（json/ron/toml/yaml/csv/msgpack/cbor/xml/postcard），0 默认 feature |
+| — | `XxxAssetPlugin::<A>::new(&["json"])` | 泛型插件：`A: for<'de> Deserialize<'de> + Asset`；同类型可注册多格式插件（扩展名路由）；plugin build 内部自带 `init_asset::<A>()` |
+| — | `AssetLoader` trait 含 `TypePath` supertrait | 0.18 新增；loader 类型需实现 TypePath |
+| `LoadContext::load_direct` / `NestedLoader` | `LoadContext::load_builder()` | 子资产加载 API 重构（0.18） |
+| `AssetEvent::Loaded` 即资产可用 | `AssetEvent::LoadedWithDependencies { id }` | 本体 + 全部递归依赖就绪信号；`event.is_loaded_with_dependencies(id)` 便捷判断；注册了 loader 的 asset 类型该事件由 `init_asset` 自动注册（`AssetEventSystems`） |
+| — | `AssetServer::get_id_handle::<A>(id)` | `AssetId<A>` → `Handle<A>`（事件回调中取句柄用）；`Assets::get(id)` 直接接受 `impl Into<AssetId<A>>` |
 
 ## Mesh / Asset
 

@@ -1,11 +1,11 @@
 //! 技能组件包：技能实体的完整组件集合。
 
-use atom_datatables::effect::TbAbilityRow;
 use bevy::{ecs::system::EntityCommands, prelude::*};
 
 use crate::{
     attribute::attribute_set::AttributeSet,
     bundle::{AbilityBundleTrait, BundleTrait, ReflectAbilityBundleTrait},
+    config::AbilityConfig,
     graph::EffectGraphOwner,
     stateset::{StateLayerTagContainer, StateLayerTagRegistry},
 };
@@ -24,7 +24,18 @@ pub struct AbilityOwnerBundle<T: AttributeSet> {
     pub state_set: StateLayerTagContainer,
 }
 
-/// 技能实体组件包：执行/节流状态、技能标记、数据表行与 Effect Graph 标记。
+/// 技能配置数据组件：技能实体携带的图类别数据（observer 数据源，替代已删除的 `TbAbilityRow`）。
+#[derive(Component, Debug, Clone, Reflect, Default)]
+pub struct AbilityConfigData {
+    /// Effect Graph 图类别（构建技能效果图模板用）。
+    pub graph_class: String,
+}
+
+/// 技能实体组件包：执行/节流状态、技能标记、配置数据与 Effect Graph 标记。
+///
+/// 字段顺序有约束：`config_data` 必须在 `ability` **之前**——`On<Add, Ability>` observer
+/// 在 bundle 插入过程中触发（按字段序逐组件插入），此时后插入的组件尚不在实体 archetype
+/// 中（`QueryDoesNotMatch`），observer 按新数据形态查询会落空（RED 测试实证）。
 #[derive(Bundle, Reflect, Default)]
 #[reflect(AbilityBundleTrait)]
 pub struct AbilityBundle {
@@ -32,10 +43,10 @@ pub struct AbilityBundle {
     pub execute_state: AbilityExecuteState,
     /// 技能节流状态。
     pub tick_state: AbilityTickState,
+    /// 技能配置数据（observer 数据源，替代已删除的 `TbAbilityRow`；须先于 `ability` 插入）。
+    pub config_data: AbilityConfigData,
     /// 技能标记组件。
     pub ability: Ability,
-    /// 技能数据表行。
-    pub ability_row: TbAbilityRow,
     /// Effect Graph 拥有者标记。
     pub effect_graph_owner: EffectGraphOwner,
     /// 开始阶段状态层标签包。
@@ -45,25 +56,26 @@ pub struct AbilityBundle {
 }
 
 impl AbilityBundle {
-    /// 依据数据表行与状态层标签注册表构造技能组件包。
-    pub fn new(ability_row: TbAbilityRow, state_registry: &Res<StateLayerTagRegistry>) -> Self {
-        let data = ability_row.data();
+    /// 依据配置数据与状态层标签注册表构造技能组件包。
+    pub fn new(config: &AbilityConfig, state_registry: &StateLayerTagRegistry) -> Self {
         let start_tag_bundle = AbilityStartTagBundle::new(
-            &data.start_required_layertags,
-            &data.start_disabled_layertags,
-            &data.start_added_layertags,
-            &data.start_removed_layertags,
+            &config.start_required_layertags,
+            &config.start_disabled_layertags,
+            &config.start_added_layertags,
+            &config.start_removed_layertags,
             state_registry,
         );
 
         let abort_tag_bundle = AbilityAbortTagBundle::new(
-            &data.abort_required_layertags,
-            &data.abort_disabled_layertags,
+            &config.abort_required_layertags,
+            &config.abort_disabled_layertags,
             state_registry,
         );
 
         Self {
-            ability_row,
+            config_data: AbilityConfigData {
+                graph_class: config.graph_class.clone(),
+            },
             start_tag_bundle,
             abort_tag_bundle,
             ..Default::default()

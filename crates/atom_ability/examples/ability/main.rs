@@ -9,23 +9,22 @@ use atom_ability::{
         event::{AbilityRemoveEvent, AbilityStartEvent},
     },
     buff::node::buff_entry::EffectNodeBuffEntryPlugin,
+    config::AbilityConfig,
     graph::{
         graph_map::EffectGraphBuilderMapExt,
         node::implement::{
             log::EffectNodeLogPlugin, seq::EffectNodeSeqPlugin, timer::EffectNodeTimerPlugin,
         },
     },
+    stateset::StateLayerTagRegistry,
 };
 
 use attribute::BaseAttributeSet;
 use base_attack::EffectNodeGraphBaseAttack;
 
-use atom_datatables::{
-    DataTablePlugin,
-    effect::{TbAbility, TbAbilityRow},
-    tables_system_param::TableReader,
-};
-use bevy::{DefaultPlugins, input::ButtonInput, log::info, prelude::*};
+use atom_data::{DataRegistry, DataRegistryPlugin, DataTable};
+use bevy::{DefaultPlugins, asset::AssetServer, input::ButtonInput, log::info, prelude::*};
+use bevy_common_assets::json::JsonAssetPlugin;
 
 #[derive(Component, Reflect)]
 struct Player;
@@ -34,24 +33,50 @@ fn main() {
     dotenv::dotenv().ok();
 
     let mut app = App::new();
+    app.insert_resource(LoadedTables::default());
     app.add_plugins(DefaultPlugins)
-        .add_plugins(DataTablePlugin)
+        .add_plugins(JsonAssetPlugin::<DataTable<AbilityConfig>>::new(&["json"]))
+        .add_plugins(DataRegistryPlugin)
         .add_plugins(AbilitySubsystemPlugin)
         .add_plugins(EffectNodeTimerPlugin)
         .add_plugins(EffectNodeLogPlugin)
         .add_plugins(EffectNodeSeqPlugin)
-        .add_plugins(EffectNodeBuffEntryPlugin)
-        .register_effect_graph_builder::<EffectNodeGraphBaseAttack>()
+        .add_plugins(EffectNodeBuffEntryPlugin);
+    DataRegistryPlugin::register_table::<AbilityConfig>(&mut app);
+    app.register_effect_graph_builder::<EffectNodeGraphBaseAttack>()
+        .add_systems(Startup, load_ability_table)
         .add_systems(Update, create_ability)
         .add_systems(Update, cast_base_skill)
         .add_systems(Update, remove_base_skill)
         .run();
 }
 
+/// 从 JSON 数据表加载技能配置（`assets/datatables/AbilityConfig.json`）。
+///
+/// handle 存入 [`LoadedTables`] 资源保持存活——`Assets::track_assets` 会移除无强引用的
+/// 资产，若丢弃 handle，表可能在 `sync_table` 读取前被回收（`#[must_use]` 契约，见
+/// `atom_data::DataRegistry::load` 文档）。
+fn load_ability_table(
+    mut registry: ResMut<DataRegistry>,
+    server: Res<AssetServer>,
+    mut loaded: ResMut<LoadedTables>,
+) {
+    loaded
+        .tables
+        .push(registry.load::<AbilityConfig>(&server, "datatables/AbilityConfig.json"));
+}
+
+/// 已加载数据表 handle 集合（保持资产存活，防 track_assets 提前回收）。
+#[derive(Resource, Default)]
+struct LoadedTables {
+    tables: Vec<Handle<DataTable<AbilityConfig>>>,
+}
+
 fn create_ability(
     mut commands: Commands,
     input: Res<ButtonInput<KeyCode>>,
-    ability_reader: TableReader<TbAbility>,
+    registry: Res<DataRegistry>,
+    state_registry: Res<StateLayerTagRegistry>,
     query: Query<(), With<Ability>>,
 ) {
     if input.just_pressed(KeyCode::KeyC) {
@@ -59,20 +84,14 @@ fn create_ability(
             return;
         }
 
-        let Some(row_data) = ability_reader.get_row(&1) else {
+        let Some(config) = registry.get::<AbilityConfig>(&1) else {
             return;
         };
 
         commands
             .spawn((Player, AbilityOwnerBundle::<BaseAttributeSet>::default()))
             .with_children(|parent| {
-                parent.spawn(AbilityBundle {
-                    ability_row: TbAbilityRow {
-                        key: 1,
-                        data: Some(row_data),
-                    },
-                    ..Default::default()
-                });
+                parent.spawn(AbilityBundle::new(config, &state_registry));
             });
 
         info!("create_ability");

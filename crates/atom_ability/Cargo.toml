@@ -13,10 +13,10 @@ bevy = { workspace = true }
 # bevy-trait-query-impl = "0.4.0"
 once_cell = { workspace = true }
 smallvec = { workspace = true }
-thiserror = { workspace = true }
 
+atom_data = { path = "../atom_data" }
 atom_layertag = { path = "../atom_layertag" }
-atom_datatables = { path = "../atom_datatables" }
+serde = { workspace = true }
 
 paste = { workspace = true }
 uuid = "1.24.0"
@@ -24,6 +24,8 @@ eval = "0.4.3"
 
 [dev-dependencies]
 dotenv = { workspace = true }
+bevy_common_assets = { version = "0.17", features = ["json"] }
+serde_json = "1"
 
 [lints]
 workspace = true

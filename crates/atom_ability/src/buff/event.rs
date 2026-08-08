@@ -1,31 +1,25 @@
 //! Buff 事件与 observer：buff 的添加、ready/start/remove/abort/tickable 生命周期。
 
-use atom_datatables::{
-    effect::{TbBuff, TbBuffKey, TbBuffRow},
-    tables_system_param::TableReader,
-};
 use atom_layertag::container_op::{
     LayerTagContainerConditionRequired, LayerTagContainerConditionWithout, LayerTagContainerOpAdd,
     LayerTagContainerOpRemove,
 };
-use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::prelude::*;
 
 use crate::{
-    buff::{bundle::BuffBundle, node::buff_entry::EffectNodeBuffEntry},
+    buff::node::buff_entry::EffectNodeBuffEntry,
     graph::{
-        blackboard::EffectValue,
         event::{
             EffectGraphAddEvent, EffectGraphExecEvent, EffectGraphRemoveEvent,
             EffectGraphTickableEvent,
         },
-        node::pin::EffectNodeSlot,
         state::EffectGraphState,
     },
-    stateset::{StateLayerTagContainer, StateLayerTagRegistry},
+    stateset::StateLayerTagContainer,
 };
 
 use super::{
-    layer::BuffLayer,
+    bundle::BuffConfigData,
     layertag::tag::{
         BuffAbortDisableLayerTagContainer, BuffAbortRequiredLayerTagContainer,
         BuffAddedLayerTagContainer, BuffRemovedLayerTagContainer,
@@ -39,8 +33,8 @@ use super::{
 pub struct BuffAddEvent {
     /// 所有者实体（buff 挂到其下）。
     pub owner_entity: Entity,
-    /// buff 数据表键。
-    pub buff_id: TbBuffKey,
+    /// buff 数据表主键（`BuffConfig.id`）。
+    pub buff_id: i32,
 }
 
 /// Buff 就绪事件。
@@ -67,25 +61,25 @@ pub struct BuffTickableEvent {
     pub tickable: bool,
 }
 
-/// 处理 buff 实体添加事件：按数据表中的图类别为 buff 添加 Effect Graph。
+/// 处理 buff 实体添加事件：按配置数据的图类别为 buff 添加 Effect Graph。
 pub fn trigger_buff_on_add(
     trigger: On<Add, Buff>,
     mut commands: Commands,
-    query: Query<&TbBuffRow, With<Buff>>,
+    query: Query<&BuffConfigData, With<Buff>>,
 ) {
-    let buff_entity = trigger.observer();
+    // Bevy 0.19: `On<Add, C>` Deref 到 `Add { entity }`（被添加组件的实体）；
+    // `trigger.observer()` 在 0.19 返回的是 observer 实体本身（语义变更，见 TENSIONS.md）。
+    let buff_entity = trigger.entity;
     match query.get(buff_entity) {
-        Ok(buff_row) => {
-            if let Some(data) = buff_row.data.clone() {
-                commands.trigger(EffectGraphAddEvent {
-                    graph_class: data.graph_class.clone(),
-                    ability_entity: buff_entity,
-                });
-            }
+        Ok(config_data) => {
+            commands.trigger(EffectGraphAddEvent {
+                graph_class: config_data.graph_class.clone(),
+                ability_entity: buff_entity,
+            });
         }
         Err(e) => {
             warn!(
-                "trigger_buff_on_add: buff row not found for entity {:?}: {:?}",
+                "trigger_buff_on_add: buff config data not found for entity {:?}: {:?}",
                 buff_entity, e
             );
         }
@@ -280,58 +274,5 @@ pub fn trigger_buff_tickable(
             tickable: trigger.event().tickable,
             ability_entity: buff_entity,
         });
-    }
-}
-
-/// 处理 [`BuffAddEvent`]：已存在同 ID buff 则叠加层数并触发 ADD_LAYER 执行，
-/// 否则为所有者新建 buff 实体。
-pub fn trigger_buff_add_event(
-    trigger: On<BuffAddEvent>,
-    mut commands: Commands,
-    table_reader: TableReader<TbBuff>,
-    owner_query: Query<&Children>,
-    mut query: Query<(&mut BuffLayer, &TbBuffRow), With<Buff>>,
-    state_registry: Res<StateLayerTagRegistry>,
-) {
-    let event = trigger.event();
-    info!("trigger_buff_add: {:?}", event.buff_id);
-
-    let Some(new_buff_data) = table_reader.get_row(&event.buff_id) else {
-        return;
-    };
-
-    if let Ok(children) = owner_query.get(event.owner_entity) {
-        for child in children {
-            if let Ok((mut buff_layer, buff_row)) = query.get_mut(*child)
-                && buff_row.key() == &event.buff_id
-            {
-                buff_layer.add_layer(1);
-
-                let mut slot_value_map = HashMap::new();
-                slot_value_map.insert(
-                    EffectNodeSlot::new::<i32>(EffectNodeBuffEntry::OUTPUT_SLOT_ADDED_LAYER),
-                    EffectValue::I32(1),
-                );
-                commands.trigger(EffectGraphExecEvent {
-                    entry_exec_pin: EffectNodeBuffEntry::OUTPUT_EXEC_ADD_LAYER.into(),
-                    execute_in_graph_state: Some(EffectGraphState::Active),
-                    slot_value_map: Some(slot_value_map),
-                    ability_entity: *child,
-                });
-                return;
-            }
-        }
-
-        let buff_bundle = BuffBundle::new(
-            TbBuffRow {
-                key: event.buff_id,
-                data: Some(new_buff_data),
-            },
-            &state_registry,
-        );
-
-        commands
-            .spawn(buff_bundle)
-            .set_parent_in_place(event.owner_entity);
     }
 }

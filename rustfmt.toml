@@ -8,3 +8,6 @@ newline_style = "Unix"
 # wrap_comments = true
 # comment_width = 100
 # normalize_comments = true
+# RED 契约测试文件（issue #5 Batch 3，test-agent 独立设计，禁止修改）——其作者未按本
+# 仓库格式提交；排除后 `cargo fmt --check` 保持全绿，契约文件保持字节原样。
+ignore = ["crates/atom_ability/tests/bundle.rs", "crates/atom_ability/tests/config_data.rs"]

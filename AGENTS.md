@@ -68,14 +68,22 @@ PR/功能分支开发使用 git worktree，位于 `.worktrees/<name>/`（gitigno
 
 ## Workspace 当前状态
 
-workspace 含 11 个 crate（`crates/` 下）：atom_terrain, atom_render, atom_shader_lib,
-atom_ability, atom_layertag, atom_datatables, atom_core, atom_math, atom_renderdoc,
-atom_cel_shader, atom_pqef, atom_utils。Bevy 0.19 通过 `[patch.crates-io]` path 依赖
-本地源码 `/data/codes/Bevy`（含 3 处手动补丁，见 `scripts/bevy-0.19.patch`；CI 用同
-一补丁复现环境）。
+目前 workspace 包含 **13 个 crate**：atom_terrain、atom_data、atom_data_macros、atom_ability、
+atom_cel_shader、atom_core、atom_layertag、atom_math、atom_pqef、atom_render、atom_renderdoc、
+atom_shader_lib、atom_utils（Bevy 0.19 workspace 迁移后全部迁回；成员列表见根 Cargo.toml）。
+
+- `atom_data` + `atom_data_macros`：声明式数据表框架（`DataTable<T>` Asset + `#[derive(DataAsset)]`
+  索引宏，bevy_common_assets 0.17 全格式驱动），全面替代 Luban 二进制 datatables 体系
+  （atom_datatables / atom_cfg / atom_macros / atom_luban_lib 文件保留原状但不再被引用）。
+- `atom_ability`：技能系统，数据访问层已迁移到 atom_data（issue #5）——原子表类型定义于
+  `atom_ability::config`（`AbilityConfig`/`BuffConfig`/`LayerTagConfig` + `#[data_ref]` 跨表引用），
+  查询经 `DataRegistry`；`AbilityBundle`/`BuffBundle` 携带 `AbilityConfigData`/`BuffConfigData`
+  组件（observer 数据源，须先于标记组件声明——见 TENSIONS.md）。
+- 数据文件目录约定：`assets/datatables/<表类型名>.json`（文件名 = 行类型名，扩展名定格式）。
 
 **重要**: Bevy debug 构建极慢（~19s 启动，30s+ 出首帧）。运行/测试必须用 `--release`。
 地形验证: `cargo run -p atom_terrain --example chunk_loader --release`（超时 30s）。
+数据表示例: `cargo run -p atom_data --example full_formats --release`。
 直接跑二进制需先 `ln -sf $(pwd)/assets target/release/examples/assets`（Bevy 从 exe 目录找 assets）。
 toolchain 为 nightly-2026-01-22（bevy_lint v0.6.0 + cfg_select feature）。
 

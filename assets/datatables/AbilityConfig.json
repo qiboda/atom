@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "name": "fireball",
+    "desc": "投掷火球",
+    "graph_class": "EffectNodeGraphBaseAttack",
+    "activation_type": "Active",
+    "cd": 3.5,
+    "start_required_layertags": [],
+    "start_disabled_layertags": [],
+    "start_added_layertags": [],
+    "start_removed_layertags": [],
+    "abort_required_layertags": [],
+    "abort_disabled_layertags": []
+  }
+]
