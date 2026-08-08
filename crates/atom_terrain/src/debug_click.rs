@@ -3,9 +3,9 @@
 //! 左键点击 → 从相机发射射线 → 沿射线 SDF marching 找到表面交点 →
 //! 输出世界坐标、chunk ID、grid 坐标、是否在 chunk 边界。
 
+use crate::compute::chunk::ChunkManager;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use crate::compute::chunk::ChunkManager;
 
 /// 高度场 SDF（与 shader sdf_fill.wgsl 一致）
 fn sdf_at(pos: Vec3) -> f32 {
@@ -24,15 +24,25 @@ pub fn debug_click_system(
     q_camera: Query<(&Camera, &GlobalTransform)>,
     manager: Res<ChunkManager>,
 ) {
-    if !btn.just_pressed(MouseButton::Left) { return; }
+    if !btn.just_pressed(MouseButton::Left) {
+        return;
+    }
 
-    let Some(window) = q_window.iter().next() else { return };
-    let Some(cursor) = window.cursor_position() else { return };
+    let Some(window) = q_window.iter().next() else {
+        return;
+    };
+    let Some(cursor) = window.cursor_position() else {
+        return;
+    };
 
-    let Some((camera, cam_transform)) = q_camera.iter().next() else { return };
+    let Some((camera, cam_transform)) = q_camera.iter().next() else {
+        return;
+    };
 
     // 从屏幕光标构建世界射线
-    let Ok(ray) = camera.viewport_to_world(cam_transform, cursor) else { return };
+    let Ok(ray) = camera.viewport_to_world(cam_transform, cursor) else {
+        return;
+    };
 
     let origin = ray.origin;
     let dir = ray.direction.normalize();
@@ -80,7 +90,9 @@ pub fn debug_click_system(
     };
 
     // 采样该 cell 的 8 个角密度值
-    let vx = gx; let vy = gy; let vz = gz;
+    let vx = gx;
+    let vy = gy;
+    let vz = gz;
     let mut corners = String::new();
     for zi in 0..=1u32 {
         for yi in 0..=1u32 {
@@ -89,16 +101,22 @@ pub fn debug_click_system(
                 let py = min.y + (vy + yi) as f32 * voxel_size;
                 let pz = min.z + (vz + zi) as f32 * voxel_size;
                 let d = sdf_at(Vec3::new(px, py, pz));
-                corners.push_str(&format!(" ({},{},{})={:.2}", vx+xi, vy+yi, vz+zi, d));
+                corners.push_str(&format!(" ({},{},{})={:.2}", vx + xi, vy + yi, vz + zi, d));
             }
         }
     }
 
     bevy::log::info!(
         "[click] world=({:.1},{:.1},{:.1}) chunk=({},{},{}) grid=({},{},{}) sdf={:.3}{}{}",
-        hit_pos.x, hit_pos.y, hit_pos.z,
-        cid.x, cid.y, cid.z,
-        vx, vy, vz,
+        hit_pos.x,
+        hit_pos.y,
+        hit_pos.z,
+        cid.x,
+        cid.y,
+        cid.z,
+        vx,
+        vy,
+        vz,
         sdf_at(hit_pos),
         boundary_info,
         corners,

@@ -6,15 +6,15 @@
 //!
 //! 设计依据：Bevy 0.19 同一 render target 深度冲突无可避免 → 独立纹理根除。
 
+use bevy::render::extract_component::{ExtractComponent, ExtractComponentPlugin};
 use bevy::{
-    prelude::*,
     asset::RenderAssetUsages,
     color::palettes::css,
     image::Image,
-    render::render_resource::{TextureUsages, Extent3d, TextureDimension, TextureFormat},
+    prelude::*,
+    render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages},
 };
-use bevy::render::extract_component::{ExtractComponent, ExtractComponentPlugin};
-use bevy_camera::{visibility::RenderLayers, Camera3dDepthLoadOp};
+use bevy_camera::{Camera3dDepthLoadOp, visibility::RenderLayers};
 
 #[derive(Component, Clone, ExtractComponent)]
 pub(crate) struct GizmoCamera;
@@ -38,11 +38,13 @@ fn setup_gizmo(
 ) {
     let len = 0.8;
     let t = 0.06;
-    let mut mat = |color: Srgba| materials.add(StandardMaterial {
-        base_color: color.into(),
-        unlit: true,
-        ..default()
-    });
+    let mut mat = |color: Srgba| {
+        materials.add(StandardMaterial {
+            base_color: color.into(),
+            unlit: true,
+            ..default()
+        })
+    };
     let layer1 = || RenderLayers::layer(1);
 
     // 轴实体 — world origin，仅 gizmo 相机可见
@@ -75,7 +77,11 @@ fn setup_gizmo(
     let size = 256u32;
     let pixel: [u8; 4] = [0, 0, 0, 0];
     let mut gizmo_image = Image::new_fill(
-        Extent3d { width: size, height: size, depth_or_array_layers: 1 },
+        Extent3d {
+            width: size,
+            height: size,
+            depth_or_array_layers: 1,
+        },
         TextureDimension::D2,
         &pixel,
         TextureFormat::Rgba8UnormSrgb,
@@ -121,7 +127,9 @@ fn sync_gizmo_camera(
     mut gizmo_cam: Query<&mut Transform, With<GizmoCamera>>,
 ) {
     let Ok(main) = main_cam.single() else { return };
-    let Ok(mut gt) = gizmo_cam.single_mut() else { return };
+    let Ok(mut gt) = gizmo_cam.single_mut() else {
+        return;
+    };
 
     let dir = main.rotation * Vec3::new(-1.0, -0.25, -1.0).normalize();
     gt.translation = dir * 2.2;

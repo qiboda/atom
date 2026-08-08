@@ -58,15 +58,24 @@ pub fn debug_keyboard_toggle(
 }
 
 /// 绘制调试可视化：世界坐标轴（chunk 边界通过 mesh tint 显示）
-pub fn draw_debug_gizmos(
-    mut gizmos: Gizmos,
-    config: Res<TerrainDebugConfig>,
-) {
+pub fn draw_debug_gizmos(mut gizmos: Gizmos, config: Res<TerrainDebugConfig>) {
     if config.show_world_axes {
         let origin = Vec3::ZERO;
         let len = 100.0;
-        gizmos.line(origin, Vec3::new(len, 0.0, 0.0), Srgba::new(1.0, 0.2, 0.2, 1.0)); // X red
-        gizmos.line(origin, Vec3::new(0.0, len, 0.0), Srgba::new(0.2, 1.0, 0.2, 1.0)); // Y green
-        gizmos.line(origin, Vec3::new(0.0, 0.0, len), Srgba::new(0.2, 0.4, 1.0, 1.0)); // Z blue
+        gizmos.line(
+            origin,
+            Vec3::new(len, 0.0, 0.0),
+            Srgba::new(1.0, 0.2, 0.2, 1.0),
+        ); // X red
+        gizmos.line(
+            origin,
+            Vec3::new(0.0, len, 0.0),
+            Srgba::new(0.2, 1.0, 0.2, 1.0),
+        ); // Y green
+        gizmos.line(
+            origin,
+            Vec3::new(0.0, 0.0, len),
+            Srgba::new(0.2, 0.4, 1.0, 1.0),
+        ); // Z blue
     }
 }

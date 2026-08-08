@@ -4,7 +4,7 @@
 //! The `GlobalMeshPool` vertex/index/indirect buffers are used directly as vertex/index/indirect
 //! GPU resources, bypassing CPU mesh construction for rendering.
 
-mod per_chunk;
 mod indirect;
-pub use per_chunk::PerChunkRenderPlugin;
+mod per_chunk;
 pub use indirect::IndirectTerrainRenderPlugin;
+pub use per_chunk::PerChunkRenderPlugin;

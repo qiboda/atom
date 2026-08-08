@@ -53,10 +53,18 @@ pub fn player_movement(
 
     for (mut transform, speed) in params.p1().iter_mut() {
         let mut dir = Vec3::ZERO;
-        if keyboard.pressed(KeyCode::KeyW) { dir += forward; }
-        if keyboard.pressed(KeyCode::KeyS) { dir -= forward; }
-        if keyboard.pressed(KeyCode::KeyA) { dir -= right; }
-        if keyboard.pressed(KeyCode::KeyD) { dir += right; }
+        if keyboard.pressed(KeyCode::KeyW) {
+            dir += forward;
+        }
+        if keyboard.pressed(KeyCode::KeyS) {
+            dir -= forward;
+        }
+        if keyboard.pressed(KeyCode::KeyA) {
+            dir -= right;
+        }
+        if keyboard.pressed(KeyCode::KeyD) {
+            dir += right;
+        }
 
         if dir != Vec3::ZERO {
             dir = dir.normalize();

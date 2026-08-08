@@ -4,12 +4,20 @@
 //! 四 pass compute pipeline 在 GPU 上生成 chunk mesh，
 //! crossbeam channel 回传 CPU 端用于碰撞检测。
 //! 密度场 = y - height_at(x,z)，正值 = air，负值 = solid。
+/// 屏幕空间坐标轴指示器
+pub mod axis_gizmo;
+/// 地表类型系统（与地形高度独立）
+pub mod biome;
 /// Chunk 加载/卸载管理
 pub mod chunk;
 /// GPU Mesh compute 管线
 pub mod compute;
 /// 调试开关（wireframe 等）
 pub mod debug;
+/// 鼠标点击 SDF 调试
+pub mod debug_click;
+/// 调试：高度图和地表图导出
+pub mod debug_map;
 /// 游戏框架系统（俯视角玩家、摄像机、ECS 组件体系）
 pub mod game;
 /// 观察者驱动的动态加载系统
@@ -18,23 +26,19 @@ pub mod loader;
 pub mod mesh;
 /// 地形噪声生成
 pub mod noise;
-/// 地形全局配置
-pub mod setting;
 /// GPU indirect draw render pipeline
 pub mod render;
-/// 屏幕空间坐标轴指示器
-pub mod axis_gizmo;
 pub mod screenshot;
-/// 鼠标点击 SDF 调试
-pub mod debug_click;
+/// 地形全局配置
+pub mod setting;
 use bevy::pbr::wireframe::WireframePlugin;
 use bevy::prelude::*;
 
-use chunk::{ChunkLoadMsg, ChunkUnloadMsg, TerrainLoadedChunks};
-use compute::sync::{TerrainChunkProcessReceiver, TerrainChunkProcessSender};
-use compute::global_compute::TerrainObserver;
-use compute::{GlobalTerrainMeshPlugin, TerrainChunkMeshComputePlugin};
 use axis_gizmo::AxisGizmoPlugin;
+use chunk::{ChunkLoadMsg, ChunkUnloadMsg, TerrainLoadedChunks};
+use compute::global_compute::TerrainObserver;
+use compute::sync::{TerrainChunkProcessReceiver, TerrainChunkProcessSender};
+use compute::{GlobalTerrainMeshPlugin, TerrainChunkMeshComputePlugin};
 use debug::{TerrainDebugConfig, debug_keyboard_toggle};
 use loader::update_grid_chunks;
 use mesh::{
@@ -91,7 +95,7 @@ impl Plugin for TerrainPlugin {
             debug_flags: Default::default(),
         });
 
-        // ── 远程截图触发（Agent via BRP）──
+        // ── 远程截图触发（BRP world.spawn_entity）──
         app.register_type::<screenshot::TakeScreenshot>();
         app.add_systems(Update, screenshot::screenshot_trigger_system);
 
@@ -114,41 +118,61 @@ impl Plugin for PerChunkTerrainPlugin {
         use bevy::render::{Render, RenderApp, RenderStartup};
 
         // ── 主世界 ──
-        app.insert_resource(ChunkManager::new(50.0, -50.0, 10.0));
+        app.insert_resource(ChunkManager::new(50.0, -50.0, 10.0, 42));
         app.init_resource::<TerrainDebugConfig>();
         app.insert_resource(TerrainObserver::default());
         app.init_resource::<ChunkLoadRequest>();
-        app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<TerrainObserver>::default());
-        app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<ChunkLoadRequest>::default());
+        app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<
+            TerrainObserver,
+        >::default());
+        app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<
+            ChunkLoadRequest,
+        >::default());
 
-        app.add_systems(Update, (update_observer_from_camera, chunk_management_system, debug::debug_keyboard_toggle, debug::draw_debug_gizmos, debug_click::debug_click_system));
+        app.add_systems(
+            Update,
+            (
+                update_observer_from_camera,
+                chunk_management_system,
+                debug::debug_keyboard_toggle,
+                debug::draw_debug_gizmos,
+                debug_click::debug_click_system,
+            ),
+        );
 
         // ── 渲染世界 ──
         let render_app = app.sub_app_mut(RenderApp);
-        render_app.insert_resource(ChunkManager::new(50.0, -50.0, 10.0));
+        render_app.insert_resource(ChunkManager::new(50.0, -50.0, 10.0, 42));
         render_app.init_resource::<ChunkLoadRequest>();
         render_app.add_systems(RenderStartup, init_per_chunk_compute);
-        render_app.add_systems(Render, (
-            slot_sync_system,
-            per_chunk_compute_system,
-            advance_chunk_states,
-        ).chain());
+        render_app.add_systems(
+            Render,
+            (
+                slot_sync_system,
+                per_chunk_compute_system,
+                advance_chunk_states,
+            )
+                .chain(),
+        );
         app.add_plugins(render::PerChunkRenderPlugin);
         app.add_plugins(axis_gizmo::AxisGizmoPlugin);
     }
 }
 
 impl Default for PerChunkTerrainPlugin {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 /// 全局 Edge Graph DC 地形插件 (Phase 3: observer-centric)。
 pub struct GlobalTerrainPlugin;
 
 impl Default for GlobalTerrainPlugin {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
-
 
 impl Plugin for GlobalTerrainPlugin {
     fn build(&self, app: &mut App) {

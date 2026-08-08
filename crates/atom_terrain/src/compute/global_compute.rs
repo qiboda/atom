@@ -123,10 +123,14 @@ pub struct GlobalStagingState {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderType)]
 struct GlobalUniformsGpu {
     grid_min: [f32; 3],
-    pad0: u32,
+    pad0: u32, // → 16
     voxel_size: f32,
     grid_size: u32,
-    pad1: [u32; 2],
+    pad1: [u32; 2],     // → 32
+    neighbor_mask: u32, // global管线不使用，占位
+    pad_neighbor: u32,  // → 40
+    seed: u32,          // noise seed (offset 40)
+    pad2: u32,          // → 48
 }
 
 impl GlobalUniformsGpu {
@@ -137,6 +141,10 @@ impl GlobalUniformsGpu {
             voxel_size,
             grid_size,
             pad1: [0; 2],
+            neighbor_mask: 0,
+            pad_neighbor: 0,
+            seed: 42,
+            pad2: 0,
         }
     }
 }
@@ -345,7 +353,8 @@ pub fn global_compute_system(
         if state.readback_enabled {
             let encoder = render_context.command_encoder();
 
-            let vertex_cap = vc as u64 * vc as u64 * vc as u64 * size_of::<TerrainChunkVertex>() as u64;
+            let vertex_cap =
+                vc as u64 * vc as u64 * vc as u64 * size_of::<TerrainChunkVertex>() as u64;
             let index_cap = vc as u64 * vc as u64 * vc as u64 * 72 * 4;
             let voxel_alloc_size = vc as u64 * vc as u64 * vc as u64 * 4;
 

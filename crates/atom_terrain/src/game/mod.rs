@@ -21,9 +21,6 @@ impl Plugin for GamePlugin {
         app.register_type::<TopDownCamera>();
 
         // 添加系统（player_movement 与 FreeCamera 的 WASD 冲突，暂时移除）
-        app.add_systems(
-            Update,
-            (camera::top_down_camera_follow,),
-        );
+        app.add_systems(Update, (camera::top_down_camera_follow,));
     }
 }

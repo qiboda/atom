@@ -8,27 +8,25 @@ use bevy::{
     mesh::VertexBufferLayout,
     prelude::*,
     render::{
-        render_resource::{
-            binding_types::uniform_buffer, BindGroup, BindGroupEntry, BindGroupLayout,
-            BindGroupLayoutDescriptor, BindGroupLayoutEntries, Buffer, BufferDescriptor,
-            BufferUsages, CachedRenderPipelineId, ColorTargetState, ColorWrites, CompareFunction,
-            DepthBiasState, DepthStencilState, Face, FragmentState, FrontFace, IndexFormat,
-            MultisampleState, PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
-            RenderPassDescriptor, RenderPipelineDescriptor, ShaderStages, StencilState, StoreOp,
-            TextureFormat, VertexAttribute, VertexFormat, VertexState, VertexStepMode,
-        },
-        renderer::{RenderContext, RenderDevice, RenderQueue, ViewQuery, CurrentView},
-        view::{ExtractedView, ViewDepthTexture, ViewTarget},
         RenderApp, RenderStartup,
+        render_resource::{
+            BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+            BindGroupLayoutEntries, Buffer, BufferDescriptor, BufferUsages, CachedRenderPipelineId,
+            ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState,
+            Face, FragmentState, FrontFace, IndexFormat, MultisampleState, PipelineCache,
+            PolygonMode, PrimitiveState, PrimitiveTopology, RenderPassDescriptor,
+            RenderPipelineDescriptor, ShaderStages, StencilState, StoreOp, TextureFormat,
+            VertexAttribute, VertexFormat, VertexState, VertexStepMode,
+            binding_types::uniform_buffer,
+        },
+        renderer::{CurrentView, RenderContext, RenderDevice, RenderQueue, ViewQuery},
+        view::{ExtractedView, ViewDepthTexture, ViewTarget},
     },
 };
 
 use crate::axis_gizmo::GizmoCamera;
+use crate::compute::{global_compute::GlobalComputeState, global_pool::GlobalMeshPool};
 use crate::debug::TerrainDebugConfig;
-use crate::compute::{
-    global_compute::GlobalComputeState,
-    global_pool::GlobalMeshPool,
-};
 /// Pipeline resource for GPU indirect terrain rendering.
 ///
 /// Holds four pipeline variants (solid/wire × culled/double-sided),
@@ -65,10 +63,8 @@ fn init_indirect_terrain_pipeline(
     asset_server: Res<AssetServer>,
 ) {
     // ── Bind group layout: one uniform mat4 for clip_from_world ──
-    let entries = BindGroupLayoutEntries::sequential(
-        ShaderStages::VERTEX,
-        (uniform_buffer::<Mat4>(false),),
-    );
+    let entries =
+        BindGroupLayoutEntries::sequential(ShaderStages::VERTEX, (uniform_buffer::<Mat4>(false),));
     let bgl_desc = BindGroupLayoutDescriptor::new("terrain_indirect_bgl", &entries);
     let bind_group_layout =
         render_device.create_bind_group_layout("terrain_indirect_bgl", &entries);
@@ -171,10 +167,34 @@ fn init_indirect_terrain_pipeline(
 
     let no_bias = DepthBiasState::default();
 
-    let solid_culled = mk_pipeline("terrain_indirect_solid_culled", PolygonMode::Fill, Some(Face::Back), vec![], no_bias);
-    let solid_double = mk_pipeline("terrain_indirect_solid_double", PolygonMode::Fill, None, vec![], no_bias);
-    let wire_culled  = mk_pipeline("terrain_indirect_wire_culled",  PolygonMode::Line, Some(Face::Back), vec!["WIREFRAME"], no_bias);
-    let wire_double  = mk_pipeline("terrain_indirect_wire_double",  PolygonMode::Line, None, vec!["WIREFRAME"], no_bias);
+    let solid_culled = mk_pipeline(
+        "terrain_indirect_solid_culled",
+        PolygonMode::Fill,
+        Some(Face::Back),
+        vec![],
+        no_bias,
+    );
+    let solid_double = mk_pipeline(
+        "terrain_indirect_solid_double",
+        PolygonMode::Fill,
+        None,
+        vec![],
+        no_bias,
+    );
+    let wire_culled = mk_pipeline(
+        "terrain_indirect_wire_culled",
+        PolygonMode::Line,
+        Some(Face::Back),
+        vec!["WIREFRAME"],
+        no_bias,
+    );
+    let wire_double = mk_pipeline(
+        "terrain_indirect_wire_double",
+        PolygonMode::Line,
+        None,
+        vec!["WIREFRAME"],
+        no_bias,
+    );
 
     commands.insert_resource(IndirectTerrainPipeline {
         pipeline_solid_culled: solid_culled,
@@ -206,7 +226,10 @@ fn indirect_terrain_render_system(
     mut ctx: RenderContext,
 ) {
     // 跳过 gizmo 相机 — 地形只渲染到主相机
-    if world.get::<GizmoCamera>(world.resource::<CurrentView>().0).is_some() {
+    if world
+        .get::<GizmoCamera>(world.resource::<CurrentView>().0)
+        .is_some()
+    {
         return;
     }
 
@@ -217,12 +240,10 @@ fn indirect_terrain_render_system(
     let (extracted_view, target, depth) = view.into_inner();
 
     // Build clip_from_world from the extracted view.
-    let clip_from_world = extracted_view
-        .clip_from_world
-        .unwrap_or_else(|| {
-            let view_from_world = extracted_view.world_from_view.affine().inverse();
-            extracted_view.clip_from_view * view_from_world
-        });
+    let clip_from_world = extracted_view.clip_from_world.unwrap_or_else(|| {
+        let view_from_world = extracted_view.world_from_view.affine().inverse();
+        extracted_view.clip_from_view * view_from_world
+    });
 
     // Write the view-projection matrix to the uniform buffer.
     queue.write_buffer(
@@ -287,7 +308,9 @@ pub struct IndirectTerrainRenderPlugin;
 impl Plugin for IndirectTerrainRenderPlugin {
     fn build(&self, app: &mut App) {
         // Extract TerrainDebugConfig from main world to render world
-        app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<TerrainDebugConfig>::default());
+        app.add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<
+            TerrainDebugConfig,
+        >::default());
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;

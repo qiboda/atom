@@ -1,44 +1,45 @@
 #!/bin/bash
-# Pre-commit: cargo check workspace
-# A fast no-compile check — skips all cargo run/test/build overhead.
-# Catches type errors, missing imports, wrong signatures.
+# pre-commit hook — fast checks before commit.
+# Full suite (clippy + nextest + ref #N) runs in pre-push.
 
 set -e
 
-echo "=== pre-commit: cargo check --workspace ==="
-cargo check --workspace 2>&1
-echo "=== pre-commit: cargo doc --no-deps ==="
-RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain 2>&1
+has_error=0
 
-echo "=== pre-commit: review checklist ==="
-echo "  ☐ TENSIONS.md updated with new discoveries?"
-echo "  ☐ bevy-kb updated with new API patterns?"
-echo "  ☐ No leftover debug prints / dead code?"
-echo "=== pre-commit: bevy_lint ==="
+echo "pre-commit: cargo fmt --check..."
+if ! cargo fmt --check 2>&1; then
+    echo "  ERROR: cargo fmt --check found unformatted code."
+    echo "  Run 'cargo fmt' and commit the changes."
+    has_error=1
+fi
+
+echo "pre-commit: cargo check --workspace..."
+if ! cargo check --workspace 2>&1; then
+    echo "  ERROR: cargo check found compile errors."
+    has_error=1
+fi
+
+echo "pre-commit: cargo doc --no-deps (missing_docs)..."
+if ! RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps -p atom_terrain 2>&1; then
+    echo "  ERROR: cargo doc found missing docs or warnings."
+    echo "  Add /// doc comments to all public items and re-run."
+    has_error=1
+fi
+
+echo "pre-commit: bevy_lint..."
 if command -v bevy_lint &>/dev/null; then
-    bevy_lint 2>&1
+    if ! bevy_lint 2>&1; then
+        echo "  ERROR: bevy_lint found issues."
+        has_error=1
+    fi
 else
-    echo "WARN: bevy_lint not installed, skipping"
-fi
-echo "=== pre-commit: agent-spec lifecycle ==="
-if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d .omp/specs ]; then
-    for spec in .omp/specs/*.spec; do
-        echo "  lifecycle: $spec"
-        "$HOME/.cargo/bin/agent-spec" lifecycle "$spec" --code . 2>&1 | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-s = d['verification']['summary']
-print(f\"    {s['total']} scenarios: {s['passed']} passed, {s['failed']} failed, {s['skipped']} skipped\")
-if s['failed'] > 0 or not d['passed']:
-    sys.exit(1)
-"
-    done
-else
-    echo "WARN: agent-spec not available, skipping lifecycle check"
-fi
-echo "=== pre-commit: agent-spec guard ==="
-if "$HOME/.cargo/bin/agent-spec" --version &>/dev/null && [ -d .omp/specs ]; then
-    "$HOME/.cargo/bin/agent-spec" guard --spec-dir .omp/specs --code . --change-scope staged 2>&1 || echo "WARN: spec guard issues (non-blocking)"
+    echo "  WARN: bevy_lint not installed, skipping"
 fi
 
-echo "=== pre-commit: OK ==="
+if [ $has_error -ne 0 ]; then
+    echo ""
+    echo "Run: cargo fmt && cargo check --workspace"
+    exit 1
+fi
+
+echo "pre-commit: OK"

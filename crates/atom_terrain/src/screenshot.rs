@@ -11,7 +11,7 @@
 //! ```
 
 use bevy::prelude::*;
-use bevy::render::view::window::screenshot::{save_to_disk, Screenshot};
+use bevy::render::view::window::screenshot::{Screenshot, save_to_disk};
 
 /// 标记组件：spawn 此组件即可触发一帧截图。
 /// 需通过 `app.register_type::<TakeScreenshot>()` 注册使 BRP 可访问。

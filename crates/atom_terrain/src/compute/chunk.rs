@@ -2,10 +2,7 @@
 //! 32³ voxel per chunk，+1 ghost border → grid_size = 32。
 //! 水平 80m 半径，垂直 -64~32。
 
-use bevy::{
-    prelude::*,
-    render::extract_resource::ExtractResource,
-};
+use bevy::{prelude::*, render::extract_resource::ExtractResource};
 use std::collections::HashMap;
 
 /// Chunk 在网格中的坐标（以 chunk 为单位，不是世界坐标）。
@@ -85,11 +82,14 @@ pub struct ChunkManager {
     pub last_observer: Vec3,
     /// 需要的 chunk 集合（用于对比判断哪些需要卸载）
     pub wanted: std::collections::HashSet<ChunkId>,
+    /// 世界噪声种子
+    pub world_seed: u32,
 }
 
 impl ChunkManager {
-    /// 创建 chunk 管理器
-    pub fn new(radius: f32, height_min: f32, height_max: f32) -> Self {
+    /// 创建 chunk 管理器。
+    /// `seed` 控制地形和岛屿生成（相同 seed → 完全相同的地图）。
+    pub fn new(radius: f32, height_min: f32, height_max: f32, seed: u32) -> Self {
         Self {
             active: HashMap::new(),
             voxel_size: 0.5,
@@ -98,6 +98,7 @@ impl ChunkManager {
             height_max,
             last_observer: Vec3::ZERO,
             wanted: std::collections::HashSet::new(),
+            world_seed: seed,
         }
     }
 
@@ -158,12 +159,12 @@ impl ChunkManager {
     /// 计算邻居掩码：bit 0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z
     pub fn neighbor_mask(&self, cid: &ChunkId) -> u32 {
         let neighbors = [
-            (cid.offset(1, 0, 0), 0u32),   // +X
-            (cid.offset(-1, 0, 0), 1u32),  // -X
-            (cid.offset(0, 1, 0), 2u32),   // +Y
-            (cid.offset(0, -1, 0), 3u32),  // -Y
-            (cid.offset(0, 0, 1), 4u32),   // +Z
-            (cid.offset(0, 0, -1), 5u32),  // -Z
+            (cid.offset(1, 0, 0), 0u32),  // +X
+            (cid.offset(-1, 0, 0), 1u32), // -X
+            (cid.offset(0, 1, 0), 2u32),  // +Y
+            (cid.offset(0, -1, 0), 3u32), // -Y
+            (cid.offset(0, 0, 1), 4u32),  // +Z
+            (cid.offset(0, 0, -1), 5u32), // -Z
         ];
         let mut mask = 0u32;
         for (nbr, bit) in &neighbors {
@@ -172,5 +173,12 @@ impl ChunkManager {
             }
         }
         mask
+    }
+
+    /// 根据 ChunkId 计算该 chunk 的噪声种子，确保相邻 chunk 边界连续。
+    pub fn chunk_seed(&self, cid: &ChunkId) -> u32 {
+        self.world_seed
+            .wrapping_add((cid.x as u32).wrapping_mul(7919))
+            .wrapping_add((cid.z as u32).wrapping_mul(6271))
     }
 }

@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (fmt + build + clippy + docs + nextest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          prefix-key: ${{ github.job }}
+      - run: cargo fmt --check
+      - run: cargo build --verbose
+      - run: cargo clippy --workspace -- -A dead_code -D warnings
+      - run: cargo doc --no-deps -p atom_terrain
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+      - uses: taiki-e/install-action@nextest
+      - name: Run tests (nextest)
+        run: cargo nextest run --workspace
+
+  bench-check:
+    name: Bench (compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          prefix-key: ${{ github.job }}
+      - run: cargo bench --no-run
