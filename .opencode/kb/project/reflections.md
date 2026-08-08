@@ -240,3 +240,9 @@
 ### Trends (last 10)
 - **环境/工具链摩擦重复出现**：#10「bevy lint 不修复了（环境问题）」与本次 sccache/bevy_lint 阻断同一根因（~/.cargo/config.toml 全局 rustc-wrapper=sccache）——TENSIONS 已记录但绕过法需每次手动 RUSTC_WRAPPER=，根治（sccache 排除 bevy_lint）仍未落实，建议用户排期处理。
 - **worktree 管理摩擦重复**：8-08「worktree 分支漂移」与本次「崩溃后未启动 worktree 会话」同属 worktree 生命周期管理疏漏——worktree 会话启动/同步已成为两次教训，恢复流程已沉淀（本次 lessons）。
+
+## 2026-08-08: BSN 迁移摩擦（issue #7）
+
+- **2026-08-08**: [process] `subagent_type="deep"` 后台任务运行 2h19m 零产出（session 仅原始 prompt 无 assistant 消息，无 cargo/rustc 进程在跑）——判定卡死并 cancel，改由主 agent 直接实现。教训：后台实现任务若长时间无任何 assistant 消息产出即异常，不应静默等待；任务委派前应确认 agent 分类可用。
+- **2026-08-08**: [test] test-agent 写的 RED 测试 `tests/grant_effect.rs` 含 E0716（`world.entity_mut(...).get_mut(...)` 链式调用中 `EntityWorldMut` 为临时值，`&mut` 悬垂）——该错误在 RED 阶段被"缺失模块 import 错误"掩盖，实现后首次编译才暴露。处理：绑定临时值为局部变量（语义零改动）。教训：RED 测试的编译错误需区分"目标 API 缺失"与"测试自身生命周期错误"，后者应在 RED 阶段就暴露。
+- **2026-08-08**: [bevy] `#[derive(Reflect)]` 的 enum 含 `Box<dyn Reflect>` 字段时：`#[reflect(ignore)]` 只能去掉 `PartialReflect`/`GetTypeRegistration` bound，`FromReflect` 派生仍对 ignored 字段生成 `Default::default()`（`bevy_reflect/derive/src/enum_utility.rs:107` `on_ignored_field`）——需追加 `#[reflect(ignore, default = "fn")]` 提供零参构造函数（哨兵值，正常路径不触发）。`#[reflect(from_reflect = false)]` 不可用（下游 `EffectNodeSlotValue` 依赖 `EffectValue: FromReflect`）。
