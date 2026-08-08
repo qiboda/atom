@@ -29,6 +29,12 @@
 | `Commands::despawn_recursive()` | `Commands::despawn()` | despawn 自动递归 |
 | `EventReader`/`EventWriter`/`Events` | `MessageReader`/`MessageWriter`/`Messages` | 0.19 事件系统改名（`Event` 保留给实体事件 `EntityEvent`）；`AssetEvent` 仍叫 `AssetEvent` 但 derive `Message` |
 | `MessageWriter::send()` | `MessageWriter::write()` | |
+| `commands.spawn(Bundle)` | `commands.spawn_scene(bsn!{...})` | BSN 场景 spawn，返回 `EntityCommands`；模板函数 `fn spawn_x() -> impl Scene` |
+| `#[derive(Bundle)]` 结构体 | `bsn!` 模板 + 组件内联 | 裸写组件=Default；`template_value(实例)`=覆盖注入；要求组件 `Clone+Default+Unpin` |
+| `EventReader`/`EventWriter`/`App::add_event` | 删除 | 0.19 只留 `MessageReader`/`MessageWriter`/observer（`commands.trigger` + `On<T>`） |
+| `ChildOf::get()` | `ChildOf::parent()` | 关系组件方法改名 |
+| `Time::delta_seconds()` | `Time::delta_secs()` | 方法改名 |
+| `bevy::utils::HashMap` | `bevy::platform::collections::HashMap` | HashMap 从 platform 导出 |
 | `RenderApp` | 不变 | `app.sub_app_mut(RenderApp)` 仍可用 |
 | `ExtractResource` | 不变 | 但 `Resource` 现在是 `Component` 的 subtrait |
 | `RenderStartup` | 新 | render world 一次性初始化 |

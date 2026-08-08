@@ -167,7 +167,26 @@ bevy_scene   →  bevy::scene（新 crate，BSN）
 
 ## 项目适用性
 
-`atom_terrain` 目前使用 `atom_pqef` 等 crate 的 Bundle + spawn 模式。后续对 UI 或复杂实体场景可考虑 BSN。
+`atom_ability` 已全面迁移到 BSN（issue #7）：删除全部 `#[derive(Bundle)]` 结构体与 `BundleTrait` 体系。
+
+**已验证模式**：
+
+1. **模板函数**：`XxxBundle::new(data)` → `fn spawn_xxx(data) -> impl Scene { bsn!{...} }`
+   （`ability/bundle.rs::spawn_ability`、`buff/bundle.rs::spawn_buff`）。
+2. **组件注入三选一**：
+   - 裸写组件名（`Ability`）→ `Default::default()`（要求 `Clone + Default + Unpin` blanket `FromTemplate`）
+   - `template_value(实例)` → 完整覆盖注入（数据行/容器等运行时构造值）
+   - 泛型组件受阻时退回 `commands.spawn((tuple))` 组件组
+3. **`Commands::spawn_scene(scene) -> EntityCommands`**（`CommandsSceneExt`）——链式 `.set_parent_in_place()`。
+4. **`Box<dyn Reflect>` 反射调度**（grant_effect 节点）：`#[reflect_trait]` 宏生成 `ReflectXxxTrait`，
+   `AppTypeRegistry::get_type_data::<ReflectXxxTrait>(type_id)` + `.get(&dyn Reflect)` 还原 trait 对象。
+5. **`Box<dyn Reflect>` 作为 enum variant 字段**：Bevy 0.19 不支持原生反射（issue #3392 未关闭）——
+   `#[reflect(ignore)]` 去 `PartialReflect` bound + `#[reflect(ignore, default = "fn")]` 提供零参构造哨兵
+   （`FromReflect` 派生对 ignored 字段仍生成 `Default::default()`，`enum_utility.rs:107`）；
+   手写 `Clone`/`PartialEq`（`reflect_clone`/`reflect_partial_eq` 语义）。
+6. **effect 模块接入**（Q5/Q6）：`EffectNodeEffectEntry`（start/ready/abort/end 输出 exec 口）
+   作 effect 图入口；激活/到时分别 trigger `EffectGraphExecEvent`（start exec / end exec）；
+   旧 `EffectGraphMap` 资源删除，改由 `EffectGraphOwner + Children` 关系定位图实例。
 
 ## 参考
 
