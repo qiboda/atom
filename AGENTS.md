@@ -15,6 +15,23 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.opencode/kb/bevy/migrati
 | `.githooks/` | **git hooks**（commit-msg: ref #N 强制；pre-commit: fmt/check/doc/bevy_lint；pre-push: 全门禁 + ref #N 验证） |
 | `.github/` | **CI**（ci.yml：fmt/clippy/doc/nextest 门禁） |
 
+## 全局 skills 强制加载
+
+AGENTS.md 引用的全局 skills（`~/.config/opencode/skills/`）在对应场景**强制加载**（`skill` 工具），
+不依赖 opencode 自动注入。清单与触发场景：
+
+| Skill | 强制加载场景 |
+|---|---|
+| `skwy-workflow` | 任何 feature/bugfix 工作开始前（预实现门禁 + 实现后审查 + issue 收尾） |
+| `grill-me` | 重大决策（架构变更/库选型/数据流变更/2+ 模块改造/范围模糊）动工前 |
+| `skwy-github-workflow` | 创建/管理 GitHub issue（单 issue + epic 分解 + 批次关闭） |
+| `skwy-requirement-test` | 实现前门禁 TESTS 阶段（RED 失败测试编写） |
+| `skwy-adversarial-test` | 实现前门禁第 3.5 步（对抗性测试 RED） |
+| `skwy-worktree` | worktree 创建/启动/关闭（`.worktrees/` 管理） |
+| `skwy-git-workflow` | 任何 commit/push 前（提交纪律 + push 门槛） |
+| `skwy-reflect` | push 前实施后反思 |
+| `subagent-compile` | 委派 subagent 时（编译权限分级约定写入任务 prompt） |
+
 ## Issue 驱动开发（强制）
 
 **每个 commit 必须引用 GitHub issue：`ref #N`。** 无例外——包括 chores、docs、scripts。

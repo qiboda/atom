@@ -5,6 +5,9 @@ tools/luban
 tools/tracy
 tools/Multi-Channel-Image-Tool
 
+# Terrain smoke-test screenshots
+screenshots/
+
 # AI tooling
 .omo/*
 !.omo/plans/
