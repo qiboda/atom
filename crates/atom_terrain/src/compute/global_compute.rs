@@ -760,3 +760,286 @@ fn build_global_mesh(
     mesh.insert_indices(bevy::mesh::Indices::U32(tri_indices));
     Some(mesh)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_approx(a: f32, b: f32) {
+        assert!(
+            (a - b).abs() < 1e-4,
+            "expected {a} ≈ {b} but diff = {}",
+            (a - b).abs()
+        );
+    }
+
+    fn v(position: [f32; 3], normal: [f32; 3]) -> TerrainChunkVertex {
+        TerrainChunkVertex {
+            position,
+            normal,
+            ..Default::default()
+        }
+    }
+
+    /// 构造 5³ 的 vertex 槽位 buffer，并在给定 slots 放置有效顶点。
+    fn vertex_buf_gs5(valid: &[(usize, [f32; 3])]) -> Vec<TerrainChunkVertex> {
+        let mut buf = vec![TerrainChunkVertex::default(); 125];
+        for &(i, pos) in valid {
+            buf[i] = v(pos, [0.0, 1.0, 0.0]);
+        }
+        buf
+    }
+
+    fn mesh_positions(mesh: &Mesh) -> Vec<[f32; 3]> {
+        mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+            .expect("positions attr")
+            .as_float3()
+            .expect("float3")
+            .to_vec()
+    }
+
+    fn mesh_normals(mesh: &Mesh) -> Vec<[f32; 3]> {
+        mesh.attribute(Mesh::ATTRIBUTE_NORMAL)
+            .expect("normal attr")
+            .as_float3()
+            .expect("float3")
+            .to_vec()
+    }
+
+    fn mesh_indices(mesh: &Mesh) -> Vec<u32> {
+        match mesh.indices().expect("indices") {
+            bevy::mesh::Indices::U32(v) => v.clone(),
+            bevy::mesh::Indices::U16(v) => v.iter().map(|&x| x as u32).collect(),
+        }
+    }
+
+    // ── GlobalUniformsGpu ──
+
+    #[test]
+    fn global_uniforms_new_packs_fields() {
+        let u = GlobalUniformsGpu::new(Vec3::new(10.0, -20.0, 30.0), 0.5, 50);
+        assert_eq!(u.grid_min, [10.0, -20.0, 30.0]);
+        assert_eq!(u.pad0, 0);
+        assert_approx(u.voxel_size, 0.5);
+        assert_eq!(u.grid_size, 50);
+        assert_eq!(u.pad1, [0; 2]);
+        assert_eq!(u.neighbor_mask, 0);
+        assert_eq!(u.pad_neighbor, 0);
+        assert_eq!(u.seed, 42);
+        assert_eq!(u.pad2, 0);
+    }
+
+    #[test]
+    fn global_uniforms_layout_48_bytes() {
+        assert_eq!(std::mem::size_of::<GlobalUniformsGpu>(), 48);
+        let u = GlobalUniformsGpu::new(Vec3::new(1.0, 2.0, 3.0), 0.25, 64);
+        let bytes = bytemuck::bytes_of(&u);
+        // grid_min: 3×f32 @ 0
+        assert_eq!(f32::from_le_bytes(bytes[0..4].try_into().expect("b0")), 1.0);
+        assert_eq!(f32::from_le_bytes(bytes[4..8].try_into().expect("b4")), 2.0);
+        assert_eq!(
+            f32::from_le_bytes(bytes[8..12].try_into().expect("b8")),
+            3.0
+        );
+        // pad0 @ 12 → 0
+        assert_eq!(
+            u32::from_le_bytes(bytes[12..16].try_into().expect("b12")),
+            0
+        );
+        // voxel_size @ 16, grid_size @ 20
+        assert_eq!(
+            f32::from_le_bytes(bytes[16..20].try_into().expect("b16")),
+            0.25
+        );
+        assert_eq!(
+            u32::from_le_bytes(bytes[20..24].try_into().expect("b20")),
+            64
+        );
+        // seed @ 40
+        assert_eq!(
+            u32::from_le_bytes(bytes[40..44].try_into().expect("b40")),
+            42
+        );
+    }
+
+    // ── build_global_mesh: compact path (voxel_alloc = Some) ──
+
+    #[test]
+    fn compact_path_builds_valid_mesh() {
+        let verts = vertex_buf_gs5(&[
+            (0, [1.0, 0.0, 0.0]),
+            (1, [1.0, 1.0, 0.0]),
+            (2, [2.0, 0.0, 0.0]),
+            (3, [2.0, 1.0, 0.0]),
+        ]);
+        let indices = [0u32, 1, 2, 0, 2, 3];
+        let mesh = build_global_mesh(&verts, &indices, 125, 6, Some(&[]), Vec3::ZERO, 1.0)
+            .expect("compact path should produce a mesh");
+        assert_eq!(mesh.count_vertices(), 4);
+        assert_eq!(mesh_indices(&mesh), indices);
+        assert_eq!(mesh_positions(&mesh)[0], [1.0, 0.0, 0.0]);
+        assert_eq!(mesh_normals(&mesh)[0], [0.0, 1.0, 0.0]);
+    }
+
+    #[test]
+    fn compact_path_clamps_out_of_bounds_vertices() {
+        // grid_max = (5+1)*1.0 = 6；顶点超出 [0,6] 立方体被 clamp
+        let verts = vertex_buf_gs5(&[(0, [50.0, -3.0, 0.0]), (1, [1.0, 1.0, 0.0])]);
+        let indices = [0u32, 1, 0];
+        let mesh = build_global_mesh(&verts, &indices, 125, 3, Some(&[]), Vec3::ZERO, 1.0)
+            .expect("mesh with clamped vertex");
+        let pos = mesh_positions(&mesh);
+        assert!(
+            pos.contains(&[6.0, 0.0, 0.0]),
+            "out-of-bounds vertex clamped: {pos:?}"
+        );
+    }
+
+    #[test]
+    fn compact_path_no_valid_vertices_returns_none() {
+        let verts = vec![TerrainChunkVertex::default(); 125];
+        assert!(build_global_mesh(&verts, &[], 125, 0, Some(&[]), Vec3::ZERO, 1.0).is_none());
+    }
+
+    #[test]
+    fn compact_path_all_indices_invalid_returns_none() {
+        let verts = vertex_buf_gs5(&[(0, [1.0, 0.0, 0.0])]);
+        // 索引全部 >= 有效顶点数(1) → 被过滤 → idx 空 → None
+        let indices = [10u32, 11, 12, 13, 14, 15];
+        assert!(build_global_mesh(&verts, &indices, 125, 6, Some(&[]), Vec3::ZERO, 1.0).is_none());
+    }
+
+    #[test]
+    fn compact_path_filters_invalid_indices() {
+        let verts = vertex_buf_gs5(&[
+            (0, [1.0, 0.0, 0.0]),
+            (1, [1.0, 1.0, 0.0]),
+            (2, [2.0, 0.0, 0.0]),
+        ]);
+        let indices = [0u32, 1, 2, 99, 98, 97];
+        let mesh = build_global_mesh(&verts, &indices, 125, 6, Some(&[]), Vec3::ZERO, 1.0)
+            .expect("valid prefix survives");
+        assert_eq!(mesh.count_vertices(), 3);
+        assert_eq!(mesh_indices(&mesh), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn compact_path_vertex_count_limits_scan() {
+        // vertex_count=2 → 只扫描前 2 个槽位，第 3 个顶点被忽略
+        let verts = vertex_buf_gs5(&[
+            (0, [1.0, 0.0, 0.0]),
+            (1, [1.0, 1.0, 0.0]),
+            (2, [2.0, 0.0, 0.0]),
+        ]);
+        let indices = [0u32, 1, 2];
+        let mesh = build_global_mesh(&verts, &indices, 2, 3, Some(&[]), Vec3::ZERO, 1.0)
+            .expect("mesh from first two slots");
+        assert_eq!(mesh.count_vertices(), 2);
+    }
+
+    // ── build_global_mesh: fallback path (voxel_alloc = None) ──
+
+    fn fallback_index_buf() -> Vec<u32> {
+        vec![0; 27 * 72] // gs=5 → vc=3 → 27 inner voxels × 72
+    }
+
+    #[test]
+    fn fallback_path_builds_valid_mesh() {
+        let verts = vertex_buf_gs5(&[
+            (0, [1.0, 0.0, 0.0]),
+            (1, [1.0, 1.0, 0.0]),
+            (2, [2.0, 0.0, 0.0]),
+        ]);
+        let mut indices = fallback_index_buf();
+        // inner voxel (0,0,0) → inner_idx 0 → base 0；两个非退化三角形
+        indices[0..6].copy_from_slice(&[0, 1, 2, 0, 2, 1]);
+        let mesh = build_global_mesh(&verts, &indices, 125, 0, None, Vec3::ZERO, 1.0)
+            .expect("fallback path should produce a mesh");
+        assert_eq!(mesh.count_vertices(), 3);
+        assert_eq!(mesh_indices(&mesh), vec![0, 1, 2, 0, 2, 1]);
+    }
+
+    #[test]
+    fn fallback_path_scans_all_remap_slots() {
+        // 顶点放在高位槽位（非 voxel0 引用的常规位置），remap 表扫描所有 total_slots
+        let verts = vertex_buf_gs5(&[
+            (100, [1.0, 0.0, 0.0]),
+            (101, [1.0, 1.0, 0.0]),
+            (102, [2.0, 0.0, 0.0]),
+        ]);
+        let mut indices = fallback_index_buf();
+        indices[0..6].copy_from_slice(&[100, 101, 102, 100, 102, 101]);
+        let mesh = build_global_mesh(&verts, &indices, 125, 0, None, Vec3::ZERO, 1.0)
+            .expect("high slots are remapped");
+        assert_eq!(mesh.count_vertices(), 3);
+        assert_eq!(mesh_indices(&mesh), vec![0, 1, 2, 0, 2, 1]);
+    }
+
+    #[test]
+    fn fallback_path_no_valid_vertices_returns_none() {
+        let verts = vec![TerrainChunkVertex::default(); 125];
+        assert!(
+            build_global_mesh(&verts, &fallback_index_buf(), 0, 0, None, Vec3::ZERO, 1.0).is_none()
+        );
+    }
+
+    #[test]
+    fn fallback_path_degenerate_triangles_skipped() {
+        // 只有一个有效顶点 → 所有三角形退化 → idx 空 → None
+        let verts = vertex_buf_gs5(&[(0, [1.0, 0.0, 0.0])]);
+        let mut indices = fallback_index_buf();
+        indices[0..6].copy_from_slice(&[0, 0, 0, 0, 0, 0]);
+        assert!(build_global_mesh(&verts, &indices, 125, 0, None, Vec3::ZERO, 1.0).is_none());
+    }
+
+    #[test]
+    fn fallback_path_partial_degenerate_keeps_valid() {
+        let verts = vertex_buf_gs5(&[
+            (0, [1.0, 0.0, 0.0]),
+            (1, [1.0, 1.0, 0.0]),
+            (2, [2.0, 0.0, 0.0]),
+        ]);
+        let mut indices = fallback_index_buf();
+        // 第一个三角形非退化，第二个三角形 (0,0,1) 退化 → 只保留第一个
+        indices[0..6].copy_from_slice(&[0, 1, 2, 0, 0, 1]);
+        let mesh = build_global_mesh(&verts, &indices, 125, 0, None, Vec3::ZERO, 1.0)
+            .expect("valid triangle kept");
+        assert_eq!(mesh_indices(&mesh), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn fallback_path_short_index_buffer_breaks_early() {
+        let verts = vertex_buf_gs5(&[
+            (0, [1.0, 0.0, 0.0]),
+            (1, [1.0, 1.0, 0.0]),
+            (2, [2.0, 0.0, 0.0]),
+        ]);
+        // 索引 buffer 不够 72 个 → 直接 break → 无三角形 → None
+        let short = vec![0u32; 40];
+        assert!(build_global_mesh(&verts, &short, 125, 0, None, Vec3::ZERO, 1.0).is_none());
+    }
+
+    #[test]
+    fn fallback_path_clamps_vertices() {
+        let verts = vertex_buf_gs5(&[(0, [50.0, -3.0, 0.0])]);
+        let mut indices = fallback_index_buf();
+        indices[0..6].copy_from_slice(&[0, 0, 0, 0, 0, 0]);
+        // 即使三角形退化，也先验证 clamp 路径执行（顶点被 clamp 后 remap）
+        let _ = build_global_mesh(&verts, &indices, 125, 0, None, Vec3::ZERO, 1.0);
+    }
+
+    #[test]
+    fn fallback_path_small_grid_vc_1() {
+        // gs=3 → vc=1 → 单个 inner voxel
+        let mut verts = vec![TerrainChunkVertex::default(); 27];
+        verts[0] = v([0.5, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        verts[1] = v([0.5, 0.5, 0.0], [0.0, 1.0, 0.0]);
+        verts[2] = v([0.6, 0.0, 0.5], [0.0, 1.0, 0.0]);
+        let mut indices = vec![0u32; 72];
+        indices[0..6].copy_from_slice(&[0, 1, 2, 0, 2, 1]);
+        let mesh = build_global_mesh(&verts, &indices, 27, 0, None, Vec3::ZERO, 0.5)
+            .expect("single voxel mesh");
+        assert_eq!(mesh.count_vertices(), 3);
+        assert_eq!(mesh_indices(&mesh), vec![0, 1, 2, 0, 2, 1]);
+    }
+}

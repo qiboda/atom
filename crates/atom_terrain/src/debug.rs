@@ -79,3 +79,121 @@ pub fn draw_debug_gizmos(mut gizmos: Gizmos, config: Res<TerrainDebugConfig>) {
         ); // Z blue
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::{MinimalPlugins, input::ButtonInput};
+
+    fn toggle_app() -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<TerrainDebugConfig>();
+        app.init_resource::<ButtonInput<KeyCode>>();
+        app.add_systems(Update, debug_keyboard_toggle);
+        app
+    }
+
+    #[test]
+    fn default_config() {
+        let c = TerrainDebugConfig::default();
+        assert!(!c.wireframe);
+        assert!(c.double_sided);
+        assert!(!c.show_chunk_bounds);
+        assert!(c.show_world_axes);
+    }
+
+    #[test]
+    fn f1_toggles_wireframe() {
+        let mut app = toggle_app();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::F1);
+        app.update();
+        assert!(app.world().resource::<TerrainDebugConfig>().wireframe);
+
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .reset_all();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::F1);
+        app.update();
+        assert!(!app.world().resource::<TerrainDebugConfig>().wireframe);
+    }
+
+    #[test]
+    fn f2_toggles_double_sided() {
+        let mut app = toggle_app();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::F2);
+        app.update();
+        assert!(!app.world().resource::<TerrainDebugConfig>().double_sided);
+    }
+
+    #[test]
+    fn f3_toggles_chunk_bounds() {
+        let mut app = toggle_app();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::F3);
+        app.update();
+        assert!(
+            app.world()
+                .resource::<TerrainDebugConfig>()
+                .show_chunk_bounds
+        );
+    }
+
+    #[test]
+    fn f4_toggles_world_axes() {
+        let mut app = toggle_app();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::F4);
+        app.update();
+        assert!(!app.world().resource::<TerrainDebugConfig>().show_world_axes);
+    }
+
+    #[test]
+    fn pressing_other_keys_leaves_config_unchanged() {
+        let mut app = toggle_app();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Space);
+        app.update();
+        let c = app.world().resource::<TerrainDebugConfig>();
+        assert!(!c.wireframe);
+        assert!(c.double_sided);
+        assert!(!c.show_chunk_bounds);
+        assert!(c.show_world_axes);
+    }
+
+    // ── draw_debug_gizmos ──
+
+    fn gizmo_app(show_world_axes: bool) -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(TerrainDebugConfig {
+            show_world_axes,
+            ..Default::default()
+        });
+        app.init_gizmo_group::<bevy::gizmos::config::DefaultGizmoConfigGroup>();
+        app.init_resource::<Assets<bevy::gizmos::GizmoAsset>>();
+        app.add_systems(Update, draw_debug_gizmos);
+        app
+    }
+
+    #[test]
+    fn draw_debug_gizmos_lines_with_axes_enabled() {
+        let mut app = gizmo_app(true);
+        app.update();
+    }
+
+    #[test]
+    fn draw_debug_gizmos_noop_when_axes_disabled() {
+        let mut app = gizmo_app(false);
+        app.update();
+    }
+}

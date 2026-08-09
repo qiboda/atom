@@ -48,3 +48,126 @@ pub fn top_down_camera_follow(
         cam_transform.look_at(player_pos, Vec3::Z);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::time::Time;
+
+    fn assert_approx(a: f32, b: f32) {
+        assert!(
+            (a - b).abs() < 1e-4,
+            "expected {a} ≈ {b} but diff = {}",
+            (a - b).abs()
+        );
+    }
+
+    fn camera_app() -> App {
+        let mut app = App::new();
+        app.init_resource::<Time>();
+        app.add_systems(Update, top_down_camera_follow);
+        app
+    }
+
+    #[test]
+    fn top_down_camera_default() {
+        let c = TopDownCamera::default();
+        assert_eq!(c.height, 10.0);
+        assert_eq!(c.smoothness, 5.0);
+    }
+
+    #[test]
+    fn follows_player_from_above_with_full_lerp() {
+        let mut app = camera_app();
+
+        // 玩家 + 相机（均带 Transform）
+        app.world_mut().spawn((
+            Player,
+            Transform::from_translation(Vec3::new(10.0, 0.0, 20.0)),
+        ));
+        let cam = app
+            .world_mut()
+            .spawn((
+                Camera3d::default(),
+                Transform::from_xyz(0.0, 0.0, 0.0),
+                TopDownCamera {
+                    height: 10.0,
+                    smoothness: 5.0,
+                },
+            ))
+            .id();
+
+        // smoothness * dt = 5.0 * 1.0 → min(.,1) = 1 → 完全跟随
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(std::time::Duration::from_secs_f64(1.0));
+        app.update();
+
+        let t = app
+            .world()
+            .entity(cam)
+            .get::<Transform>()
+            .expect("有 Transform");
+        assert_approx(t.translation.x, 10.0);
+        assert_approx(t.translation.y, 10.0);
+        assert_approx(t.translation.z, 20.0);
+    }
+
+    #[test]
+    fn no_player_leaves_camera_unchanged() {
+        let mut app = camera_app();
+
+        let cam = app
+            .world_mut()
+            .spawn((
+                Camera3d::default(),
+                Transform::from_xyz(1.0, 2.0, 3.0),
+                TopDownCamera::default(),
+            ))
+            .id();
+
+        app.update();
+
+        let t = app
+            .world()
+            .entity(cam)
+            .get::<Transform>()
+            .expect("有 Transform");
+        assert_eq!(t.translation, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn small_dt_lerps_partially() {
+        let mut app = camera_app();
+
+        app.world_mut().spawn((
+            Player,
+            Transform::from_translation(Vec3::new(10.0, 0.0, 0.0)),
+        ));
+        let cam = app
+            .world_mut()
+            .spawn((
+                Camera3d::default(),
+                Transform::from_xyz(0.0, 0.0, 0.0),
+                TopDownCamera {
+                    height: 10.0,
+                    smoothness: 1.0,
+                },
+            ))
+            .id();
+
+        // factor = 1.0 * 0.5 = 0.5 → 半程
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(std::time::Duration::from_secs_f64(0.5));
+        app.update();
+
+        let t = app
+            .world()
+            .entity(cam)
+            .get::<Transform>()
+            .expect("有 Transform");
+        assert_approx(t.translation.x, 5.0);
+        assert_approx(t.translation.y, 5.0);
+    }
+}
