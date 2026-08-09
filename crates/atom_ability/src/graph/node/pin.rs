@@ -218,6 +218,8 @@ macro_rules! impl_effect_node_pin_group {
 #[allow(dead_code)]
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     struct EffectNodeInput;
 
     impl_effect_node_pin_group!(EffectNodeInput, input => (
@@ -253,4 +255,75 @@ mod tests {
     struct EffectNodeNone;
 
     impl_effect_node_pin_group!(EffectNodeNone);
+
+    #[test]
+    fn input_pin_group_query_by_name() {
+        let node = EffectNodeInput;
+        assert_eq!(node.get_input_pin_group_num(), 1);
+
+        let group = node
+            .get_input_pin_group_by_name("exec")
+            .expect("exec 输入组应存在");
+        assert_eq!(group.exec.name, "exec");
+        assert_eq!(group.slots.len(), 2);
+
+        let start = node
+            .get_input_slot_pin_by_name("start")
+            .expect("start 槽应存在");
+        assert_eq!(start.pin_type, TypeId::of::<i32>());
+
+        let duration = node
+            .get_input_slot_pin_by_name("duration")
+            .expect("duration 槽应存在");
+        assert_eq!(duration.pin_type, TypeId::of::<f32>());
+    }
+
+    #[test]
+    fn output_pin_group_query_by_name() {
+        let node = EffectNodeOutput;
+        assert_eq!(node.get_output_pin_group_num(), 1);
+
+        let group = node
+            .get_output_pin_group_by_name("exec")
+            .expect("exec 输出组应存在");
+        assert_eq!(group.exec.name, "exec");
+        assert_eq!(group.slots.len(), 2);
+
+        let start = node
+            .get_output_slot_pin_by_name("start")
+            .expect("start 槽应存在");
+        assert_eq!(start.pin_type, TypeId::of::<i32>());
+    }
+
+    #[test]
+    fn pin_group_missing_queries_return_none() {
+        let node = EffectNodeInput;
+        assert_eq!(node.get_input_exec_pin_by_name("missing"), None);
+        assert_eq!(node.get_input_slot_pin_by_name("missing"), None);
+        assert!(node.get_input_pin_group_by_name("missing").is_none());
+        assert_eq!(node.get_output_exec_pin_by_name("missing"), None);
+        assert_eq!(node.get_output_slot_pin_by_name("missing"), None);
+        assert!(node.get_output_pin_group_by_name("missing").is_none());
+    }
+
+    #[test]
+    fn empty_pin_group_declarations() {
+        let node = EffectNodeNone;
+        assert_eq!(node.get_input_pin_group_num(), 0);
+        assert_eq!(node.get_output_pin_group_num(), 0);
+
+        let node = EffectNodeInputNone;
+        assert_eq!(node.get_input_pin_group_num(), 1);
+        let group = node.get_input_pin_group().first().expect("应有一个输入组");
+        assert!(group.slots.is_empty(), "无槽声明时 slots 应为空");
+    }
+
+    #[test]
+    fn input_exec_pin_group_equality() {
+        let node = EffectNodeInput;
+        let exec = node
+            .get_input_exec_pin_by_name("exec")
+            .expect("exec 执行口应存在");
+        assert_eq!(exec, &EffectNodeExec { name: "exec" });
+    }
 }

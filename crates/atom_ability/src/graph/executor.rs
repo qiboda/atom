@@ -132,3 +132,282 @@ fn execute_graph(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::node::pin::EffectNodeExec;
+    use crate::graph::node::{InstantEffectNode, implement::seq::EffectNodeSeq};
+    use std::sync::{Arc, Mutex};
+    use uuid::Uuid;
+
+    /// 记录型即时节点：记录 push_execute_chain 的输入执行口名与 execute 调用次数。
+    struct RecordingNode {
+        uuid: Uuid,
+        pushed: Arc<Mutex<Vec<&'static str>>>,
+        executed: Arc<Mutex<usize>>,
+    }
+
+    impl InstantEffectNode for RecordingNode {
+        fn get_uuid(&self) -> Uuid {
+            self.uuid
+        }
+
+        fn push_execute_chain(
+            &self,
+            _context: &EffectGraphContext,
+            _executor: &mut EffectGraphExecutor,
+            input_exec_pin: EffectNodeExec,
+            _instant_nodes: &Res<InstantEffectNodeMap>,
+        ) {
+            self.pushed
+                .lock()
+                .expect("锁被占用")
+                .push(input_exec_pin.name);
+        }
+
+        fn collect(&self, _context: &mut EffectGraphContext) {}
+
+        fn execute(&self, _context: &mut EffectGraphContext) {
+            *self.executed.lock().expect("锁被占用") += 1;
+        }
+    }
+
+    fn exec_pin(node_id: EffectNodeId, name: &'static str) -> EffectNodeExecPin {
+        EffectNodeExecPin {
+            node_id,
+            exec: EffectNodeExec { name },
+        }
+    }
+
+    /// 注册记录节点到即时节点表，返回观测句柄。
+    fn register_recording_node(
+        app: &mut App,
+        uuid: Uuid,
+    ) -> (Arc<Mutex<Vec<&'static str>>>, Arc<Mutex<usize>>) {
+        let pushed = Arc::new(Mutex::new(Vec::<&'static str>::new()));
+        let executed = Arc::new(Mutex::new(0usize));
+        let node: Arc<dyn InstantEffectNode> = Arc::new(RecordingNode {
+            uuid,
+            pushed: pushed.clone(),
+            executed: executed.clone(),
+        });
+        app.world_mut()
+            .resource_mut::<InstantEffectNodeMap>()
+            .insert(uuid, node);
+        (pushed, executed)
+    }
+
+    /// 以 seed 系统调用 executor 方法，确保在 execute_graph 之前运行。
+    fn seed_start_push(app: &mut App, graph: Entity, pin: EffectNodeExecPin) {
+        app.add_systems(
+            Update,
+            (move |mut q: Query<(&mut EffectGraphExecutor, &EffectGraphContext)>,
+                   instant: Res<InstantEffectNodeMap>| {
+                let (mut executor, context) = q.get_mut(graph).expect("图实体必须有执行器与上下文");
+                executor.start_push_output_pin(pin, context, &instant);
+            })
+            .before(execute_graph),
+        );
+    }
+
+    #[test]
+    fn start_push_output_pin_without_connection_just_queues() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, EffectGraphExecutorPlugin));
+        app.insert_resource(InstantEffectNodeMap::default());
+
+        let graph = app
+            .world_mut()
+            .spawn((EffectGraphContext::new(), EffectGraphExecutor::default()))
+            .id();
+        seed_start_push(
+            &mut app,
+            graph,
+            exec_pin(Entity::from_bits(1).into(), "start"),
+        );
+
+        app.update();
+
+        // 无连接：execute_graph 消费空队列后不产生事件，执行器保持存在。
+        assert!(
+            app.world().get_entity(graph).is_ok(),
+            "无连接时图实体不受影响"
+        );
+    }
+
+    #[test]
+    fn execute_graph_triggers_entity_node_event() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, EffectGraphExecutorPlugin));
+        app.insert_resource(InstantEffectNodeMap::default());
+
+        let world = app.world_mut();
+        let node_a = world.spawn_empty().id();
+        let node_b = world.spawn_empty().id();
+        let mut context = EffectGraphContext::new();
+        context.add_exec_connection(
+            exec_pin(node_a.into(), "start"),
+            &[exec_pin(node_b.into(), "run")],
+        );
+        let graph = world.spawn((context, EffectGraphExecutor::default())).id();
+        seed_start_push(&mut app, graph, exec_pin(node_a.into(), "start"));
+
+        let received = Arc::new(Mutex::new(Vec::<EffectNodeExecPin>::new()));
+        let received_obs = received.clone();
+        app.add_observer(move |trigger: On<EffectNodeExecEvent>| {
+            received_obs
+                .lock()
+                .expect("锁被占用")
+                .push(trigger.event().input_exec_pin);
+        });
+
+        app.update();
+
+        let events = received.lock().expect("锁被占用");
+        assert_eq!(
+            events.as_slice(),
+            &[exec_pin(node_b.into(), "run")],
+            "execute_graph 必须为实体节点触发 EffectNodeExecEvent"
+        );
+    }
+
+    #[test]
+    fn continue_push_next_node_output_pin_calls_instant_node() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, EffectGraphExecutorPlugin));
+        app.insert_resource(InstantEffectNodeMap::default());
+
+        let source_uuid = Uuid::new_v4();
+        let (pushed, executed) = register_recording_node(&mut app, source_uuid);
+
+        let world = app.world_mut();
+        let mut context = EffectGraphContext::new();
+        context.add_exec_connection(
+            exec_pin(Entity::from_bits(1).into(), "start"),
+            &[exec_pin(source_uuid.into(), "trigger")],
+        );
+        let graph = world.spawn((context, EffectGraphExecutor::default())).id();
+        seed_start_push(
+            &mut app,
+            graph,
+            exec_pin(Entity::from_bits(1).into(), "start"),
+        );
+
+        app.update();
+
+        assert_eq!(
+            pushed.lock().expect("锁被占用").as_slice(),
+            &["trigger"],
+            "即时节点的 push_execute_chain 必须收到后续执行口"
+        );
+        assert_eq!(
+            *executed.lock().expect("锁被占用"),
+            1,
+            "execute_graph 必须执行即时节点"
+        );
+    }
+
+    #[test]
+    fn continue_push_next_node_output_pin_from_node_name_delegates() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(InstantEffectNodeMap::default());
+
+        let seq_uuid = Uuid::new_v4();
+        let (pushed, _executed) = register_recording_node(&mut app, seq_uuid);
+
+        let world = app.world_mut();
+        let mut context = EffectGraphContext::new();
+        context.add_exec_connection(
+            exec_pin(seq_uuid.into(), "finish_1"),
+            &[exec_pin(seq_uuid.into(), "next")],
+        );
+        let graph = world.spawn((context, EffectGraphExecutor::default())).id();
+
+        let seq = EffectNodeSeq::new();
+        let pin = exec_pin(seq_uuid.into(), "finish_1");
+        let seq_id = pin.node_id;
+        app.add_systems(
+            Update,
+            (move |mut q: Query<&mut EffectGraphExecutor>,
+                   ctx_q: Query<&EffectGraphContext>,
+                   instant: Res<InstantEffectNodeMap>| {
+                let mut executor = q.get_mut(graph).expect("图实体必须有执行器");
+                let context = ctx_q.get(graph).expect("图实体必须有上下文");
+                executor.continue_push_next_node_output_pin_from_node_name(
+                    seq_id, &seq, "finish_1", context, &instant,
+                );
+            })
+            .before(execute_graph),
+        );
+
+        app.update();
+
+        assert_eq!(
+            pushed.lock().expect("锁被占用").as_slice(),
+            &["next"],
+            "按名称推进必须沿 finish_1 连接触发目标即时节点"
+        );
+    }
+
+    #[test]
+    fn continue_push_from_node_name_with_missing_name_is_noop() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(InstantEffectNodeMap::default());
+
+        let seq_uuid = Uuid::new_v4();
+        let (pushed, _executed) = register_recording_node(&mut app, seq_uuid);
+
+        let world = app.world_mut();
+        let context = EffectGraphContext::new();
+        let graph = world.spawn((context, EffectGraphExecutor::default())).id();
+
+        let seq = EffectNodeSeq::new();
+        app.add_systems(
+            Update,
+            (move |mut q: Query<&mut EffectGraphExecutor>,
+                   ctx_q: Query<&EffectGraphContext>,
+                   instant: Res<InstantEffectNodeMap>| {
+                let mut executor = q.get_mut(graph).expect("图实体必须有执行器");
+                let context = ctx_q.get(graph).expect("图实体必须有上下文");
+                executor.continue_push_next_node_output_pin_from_node_name(
+                    seq_uuid.into(),
+                    &seq,
+                    "nonexistent",
+                    context,
+                    &instant,
+                );
+            })
+            .before(execute_graph),
+        );
+
+        app.update();
+
+        assert!(
+            pushed.lock().expect("锁被占用").is_empty(),
+            "不存在的输出执行口名不得触发任何推进"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "left != right")]
+    fn execute_graph_asserts_entity_is_not_placeholder() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, EffectGraphExecutorPlugin));
+        app.insert_resource(InstantEffectNodeMap::default());
+
+        let world = app.world_mut();
+        let node_a = world.spawn_empty().id();
+        let mut context = EffectGraphContext::new();
+        context.add_exec_connection(
+            exec_pin(node_a.into(), "start"),
+            &[exec_pin(Entity::PLACEHOLDER.into(), "run")],
+        );
+        let graph = world.spawn((context, EffectGraphExecutor::default())).id();
+        seed_start_push(&mut app, graph, exec_pin(node_a.into(), "start"));
+
+        app.update();
+    }
+}

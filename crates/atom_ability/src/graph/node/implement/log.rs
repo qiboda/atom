@@ -101,3 +101,67 @@ impl InstantEffectNode for EffectNodeLog {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::blackboard::EffectValue;
+
+    #[test]
+    fn new_creates_node_with_non_nil_uuid() {
+        let node = EffectNodeLog::new();
+        assert!(!node.get_uuid().is_nil());
+        assert_eq!(node.get_uuid(), node.base.node_id);
+    }
+
+    #[test]
+    fn pin_groups_expose_start_input_with_message_slot() {
+        let node = EffectNodeLog::new();
+
+        assert_eq!(node.get_input_pin_group_num(), 1);
+        assert_eq!(node.get_output_pin_group_num(), 1);
+
+        let message_slot = node
+            .get_input_slot_pin_by_name(EffectNodeLog::INPUT_SLOT_MESSAGE)
+            .expect("message 输入槽应存在");
+        assert_eq!(message_slot.pin_type, std::any::TypeId::of::<String>());
+        assert_eq!(
+            node.get_output_exec_pin_by_name(EffectNodeLog::OUTPUT_EXEC_FINISH)
+                .map(|exec| exec.name),
+            Some(EffectNodeLog::OUTPUT_EXEC_FINISH)
+        );
+    }
+
+    #[test]
+    fn pin_group_queries_missing_names_return_none() {
+        let node = EffectNodeLog::new();
+        assert_eq!(node.get_input_slot_pin_by_name("nonexistent"), None);
+        assert_eq!(node.get_output_exec_pin_by_name("nonexistent"), None);
+    }
+
+    #[test]
+    fn execute_reads_message_input_from_context() {
+        let node = EffectNodeLog::new();
+        let mut context = EffectGraphContext::new();
+        let slot = node
+            .get_input_slot_pin_by_name(EffectNodeLog::INPUT_SLOT_MESSAGE)
+            .expect("message 输入槽应存在");
+        context.insert_input_value(
+            EffectNodeSlotPin {
+                node_id: EffectNodeId::Uuid(node.get_uuid()),
+                slot: *slot,
+            },
+            EffectValue::String("hello world".into()).into(),
+        );
+
+        node.execute(&mut context);
+    }
+
+    #[test]
+    fn execute_without_message_input_does_not_panic() {
+        let node = EffectNodeLog::new();
+        let mut context = EffectGraphContext::new();
+
+        node.execute(&mut context);
+    }
+}

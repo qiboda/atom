@@ -96,3 +96,187 @@ pub fn update_ability_tick_state(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::MinimalPlugins;
+
+    #[test]
+    fn ability_marker_default_constructs() {
+        let _ability: Ability = Ability;
+    }
+
+    #[test]
+    fn ability_execute_state_default_is_inactive() {
+        assert_eq!(
+            AbilityExecuteState::default(),
+            AbilityExecuteState::Inactive
+        );
+        assert_ne!(AbilityExecuteState::Inactive, AbilityExecuteState::Active);
+        assert_ne!(AbilityExecuteState::Active, AbilityExecuteState::ToRemove);
+    }
+
+    #[test]
+    fn ability_tick_state_default_is_ticked() {
+        assert_eq!(AbilityTickState::default(), AbilityTickState::Ticked);
+        assert_ne!(AbilityTickState::Ticked, AbilityTickState::Paused);
+    }
+
+    #[test]
+    fn ability_data_default_constructs() {
+        let data = AbilityData;
+        let _ = data;
+    }
+
+    fn spawn_ability_with_graph_states(app: &mut App, graph_states: &[EffectGraphState]) -> Entity {
+        let world = app.world_mut();
+        let children = graph_states
+            .iter()
+            .map(|state| world.spawn(*state).id())
+            .collect::<Vec<_>>();
+        let mut ability = world.spawn((
+            Ability,
+            AbilityExecuteState::default(),
+            AbilityTickState::default(),
+        ));
+        for child in children {
+            ability.add_child(child);
+        }
+        ability.id()
+    }
+
+    #[test]
+    fn update_ability_state_active_when_any_child_active() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let ability = spawn_ability_with_graph_states(
+            &mut app,
+            &[EffectGraphState::Active, EffectGraphState::Inactive],
+        );
+        app.add_systems(Update, update_ability_state);
+
+        app.update();
+
+        let state = app
+            .world()
+            .entity(ability)
+            .get::<AbilityExecuteState>()
+            .expect("技能执行状态应存在");
+        assert_eq!(*state, AbilityExecuteState::Active);
+    }
+
+    #[test]
+    fn update_ability_state_inactive_when_only_inactive_children() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let ability = spawn_ability_with_graph_states(&mut app, &[EffectGraphState::Inactive]);
+        app.add_systems(Update, update_ability_state);
+
+        app.update();
+
+        let state = app
+            .world()
+            .entity(ability)
+            .get::<AbilityExecuteState>()
+            .expect("技能执行状态应存在");
+        assert_eq!(*state, AbilityExecuteState::Inactive);
+    }
+
+    #[test]
+    fn update_ability_state_to_remove_when_no_matching_children() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let ability = spawn_ability_with_graph_states(&mut app, &[EffectGraphState::ToRemove]);
+        app.add_systems(Update, update_ability_state);
+
+        app.update();
+
+        let state = app
+            .world()
+            .entity(ability)
+            .get::<AbilityExecuteState>()
+            .expect("技能执行状态应存在");
+        assert_eq!(*state, AbilityExecuteState::ToRemove);
+    }
+
+    #[test]
+    fn update_ability_state_skips_children_without_graph_state() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let world = app.world_mut();
+        let plain_child = world.spawn_empty().id();
+        let mut ability = world.spawn((
+            Ability,
+            AbilityExecuteState::default(),
+            AbilityTickState::default(),
+        ));
+        ability.add_child(plain_child);
+        let ability = ability.id();
+        app.add_systems(Update, update_ability_state);
+
+        app.update();
+
+        let state = app
+            .world()
+            .entity(ability)
+            .get::<AbilityExecuteState>()
+            .expect("技能执行状态应存在");
+        assert_eq!(
+            *state,
+            AbilityExecuteState::ToRemove,
+            "无图状态子实体 → 待移除"
+        );
+    }
+
+    #[test]
+    fn update_ability_tick_state_with_ticked_children() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let world = app.world_mut();
+        let child = world.spawn(EffectGraphTickState::Ticked).id();
+        let mut ability = world.spawn((
+            Ability,
+            AbilityExecuteState::default(),
+            AbilityTickState::default(),
+        ));
+        ability.add_child(child);
+        let ability = ability.id();
+        app.add_systems(Update, update_ability_tick_state);
+
+        app.update();
+
+        let state = app
+            .world()
+            .entity(ability)
+            .get::<AbilityTickState>()
+            .expect("技能节流状态应存在");
+        assert_eq!(*state, AbilityTickState::Ticked);
+    }
+
+    #[test]
+    fn update_ability_tick_state_with_paused_children() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let world = app.world_mut();
+        let child = world.spawn(EffectGraphTickState::Paused).id();
+        let mut ability = world.spawn((
+            Ability,
+            AbilityExecuteState::default(),
+            AbilityTickState::default(),
+        ));
+        ability.add_child(child);
+        let ability = ability.id();
+        app.add_systems(Update, update_ability_tick_state);
+
+        app.update();
+
+        let state = app
+            .world()
+            .entity(ability)
+            .get::<AbilityTickState>()
+            .expect("技能节流状态应存在");
+        // 当前实现：any_ticked 初始为 true，Paused 子图不改变结果 → 仍为 Ticked。
+        assert_eq!(*state, AbilityTickState::Ticked);
+    }
+}

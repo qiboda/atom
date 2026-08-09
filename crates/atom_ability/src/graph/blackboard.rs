@@ -572,4 +572,195 @@ mod tests {
         let scalar = EffectValue::I32(42);
         assert_ne!(boxed, scalar, "BoxReflect 与标量变体必须是不同值");
     }
+
+    // ===== Blackboard 容器（EffectBlackboard）=====
+
+    fn blackboard_with(name: &str, value: EffectValue) -> EffectBlackboard {
+        let mut bb = EffectBlackboard::default();
+        bb.blackboard.insert(Name::new(name.to_string()), value);
+        bb
+    }
+
+    #[test]
+    fn blackboard_default_is_empty() {
+        let bb = EffectBlackboard::default();
+        assert!(bb.blackboard.is_empty());
+    }
+
+    #[test]
+    fn blackboard_insert_then_get_roundtrip() {
+        let bb = blackboard_with("hp", EffectValue::I32(10));
+        let value = bb.blackboard.get(&Name::new("hp")).expect("插入后应可读取");
+        assert_eq!(value.get::<&i32>(), Ok(&10));
+    }
+
+    #[test]
+    fn blackboard_overwrite_replaces_previous() {
+        let mut bb = EffectBlackboard::default();
+        bb.blackboard.insert(Name::new("hp"), EffectValue::I32(10));
+        bb.blackboard.insert(Name::new("hp"), EffectValue::I32(99));
+        assert_eq!(
+            bb.blackboard.get(&Name::new("hp")),
+            Some(&EffectValue::I32(99))
+        );
+    }
+
+    #[test]
+    fn blackboard_remove_deletes_entry() {
+        let mut bb = blackboard_with("hp", EffectValue::I32(10));
+        bb.blackboard.remove(&Name::new("hp"));
+        assert!(bb.blackboard.get(&Name::new("hp")).is_none());
+        assert!(bb.blackboard.is_empty());
+    }
+
+    #[test]
+    fn blackboard_missing_key_returns_none() {
+        let bb = EffectBlackboard::default();
+        assert!(bb.blackboard.get(&Name::new("missing")).is_none());
+    }
+
+    #[test]
+    fn blackboard_type_mismatch_errors() {
+        let bb = blackboard_with("hp", EffectValue::I32(10));
+        let value = bb.blackboard.get(&Name::new("hp")).expect("插入后应可读取");
+        let result: Result<&f32, _> = value.get::<&f32>();
+        assert!(result.is_err(), "I32 值按 f32 读取必须报错");
+    }
+
+    // ===== 各变体 TryFrom（不可变 + 可变）全路径 =====
+
+    #[test]
+    fn try_from_all_signed_mut_variants() {
+        let mut v = EffectValue::I8(8);
+        *v.get_mut::<&mut i8>().expect("应可取出 i8 可变引用") = 9;
+        assert_eq!(v.get::<&i8>(), Ok(&9));
+
+        let mut v = EffectValue::I16(16);
+        *v.get_mut::<&mut i16>().expect("应可取出 i16 可变引用") = 17;
+        assert_eq!(v.get::<&i16>(), Ok(&17));
+
+        let mut v = EffectValue::I64(64);
+        *v.get_mut::<&mut i64>().expect("应可取出 i64 可变引用") = 65;
+        assert_eq!(v.get::<&i64>(), Ok(&65));
+    }
+
+    #[test]
+    fn try_from_all_unsigned_mut_variants() {
+        let mut v = EffectValue::U8(1);
+        *v.get_mut::<&mut u8>().expect("应可取出 u8 可变引用") = 2;
+        assert_eq!(v.get::<&u8>(), Ok(&2));
+
+        let mut v = EffectValue::U16(1);
+        *v.get_mut::<&mut u16>().expect("应可取出 u16 可变引用") = 2;
+        assert_eq!(v.get::<&u16>(), Ok(&2));
+
+        let mut v = EffectValue::U32(1);
+        *v.get_mut::<&mut u32>().expect("应可取出 u32 可变引用") = 2;
+        assert_eq!(v.get::<&u32>(), Ok(&2));
+
+        let mut v = EffectValue::U64(1);
+        *v.get_mut::<&mut u64>().expect("应可取出 u64 可变引用") = 2;
+        assert_eq!(v.get::<&u64>(), Ok(&2));
+    }
+
+    #[test]
+    fn try_from_float_mut_variants() {
+        let mut v = EffectValue::F32(1.0);
+        *v.get_mut::<&mut f32>().expect("应可取出 f32 可变引用") = 2.0;
+        assert_eq!(v.get::<&f32>(), Ok(&2.0));
+
+        let mut v = EffectValue::F64(1.0);
+        *v.get_mut::<&mut f64>().expect("应可取出 f64 可变引用") = 2.0;
+        assert_eq!(v.get::<&f64>(), Ok(&2.0));
+    }
+
+    #[test]
+    fn try_from_cow_mut_and_string_owned() {
+        let mut v = EffectValue::String("hello".into());
+        *v.get_mut::<&mut Cow<'static, str>>()
+            .expect("应可取出 Cow 可变引用") = Cow::Owned("world".into());
+        assert_eq!(v.get::<&Cow<'static, str>>(), Ok(&Cow::Borrowed("world")));
+
+        let v = EffectValue::String("owned".into());
+        let owned: Result<String, _> = (&v).try_into();
+        assert_eq!(owned, Ok("owned".to_string()));
+    }
+
+    #[test]
+    fn try_from_vec_entity_get_and_mut() {
+        let e1 = Entity::from_bits(1);
+        let e2 = Entity::from_bits(2);
+        let mut v = EffectValue::VecEntity(vec![e1, e2]);
+
+        assert_eq!(v.get::<&Vec<Entity>>(), Ok(&vec![e1, e2]));
+
+        v.get_mut::<&mut Vec<Entity>>()
+            .expect("应可取出 Vec<Entity> 可变引用")
+            .push(Entity::from_bits(3));
+        assert_eq!(
+            v.get::<&Vec<Entity>>(),
+            Ok(&vec![e1, e2, Entity::from_bits(3)])
+        );
+    }
+
+    #[test]
+    fn try_from_box_reflect_get_and_mut() {
+        let mut v = EffectValue::BoxReflect(Box::new(42i32));
+
+        {
+            let b = v
+                .get_mut::<&mut Box<dyn Reflect>>()
+                .expect("应可取出 BoxReflect 可变引用");
+            assert!(b.as_ref().reflect_partial_eq(&42i32).unwrap_or(false));
+        }
+
+        let b = v
+            .get::<&Box<dyn Reflect>>()
+            .expect("应可取出 BoxReflect 引用");
+        assert!(b.as_ref().reflect_partial_eq(&42i32).unwrap_or(false));
+    }
+
+    #[test]
+    fn try_from_wrong_variant_errors_for_mut() {
+        let mut v = EffectValue::String("x".into());
+        assert!(v.get_mut::<&mut i32>().is_err());
+    }
+
+    // ===== Clone / PartialEq 未覆盖变体 =====
+
+    #[test]
+    fn clone_preserves_vec_entity_and_string() {
+        let vec = EffectValue::VecEntity(vec![Entity::from_bits(1)]);
+        assert_eq!(vec.clone(), vec);
+
+        let string = EffectValue::String("copy".into());
+        assert_eq!(string.clone(), string);
+
+        let entity = EffectValue::Entity(Entity::from_bits(5));
+        assert_eq!(entity.clone(), entity);
+    }
+
+    #[test]
+    fn partial_eq_mismatched_variants_are_not_equal() {
+        assert_ne!(EffectValue::I32(1), EffectValue::F32(1.0));
+        assert_ne!(
+            EffectValue::Entity(Entity::from_bits(1)),
+            EffectValue::I32(1)
+        );
+        assert_ne!(
+            EffectValue::VecEntity(vec![]),
+            EffectValue::String("".into())
+        );
+        assert_ne!(EffectValue::U64(1), EffectValue::I64(1));
+    }
+
+    #[test]
+    fn partial_eq_matching_scalar_variants_are_equal() {
+        assert_eq!(EffectValue::U16(7), EffectValue::U16(7));
+        assert_eq!(EffectValue::F64(1.5), EffectValue::F64(1.5));
+        assert_eq!(
+            EffectValue::Entity(Entity::from_bits(9)),
+            EffectValue::Entity(Entity::from_bits(9))
+        );
+    }
 }

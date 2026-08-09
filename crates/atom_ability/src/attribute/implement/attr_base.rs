@@ -303,4 +303,135 @@ mod tests {
         let attr = ValueAttribute::new(1.0, 2.0, 3.0);
         assert_eq!(attr.get_value(NONE_LAYER), None);
     }
+
+    #[test]
+    fn test_value_attribute_set_value_unknown_layer_keeps_final() {
+        let mut attr = ValueAttribute::new(1.0, 2.0, 3.0);
+        // 未知层级：仅记录 error，不改变任何层值，最终值保持不变。
+        attr.set_value(NONE_LAYER, 99.0);
+        assert_eq!(attr.get_final_value(), 6.0);
+        assert_eq!(attr.get_value(BASE_VALUE_LAYER), Some(1.0));
+    }
+
+    #[test]
+    fn test_value_attribute_add_value_unknown_layer_keeps_final() {
+        let mut attr = ValueAttribute::new(1.0, 2.0, 3.0);
+        attr.add_value(NONE_LAYER, 99.0);
+        assert_eq!(attr.get_final_value(), 6.0);
+        assert_eq!(attr.get_value(ITEM_VALUE_LAYER), Some(2.0));
+    }
+
+    #[test]
+    fn test_value_attribute_compute_final_value_with_layer_value() {
+        let attr = ValueAttribute::new(1.0, 2.0, 3.0);
+        // 任一数值层都按 三值之和 + layer_value 计算。
+        assert_eq!(attr.compute_final_value(BASE_VALUE_LAYER, 10.0), 16.0);
+        assert_eq!(attr.compute_final_value(ITEM_VALUE_LAYER, 10.0), 16.0);
+        assert_eq!(attr.compute_final_value(BUFF_VALUE_LAYER, 10.0), 16.0);
+        // 未知层级忽略 layer_value。
+        assert_eq!(attr.compute_final_value(NONE_LAYER, 10.0), 6.0);
+    }
+
+    #[test]
+    fn test_value_attribute_set_final_value_and_error_value() {
+        let mut attr = ValueAttribute::new(1.0, 2.0, 3.0);
+        attr.set_final_value(42.0);
+        assert_eq!(attr.get_final_value(), 42.0);
+
+        // 纯数值属性误差直接透传。
+        assert_eq!(attr.comptue_error_value(BASE_VALUE_LAYER, 5.0), 5.0);
+        assert_eq!(attr.comptue_error_value(NONE_LAYER, 7.0), 7.0);
+    }
+
+    #[test]
+    fn test_value_percent_get_value_all_layers() {
+        let mut attr = ValuePercentAttribute::default();
+        attr.set_value(BASE_VALUE_LAYER, 1.0);
+        attr.set_value(ITEM_VALUE_LAYER, 2.0);
+        attr.set_value(BUFF_VALUE_LAYER, 3.0);
+        attr.set_value(BASE_PERCENT_LAYER, 0.1);
+        attr.set_value(ITEM_PERCENT_LAYER, 0.2);
+        attr.set_value(BUFF_PERCENT_LAYER, 0.3);
+
+        assert_eq!(attr.get_value(BASE_VALUE_LAYER), Some(1.0));
+        assert_eq!(attr.get_value(ITEM_VALUE_LAYER), Some(2.0));
+        assert_eq!(attr.get_value(BUFF_VALUE_LAYER), Some(3.0));
+        assert_eq!(attr.get_value(BASE_PERCENT_LAYER), Some(0.1));
+        assert_eq!(attr.get_value(ITEM_PERCENT_LAYER), Some(0.2));
+        assert_eq!(attr.get_value(BUFF_PERCENT_LAYER), Some(0.3));
+        assert_eq!(attr.get_value(NONE_LAYER), None);
+    }
+
+    #[test]
+    fn test_value_percent_add_value_all_layers() {
+        let mut attr = ValuePercentAttribute::default();
+        attr.set_value(BASE_VALUE_LAYER, 100.0);
+        attr.add_value(ITEM_VALUE_LAYER, 10.0);
+        attr.add_value(ITEM_PERCENT_LAYER, 0.5);
+        attr.add_value(BUFF_VALUE_LAYER, 20.0);
+        attr.add_value(BUFF_PERCENT_LAYER, 0.25);
+        // final = 100*(1+0) + 10*(1+0.5) + 20*(1+0.25) = 100 + 15 + 25 = 140
+        assert_eq!(attr.get_final_value(), 140.0);
+    }
+
+    #[test]
+    fn test_value_percent_set_unknown_layer_keeps_final() {
+        let mut attr = ValuePercentAttribute::default();
+        attr.set_value(BASE_VALUE_LAYER, 100.0);
+        let before = attr.get_final_value();
+
+        attr.set_value(NONE_LAYER, 999.0);
+        assert_eq!(attr.get_final_value(), before);
+
+        attr.add_value(NONE_LAYER, 999.0);
+        assert_eq!(attr.get_final_value(), before);
+    }
+
+    #[test]
+    fn test_value_percent_compute_final_value_layer_branches() {
+        let mut attr = ValuePercentAttribute::default();
+        attr.set_value(BASE_VALUE_LAYER, 100.0);
+        attr.set_value(BASE_PERCENT_LAYER, 0.1);
+        attr.set_value(ITEM_VALUE_LAYER, 50.0);
+        attr.set_value(ITEM_PERCENT_LAYER, 0.2);
+        attr.set_value(BUFF_VALUE_LAYER, 20.0);
+        attr.set_value(BUFF_PERCENT_LAYER, 0.5);
+        // 基线：110 + 60 + 30 = 200
+        assert_eq!(attr.compute_final_value(NONE_LAYER, 0.0), 200.0);
+
+        // BASE_VALUE_LAYER: (100+10)*(1.1) + 60 + 30 = 121 + 90 = 211
+        assert_eq!(attr.compute_final_value(BASE_VALUE_LAYER, 10.0), 211.0);
+        // ITEM_VALUE_LAYER: 110 + (50+10)*1.2 + 30 = 110 + 72 + 30 = 212
+        assert_eq!(attr.compute_final_value(ITEM_VALUE_LAYER, 10.0), 212.0);
+        // BUFF_VALUE_LAYER: 110 + 60 + (20+10)*1.5 = 110 + 60 + 45 = 215
+        assert_eq!(attr.compute_final_value(BUFF_VALUE_LAYER, 10.0), 215.0);
+        // BASE_PERCENT_LAYER: 100*(1.1+0.5) + 60 + 30 = 160 + 90 = 250
+        assert_eq!(attr.compute_final_value(BASE_PERCENT_LAYER, 0.5), 250.0);
+        // ITEM_PERCENT_LAYER: 110 + 50*(1.2+0.5) + 30 = 110 + 85 + 30 = 225
+        assert_eq!(attr.compute_final_value(ITEM_PERCENT_LAYER, 0.5), 225.0);
+        // BUFF_PERCENT_LAYER: 110 + 60 + 20*(1.5+0.5) = 110 + 60 + 40 = 210
+        assert_eq!(attr.compute_final_value(BUFF_PERCENT_LAYER, 0.5), 210.0);
+    }
+
+    #[test]
+    fn test_value_percent_compute_error_value_all_branches() {
+        let mut attr = ValuePercentAttribute::default();
+        attr.set_value(BASE_VALUE_LAYER, 100.0);
+        attr.set_value(BASE_PERCENT_LAYER, 0.5);
+        attr.set_value(ITEM_VALUE_LAYER, 50.0);
+        attr.set_value(ITEM_PERCENT_LAYER, 0.25);
+        attr.set_value(BUFF_VALUE_LAYER, 20.0);
+        attr.set_value(BUFF_PERCENT_LAYER, 0.0);
+
+        // 数值层误差除以 (1 + 对应百分比)。
+        assert_eq!(attr.comptue_error_value(BASE_VALUE_LAYER, 30.0), 20.0);
+        assert_eq!(attr.comptue_error_value(ITEM_VALUE_LAYER, 12.5), 10.0);
+        assert_eq!(attr.comptue_error_value(BUFF_VALUE_LAYER, 20.0), 20.0);
+        // 百分比层误差反推：error/base - 1（浮点除法需容差）。
+        assert!((attr.comptue_error_value(BASE_PERCENT_LAYER, 120.0) - 0.2).abs() < 1e-6);
+        assert!((attr.comptue_error_value(ITEM_PERCENT_LAYER, 75.0) - 0.5).abs() < 1e-6);
+        assert!((attr.comptue_error_value(BUFF_PERCENT_LAYER, 30.0) - 0.5).abs() < 1e-6);
+        // 未知层级返回 0。
+        assert_eq!(attr.comptue_error_value(NONE_LAYER, 99.0), 0.0);
+    }
 }
