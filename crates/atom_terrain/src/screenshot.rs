@@ -35,3 +35,42 @@ pub fn screenshot_trigger_system(
         commands.entity(entity).despawn();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::{MinimalPlugins, render::view::window::screenshot::Screenshot};
+
+    #[test]
+    fn trigger_spawns_screenshot_entity_and_despawns_trigger() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_systems(Update, screenshot_trigger_system);
+
+        let trigger = app.world_mut().spawn(TakeScreenshot).id();
+        app.update();
+
+        assert!(
+            app.world().get_entity(trigger).is_err(),
+            "trigger 实体应被 despawn"
+        );
+        let mut q = app.world_mut().query::<&Screenshot>();
+        assert_eq!(
+            q.iter(app.world()).count(),
+            1,
+            "应 spawn 一个 Screenshot 实体"
+        );
+    }
+
+    #[test]
+    fn no_trigger_no_screenshot() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_systems(Update, screenshot_trigger_system);
+
+        app.update();
+
+        let mut q = app.world_mut().query::<&Screenshot>();
+        assert_eq!(q.iter(app.world()).count(), 0);
+    }
+}

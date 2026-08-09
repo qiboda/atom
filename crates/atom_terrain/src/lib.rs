@@ -214,3 +214,62 @@ fn update_observer_from_camera(
         observer.position = t.translation;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::MinimalPlugins;
+
+    fn observer_app() -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<TerrainObserver>();
+        app.add_systems(Update, update_observer_from_camera);
+        app
+    }
+
+    #[test]
+    fn observer_follows_main_camera() {
+        let mut app = observer_app();
+        app.world_mut()
+            .spawn((Camera3d::default(), Transform::from_xyz(5.0, 10.0, -3.0)));
+
+        app.update();
+
+        let observer = app.world().resource::<TerrainObserver>();
+        assert_eq!(observer.position, Vec3::new(5.0, 10.0, -3.0));
+    }
+
+    #[test]
+    fn observer_unchanged_without_camera() {
+        let mut app = observer_app();
+
+        app.update();
+
+        let observer = app.world().resource::<TerrainObserver>();
+        assert_eq!(observer.position, Vec3::ZERO);
+        assert_eq!(observer.force_rebuild, 0);
+    }
+
+    #[test]
+    fn gizmo_camera_is_ignored() {
+        let mut app = observer_app();
+        app.world_mut().spawn((
+            Camera3d::default(),
+            Transform::from_xyz(1.0, 2.0, 3.0),
+            axis_gizmo::GizmoCamera,
+        ));
+
+        app.update();
+
+        let observer = app.world().resource::<TerrainObserver>();
+        assert_eq!(observer.position, Vec3::ZERO, "GizmoCamera 不驱动 observer");
+    }
+
+    #[test]
+    fn plugin_defaults_construct() {
+        let _ = TerrainPlugin::default();
+        let _ = PerChunkTerrainPlugin::default();
+        let _ = GlobalTerrainPlugin::default();
+    }
+}

@@ -24,3 +24,28 @@ impl Plugin for GamePlugin {
         app.add_systems(Update, (camera::top_down_camera_follow,));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::{MinimalPlugins, ecs::reflect::AppTypeRegistry};
+    use std::any::TypeId;
+
+    #[test]
+    fn game_plugin_registers_types_and_systems() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, GamePlugin));
+
+        let registry = app.world().resource::<AppTypeRegistry>();
+        let read = registry.read();
+        for type_id in [
+            TypeId::of::<Player>(),
+            TypeId::of::<Name>(),
+            TypeId::of::<Health>(),
+            TypeId::of::<MoveSpeed>(),
+            TypeId::of::<TopDownCamera>(),
+        ] {
+            assert!(read.get(type_id).is_some(), "类型 {type_id:?} 应已注册");
+        }
+    }
+}

@@ -182,3 +182,249 @@ impl ChunkManager {
             .wrapping_add((cid.z as u32).wrapping_mul(6271))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_approx(a: f32, b: f32) {
+        assert!(
+            (a - b).abs() < 1e-5,
+            "expected {a} ≈ {b} but diff = {}",
+            (a - b).abs()
+        );
+    }
+
+    fn mgr(radius: f32, hmin: f32, hmax: f32, seed: u32) -> ChunkManager {
+        ChunkManager::new(radius, hmin, hmax, seed)
+    }
+
+    // ── ChunkId ──
+
+    #[test]
+    fn chunk_id_new_and_eq() {
+        let a = ChunkId::new(1, -2, 3);
+        assert_eq!((a.x, a.y, a.z), (1, -2, 3));
+        assert_eq!(a, ChunkId::new(1, -2, 3));
+        assert_ne!(a, ChunkId::new(1, -2, 4));
+    }
+
+    #[test]
+    fn world_min_scales_by_15() {
+        assert_eq!(
+            ChunkId::new(2, -1, 3).world_min(),
+            Vec3::new(30.0, -15.0, 45.0)
+        );
+        assert_eq!(ChunkId::new(0, 0, 0).world_min(), Vec3::ZERO);
+        assert_eq!(
+            ChunkId::new(-1, 1, -1).world_min(),
+            Vec3::new(-15.0, 15.0, -15.0)
+        );
+    }
+
+    #[test]
+    fn distance_euclidean_times_15() {
+        assert_approx(ChunkId::new(0, 0, 0).distance(&ChunkId::new(1, 0, 0)), 15.0);
+        assert_approx(ChunkId::new(0, 0, 0).distance(&ChunkId::new(0, 0, 0)), 0.0);
+        assert_approx(
+            ChunkId::new(0, 0, 0).distance(&ChunkId::new(1, 1, 1)),
+            15.0 * 3.0f32.sqrt(),
+        );
+        // 对称性
+        assert_approx(
+            ChunkId::new(1, 2, 3).distance(&ChunkId::new(4, 5, 6)),
+            ChunkId::new(4, 5, 6).distance(&ChunkId::new(1, 2, 3)),
+        );
+        // 负方向距离为正
+        assert_approx(
+            ChunkId::new(0, 0, 0).distance(&ChunkId::new(-1, 0, 0)),
+            15.0,
+        );
+    }
+
+    #[test]
+    fn offset_adds_chunk_units() {
+        assert_eq!(
+            ChunkId::new(1, 2, 3).offset(4, -5, 6),
+            ChunkId::new(5, -3, 9)
+        );
+        assert_eq!(ChunkId::new(0, 0, 0).offset(0, 0, 0), ChunkId::new(0, 0, 0));
+        assert_eq!(
+            ChunkId::new(-1, -1, -1).offset(-1, -1, -1),
+            ChunkId::new(-2, -2, -2)
+        );
+        // 六方向邻居
+        assert_eq!(ChunkId::new(0, 0, 0).offset(1, 0, 0), ChunkId::new(1, 0, 0));
+        assert_eq!(
+            ChunkId::new(0, 0, 0).offset(0, 0, -1),
+            ChunkId::new(0, 0, -1)
+        );
+    }
+
+    // ── ChunkManager ──
+
+    #[test]
+    fn new_sets_defaults() {
+        let m = mgr(50.0, -50.0, 10.0, 42);
+        assert!(m.active.is_empty());
+        assert_approx(m.voxel_size, 0.5);
+        assert_approx(m.radius, 50.0);
+        assert_approx(m.height_min, -50.0);
+        assert_approx(m.height_max, 10.0);
+        assert_eq!(m.last_observer, Vec3::ZERO);
+        assert!(m.wanted.is_empty());
+        assert_eq!(m.world_seed, 42);
+    }
+
+    #[test]
+    fn world_to_chunk_floors_and_clamps_y() {
+        let m = mgr(50.0, -50.0, 10.0, 42);
+        assert_eq!(
+            m.world_to_chunk(Vec3::new(15.0, 15.0, 15.0)),
+            ChunkId::new(1, 1, 1)
+        );
+        assert_eq!(
+            m.world_to_chunk(Vec3::new(-15.0, -15.0, -15.0)),
+            ChunkId::new(-1, -1, -1)
+        );
+        assert_eq!(
+            m.world_to_chunk(Vec3::new(14.9, 0.0, -15.1)),
+            ChunkId::new(0, 0, -2)
+        );
+        // y 夹取到 [-2, 2]
+        assert_eq!(
+            m.world_to_chunk(Vec3::new(0.0, 100.0, 0.0)),
+            ChunkId::new(0, 2, 0)
+        );
+        assert_eq!(
+            m.world_to_chunk(Vec3::new(0.0, -100.0, 0.0)),
+            ChunkId::new(0, -2, 0)
+        );
+        // x/z 不夹取
+        assert_eq!(
+            m.world_to_chunk(Vec3::new(10_000.0, 0.0, 0.0)),
+            ChunkId::new(666, 0, 0)
+        );
+        assert_eq!(
+            m.world_to_chunk(Vec3::new(0.0, 0.0, -10_000.0)),
+            ChunkId::new(0, 0, -667)
+        );
+    }
+
+    #[test]
+    fn chunk_has_surface_crossing_y_plane() {
+        let vs = 0.5;
+        // min.y < 0 且 max.y >= 0 → 表面穿过
+        assert!(ChunkManager::chunk_has_surface(
+            Vec3::new(0.0, -1.0, 0.0),
+            32,
+            vs
+        ));
+        assert!(ChunkManager::chunk_has_surface(
+            Vec3::new(0.0, -0.001, 0.0),
+            32,
+            vs
+        ));
+        // 全部 y >= 0 → 无表面（y=0 计为正）
+        assert!(!ChunkManager::chunk_has_surface(
+            Vec3::new(0.0, 0.0, 0.0),
+            32,
+            vs
+        ));
+        assert!(!ChunkManager::chunk_has_surface(
+            Vec3::new(0.0, 1.0, 0.0),
+            32,
+            vs
+        ));
+        // 全部 y < 0 → 无表面
+        assert!(!ChunkManager::chunk_has_surface(
+            Vec3::new(0.0, -20.0, 0.0),
+            32,
+            vs
+        ));
+        // 边界：max.y 恰好 0（min = -30*vs = -15）→ 角点符号混合（-15 与 0）→ 有表面
+        assert!(ChunkManager::chunk_has_surface(
+            Vec3::new(0.0, -15.0, 0.0),
+            32,
+            vs
+        ));
+        // 不同 voxel_size 缩放
+        assert!(ChunkManager::chunk_has_surface(
+            Vec3::new(0.0, -1.0, 0.0),
+            32,
+            1.0
+        ));
+        assert!(!ChunkManager::chunk_has_surface(
+            Vec3::new(0.0, -31.0, 0.0),
+            32,
+            1.0
+        ));
+    }
+
+    #[test]
+    fn update_for_observer_populates_wanted() {
+        let mut m = mgr(50.0, -50.0, 10.0, 42);
+        let mut req = ChunkLoadRequest::default();
+
+        m.update_for_observer(Vec3::new(15.0, 0.0, 15.0), &mut req);
+        // chunk_radius = ceil(50/15) = 4; dy ∈ [floor(-50/15), ceil(10/15)] = [-4, 1]
+        // 数量 = (2*4+1)^2 * 6 = 486
+        assert_eq!(m.wanted.len(), 486);
+        assert_eq!(req.wanted.len(), 486);
+        assert_eq!(m.wanted, req.wanted);
+        assert_eq!(m.last_observer, Vec3::new(15.0, 0.0, 15.0));
+        assert!(req.wanted.contains(&ChunkId::new(1, 0, 1)));
+
+        // 观察者移动后重新计算
+        m.update_for_observer(Vec3::new(1500.0, 0.0, -1500.0), &mut req);
+        assert_eq!(m.wanted.len(), 486);
+        assert_eq!(req.wanted.len(), 486);
+        assert!(req.wanted.contains(&ChunkId::new(100, 0, -100)));
+        assert!(!req.wanted.contains(&ChunkId::new(1, 0, 1)));
+        assert_eq!(m.last_observer, Vec3::new(1500.0, 0.0, -1500.0));
+    }
+
+    #[test]
+    fn neighbor_mask_bit_positions() {
+        let mut m = mgr(50.0, -50.0, 10.0, 42);
+        let c = ChunkId::new(0, 0, 0);
+        assert_eq!(m.neighbor_mask(&c), 0);
+
+        m.active.insert(ChunkId::new(1, 0, 0), 0);
+        m.active.insert(ChunkId::new(-1, 0, 0), 1);
+        m.active.insert(ChunkId::new(0, 1, 0), 2);
+        m.active.insert(ChunkId::new(0, -1, 0), 3);
+        m.active.insert(ChunkId::new(0, 0, 1), 4);
+        m.active.insert(ChunkId::new(0, 0, -1), 5);
+        assert_eq!(m.neighbor_mask(&c), 0b11_1111);
+
+        // 移除 +X 邻居 → bit0 清零
+        m.active.remove(&ChunkId::new(1, 0, 0));
+        assert_eq!(m.neighbor_mask(&c), 0b11_1110);
+
+        // 非邻居不参与
+        m.active.insert(ChunkId::new(2, 2, 2), 9);
+        assert_eq!(m.neighbor_mask(&c), 0b11_1110);
+
+        // 空 active → 0
+        let empty = mgr(50.0, -50.0, 10.0, 42);
+        assert_eq!(empty.neighbor_mask(&c), 0);
+    }
+
+    #[test]
+    fn chunk_seed_deterministic_position_dependent() {
+        let m = mgr(50.0, -50.0, 10.0, 42);
+        let a = ChunkId::new(3, -2, 7);
+        assert_eq!(m.chunk_seed(&a), m.chunk_seed(&a));
+        // x/z 不同 → 种子不同
+        assert_ne!(m.chunk_seed(&a), m.chunk_seed(&ChunkId::new(4, -2, 7)));
+        assert_ne!(m.chunk_seed(&a), m.chunk_seed(&ChunkId::new(3, -2, 8)));
+        // y 不参与种子
+        assert_eq!(m.chunk_seed(&a), m.chunk_seed(&ChunkId::new(3, 99, 7)));
+        // 负坐标与极值不 panic
+        let _ = m.chunk_seed(&ChunkId::new(-5, 0, -5));
+        let _ = m.chunk_seed(&ChunkId::new(i32::MIN, 0, i32::MAX));
+        // world_seed 不同 → 种子不同
+        assert_ne!(m.chunk_seed(&a), mgr(50.0, -50.0, 10.0, 7).chunk_seed(&a));
+    }
+}

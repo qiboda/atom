@@ -122,3 +122,166 @@ pub fn debug_click_system(
         corners,
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compute::chunk::ChunkManager;
+    use bevy::camera::{ComputedCameraValues, ImageRenderTarget, RenderTargetInfo};
+    use bevy::image::Image;
+    use bevy::input::ButtonInput;
+    use bevy::window::{PrimaryWindow, Window};
+    use bevy::{MinimalPlugins, camera::RenderTarget};
+
+    fn assert_approx(a: f32, b: f32) {
+        assert!(
+            (a - b).abs() < 1e-4,
+            "expected {a} ≈ {b} but diff = {}",
+            (a - b).abs()
+        );
+    }
+
+    fn click_app() -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<ButtonInput<MouseButton>>();
+        app.insert_resource(ChunkManager::new(50.0, -50.0, 10.0, 42));
+        app.add_systems(Update, debug_click_system);
+        app
+    }
+
+    fn press_left(app: &mut App) {
+        app.world_mut()
+            .resource_mut::<ButtonInput<MouseButton>>()
+            .press(MouseButton::Left);
+    }
+
+    fn spawn_window_with_cursor(app: &mut App) {
+        let mut window = Window::default();
+        window.set_cursor_position(Some(Vec2::new(400.0, 300.0)));
+        app.world_mut().spawn((window, PrimaryWindow));
+    }
+
+    fn camera_with_viewport(app: &mut App, gt: GlobalTransform) {
+        let camera = Camera {
+            computed: ComputedCameraValues {
+                target_info: Some(RenderTargetInfo {
+                    physical_size: UVec2::new(800, 600),
+                    scale_factor: 1.0,
+                }),
+                ..default()
+            },
+            ..default()
+        };
+        app.world_mut().spawn((camera, gt));
+    }
+
+    // ── 早期返回分支 ──
+
+    #[test]
+    fn returns_when_no_click() {
+        let mut app = click_app();
+        app.update();
+    }
+
+    #[test]
+    fn returns_without_window() {
+        let mut app = click_app();
+        press_left(&mut app);
+        app.update();
+    }
+
+    #[test]
+    fn returns_without_cursor() {
+        let mut app = click_app();
+        app.world_mut().spawn((Window::default(), PrimaryWindow));
+        press_left(&mut app);
+        app.update();
+    }
+
+    #[test]
+    fn returns_without_camera() {
+        let mut app = click_app();
+        spawn_window_with_cursor(&mut app);
+        press_left(&mut app);
+        app.update();
+    }
+
+    #[test]
+    fn returns_when_viewport_to_world_fails() {
+        let mut app = click_app();
+        spawn_window_with_cursor(&mut app);
+        // camera render target 指向无效 image handle → 无 target size → 射线构建失败
+        app.world_mut().spawn((
+            Camera::default(),
+            RenderTarget::Image(ImageRenderTarget {
+                handle: Handle::<Image>::default(),
+                scale_factor: 1.0,
+            }),
+            GlobalTransform::IDENTITY,
+        ));
+        press_left(&mut app);
+        app.update();
+    }
+
+    // ── 射线行进 ──
+
+    #[test]
+    fn ray_march_without_hit_logs_and_returns() {
+        let mut app = click_app();
+        spawn_window_with_cursor(&mut app);
+        // 默认朝向（identity，y=0 视点沿 -Z）：地形最高 -16 → 永不穿越表面
+        camera_with_viewport(&mut app, GlobalTransform::IDENTITY);
+        press_left(&mut app);
+        app.update();
+    }
+
+    #[test]
+    fn ray_march_hits_surface_and_logs_debug_info() {
+        let mut app = click_app();
+        spawn_window_with_cursor(&mut app);
+        // 相机俯视 -Y，x=1 处地表高度非采样点整数 → 穿越可被 sign change 检测
+        let gt: GlobalTransform = Transform::from_translation(Vec3::new(1.0, 0.0, 1.0))
+            .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+            .into();
+        camera_with_viewport(&mut app, gt);
+        press_left(&mut app);
+        app.update();
+    }
+
+    // ── 纯函数 ──
+
+    #[test]
+    fn sdf_zero_on_surface() {
+        assert_approx(sdf_at(Vec3::new(0.0, height_at(0.0, 0.0), 0.0)), 0.0);
+        assert_approx(sdf_at(Vec3::new(2.5, height_at(2.5, -1.0), -1.0)), 0.0);
+    }
+
+    #[test]
+    fn sdf_sign_above_and_below_surface() {
+        let h = height_at(3.0, -4.0);
+        assert!(sdf_at(Vec3::new(3.0, h + 1.0, -4.0)) > 0.0, "表面上方为正");
+        assert!(sdf_at(Vec3::new(3.0, h - 1.0, -4.0)) < 0.0, "表面下方为负");
+    }
+
+    #[test]
+    fn height_at_bounded_by_amplitude_and_offset() {
+        // (x*0.08).sin()*(z*0.08).cos()*8 - 24 → [-32, -16]
+        for &(x, z) in &[(0.0, 0.0), (1.0, 2.0), (-5.0, 3.0), (100.0, -50.0)] {
+            let h = height_at(x, z);
+            assert!(
+                (-32.0..=-16.0).contains(&h),
+                "height_at({x},{z}) = {h} 超出 [-32,-16]"
+            );
+        }
+    }
+
+    #[test]
+    fn height_at_periodic_in_sin_cos_cycle() {
+        // sin/cos 周期 2π/0.08；移动一个周期后值复原
+        let period = std::f32::consts::TAU / 0.08;
+        let a = height_at(10.0, 10.0);
+        let b = height_at(10.0 + period, 10.0 + period);
+        assert_approx(a, b);
+    }
+}

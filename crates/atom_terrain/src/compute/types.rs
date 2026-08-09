@@ -54,3 +54,110 @@ pub struct TerrainChunkCounters {
     /// 16 字节对齐填充
     pub _pad: [u32; 2],
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_approx(a: f32, b: f32) {
+        assert!(
+            (a - b).abs() < 1e-5,
+            "expected {a} ≈ {b} but diff = {}",
+            (a - b).abs()
+        );
+    }
+
+    // ── TerrainChunkInfo ──
+
+    #[test]
+    fn chunk_info_default_all_zero() {
+        let info = TerrainChunkInfo::default();
+        assert_eq!(info.chunk_min, [0.0; 3]);
+        assert_eq!(info.pad0, 0);
+        assert_approx(info.voxel_size, 0.0);
+        assert_eq!(info.voxel_count, 0);
+        assert_approx(info.terrain_size, 0.0);
+        assert_eq!(info.seed, 0);
+        assert_eq!(info.pad1, [0; 2]);
+        assert_eq!(info.pad2, [0; 2]);
+    }
+
+    #[test]
+    fn chunk_info_fields_roundtrip() {
+        let info = TerrainChunkInfo {
+            chunk_min: [1.0, 2.0, 3.0],
+            voxel_size: 0.5,
+            voxel_count: 30,
+            terrain_size: 4096.0,
+            seed: 42,
+            ..Default::default()
+        };
+        assert_eq!(info.chunk_min, [1.0, 2.0, 3.0]);
+        assert_approx(info.voxel_size, 0.5);
+        assert_eq!(info.voxel_count, 30);
+        assert_approx(info.terrain_size, 4096.0);
+        assert_eq!(info.seed, 42);
+    }
+
+    #[test]
+    fn chunk_info_uniform_layout_48_bytes() {
+        assert_eq!(std::mem::size_of::<TerrainChunkInfo>(), 48);
+        assert_eq!(TerrainChunkInfo::min_size().get(), 48);
+    }
+
+    // ── TerrainChunkVertex ──
+
+    #[test]
+    fn vertex_default_all_zero() {
+        let v = TerrainChunkVertex::default();
+        assert_eq!(v.position, [0.0; 3]);
+        assert_eq!(v._pad0, 0);
+        assert_eq!(v.normal, [0.0; 3]);
+        assert_eq!(v._pad1, 0);
+    }
+
+    #[test]
+    fn vertex_fields_roundtrip() {
+        let v = TerrainChunkVertex {
+            position: [1.5, -2.0, 3.25],
+            normal: [0.0, 1.0, 0.0],
+            ..Default::default()
+        };
+        assert_eq!(v.position, [1.5, -2.0, 3.25]);
+        assert_eq!(v.normal, [0.0, 1.0, 0.0]);
+    }
+
+    #[test]
+    fn vertex_layout_32_bytes() {
+        assert_eq!(std::mem::size_of::<TerrainChunkVertex>(), 32);
+        assert_eq!(TerrainChunkVertex::min_size().get(), 32);
+    }
+
+    // ── TerrainChunkCounters ──
+
+    #[test]
+    fn counters_default_all_zero() {
+        let c = TerrainChunkCounters::default();
+        assert_eq!(c.vertex_count, 0);
+        assert_eq!(c.index_count, 0);
+        assert_eq!(c._pad, [0; 2]);
+    }
+
+    #[test]
+    fn counters_fields_roundtrip() {
+        let c = TerrainChunkCounters {
+            vertex_count: 1234,
+            index_count: 5678,
+            _pad: [9, 10],
+        };
+        assert_eq!(c.vertex_count, 1234);
+        assert_eq!(c.index_count, 5678);
+        assert_eq!(c._pad, [9, 10]);
+    }
+
+    #[test]
+    fn counters_layout_16_bytes() {
+        assert_eq!(std::mem::size_of::<TerrainChunkCounters>(), 16);
+        assert_eq!(TerrainChunkCounters::min_size().get(), 16);
+    }
+}

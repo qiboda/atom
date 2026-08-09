@@ -421,3 +421,124 @@ pub fn slot_sync_system(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_approx(a: f32, b: f32) {
+        assert!(
+            (a - b).abs() < 1e-5,
+            "expected {a} ≈ {b} but diff = {}",
+            (a - b).abs()
+        );
+    }
+
+    #[test]
+    fn constants_matched_to_shaders() {
+        assert_eq!(GRID_SIZE, 32);
+        assert_approx(VOXEL_SIZE, 0.5);
+        assert_eq!(MAX_SLOTS, 512);
+    }
+
+    #[test]
+    fn slot_bytes_sizes_for_grid_32() {
+        let gs = 32u64;
+        let n = gs + 2; // 34
+        let vc = gs * gs * gs; // 32768
+        let (sdf_sz, cross_sz, va_sz, vert_sz, idx_sz) = slot_bytes();
+        assert_eq!(sdf_sz, n * n * n * 4, "34³ × f32");
+        assert_eq!(cross_sz, vc * 12 * 8 * 4, "每 voxel 12 条边 × 8 个 f32");
+        assert_eq!(va_sz, vc * 4, "每 voxel 1 个 u32 分配槽");
+        assert_eq!(vert_sz, vc * 32, "每 voxel 1 个 TerrainChunkVertex(32B)");
+        assert_eq!(idx_sz, vc * 12 * 6 * 4, "每 voxel 12 边 × 6 u32 索引");
+    }
+
+    #[test]
+    fn slot_bytes_concrete_values() {
+        let (sdf_sz, cross_sz, va_sz, vert_sz, idx_sz) = slot_bytes();
+        assert_eq!(sdf_sz, 34u64.pow(3) * 4);
+        assert_eq!(cross_sz, 32u64.pow(3) * 384);
+        assert_eq!(va_sz, 32u64.pow(3) * 4);
+        assert_eq!(vert_sz, 32u64.pow(3) * 32);
+        assert_eq!(idx_sz, 32u64.pow(3) * 288);
+    }
+
+    #[test]
+    fn slot_bytes_scale_with_grid_size_ratio() {
+        // 各 buffer 大小相对 voxel 数的比例是固定的（不依赖 GRID_SIZE 的具体值）
+        let vc = 32u64 * 32 * 32;
+        let (sdf_sz, cross_sz, va_sz, vert_sz, idx_sz) = slot_bytes();
+        assert_eq!(sdf_sz, 34u64.pow(3) * 4, "sdf 含 +2 shell");
+        assert_eq!(cross_sz / vc, 384);
+        assert_eq!(va_sz / vc, 4);
+        assert_eq!(vert_sz / vc, 32);
+        assert_eq!(idx_sz / vc, 288);
+    }
+
+    #[test]
+    fn chunk_uniform_layout_48_bytes() {
+        assert_eq!(std::mem::size_of::<ChunkUniform>(), 48);
+        let u = ChunkUniform {
+            grid_min: [1.0, 2.0, 3.0],
+            pad0: 0,
+            voxel_size: 0.5,
+            grid_size: 32,
+            pad1: [0; 2],
+            neighbor_mask: 0b101010,
+            pad3: 0,
+            seed: 42,
+            pad4: 0,
+        };
+        let bytes = bytemuck::bytes_of(&u);
+        // WGSL uniform 布局：vec3 对齐 16 字节
+        assert_eq!(f32::from_le_bytes(bytes[0..4].try_into().expect("b0")), 1.0);
+        assert_eq!(f32::from_le_bytes(bytes[4..8].try_into().expect("b4")), 2.0);
+        assert_eq!(
+            f32::from_le_bytes(bytes[8..12].try_into().expect("b8")),
+            3.0
+        );
+        assert_eq!(
+            u32::from_le_bytes(bytes[12..16].try_into().expect("b12")),
+            0,
+            "pad0"
+        );
+        assert_eq!(
+            f32::from_le_bytes(bytes[16..20].try_into().expect("b16")),
+            0.5
+        );
+        assert_eq!(
+            u32::from_le_bytes(bytes[20..24].try_into().expect("b20")),
+            32
+        );
+        assert_eq!(
+            u32::from_le_bytes(bytes[32..36].try_into().expect("b32")),
+            0b101010
+        );
+        assert_eq!(
+            u32::from_le_bytes(bytes[40..44].try_into().expect("b40")),
+            42,
+            "seed @ 40"
+        );
+    }
+
+    #[test]
+    fn chunk_uniform_fields_roundtrip() {
+        let u = ChunkUniform {
+            grid_min: [-7.5, 0.25, 1024.0],
+            pad0: 0,
+            voxel_size: 0.5,
+            grid_size: 32,
+            pad1: [0; 2],
+            neighbor_mask: 0b11_1111,
+            pad3: 0,
+            seed: 7,
+            pad4: 0,
+        };
+        assert_eq!(u.grid_min, [-7.5, 0.25, 1024.0]);
+        assert_approx(u.voxel_size, 0.5);
+        assert_eq!(u.grid_size, 32);
+        assert_eq!(u.neighbor_mask, 0b11_1111);
+        assert_eq!(u.seed, 7);
+    }
+}

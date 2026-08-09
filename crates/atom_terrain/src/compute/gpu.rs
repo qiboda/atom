@@ -951,4 +951,153 @@ mod tests {
     #[test]
     #[ignore = "known deviation: CPU OpenSimplex2D vs GPU value noise — unify at biome phase"]
     fn cpu_gpu_noise_parity() {}
+
+    fn v(position: [f32; 3], normal: [f32; 3]) -> TerrainChunkVertex {
+        TerrainChunkVertex {
+            position,
+            normal,
+            ..Default::default()
+        }
+    }
+
+    fn mesh_positions(mesh: &Mesh) -> Vec<[f32; 3]> {
+        mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+            .expect("positions attr")
+            .as_float3()
+            .expect("float3")
+            .to_vec()
+    }
+
+    fn mesh_normals(mesh: &Mesh) -> Vec<[f32; 3]> {
+        mesh.attribute(Mesh::ATTRIBUTE_NORMAL)
+            .expect("normal attr")
+            .as_float3()
+            .expect("float3")
+            .to_vec()
+    }
+
+    fn mesh_indices(mesh: &Mesh) -> Vec<u32> {
+        match mesh.indices().expect("indices") {
+            bevy::mesh::Indices::U32(v) => v.clone(),
+            bevy::mesh::Indices::U16(v) => v.iter().map(|&x| x as u32).collect(),
+        }
+    }
+
+    /// 无有效顶点（全部零位置）→ None
+    #[test]
+    fn compact_all_zero_vertices_returns_none() {
+        let vc = 2u32;
+        let total_vv = ((vc + 2) as usize).pow(3);
+        let total_vc = (vc as usize).pow(3);
+        let verts = vec![TerrainChunkVertex::default(); total_vv];
+        let indices = vec![0u32; total_vc * 72];
+        assert!(compact_and_build_mesh(&verts, &indices, vc, Vec3::ZERO, 0.5).is_none());
+    }
+
+    /// 顶点有效但所有三角形退化（三个索引指向同一 remap）→ None
+    #[test]
+    fn compact_all_degenerate_triangles_returns_none() {
+        let vc = 2u32;
+        let total_vv = ((vc + 2) as usize).pow(3);
+        let total_vc = (vc as usize).pow(3);
+        let mut verts = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices = vec![0u32; total_vc * 72];
+        verts[0] = v([0.5, 0.5, 0.5], [0.0, 1.0, 0.0]);
+        // voxel 0 的两个三角形都指向同一顶点 → remap 全 0 → 退化
+        indices[0..6].copy_from_slice(&[0, 0, 0, 0, 0, 0]);
+        assert!(compact_and_build_mesh(&verts, &indices, vc, Vec3::ZERO, 0.5).is_none());
+    }
+
+    /// QEF 顶点超出 chunk 边界时被 clamp 到 [chunk_min, chunk_max]
+    #[test]
+    fn compact_clamps_out_of_bounds_vertices() {
+        let vc = 2u32;
+        let total_vv = ((vc + 2) as usize).pow(3);
+        let total_vc = (vc as usize).pow(3);
+        let mut verts = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices = vec![0u32; total_vc * 72];
+        // chunk_min=(0,0,0)，chunk_max=(3*0.5,3*0.5,3*0.5)=(1.5,1.5,1.5)
+        verts[0] = v([100.0, -100.0, 0.0], [0.0, 1.0, 0.0]);
+        verts[1] = v([1.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        verts[2] = v([1.0, 1.0, 0.0], [0.0, 1.0, 0.0]);
+        indices[0..6].copy_from_slice(&[0, 1, 2, 0, 2, 1]);
+        let mesh =
+            compact_and_build_mesh(&verts, &indices, vc, Vec3::ZERO, 0.5).expect("clamped mesh");
+        let pos = mesh_positions(&mesh);
+        assert!(
+            pos.contains(&[1.5, 0.0, 0.0]),
+            "out-of-bounds vertex clamped: {pos:?}"
+        );
+    }
+
+    /// 索引 buffer 不足 72 个 → 提前 break → 无三角形 → None
+    #[test]
+    fn compact_short_index_buffer_breaks_early() {
+        let vc = 2u32;
+        let total_vv = ((vc + 2) as usize).pow(3);
+        let mut verts = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices = vec![0u32; 71];
+        verts[0] = v([0.5, 0.5, 0.5], [0.0, 1.0, 0.0]);
+        indices[0..3].copy_from_slice(&[0, 0, 0]);
+        assert!(compact_and_build_mesh(&verts, &indices, vc, Vec3::ZERO, 0.5).is_none());
+    }
+
+    /// 法线原样保留（不做归一化/修改）
+    #[test]
+    fn compact_preserves_normals() {
+        let vc = 2u32;
+        let total_vv = ((vc + 2) as usize).pow(3);
+        let total_vc = (vc as usize).pow(3);
+        let mut verts = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices = vec![0u32; total_vc * 72];
+        verts[0] = v([0.5, 0.0, 0.0], [0.3, 0.9, 0.2]);
+        verts[1] = v([0.5, 0.5, 0.0], [0.3, 0.9, 0.2]);
+        verts[2] = v([1.0, 0.0, 0.0], [0.3, 0.9, 0.2]);
+        indices[0..6].copy_from_slice(&[0, 1, 2, 0, 2, 1]);
+        let mesh = compact_and_build_mesh(&verts, &indices, vc, Vec3::ZERO, 0.5).expect("mesh");
+        let norms = mesh_normals(&mesh);
+        assert!(norms.iter().all(|n| *n == [0.3, 0.9, 0.2]));
+    }
+
+    /// 部分退化：第一个三角形有效，第二个退化 → 只保留第一个
+    #[test]
+    fn compact_skips_only_degenerate_triangle() {
+        let vc = 2u32;
+        let total_vv = ((vc + 2) as usize).pow(3);
+        let total_vc = (vc as usize).pow(3);
+        let mut verts = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices = vec![0u32; total_vc * 72];
+        verts[0] = v([0.5, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        verts[1] = v([0.5, 0.5, 0.0], [0.0, 1.0, 0.0]);
+        verts[2] = v([1.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        // tri1 = (0,1,2) 有效；tri2 = (0,0,1) 退化
+        indices[0..6].copy_from_slice(&[0, 1, 2, 0, 0, 1]);
+        let mesh = compact_and_build_mesh(&verts, &indices, vc, Vec3::ZERO, 0.5)
+            .expect("mesh with one triangle");
+        assert_eq!(mesh_indices(&mesh), vec![0, 1, 2]);
+        assert_eq!(mesh.count_vertices(), 3);
+    }
+
+    /// 非零 chunk_min 时 clamp 使用世界坐标边界
+    #[test]
+    fn compact_clamps_relative_to_chunk_min() {
+        let vc = 2u32;
+        let total_vv = ((vc + 2) as usize).pow(3);
+        let total_vc = (vc as usize).pow(3);
+        let chunk_min = Vec3::new(10.0, -5.0, 0.0);
+        let chunk_max = chunk_min + Vec3::splat((vc + 1) as f32 * 0.5);
+        let mut verts = vec![TerrainChunkVertex::default(); total_vv];
+        let mut indices = vec![0u32; total_vc * 72];
+        verts[0] = v([-50.0, 500.0, 0.0], [0.0, 1.0, 0.0]);
+        verts[1] = v([10.0, -5.0, 0.0], [0.0, 1.0, 0.0]);
+        verts[2] = v([11.5, -5.0, 0.0], [0.0, 1.0, 0.0]);
+        indices[0..6].copy_from_slice(&[0, 1, 2, 0, 2, 1]);
+        let mesh =
+            compact_and_build_mesh(&verts, &indices, vc, chunk_min, 0.5).expect("clamped mesh");
+        let pos = mesh_positions(&mesh);
+        assert!(
+            pos.contains(&[chunk_min.x, chunk_max.y, chunk_min.z]),
+            "clamped to [chunk_min, chunk_max]: {pos:?}"
+        );
+    }
 }

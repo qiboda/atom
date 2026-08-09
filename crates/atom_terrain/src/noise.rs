@@ -209,4 +209,16 @@ mod tests {
             "south {t_south:.2} should be warmer than north {t_north:.2}"
         );
     }
+
+    #[test]
+    fn density_at_is_y_minus_height() {
+        for &(x, y, z) in &[(0.0, 0.0, 0.0), (3.5, 12.25, -7.0), (-100.0, -5.5, 200.0)] {
+            let expected = y - height_at(x, z);
+            assert!(
+                (density_at(x, y, z) - expected).abs() < 1e-4,
+                "density_at({x},{y},{z}) = {}，期望 {expected}",
+                density_at(x, y, z)
+            );
+        }
+    }
 }

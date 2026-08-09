@@ -110,3 +110,32 @@ fn surface_color(st: SurfaceType) -> (u8, u8, u8) {
         SurfaceType::Ocean => (46, 64, 140),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn surface_color_maps_all_types() {
+        assert_eq!(surface_color(SurfaceType::Snow), (247, 247, 255));
+        assert_eq!(surface_color(SurfaceType::Tundra), (186, 186, 209));
+        assert_eq!(surface_color(SurfaceType::Taiga), (153, 171, 120));
+        assert_eq!(surface_color(SurfaceType::Forest), (69, 140, 51));
+        assert_eq!(surface_color(SurfaceType::Grassland), (135, 179, 64));
+        assert_eq!(surface_color(SurfaceType::Desert), (209, 196, 140));
+        assert_eq!(surface_color(SurfaceType::Rock), (115, 115, 128));
+        assert_eq!(surface_color(SurfaceType::Swamp), (64, 89, 51));
+        assert_eq!(surface_color(SurfaceType::Ocean), (46, 64, 140));
+    }
+
+    #[test]
+    fn generate_debug_maps_writes_pgm_and_ppm_files() {
+        generate_debug_maps_system();
+
+        for f in ["heightmap.pgm", "tempmap.pgm", "surfacemap.ppm"] {
+            let meta = std::fs::metadata(f).expect("debug map 文件应已生成");
+            assert!(meta.len() > 0, "{f} 应为非空文件");
+            std::fs::remove_file(f).expect("清理 debug map 文件");
+        }
+    }
+}

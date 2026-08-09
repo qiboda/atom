@@ -110,3 +110,17 @@ impl GlobalMeshPool {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `voxel_size`/`grid_min`/`world_to_grid`/`grid_offset` 与 `new()` 的容量计算均为纯 CPU，
+    /// 但 `GlobalMeshPool` 持有 wgpu `Buffer`，无法在无 `RenderDevice` 的单测中构造实例——
+    /// 需真实 GPU 设备，故这些方法在此跳过（GPU 路径）。
+    /// 此处仅覆盖不依赖实例的常量。
+    #[test]
+    fn view_radius_is_16() {
+        assert_eq!(GlobalMeshPool::VIEW_RADIUS, 16.0);
+    }
+}

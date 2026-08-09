@@ -135,3 +135,110 @@ fn sync_gizmo_camera(
     gt.translation = dir * 2.2;
     gt.look_at(Vec3::ZERO, Vec3::Y);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::MinimalPlugins;
+    use bevy_camera::RenderTarget;
+
+    fn assert_approx(a: f32, b: f32) {
+        assert!(
+            (a - b).abs() < 1e-5,
+            "expected {a} ≈ {b} but diff = {}",
+            (a - b).abs()
+        );
+    }
+
+    #[test]
+    fn setup_gizmo_spawns_axes_camera_and_ui() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<Assets<StandardMaterial>>();
+        app.init_resource::<Assets<Image>>();
+        app.add_systems(Update, setup_gizmo);
+
+        app.update();
+
+        // 3 轴 cuboid + 1 球 = 4 个 mesh 实体
+        let mut mesh_q = app.world_mut().query::<(&Mesh3d, &GlobalTransform)>();
+        assert_eq!(mesh_q.iter(app.world()).count(), 4);
+
+        // 1 个 gizmo 相机，render target 是 Image 纹理
+        let mut cam_q = app.world_mut().query::<(&GizmoCamera, &RenderTarget)>();
+        let cams: Vec<_> = cam_q.iter(app.world()).collect();
+        assert_eq!(cams.len(), 1);
+        assert!(matches!(cams[0].1, RenderTarget::Image(_)));
+
+        // 1 个 UI ImageNode
+        let mut ui_q = app.world_mut().query::<&ImageNode>();
+        assert_eq!(ui_q.iter(app.world()).count(), 1);
+
+        // 注册了 1 张 render target 纹理
+        let images = app.world().resource::<Assets<Image>>();
+        assert_eq!(images.len(), 1);
+    }
+
+    #[test]
+    fn sync_early_returns_without_main_camera() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_systems(Update, sync_gizmo_camera);
+        let gizmo = app
+            .world_mut()
+            .spawn((GizmoCamera, Transform::from_xyz(1.0, 2.0, 3.0)))
+            .id();
+
+        app.update();
+
+        assert_eq!(
+            app.world()
+                .entity(gizmo)
+                .get::<Transform>()
+                .expect("有 Transform")
+                .translation,
+            Vec3::new(1.0, 2.0, 3.0)
+        );
+    }
+
+    #[test]
+    fn sync_early_returns_without_gizmo_camera() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_systems(Update, sync_gizmo_camera);
+        app.world_mut()
+            .spawn((Camera3d::default(), Transform::IDENTITY));
+
+        app.update();
+    }
+
+    #[test]
+    fn sync_places_gizmo_on_rotated_direction_from_main() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_systems(Update, sync_gizmo_camera);
+        app.world_mut().spawn((
+            Camera3d::default(),
+            Transform::from_rotation(bevy::math::Quat::from_rotation_y(0.5)),
+        ));
+        let gizmo = app
+            .world_mut()
+            .spawn((GizmoCamera, Transform::from_xyz(5.0, 5.0, 5.0)))
+            .id();
+
+        app.update();
+
+        let t = app
+            .world()
+            .entity(gizmo)
+            .get::<Transform>()
+            .expect("有 Transform");
+        assert_approx(t.translation.length(), 2.2);
+        let dir = bevy::math::Quat::from_rotation_y(0.5)
+            * bevy::math::Vec3::new(-1.0, -0.25, -1.0).normalize();
+        assert_approx(t.translation.x, dir.x * 2.2);
+        assert_approx(t.translation.y, dir.y * 2.2);
+        assert_approx(t.translation.z, dir.z * 2.2);
+    }
+}
