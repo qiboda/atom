@@ -268,8 +268,8 @@ mod tests {
 
     #[test]
     fn plugin_defaults_construct() {
-        let _ = TerrainPlugin::default();
-        let _ = PerChunkTerrainPlugin::default();
-        let _ = GlobalTerrainPlugin::default();
+        let _ = TerrainPlugin;
+        let _ = PerChunkTerrainPlugin;
+        let _ = GlobalTerrainPlugin;
     }
 }
