@@ -78,7 +78,6 @@ fn create_ability(
     registry: Res<DataRegistry>,
     state_registry: Res<StateLayerTagRegistry>,
     query: Query<(), With<Ability>>,
-    state_registry: Res<StateLayerTagRegistry>,
 ) {
     if input.just_pressed(KeyCode::KeyC) {
         if query.iter().count() > 0 {
@@ -94,13 +93,7 @@ fn create_ability(
             .insert(Player)
             .id();
         commands
-            .spawn_scene(spawn_ability(
-                TbAbilityRow {
-                    key: 1,
-                    data: Some(row_data),
-                },
-                &state_registry,
-            ))
+            .spawn_scene(spawn_ability(config, &state_registry))
             .set_parent_in_place(owner);
 
         info!("create_ability");

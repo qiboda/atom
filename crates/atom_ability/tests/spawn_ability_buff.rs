@@ -5,12 +5,15 @@
 //! `spawn_ability`/`spawn_buff` 场景产物**完全一致**——本文件把这些行为固化为回归测试。
 //!
 //! 目标 API（迁移后应存在，当前不存在 → 编译失败 = RED）：
-//! - `atom_ability::ability::bundle::spawn_ability(row, &registry) -> impl Scene`
+//! - `atom_ability::ability::bundle::spawn_ability(config, &registry) -> impl Scene`
 //! - `atom_ability::ability::bundle::spawn_ability_owner::<T>() -> impl Scene`
-//! - `atom_ability::buff::bundle::spawn_buff(row, &registry) -> impl Scene`
+//! - `atom_ability::buff::bundle::spawn_buff(config, &registry) -> impl Scene`
 
-use std::sync::Arc;
-
+use atom_ability::{
+    ability::bundle::AbilityConfigData,
+    buff::bundle::BuffConfigData,
+    config::{AbilityConfig, AbilityType, BuffConfig, RevertableLayerTag},
+};
 use atom_ability::{
     ability::{
         bundle::{spawn_ability, spawn_ability_owner},
@@ -37,15 +40,12 @@ use atom_ability::{
     graph::EffectGraphOwner,
     stateset::{StateLayerTagContainer, StateLayerTagRegistry},
 };
-use atom_datatables::effect::{
-    Ability as TbAbility, AbilityType, Buff as TbBuff, RevertableLayerTag, TbAbilityRow, TbBuffRow,
-};
 use atom_layertag::container_op::LayerTagContainer;
 use bevy::{MinimalPlugins, asset::AssetPlugin, prelude::*, scene::ScenePlugin};
 
 /// 构造带混合（已注册 + 未注册）标签的测试技能数据行。
-fn make_ability_row() -> TbAbilityRow {
-    let data = TbAbility {
+fn make_ability_config() -> AbilityConfig {
+    AbilityConfig {
         id: 1,
         name: "测试技能".to_string(),
         desc: String::new(),
@@ -68,13 +68,12 @@ fn make_ability_row() -> TbAbilityRow {
         }],
         abort_required_layertags: vec!["abort_required_a".to_string()],
         abort_disabled_layertags: vec!["abort_disabled_a".to_string()],
-    };
-    TbAbilityRow::new(1, Some(Arc::new(data)))
+    }
 }
 
 /// 构造 buff 测试数据行（interval > 0，应有 looper 计时器）。
-fn make_buff_row() -> TbBuffRow {
-    let data = TbBuff {
+fn make_buff_config() -> BuffConfig {
+    BuffConfig {
         id: 2,
         name: "测试buff".to_string(),
         desc: String::new(),
@@ -94,13 +93,12 @@ fn make_buff_row() -> TbBuffRow {
         }],
         abort_required_layertags: vec!["buff_abort_required_a".to_string()],
         abort_disabled_layertags: vec!["buff_abort_disabled_a".to_string()],
-    };
-    TbBuffRow::new(2, Some(Arc::new(data)))
+    }
 }
 
 /// 构造 interval = 0 的 buff 数据行（迁移后不应有 looper 计时器）。
-fn make_buff_row_no_interval() -> TbBuffRow {
-    let data = TbBuff {
+fn make_buff_config_no_interval() -> BuffConfig {
+    BuffConfig {
         id: 3,
         name: "无周期buff".to_string(),
         desc: String::new(),
@@ -114,13 +112,12 @@ fn make_buff_row_no_interval() -> TbBuffRow {
         start_removed_layertags: vec![],
         abort_required_layertags: vec![],
         abort_disabled_layertags: vec![],
-    };
-    TbBuffRow::new(3, Some(Arc::new(data)))
+    }
 }
 
 /// 构造带全部未注册标签的 buff 数据行（验证跳过而非 panic）。
-fn make_buff_row_all_unregistered() -> TbBuffRow {
-    let data = TbBuff {
+fn make_buff_config_all_unregistered() -> BuffConfig {
+    BuffConfig {
         id: 4,
         name: "全未注册buff".to_string(),
         desc: String::new(),
@@ -134,8 +131,7 @@ fn make_buff_row_all_unregistered() -> TbBuffRow {
         start_removed_layertags: vec![],
         abort_required_layertags: vec!["ghost_tag".to_string()],
         abort_disabled_layertags: vec!["ghost_tag".to_string()],
-    };
-    TbBuffRow::new(4, Some(Arc::new(data)))
+    }
 }
 
 /// 注册测试所需的全部 layertag 原始标签。
@@ -170,11 +166,11 @@ fn scene_app() -> App {
 fn spawn_ability_produces_full_ability_entity() {
     let mut app = scene_app();
     register_test_layertags(&mut app);
-    let row = make_ability_row();
+    let config = make_ability_config();
     app.add_systems(
         Update,
         move |mut commands: Commands, registry: Res<StateLayerTagRegistry>| {
-            let scene = spawn_ability(row.clone(), &registry);
+            let scene = spawn_ability(&config, &registry);
             commands.spawn_scene(scene);
         },
     );
@@ -185,7 +181,7 @@ fn spawn_ability_produces_full_ability_entity() {
         &Ability,
         &AbilityExecuteState,
         &AbilityTickState,
-        &TbAbilityRow,
+        &AbilityConfigData,
         &EffectGraphOwner,
         &AbilityStartRequiredLayerTagContainer,
         &AbilityStartDisableLayerTagContainer,
@@ -216,7 +212,10 @@ fn spawn_ability_produces_full_ability_entity() {
     // 构造逻辑与迁移前 AbilityBundle::new 一致：默认状态。
     assert_eq!(*execute_state, AbilityExecuteState::Inactive);
     assert_eq!(*tick_state, AbilityTickState::Ticked);
-    assert_eq!(ability_row.key(), &1, "技能数据表行 key 必须与输入一致");
+    assert_eq!(
+        ability_row.graph_class, "test_graph",
+        "配置数据组件的图类别必须与输入一致"
+    );
 
     // 6 个 layertag 容器：已注册标签解析成功、未注册标签被跳过（不 panic）。
     assert!(
@@ -270,8 +269,7 @@ fn spawn_ability_produces_full_ability_entity() {
 fn spawn_ability_skips_all_unregistered_layertags_without_panicking() {
     let mut app = scene_app();
     // 不注册任何 layertag：全部原始标签缺失。
-    let mut row = make_ability_row();
-    let data = TbAbility {
+    let config = AbilityConfig {
         id: 1,
         name: "全未注册技能".to_string(),
         desc: String::new(),
@@ -285,12 +283,11 @@ fn spawn_ability_skips_all_unregistered_layertags_without_panicking() {
         abort_required_layertags: vec!["ghost_a".to_string()],
         abort_disabled_layertags: vec!["ghost_a".to_string()],
     };
-    row.data = Some(Arc::new(data));
 
     app.add_systems(
         Update,
         move |mut commands: Commands, registry: Res<StateLayerTagRegistry>| {
-            let scene = spawn_ability(row.clone(), &registry);
+            let scene = spawn_ability(&config, &registry);
             commands.spawn_scene(scene);
         },
     );
@@ -365,11 +362,11 @@ fn spawn_ability_owner_produces_attribute_set_and_state_container() {
 fn spawn_buff_produces_full_buff_entity() {
     let mut app = scene_app();
     register_test_layertags(&mut app);
-    let row = make_buff_row();
+    let config = make_buff_config();
     app.add_systems(
         Update,
         move |mut commands: Commands, registry: Res<StateLayerTagRegistry>| {
-            let scene = spawn_buff(row.clone(), &registry);
+            let scene = spawn_buff(&config, &registry);
             commands.spawn_scene(scene);
         },
     );
@@ -383,7 +380,7 @@ fn spawn_buff_produces_full_buff_entity() {
         &BuffTickState,
         &BuffTime,
         &BuffLayer,
-        &TbBuffRow,
+        &BuffConfigData,
         &BuffStartRequiredLayerTagContainer,
         &BuffStartDisableLayerTagContainer,
         &BuffAddedLayerTagContainer,
@@ -415,7 +412,10 @@ fn spawn_buff_produces_full_buff_entity() {
     // 构造逻辑与迁移前 BuffBundle::new 一致。
     assert_eq!(*execute_state, BuffExecuteState::Inactive);
     assert_eq!(*tick_state, BuffTickState::Ticked);
-    assert_eq!(buff_row.key(), &2, "buff 数据表行 key 必须与输入一致");
+    assert_eq!(
+        buff_row.graph_class, "test_graph",
+        "配置数据组件的图类别必须与输入一致"
+    );
 
     // BuffTime：duration 与 interval 来自 row.data()。
     assert_eq!(
@@ -485,23 +485,23 @@ fn spawn_buff_produces_full_buff_entity() {
 #[test]
 fn spawn_buff_with_zero_interval_has_no_looper() {
     let mut app = scene_app();
-    let row = make_buff_row_no_interval();
+    let config = make_buff_config_no_interval();
     app.add_systems(
         Update,
         move |mut commands: Commands, registry: Res<StateLayerTagRegistry>| {
-            let scene = spawn_buff(row.clone(), &registry);
+            let scene = spawn_buff(&config, &registry);
             commands.spawn_scene(scene);
         },
     );
     app.update();
 
     let world = app.world_mut();
-    let mut query = world.query::<(&BuffTime, &TbBuffRow)>();
+    let mut query = world.query::<(&BuffTime, &BuffConfigData)>();
     let (buff_time, buff_row) = query
         .iter(world)
         .next()
         .expect("spawn_buff 场景应产生一个 buff 实体");
-    assert_eq!(buff_row.key(), &3);
+    assert_eq!(buff_row.graph_class, "test_graph");
     assert!(
         buff_time.looper_timer.is_none(),
         "interval <= 0 时不应创建 looper 计时器"
@@ -513,11 +513,11 @@ fn spawn_buff_with_zero_interval_has_no_looper() {
 fn spawn_buff_skips_all_unregistered_layertags_without_panicking() {
     let mut app = scene_app();
     // 不注册任何 layertag。
-    let row = make_buff_row_all_unregistered();
+    let config = make_buff_config_all_unregistered();
     app.add_systems(
         Update,
         move |mut commands: Commands, registry: Res<StateLayerTagRegistry>| {
-            let scene = spawn_buff(row.clone(), &registry);
+            let scene = spawn_buff(&config, &registry);
             commands.spawn_scene(scene);
         },
     );

@@ -27,22 +27,15 @@
 //!    StateLayerTagRegistry 填充全部行 raw_layertag。
 
 use atom_ability::{
-    ability::{
-        bundle::AbilityBundle,
-        layertag::tag::AbilityLayerTagContainerRevert,
-    },
-    buff::{
-        bundle::BuffBundle,
-        layertag::tag::BuffLayerTagContainerRevert,
-    },
+    ability::bundle::spawn_ability,
+    buff::bundle::spawn_buff,
     config::{AbilityConfig, AbilityType, BuffConfig, RevertableLayerTag},
     graph::event::EffectGraphAddEvent,
     stateset::StateLayerTagRegistry,
     AbilitySubsystemPlugin,
 };
 use atom_data::{DataRegistry, DataRegistryPlugin, DataTable};
-use atom_layertag::container_op::LayerTagContainer;
-use bevy::prelude::*;
+use bevy::{asset::AssetPlugin, prelude::*, scene::ScenePlugin};
 
 fn ability_config() -> AbilityConfig {
     AbilityConfig {
@@ -89,159 +82,6 @@ fn buff_config() -> BuffConfig {
 }
 
 /// 构造已注册全部引用 raw layertag 的状态层标签注册表。
-fn state_registry_with_tags() -> StateLayerTagRegistry {
-    let mut registry = StateLayerTagRegistry::default();
-    for raw in ["fire", "burn", "stun", "burning", "wet", "silence"] {
-        registry.0.register_raw(raw);
-    }
-    registry
-}
-
-fn collect_raw_tags(container: &impl LayerTagContainer) -> Vec<String> {
-    container.iter_layertag().map(|t| t.raw_layertag()).collect()
-}
-
-/// B3-3 + §6.4「layertag 解析」：`AbilityBundle::new` 用 config 数据 + 注册表构造，
-/// 开始阶段四类标签（required/disabled/added/removed）全部解析进对应容器。
-#[test]
-fn ability_bundle_resolves_registered_start_tags() {
-    let config = ability_config();
-    let state_registry = state_registry_with_tags();
-
-    let bundle = AbilityBundle::new(&config, &state_registry);
-
-    assert_eq!(
-        collect_raw_tags(&bundle.start_tag_bundle.required_layertags.0),
-        vec!["fire".to_string(), "burn".to_string()],
-        "start_required_layertags 应按列表顺序解析进容器"
-    );
-    assert_eq!(
-        collect_raw_tags(&bundle.start_tag_bundle.disable_layertags.0),
-        vec!["stun".to_string()],
-        "start_disabled_layertags 应解析进容器"
-    );
-    assert_eq!(
-        collect_raw_tags(&bundle.start_tag_bundle.added_layertags.layer_tag_container),
-        vec!["burning".to_string()],
-        "start_added_layertags 应解析进容器"
-    );
-    assert_eq!(
-        bundle.start_tag_bundle.added_layertags.revert,
-        AbilityLayerTagContainerRevert::Yes,
-        "revertable=true 应映射为回滚标记"
-    );
-    assert_eq!(
-        collect_raw_tags(&bundle.start_tag_bundle.removed_layertags.layer_tag_container),
-        vec!["wet".to_string()],
-        "start_removed_layertags 应解析进容器"
-    );
-    assert_eq!(
-        bundle.start_tag_bundle.removed_layertags.revert,
-        AbilityLayerTagContainerRevert::No,
-        "revertable=false 应映射为不回滚标记"
-    );
-}
-
-/// B3-3：中断阶段（abort_required/abort_disabled）标签同样解析正确。
-#[test]
-fn ability_bundle_resolves_abort_tags() {
-    let config = ability_config();
-    let state_registry = state_registry_with_tags();
-
-    let bundle = AbilityBundle::new(&config, &state_registry);
-
-    assert_eq!(
-        collect_raw_tags(&bundle.abort_tag_bundle.required_layer_tag.0),
-        vec!["wet".to_string()],
-        "abort_required_layertags 应解析进容器"
-    );
-    assert_eq!(
-        collect_raw_tags(&bundle.abort_tag_bundle.disable_layer_tag.0),
-        vec!["silence".to_string()],
-        "abort_disabled_layertags 应解析进容器"
-    );
-}
-
-/// 盲区（行为等价）：未注册的 raw layertag 被跳过（warn 不 panic），容器保持为空。
-#[test]
-fn ability_bundle_skips_unregistered_layertags() {
-    let config = ability_config();
-    let state_registry = StateLayerTagRegistry::default();
-
-    let bundle = AbilityBundle::new(&config, &state_registry);
-
-    assert_eq!(bundle.start_tag_bundle.required_layertags.0.iter_layertag().count(), 0);
-    assert_eq!(bundle.start_tag_bundle.added_layertags.layer_tag_container.iter_layertag().count(), 0);
-    assert_eq!(bundle.abort_tag_bundle.disable_layer_tag.0.iter_layertag().count(), 0);
-}
-
-/// B3-3 + 行为不变：`BuffBundle::new` 的 buff_time 由 config.duration/interval 驱动
-/// （duration → once_timer；interval>0 → looper_timer）。
-#[test]
-fn buff_bundle_sets_duration_and_interval_from_config() {
-    let config = buff_config();
-    let state_registry = state_registry_with_tags();
-
-    let bundle = BuffBundle::new(&config, &state_registry);
-
-    assert_eq!(
-        bundle.buff_time.once_timer.duration(),
-        std::time::Duration::from_secs_f32(10.0),
-        "once_timer 时长应等于 config.duration"
-    );
-    let looper = bundle
-        .buff_time
-        .looper_timer
-        .as_ref()
-        .expect("interval>0 应生成循环计时器");
-    assert_eq!(
-        looper.duration(),
-        std::time::Duration::from_secs_f32(2.0),
-        "looper 时长应等于 config.interval"
-    );
-}
-
-/// 盲区（行为等价）：interval=0 → 无循环计时器（现 `BuffBundle::new` 语义）。
-#[test]
-fn buff_bundle_zero_interval_yields_no_looper() {
-    let config = BuffConfig {
-        interval: 0.0,
-        ..buff_config()
-    };
-    let state_registry = state_registry_with_tags();
-
-    let bundle = BuffBundle::new(&config, &state_registry);
-
-    assert!(
-        bundle.buff_time.looper_timer.is_none(),
-        "interval=0 不应生成循环计时器"
-    );
-}
-
-/// B3-3：`BuffBundle::new` 的开始阶段标签解析（与 ability 同语义）。
-#[test]
-fn buff_bundle_resolves_start_tags() {
-    let config = buff_config();
-    let state_registry = state_registry_with_tags();
-
-    let bundle = BuffBundle::new(&config, &state_registry);
-
-    assert_eq!(
-        collect_raw_tags(&bundle.start_tag_bundle.required_layertags.0),
-        vec!["fire".to_string()]
-    );
-    assert_eq!(
-        collect_raw_tags(&bundle.start_tag_bundle.removed_layertags.layer_tag_container),
-        vec!["wet".to_string()]
-    );
-    assert_eq!(
-        bundle.start_tag_bundle.removed_layertags.revert,
-        BuffLayerTagContainerRevert::Yes
-    );
-}
-
-// --- observer 回归（B3-2/B3-3：数据源从 TbAbilityRow.data 改为新数据形态） ---
-
 /// 捕获 EffectGraphAddEvent 的 graph_class 序列（全局 observer，EntityEvent 任意目标均触发）。
 #[derive(Resource, Default)]
 struct CapturedGraphAdd {
@@ -272,7 +112,7 @@ fn spawn_ability_bundle(
         return;
     }
     *spawned = true;
-    commands.spawn(AbilityBundle::new(&configs.ability, &state_registry));
+    commands.spawn_scene(spawn_ability(&configs.ability, &state_registry));
 }
 
 fn spawn_buff_bundle(
@@ -285,12 +125,17 @@ fn spawn_buff_bundle(
         return;
     }
     *spawned = true;
-    commands.spawn(BuffBundle::new(&configs.buff, &state_registry));
+    commands.spawn_scene(spawn_buff(&configs.buff, &state_registry));
 }
 
 fn test_app() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, DataRegistryPlugin));
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin::default(),
+        ScenePlugin,
+        DataRegistryPlugin,
+    ));
     app.add_plugins(AbilitySubsystemPlugin);
     app.init_resource::<CapturedGraphAdd>();
     app.world_mut().add_observer(capture_effect_graph_add);

@@ -320,7 +320,6 @@ mod tests {
         EffectGraphAddEvent, EffectGraphExecEvent, EffectGraphRemoveEvent, EffectGraphTickableEvent,
     };
     use crate::stateset::StateLayerTagRegistry;
-    use atom_datatables::effect::{Ability as AbilityRowData, AbilityType};
     use atom_layertag::container_op::LayerTagContainer;
     use atom_layertag::count_container::CountLayerTagContainer;
     use bevy::MinimalPlugins;
@@ -902,21 +901,10 @@ mod tests {
 
     // ===== trigger_ability_add =====
 
-    fn ability_row_data(graph_class: &str) -> Arc<AbilityRowData> {
-        Arc::new(AbilityRowData {
-            id: 1,
-            name: "test".to_string(),
-            desc: "".to_string(),
+    fn ability_config_data(graph_class: &str) -> AbilityConfigData {
+        AbilityConfigData {
             graph_class: graph_class.to_string(),
-            activation_type: AbilityType::Active,
-            cd: 1.0,
-            start_required_layertags: vec![],
-            start_disabled_layertags: vec![],
-            start_added_layertags: vec![],
-            start_removed_layertags: vec![],
-            abort_required_layertags: vec![],
-            abort_disabled_layertags: vec![],
-        })
+        }
     }
 
     #[test]
@@ -937,10 +925,7 @@ mod tests {
         let ability = world
             .spawn((
                 Observer::new(trigger_ability_add),
-                TbAbilityRow {
-                    key: 1,
-                    data: Some(ability_row_data("fireball")),
-                },
+                ability_config_data("fireball"),
             ))
             .id();
         world.entity_mut(ability).insert(Ability);
@@ -971,12 +956,7 @@ mod tests {
         });
 
         let world = app.world_mut();
-        let ability = world
-            .spawn((
-                Observer::new(trigger_ability_add),
-                TbAbilityRow { key: 2, data: None },
-            ))
-            .id();
+        let ability = world.spawn(Observer::new(trigger_ability_add)).id();
         world.entity_mut(ability).insert(Ability);
 
         app.update();

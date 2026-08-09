@@ -7,7 +7,7 @@ use atom_layertag::container_op::{
 use bevy::prelude::*;
 
 use crate::{
-    buff::{bundle::spawn_buff, node::buff_entry::EffectNodeBuffEntry},
+    buff::node::buff_entry::EffectNodeBuffEntry,
     graph::{
         event::{
             EffectGraphAddEvent, EffectGraphExecEvent, EffectGraphRemoveEvent,
@@ -277,72 +277,18 @@ pub fn trigger_buff_tickable(
     }
 }
 
-/// 处理 [`BuffAddEvent`]：已存在同 ID buff 则叠加层数并触发 ADD_LAYER 执行，
-/// 否则为所有者新建 buff 实体。
-pub fn trigger_buff_add_event(
-    trigger: On<BuffAddEvent>,
-    mut commands: Commands,
-    table_reader: TableReader<TbBuff>,
-    owner_query: Query<&Children>,
-    mut query: Query<(&mut BuffLayer, &TbBuffRow), With<Buff>>,
-    state_registry: Res<StateLayerTagRegistry>,
-) {
-    let event = trigger.event();
-    info!("trigger_buff_add: {:?}", event.buff_id);
-
-    let Some(new_buff_data) = table_reader.get_row(&event.buff_id) else {
-        return;
-    };
-
-    if let Ok(children) = owner_query.get(event.owner_entity) {
-        for child in children {
-            if let Ok((mut buff_layer, buff_row)) = query.get_mut(*child)
-                && buff_row.key() == &event.buff_id
-            {
-                buff_layer.add_layer(1);
-
-                let mut slot_value_map = HashMap::new();
-                slot_value_map.insert(
-                    EffectNodeSlot::new::<i32>(EffectNodeBuffEntry::OUTPUT_SLOT_ADDED_LAYER),
-                    EffectValue::I32(1),
-                );
-                commands.trigger(EffectGraphExecEvent {
-                    entry_exec_pin: EffectNodeBuffEntry::OUTPUT_EXEC_ADD_LAYER.into(),
-                    execute_in_graph_state: Some(EffectGraphState::Active),
-                    slot_value_map: Some(slot_value_map),
-                    ability_entity: *child,
-                });
-                return;
-            }
-        }
-
-        commands
-            .spawn_scene(spawn_buff(
-                TbBuffRow {
-                    key: event.buff_id,
-                    data: Some(new_buff_data),
-                },
-                &state_registry,
-            ))
-            .set_parent_in_place(event.owner_entity);
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::buff::layer::BuffLayer;
     use crate::buff::layertag::tag::BuffLayerTagContainerRevert;
     use crate::buff::state::BuffExecuteState;
     use crate::graph::event::{
         EffectGraphAddEvent, EffectGraphExecEvent, EffectGraphRemoveEvent, EffectGraphTickableEvent,
     };
     use crate::stateset::{StateLayerTagContainer, StateLayerTagRegistry};
-    use atom_datatables::Tables;
-    use atom_datatables::effect::{Buff as BuffRowData, TbBuff};
     use atom_layertag::container_op::LayerTagContainer;
     use atom_layertag::count_container::CountLayerTagContainer;
-    use bevy::{MinimalPlugins, asset::AssetPlugin, scene::ScenePlugin};
-    use std::any::TypeId;
+    use bevy::MinimalPlugins;
     use std::sync::{Arc, Mutex};
 
     fn tag_container(raw: &str) -> CountLayerTagContainer {
@@ -433,22 +379,10 @@ mod tests {
 
     // ===== trigger_buff_on_add =====
 
-    fn buff_row_data(graph_class: &str) -> Arc<BuffRowData> {
-        Arc::new(BuffRowData {
-            id: 1,
-            name: "test".to_string(),
-            desc: "".to_string(),
+    fn buff_config_data(graph_class: &str) -> BuffConfigData {
+        BuffConfigData {
             graph_class: graph_class.to_string(),
-            max_layer: 3,
-            duration: 5.0,
-            interval: 0.0,
-            start_required_layertags: vec![],
-            start_disabled_layertags: vec![],
-            start_added_layertags: vec![],
-            start_removed_layertags: vec![],
-            abort_required_layertags: vec![],
-            abort_disabled_layertags: vec![],
-        })
+        }
     }
 
     #[test]
@@ -470,10 +404,7 @@ mod tests {
             let buff = world
                 .spawn((
                     Observer::new(trigger_buff_on_add),
-                    TbBuffRow {
-                        key: 1,
-                        data: Some(buff_row_data("buff_graph")),
-                    },
+                    buff_config_data("buff_graph"),
                 ))
                 .id();
             world.entity_mut(buff).insert(Buff);
@@ -485,12 +416,12 @@ mod tests {
         assert_eq!(
             received.lock().expect("锁被占用").as_slice(),
             &["buff_graph".to_string()],
-            "on_add 必须按数据表图类别触发图添加事件"
+            "on_add 必须按配置数据图类别触发图添加事件"
         );
     }
 
     #[test]
-    fn on_add_without_row_data_does_nothing() {
+    fn on_add_without_config_data_does_nothing() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
 
@@ -505,12 +436,7 @@ mod tests {
 
         {
             let world = app.world_mut();
-            let buff = world
-                .spawn((
-                    Observer::new(trigger_buff_on_add),
-                    TbBuffRow { key: 2, data: None },
-                ))
-                .id();
+            let buff = world.spawn(Observer::new(trigger_buff_on_add)).id();
             world.entity_mut(buff).insert(Buff);
         }
 
@@ -519,7 +445,7 @@ mod tests {
 
         assert!(
             received.lock().expect("锁被占用").is_empty(),
-            "data 为 None 时不得触发图添加事件"
+            "无配置数据时不得触发图添加事件"
         );
     }
 
@@ -974,153 +900,6 @@ mod tests {
         assert!(
             received.lock().expect("锁被占用").is_empty(),
             "ToRemove buff 不得透传 tickable"
-        );
-    }
-
-    // ===== trigger_buff_add_event =====
-
-    /// 构造 TbBuff 数据表资源：使 TableReader<TbBuff> 能查到指定 id。
-    fn install_buff_table(app: &mut App, rows: Vec<(i32, Arc<BuffRowData>)>) {
-        let mut tb = TbBuff {
-            data_list: rows.iter().map(|(_, data)| data.clone()).collect(),
-            data_map: Default::default(),
-        };
-        for (id, data) in rows {
-            tb.data_map.insert(id, data);
-        }
-        let mut assets = Assets::<TbBuff>::default();
-        let handle = assets.add(tb);
-        app.world_mut().insert_resource(assets);
-
-        let mut tables = Tables::default();
-        tables
-            .table_handle_map
-            .insert(TypeId::of::<TbBuff>(), handle.clone().untyped());
-        app.world_mut().insert_resource(tables);
-    }
-
-    #[test]
-    fn add_event_spawns_new_buff_for_owner() {
-        let mut app = App::new();
-        app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
-        app.init_resource::<StateLayerTagRegistry>();
-        app.add_observer(trigger_buff_add_event);
-        install_buff_table(&mut app, vec![(1, buff_row_data("buff_graph"))]);
-
-        let world = app.world_mut();
-        // owner 需带 Children 组件（此处加一个无关子实体）才会进入 spawn 分支。
-        let owner = world.spawn_empty().id();
-        world.spawn_empty().set_parent_in_place(owner);
-        let owner_entity = owner;
-        trigger_once(&mut app, move |mut commands: Commands| {
-            commands.trigger(BuffAddEvent {
-                owner_entity,
-                buff_id: 1,
-            });
-        });
-
-        app.update();
-        app.update();
-        app.update();
-
-        let world = app.world();
-        let children = world
-            .entity(owner)
-            .get::<Children>()
-            .expect("owner 必须获得 buff 子实体");
-        assert!(!children.is_empty(), "add 必须为 owner 生成 buff 实体");
-        let buff_children = children
-            .iter()
-            .filter(|child| world.entity(*child).get::<Buff>().is_some())
-            .collect::<Vec<_>>();
-        assert!(!buff_children.is_empty(), "add 必须生成 buff 子实体");
-    }
-
-    #[test]
-    fn add_event_stacks_layer_when_existing_buff() {
-        let mut app = App::new();
-        app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
-        app.init_resource::<StateLayerTagRegistry>();
-        app.add_observer(trigger_buff_add_event);
-        install_buff_table(&mut app, vec![(1, buff_row_data("buff_graph"))]);
-
-        let received = Arc::new(Mutex::new(Vec::<&'static str>::new()));
-        let received_obs = received.clone();
-        app.add_observer(move |trigger: On<EffectGraphExecEvent>| {
-            received_obs
-                .lock()
-                .expect("锁被占用")
-                .push(trigger.event().entry_exec_pin.name);
-        });
-
-        let world = app.world_mut();
-        let owner = world.spawn_empty().id();
-        let buff = world
-            .spawn((
-                Buff,
-                BuffLayer::new(5),
-                TbBuffRow {
-                    key: 1,
-                    data: Some(buff_row_data("buff_graph")),
-                },
-            ))
-            .set_parent_in_place(owner)
-            .id();
-
-        let owner_entity = owner;
-        trigger_once(&mut app, move |mut commands: Commands| {
-            commands.trigger(BuffAddEvent {
-                owner_entity,
-                buff_id: 1,
-            });
-        });
-
-        app.update();
-        app.update();
-
-        let events = received.lock().expect("锁被占用");
-        assert_eq!(
-            events.as_slice(),
-            &[EffectNodeBuffEntry::OUTPUT_EXEC_ADD_LAYER],
-            "已存在同 ID buff 时必须触发叠加层执行"
-        );
-
-        let world = app.world();
-        let children = world
-            .entity(owner)
-            .get::<Children>()
-            .expect("owner 应有子实体");
-        assert_eq!(children.len(), 1, "叠加层不得生成新 buff 实体");
-        let _ = buff;
-    }
-
-    #[test]
-    fn add_event_without_table_data_does_nothing() {
-        let mut app = App::new();
-        app.add_plugins(MinimalPlugins);
-        app.init_resource::<StateLayerTagRegistry>();
-        app.add_observer(trigger_buff_add_event);
-        install_buff_table(&mut app, vec![]);
-
-        let owner = {
-            let world = app.world_mut();
-            world.spawn_empty().id()
-        };
-
-        trigger_once(&mut app, move |mut commands: Commands| {
-            commands.trigger(BuffAddEvent {
-                owner_entity: owner,
-                buff_id: 999,
-            });
-        });
-
-        app.update();
-        app.update();
-
-        let world = app.world();
-        assert!(
-            world.entity(owner).get::<Children>().is_none(),
-            "无数据表行时不得生成 buff"
         );
     }
 }

@@ -16,9 +16,8 @@ pub struct EffectNodeEffectEntryPlugin;
 impl Plugin for EffectNodeEffectEntryPlugin {
     fn build(&self, app: &mut App) {
         let world = app.world_mut();
-        let component_id = world.component_id::<EffectNodeEffectEntry>().expect(
-            "EffectNodeEffectEntry component not found! You need registry EffectNodePlugin before",
-        );
+        // Bevy 0.19: `component_id()` 只返回已注册组件；`register_component` 注册并返回 id。
+        let component_id = world.register_component::<EffectNodeEffectEntry>();
         let mut component_ids = world
             .get_resource_mut::<TypedComponentIds>()
             .expect("EffectNodePlugin should be added before this plugin");
