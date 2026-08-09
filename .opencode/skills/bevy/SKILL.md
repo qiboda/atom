@@ -40,6 +40,12 @@ grep -i "<关键词>" .opencode/kb/bevy/0-19/patterns.md
 
 用 `Grep` 工具在 `/data/codes/Bevy/crates/` 中搜索类型定义/使用位置。
 
+> ⚠️ **源码一致性**：编译用的 Bevy 来自 `qiboda/bevy` 的 `atom-patches` 分支
+> （`[patch.crates-io]` git 引用，见根 Cargo.toml）。本地 `/data/codes/Bevy`
+> 必须保持在该分支上（`git -C /data/codes/Bevy branch --show-current` 应为
+> `atom-patches`）且未提交的本地修改已 push——否则查到的源码 ≠ 编译的源码。
+> 修改本地 Bevy 后必须 commit + push 到 `atom-patches`，再以 git 分支状态为准。
+
 ```bash
 # 找 trait 定义
 grep -rn "pub trait $TRAIT" /data/codes/Bevy/crates/

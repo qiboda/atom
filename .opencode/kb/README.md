@@ -1,6 +1,9 @@
 # Atom 知识库
 
-Bevy 源码 (`/data/codes/Bevy`) 是权威参考，本目录记录已验证的模式、迁移要点和项目知识。
+Bevy 源码是权威参考：编译依赖来自 `qiboda/bevy` 的 `atom-patches` 分支
+（`[patch.crates-io]` git 引用，见根 Cargo.toml），本地 checkout 在
+`/data/codes/Bevy`（须与分支同步，见 `kb/bevy/README.md`）。本目录记录
+已验证的模式、迁移要点和项目知识。
 
 ## 结构
 
