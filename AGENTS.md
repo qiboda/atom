@@ -151,6 +151,8 @@ toolchain 为 nightly-2026-01-22（bevy_lint v0.6.0 + cfg_select feature）。
 
 **依赖克制。** 能不用就不加。新引入需过四关：stdlib 有？→ workspace 有？→ Bevy 生态有？→ 自实现 < 1 周？
 
+**subagent 编译权限分级（强制）。** 委派 subagent 时，允许其运行 `cargo check -p <负责的 crate>` 和 `cargo check --tests -p <负责的 crate>` 自验代码（含测试代码）编译通过；禁止其运行 `cargo test`/`clippy`/`build`/`llvm-cov`/`run` 等重型编译命令——它们需链接或插桩，在共享 `target/` 上长时间锁竞争、拖慢并行。测试行为验证与重型门禁由主 session 在收集全部 subagent 结果后集中执行；失败用 `task(task_id)` 续会话回传修复。完整策略见全局 skill `subagent-compile`。
+
 ## Agent 能力边界
 
 Agent 不能替代人类判断的领域：
