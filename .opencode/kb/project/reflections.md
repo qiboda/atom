@@ -336,3 +336,27 @@
 ### Trends (last 10)
 - **fmt 门禁拦截重复出现**：#7（2026-08-08）与本次（#14）均出现「未先 cargo fmt 提交被 pre-commit 拦截」——已两次记录，hook 拦截有效但 agent 提交习惯未变，下次涉及格式变更应先跑 fmt 再提交。
 - **Bevy 外部源码本地补丁模式成型**：#13/#14 系列把本地 Bevy 补丁（cfg_select/警告修复）固化为 fork 分支 `atom-patches` git 引用，替代裸 path 依赖——依赖来源可追踪，后续 Bevy 升级时走 fork 分支 rebase 而非本地打补丁。
+
+## 2026-08-09 — #15 bevy skill/kb 同步 atom-patches 依赖来源
+
+**What was done**: 知识库 × 全局 skills 配合度审查：确认 `ui-designer` agent 已存在（不悬空）、`/product brainstorm` 缺失需新建；创建全局 `product-brainstorm` skill（open issues → sprint/milestone 候选，配套 skwy-workflow 规则 11）+ 更新 workflow 引用（`/product-brainstorm`，加入可用 Skills 表）；bevy skill 与 kb/README 补充「本地 Bevy 须与 atom-patches 分支同步」说明；清理 `.worktrees/bsn-migration/` 空壳目录。
+
+**User corrections**:
+1. 「product 没有，上一句说的是ui-designer有了」——我误读「1.已经有了，等我加过去」为 product 已存在、用户自加；实际"已经有了"指 ui-designer（#1 引用不悬空），product 需我新建。纠正后创建 product-brainstorm skill。
+
+**What went wrong**:
+1. **用户纠正归属误读**：`gh issue create` 时先按 skwy-workflow 模板用 `D-Trivial` 标签，repo 无该标签被拒，改用已存在标签——创建 issue 前应先 `gh label list` 核对标签库存。
+2. **grep 全仓超时**：验证无残留时 `grep -rn` 扫到 `.opencode/node_modules/` 拖死 120s——应限定搜索目录（kb/skills/AGENTS.md）。
+
+**Lessons learned**:
+1. **创建 issue 前核对标签库存**：`gh label list --repo <owner>/<repo>` 先确认标签存在（项目 label 体系可能只有部分 D-/P- 标签），避免 create 被拒重试。
+2. **验证搜索限定范围**：全仓 grep 验证时排除 `.opencode/node_modules/` 等大目录，用明确目录列表替代通配。
+3. **全局 skill 命令名 = skill name（kebab-case）**：opencode 由 `name` 字段生成斜杠命令，skill 命名为 `product-brainstorm` 则命令为 `/product-brainstorm`——workflow 中的引用须与命令名一致。
+
+**Process improvements**:
+1. **已落实（全局）**：新建 `~/.config/opencode/skills/product-brainstorm/SKILL.md`；`skwy-workflow` 规则 11 引用改为 `/product-brainstorm` 并移除"若项目使用"条件，可用 Skills 表新增该行。
+2. **已落实（项目）**：`bevy` skill + `kb/README.md` + `kb/bevy/README.md` 注明编译依赖来自 `atom-patches` 分支、本地 checkout 须同步。
+
+### Trends (last 10)
+- **用户纠正多为"我做了什么"的归属误读**：本次「product/ui-designer 归属」与 #10「bevy lint 环境归属」同型——用户指出我对某物归属（谁拥有/谁负责/是否已存在）的判断错误。教训：不确定归属时先向用户确认，不自行推断。
+- **标签库存核对缺位**：本次 `D-Trivial` 不存在被拒——项目 label 是 Bevy 分类法的子集（只有 D-Straightforward/D-Complex、P-High），创建 issue 前核对库存应成为惯例。
