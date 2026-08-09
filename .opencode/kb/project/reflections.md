@@ -2,6 +2,27 @@
 
 > 实施后反思沉淀。只追加，不修改/删除历史条目。格式见全局 `skwy-reflect` skill。
 
+## 2026-08-09 — #7 BSN 迁移收尾：Batch 3 数据层回退修复
+
+**What was done**: 修复 bsn-migration 分支 rebase main 时回退的 Batch 3 数据层迁移——HEAD 的 `spawn_ability`/`spawn_buff` 引用已删除的 `TbAbilityRow`/`TbBuffRow`/`TableReader`（atom_datatables），Cargo.toml 已无该依赖导致无法编译；恢复 `AbilityConfigData`/`BuffConfigData` 组件 + `spawn_ability(config)`/`spawn_buff(config)` 签名 + 删除 `trigger_buff_add_event` 死代码 + `register_component` API 修复，全门禁绿 + example 冒烟通过。
+
+**What went wrong**:
+1. **rebase 冲突解决回退数据层迁移未被察觉（最严重）**：分支 rebase 到含 Batch 3（5412795）的新 main 后，bundle.rs 仍保留旧 `TbAbilityRow` 代码——HEAD 编译失败（E0432/E0433/E0425）在 12 个提交（e684d6c→267a070）期间未被发现，直到本次收尾才暴露。rebase/merge 后必须验证编译，冲突解决倾向旧版本时更要警惕。
+2. **sccache + bevy_lint 不兼容**：pre-commit hook 的 `bevy_lint` 经 `.cargo/config.toml` 的 `rustc-wrapper=sccache` 探测编译器失败（`Compiler not supported`）。绕过方式 `RUSTC_WRAPPER= CARGO_BUILD_RUSTC_WRAPPER=` 未固化——需每次提交手动加。
+3. **提交被 fmt 门禁拦截**：cargo fmt 后 import 顺序变化未先跑 `cargo fmt --all` 再提交，首次 commit 被 pre-commit 拒绝，二次提交。
+
+**Lessons learned**:
+1. **rebase/merge main 后第一时间跑 `cargo check --workspace` 验证编译**——冲突解决可能静默回退已合并代码（本案例：Batch 3 数据层），编译失败状态跨多个提交存活。rebase 完成后先验证再继续开发。
+2. **pre-commit bevy_lint 需绕过 sccache**——环境变量 `RUSTC_WRAPPER= CARGO_BUILD_RUSTC_WRAPPER=`，或建议用户将 bevy_lint 调用改为 `env -u RUSTC_WRAPPER`。
+
+**Process improvements**:
+1. **建议（hook 层）**：`.githooks/pre-commit` 的 bevy_lint 调用改为 `RUSTC_WRAPPER= CARGO_BUILD_RUSTC_WRAPPER= bevy_lint`（环境问题，无需每次手动加）。
+2. **建议（流程）**：worktree 同步 main 采用 rebase 后，把「rebase 后 `cargo check --workspace`」写入全局 skwy-worktree skill 或 AGENTS.md「分支同步」小节。
+
+### Trends (last 10)
+- **worktree 分支同步/漂移模式持续**：8-08「worktree 分支漂移」→ 8-09 #10「同步 main 写入全局」→ 本次「rebase 回退 Batch 3 未被察觉」——同主题第三次出现，已机制化一半（同步提醒），但「rebase 后验证编译」仍未固化，本次落实建议。
+- **sccache/bevy_lint 摩擦二次出现**：8-09 #10 已记录为环境问题（用户修复），本次提交时再次触发——绕过方式应固化为 hook 修改或 AGENTS.md 命令链说明。
+
 ## 2026-08-09 — #10 移除与全局重复的 opencode skill/agent/scripts
 
 **What was done**: 删除 4 个与全局 skwy-* 重复的项目 skill（atom-workflow/reflect/worktree/test）+ test-agent + scripts/open-worktrees.sh（陈旧拷贝），AGENTS.md 索引与 10 处引用改写为全局等价物，测试命令链汇拢到构建门禁；全局 skwy-worktree 新增「handoff 必须含同步原始分支提醒」。

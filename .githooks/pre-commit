@@ -28,7 +28,9 @@ fi
 
 echo "pre-commit: bevy_lint..."
 if command -v bevy_lint &>/dev/null; then
-    if ! bevy_lint 2>&1; then
+    # sccache（.cargo/config.toml rustc-wrapper）与 bevy_lint 的编译器探测不兼容
+    # （Compiler not supported: could not find Cargo.toml）——清空 wrapper 后运行。
+    if ! RUSTC_WRAPPER= CARGO_BUILD_RUSTC_WRAPPER= bevy_lint 2>&1; then
         echo "  ERROR: bevy_lint found issues."
         has_error=1
     fi
