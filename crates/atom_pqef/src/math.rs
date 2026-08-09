@@ -254,4 +254,193 @@ mod tests {
         assert!((cols[0][2] - cols[2][0]).abs() < 1e-6);
         assert!((cols[1][2] - cols[2][1]).abs() < 1e-6);
     }
+
+    #[test]
+    fn test_self_outer_product_values() {
+        let m = self_outer_product(Vec3A::new(1.0, 2.0, 3.0)).to_cols_array_2d();
+        let expected = [[1.0, 2.0, 3.0], [2.0, 4.0, 6.0], [3.0, 6.0, 9.0]];
+        for (row, exp_row) in m.into_iter().zip(expected) {
+            for (v, exp) in row.into_iter().zip(exp_row) {
+                assert!((v - exp).abs() < 1e-6, "mismatch {v} vs expected {exp}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_trace_of_product_commutes() {
+        let a = Mat3A::from_cols(
+            Vec3A::new(1.0, 2.0, 3.0),
+            Vec3A::new(4.0, 5.0, 6.0),
+            Vec3A::new(7.0, 8.0, 9.0),
+        );
+        let b = Mat3A::from_cols(
+            Vec3A::new(9.0, 8.0, 7.0),
+            Vec3A::new(6.0, 5.0, 4.0),
+            Vec3A::new(3.0, 2.0, 1.0),
+        );
+        // Tr(AB) = Tr(BA)；Tr(A·I) = Tr(A) = 1 + 5 + 9。
+        let tr_ab = trace_of_product(a, b);
+        let tr_ba = trace_of_product(b, a);
+        assert!(
+            (tr_ab - tr_ba).abs() < 1e-4,
+            "Tr(AB)={tr_ab} Tr(BA)={tr_ba}"
+        );
+        let tr_ai = trace_of_product(a, Mat3A::IDENTITY);
+        assert!((tr_ai - 15.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_cross_interference_matrix_identity_pair() {
+        // ci(I, I) = 2I。
+        let m = cross_interference_matrix(Mat3A::IDENTITY, Mat3A::IDENTITY).to_cols_array_2d();
+        for (i, row) in m.into_iter().enumerate() {
+            for (j, v) in row.into_iter().enumerate() {
+                let expected = if i == j { 2.0 } else { 0.0 };
+                assert!((v - expected).abs() < 1e-6, "m[{i}][{j}]={v}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_cross_interference_matrix_zero() {
+        assert_eq!(
+            cross_interference_matrix(Mat3A::ZERO, Mat3A::IDENTITY),
+            Mat3A::ZERO
+        );
+        assert_eq!(
+            cross_interference_matrix(Mat3A::IDENTITY, Mat3A::ZERO),
+            Mat3A::ZERO
+        );
+    }
+
+    #[test]
+    fn test_cross_interference_matrix_symmetry() {
+        let p = Mat3A::from_cols(
+            Vec3A::new(1.0, 0.5, 0.2),
+            Vec3A::new(0.5, 2.0, 0.3),
+            Vec3A::new(0.2, 0.3, 3.0),
+        );
+        let q = Mat3A::from_cols(
+            Vec3A::new(2.0, 0.1, 0.4),
+            Vec3A::new(0.1, 1.0, 0.6),
+            Vec3A::new(0.4, 0.6, 0.5),
+        );
+        let cols = cross_interference_matrix(p, q).to_cols_array_2d();
+        assert!((cols[0][1] - cols[1][0]).abs() < 1e-6);
+        assert!((cols[0][2] - cols[2][0]).abs() < 1e-6);
+        assert!((cols[1][2] - cols[2][1]).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_first_order_tri_quad_identity_sigma() {
+        // F(a, I) = a aᵀ − ||a||² I。
+        let a = Vec3A::new(1.0, 2.0, 3.0);
+        let m = first_order_tri_quad(a, Mat3A::IDENTITY).to_cols_array_2d();
+        let norm2 = a.length_squared();
+        let expected = [
+            [1.0 - norm2, 2.0, 3.0],
+            [2.0, 4.0 - norm2, 6.0],
+            [3.0, 6.0, 9.0 - norm2],
+        ];
+        for (row, exp_row) in m.into_iter().zip(expected) {
+            for (v, exp) in row.into_iter().zip(exp_row) {
+                assert!((v - exp).abs() < 1e-4, "mismatch {v} vs expected {exp}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_first_order_tri_quad_zero_sigma() {
+        let a = Vec3A::new(1.0, 2.0, 3.0);
+        assert_eq!(first_order_tri_quad(a, Mat3A::ZERO), Mat3A::ZERO);
+    }
+
+    #[test]
+    fn test_first_order_tri_quad_symmetry() {
+        let a = Vec3A::new(0.3, -1.2, 2.0);
+        let sigma = Mat3A::from_cols(
+            Vec3A::new(1.0, 0.4, 0.2),
+            Vec3A::new(0.4, 2.0, 0.1),
+            Vec3A::new(0.2, 0.1, 3.0),
+        );
+        let cols = first_order_tri_quad(a, sigma).to_cols_array_2d();
+        assert!((cols[0][1] - cols[1][0]).abs() < 1e-6);
+        assert!((cols[0][2] - cols[2][0]).abs() < 1e-6);
+        assert!((cols[1][2] - cols[2][1]).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_cross_product_squared_transpose_identity() {
+        // [v]ₓ[v]ₓᵀ = ||v||² I − v vᵀ。
+        let v = Vec3A::new(1.0, 2.0, 3.0);
+        let m = cross_product_squared_transpose(v).to_cols_array_2d();
+        let norm2 = v.length_squared();
+        let expected = [
+            [norm2 - 1.0, -2.0, -3.0],
+            [-2.0, norm2 - 4.0, -6.0],
+            [-3.0, -6.0, norm2 - 9.0],
+        ];
+        for (row, exp_row) in m.into_iter().zip(expected) {
+            for (v, exp) in row.into_iter().zip(exp_row) {
+                assert!((v - exp).abs() < 1e-4, "mismatch {v} vs expected {exp}");
+            }
+        }
+        // 单位基向量：diag(0,1,1)。
+        let ex = cross_product_squared_transpose(Vec3A::X).to_cols_array_2d();
+        assert!((ex[0][0] - 0.0).abs() < 1e-6);
+        assert!((ex[1][1] - 1.0).abs() < 1e-6);
+        assert!((ex[2][2] - 1.0).abs() < 1e-6);
+        assert!((ex[0][1] - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_variance_constant_and_single() {
+        assert!((variance(&[3.0, 3.0, 3.0]) - 0.0).abs() < 1e-6);
+        assert!((variance(&[5.0]) - 0.0).abs() < 1e-6);
+        assert!((standard_deviation(&[5.0]) - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_covariance_known_values() {
+        let xs = [1.0, 2.0];
+        let ys = [3.0, 4.0];
+        // cov([1,2],[3,4]) = 0.25。
+        assert!((covariance(&xs, &ys) - 0.25).abs() < 1e-6);
+        // cov(x, x) = var(x)。
+        assert!((covariance(&xs, &xs) - variance(&xs)).abs() < 1e-6);
+        // 单元素：0。
+        assert!((covariance(&[2.0], &[5.0]) - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_covariance_matrix_known_values() {
+        let vecs = [
+            Vec3A::new(1.0, 0.0, 0.0),
+            Vec3A::new(2.0, 0.0, 0.0),
+            Vec3A::new(3.0, 0.0, 0.0),
+        ];
+        let m = covariance_matrix(&vecs).to_cols_array_2d();
+        // var([1,2,3]) = 14/3 − 2² = 2/3，其余为 0。
+        assert!((m[0][0] - 2.0 / 3.0).abs() < 1e-6, "m00={}", m[0][0]);
+        for (i, row) in m.into_iter().enumerate() {
+            for (j, v) in row.into_iter().enumerate() {
+                if i != 0 || j != 0 {
+                    assert!((v - 0.0).abs() < 1e-6, "m[{i}][{j}]={v}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_covariance_matrix_constant() {
+        let vecs = [Vec3A::new(1.0, 2.0, 3.0); 4];
+        assert_eq!(covariance_matrix(&vecs), Mat3A::ZERO);
+    }
+
+    #[test]
+    fn test_variance_empty_slice_is_nan() {
+        let empty: &[f32] = &[];
+        assert!(variance(empty).is_nan());
+        assert!(standard_deviation(empty).is_nan());
+    }
 }

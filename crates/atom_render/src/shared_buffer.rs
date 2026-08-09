@@ -505,3 +505,160 @@ impl<'a, T: ShaderType + WriteInto> IntoBinding<'a> for &'a SharedUniformBuffer<
         self.binding().expect("Failed to get binding resource")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 最小测试数据：单个 f32，`min_size` = 4 字节。
+    #[derive(encase::ShaderType)]
+    struct TestData {
+        value: f32,
+    }
+
+    /// wgpu 标准 dynamic buffer offset alignment（测试用对齐值）。
+    const ALIGNMENT: u64 = 256;
+
+    #[test]
+    fn storage_new_initializes_defaults() {
+        let buf = SharedStorageBuffer::<TestData>::new(ALIGNMENT);
+        assert!(buf.is_empty());
+        assert!(buf.buffer().is_none());
+        assert_eq!(buf.get_label(), None);
+        assert_eq!(buf.get_stride_alignment(), ALIGNMENT);
+        assert_eq!(buf.get_alignment_value().get(), ALIGNMENT);
+        assert!(buf.binding().is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "Alignment must be a power of 2")]
+    fn storage_new_panics_on_non_power_of_two_alignment() {
+        let _ = SharedStorageBuffer::<TestData>::new(100);
+    }
+
+    #[test]
+    fn storage_push_returns_strided_dynamic_offsets() {
+        let mut buf = SharedStorageBuffer::<TestData>::new(ALIGNMENT);
+        assert!(buf.is_empty());
+
+        let off0 = buf.push(TestData { value: 1.0 });
+        assert_eq!(off0, 0);
+        assert!(!buf.is_empty());
+
+        // 元素按对齐后的 stride（round_up(min_size, alignment)）排布
+        let off1 = buf.push(TestData { value: 2.0 });
+        assert_eq!(off1, ALIGNMENT as u32);
+    }
+
+    #[test]
+    fn storage_clear_empties_scratch_and_resets_offset() {
+        let mut buf = SharedStorageBuffer::<TestData>::new(ALIGNMENT);
+        buf.push(TestData { value: 1.0 });
+        buf.push(TestData { value: 2.0 });
+        assert!(!buf.is_empty());
+
+        buf.clear();
+        assert!(buf.is_empty());
+
+        // clear 重置动态偏移，下一次 push 从头开始
+        let off = buf.push(TestData { value: 3.0 });
+        assert_eq!(off, 0);
+    }
+
+    #[test]
+    fn storage_set_label_round_trip() {
+        let mut buf = SharedStorageBuffer::<TestData>::new(ALIGNMENT);
+        assert_eq!(buf.get_label(), None);
+
+        buf.set_label(Some("my-buffer"));
+        assert_eq!(buf.get_label(), Some("my-buffer"));
+
+        // 相同 label 不触发 changed（无 observable 状态变化即可重复设置）
+        buf.set_label(Some("my-buffer"));
+        assert_eq!(buf.get_label(), Some("my-buffer"));
+
+        buf.set_label(None);
+        assert_eq!(buf.get_label(), None);
+    }
+
+    #[test]
+    fn storage_set_stride_rounds_up_to_alignment() {
+        let mut buf = SharedStorageBuffer::<TestData>::new(ALIGNMENT);
+        assert_eq!(buf.get_stride_alignment(), ALIGNMENT);
+
+        // stride 小于 alignment -> 向上对齐到 alignment
+        buf.set_stride(BufferSize::new(128).expect("Failed to create BufferSize"));
+        assert_eq!(buf.get_stride_alignment(), ALIGNMENT);
+
+        // stride 非对齐值 -> 向上取整到 alignment 的整数倍
+        buf.set_stride(BufferSize::new(100).expect("Failed to create BufferSize"));
+        assert_eq!(buf.get_stride_alignment(), ALIGNMENT);
+
+        // stride 是对齐的整数倍 -> 保持原值
+        buf.set_stride(BufferSize::new(512).expect("Failed to create BufferSize"));
+        assert_eq!(buf.get_stride_alignment(), 512);
+    }
+
+    #[test]
+    fn storage_reserve_scratch_keeps_logical_state() {
+        let mut buf = SharedStorageBuffer::<TestData>::new(ALIGNMENT);
+        buf.reserve_scratch(16);
+        assert!(buf.is_empty());
+        assert_eq!(buf.push(TestData { value: 1.0 }), 0);
+    }
+
+    #[test]
+    fn uniform_default_uses_256_alignment() {
+        let buf = SharedUniformBuffer::<TestData>::default();
+        assert!(buf.is_empty());
+        assert!(buf.buffer().is_none());
+        assert_eq!(buf.get_label(), None);
+        assert_eq!(buf.get_alignment(), 256);
+        assert_eq!(buf.get_stride_alignment(), 256);
+        assert!(buf.binding().is_none());
+    }
+
+    #[test]
+    fn uniform_new_with_alignment_sets_alignment() {
+        let buf = SharedUniformBuffer::<TestData>::new_with_alignment(128);
+        assert_eq!(buf.get_alignment(), 128);
+        assert_eq!(buf.get_stride_alignment(), 128);
+    }
+
+    #[test]
+    fn uniform_push_returns_strided_dynamic_offsets() {
+        let mut buf = SharedUniformBuffer::<TestData>::new_with_alignment(ALIGNMENT);
+        assert!(buf.is_empty());
+
+        let off0 = buf.push(&TestData { value: 1.0 });
+        assert_eq!(off0, 0);
+        assert!(!buf.is_empty());
+
+        let off1 = buf.push(&TestData { value: 2.0 });
+        assert_eq!(off1, ALIGNMENT as u32);
+    }
+
+    #[test]
+    fn uniform_clear_empties_scratch_and_resets_offset() {
+        let mut buf = SharedUniformBuffer::<TestData>::default();
+        buf.push(&TestData { value: 1.0 });
+        buf.push(&TestData { value: 2.0 });
+        assert!(!buf.is_empty());
+
+        buf.clear();
+        assert!(buf.is_empty());
+        assert_eq!(buf.push(&TestData { value: 3.0 }), 0);
+    }
+
+    #[test]
+    fn uniform_set_label_round_trip() {
+        let mut buf = SharedUniformBuffer::<TestData>::default();
+        assert_eq!(buf.get_label(), None);
+
+        buf.set_label(Some("uniform-buffer"));
+        assert_eq!(buf.get_label(), Some("uniform-buffer"));
+
+        buf.set_label(None);
+        assert_eq!(buf.get_label(), None);
+    }
+}

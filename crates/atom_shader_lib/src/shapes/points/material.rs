@@ -149,3 +149,88 @@ impl Material for PointsMaterial {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::color::ColorToComponents;
+
+    #[test]
+    fn shader_settings_default() {
+        let settings = PointsShaderSettings::default();
+        assert!((settings.point_size - 0.01).abs() < 1e-6);
+        assert!((settings.opacity - 1.0).abs() < 1e-6);
+        assert_eq!(settings.color.to_f32_array(), [1., 1., 1., 1.]);
+    }
+
+    #[test]
+    fn material_default() {
+        let material = PointsMaterial::default();
+        assert!((material.depth_bias - 0.).abs() < 1e-6);
+        assert_eq!(material.alpha_mode, AlphaMode::Opaque);
+        assert!(!material.use_vertex_color);
+        assert!(!material.perspective);
+        assert!(!material.circle);
+        assert_eq!(
+            material.settings.color.to_f32_array(),
+            PointsShaderSettings::default().color.to_f32_array()
+        );
+    }
+
+    #[test]
+    fn key_from_material_maps_flags() {
+        let enabled = PointsMaterial {
+            settings: PointsShaderSettings::default(),
+            depth_bias: 0.1,
+            alpha_mode: AlphaMode::Blend,
+            use_vertex_color: true,
+            perspective: true,
+            circle: true,
+        };
+        let key = PointsMaterialKey::from(&enabled);
+        assert!(key.use_vertex_color);
+        assert!(key.perspective);
+        assert!(key.circle);
+
+        let key = PointsMaterialKey::from(&PointsMaterial::default());
+        assert!(!key.use_vertex_color);
+        assert!(!key.perspective);
+        assert!(!key.circle);
+    }
+
+    #[test]
+    fn key_equality_and_hash() {
+        let key_a = PointsMaterialKey::from(&PointsMaterial {
+            use_vertex_color: true,
+            perspective: false,
+            circle: true,
+            ..PointsMaterial::default()
+        });
+        let key_b = PointsMaterialKey::from(&PointsMaterial {
+            use_vertex_color: true,
+            perspective: false,
+            circle: true,
+            ..PointsMaterial::default()
+        });
+        assert_eq!(key_a.use_vertex_color, key_b.use_vertex_color);
+        assert_eq!(key_a.perspective, key_b.perspective);
+        assert_eq!(key_a.circle, key_b.circle);
+        assert_eq!(hash_of(&key_a), hash_of(&key_b));
+
+        let key_c = PointsMaterialKey::from(&PointsMaterial {
+            use_vertex_color: false,
+            perspective: false,
+            circle: true,
+            ..PointsMaterial::default()
+        });
+        assert_ne!(key_a.use_vertex_color, key_c.use_vertex_color);
+        assert_eq!(key_a.circle, key_c.circle);
+    }
+
+    fn hash_of<T: std::hash::Hash>(value: &T) -> u64 {
+        use std::hash::Hasher;
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        value.hash(&mut hasher);
+        hasher.finish()
+    }
+}

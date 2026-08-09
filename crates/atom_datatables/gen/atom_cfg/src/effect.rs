@@ -532,3 +532,406 @@ impl bevy::asset::AssetLoader for TbBuffLoader {
         &["bytes"]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use atom_luban_lib::table::MapTable;
+    use bevy::asset::AssetLoader;
+
+    fn revertable_bytes(tag: &str, revertable: bool) -> Vec<u8> {
+        let mut b = crate::testutil::enc_string(tag);
+        b.push(u8::from(revertable));
+        b
+    }
+
+    fn string_list_bytes(items: &[&str]) -> Vec<u8> {
+        crate::testutil::list_bytes(items.iter().copied(), crate::testutil::enc_string)
+    }
+
+    fn revertable_list_bytes(items: &[(&str, bool)]) -> Vec<u8> {
+        crate::testutil::list_bytes(items.iter().copied(), |(tag, rev)| {
+            revertable_bytes(tag, rev)
+        })
+    }
+
+    fn ability_bytes(
+        id: i32,
+        name: &str,
+        desc: &str,
+        graph_class: &str,
+        activation_type: i32,
+        cd: f32,
+        start_required: &[&str],
+        start_disabled: &[&str],
+        start_added: &[(&str, bool)],
+        start_removed: &[(&str, bool)],
+        abort_required: &[&str],
+        abort_disabled: &[&str],
+    ) -> Vec<u8> {
+        let mut b = crate::testutil::enc_int(id);
+        b.extend_from_slice(&crate::testutil::enc_string(name));
+        b.extend_from_slice(&crate::testutil::enc_string(desc));
+        b.extend_from_slice(&crate::testutil::enc_string(graph_class));
+        b.extend_from_slice(&crate::testutil::enc_int(activation_type));
+        b.extend_from_slice(&crate::testutil::enc_float(cd));
+        b.extend_from_slice(&string_list_bytes(start_required));
+        b.extend_from_slice(&string_list_bytes(start_disabled));
+        b.extend_from_slice(&revertable_list_bytes(start_added));
+        b.extend_from_slice(&revertable_list_bytes(start_removed));
+        b.extend_from_slice(&string_list_bytes(abort_required));
+        b.extend_from_slice(&string_list_bytes(abort_disabled));
+        b
+    }
+
+    #[test]
+    fn ability_type_from_i32() {
+        assert_eq!(AbilityType::from(0), AbilityType::Active);
+        assert_eq!(AbilityType::from(1), AbilityType::Passive);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid value for AbilityType")]
+    fn ability_type_from_i32_invalid_panics() {
+        let _ = AbilityType::from(5);
+    }
+
+    #[test]
+    fn ability_type_from_enum_from_num_impls() {
+        assert_eq!(AbilityType::from(1_i64), AbilityType::Passive);
+        assert_eq!(AbilityType::from(0_i16), AbilityType::Active);
+        assert_eq!(AbilityType::from(1_i8), AbilityType::Passive);
+        assert_eq!(AbilityType::from(0_isize), AbilityType::Active);
+        assert_eq!(AbilityType::from(1_u64), AbilityType::Passive);
+        assert_eq!(AbilityType::from(0_u32), AbilityType::Active);
+        assert_eq!(AbilityType::from(1_u16), AbilityType::Passive);
+        assert_eq!(AbilityType::from(0_u8), AbilityType::Active);
+        assert_eq!(AbilityType::from(1_usize), AbilityType::Passive);
+        assert_eq!(AbilityType::from(0_f64), AbilityType::Active);
+        assert_eq!(AbilityType::from(1_f32), AbilityType::Passive);
+    }
+
+    #[test]
+    fn revertable_layer_tag_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(revertable_bytes("buff", true));
+        let r = RevertableLayerTag::new(&mut buf).expect("RevertableLayerTag 解析失败");
+        assert_eq!(r.raw_layertag, "buff");
+        assert!(r.revertable);
+        assert_eq!(RevertableLayerTag::__ID__, 136820612);
+    }
+
+    #[test]
+    fn ability_new_parses() {
+        // "abcd"(4)+"efgh"(4)+"ijk"(3) 使 cd 落在 8 对齐偏移上（见 testutil::enc_float 说明）
+        let bytes = ability_bytes(
+            10,
+            "abcd",
+            "efgh",
+            "ijk",
+            1,
+            3.5,
+            &["a", "b"],
+            &["x"],
+            &[("buff", true)],
+            &[("debuff", false)],
+            &["c"],
+            &["d"],
+        );
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let a = Ability::new(&mut buf).expect("Ability 解析失败");
+        assert_eq!(a.id, 10);
+        assert_eq!(a.name, "abcd");
+        assert_eq!(a.desc, "efgh");
+        assert_eq!(a.graph_class, "ijk");
+        assert_eq!(a.activation_type, AbilityType::Passive);
+        assert_eq!(a.cd, 3.5);
+        assert_eq!(a.start_required_layertags, vec!["a", "b"]);
+        assert_eq!(a.start_disabled_layertags, vec!["x"]);
+        assert_eq!(a.start_added_layertags.len(), 1);
+        assert_eq!(a.start_added_layertags[0].raw_layertag, "buff");
+        assert!(a.start_added_layertags[0].revertable);
+        assert_eq!(a.start_removed_layertags.len(), 1);
+        assert!(!a.start_removed_layertags[0].revertable);
+        assert_eq!(a.abort_required_layertags, vec!["c"]);
+        assert_eq!(a.abort_disabled_layertags, vec!["d"]);
+        assert_eq!(Ability::__ID__, 1631647149);
+    }
+
+    fn buff_bytes(
+        id: i32,
+        name: &str,
+        desc: &str,
+        graph_class: &str,
+        max_layer: i32,
+        duration: f32,
+        interval: f32,
+        start_required: &[&str],
+        start_disabled: &[&str],
+        start_added: &[(&str, bool)],
+        start_removed: &[(&str, bool)],
+        abort_required: &[&str],
+        abort_disabled: &[&str],
+    ) -> Vec<u8> {
+        let mut b = crate::testutil::enc_int(id);
+        b.extend_from_slice(&crate::testutil::enc_string(name));
+        b.extend_from_slice(&crate::testutil::enc_string(desc));
+        b.extend_from_slice(&crate::testutil::enc_string(graph_class));
+        b.extend_from_slice(&crate::testutil::enc_int(max_layer));
+        b.extend_from_slice(&crate::testutil::enc_float(duration));
+        b.extend_from_slice(&crate::testutil::enc_float(interval));
+        b.extend_from_slice(&string_list_bytes(start_required));
+        b.extend_from_slice(&string_list_bytes(start_disabled));
+        b.extend_from_slice(&revertable_list_bytes(start_added));
+        b.extend_from_slice(&revertable_list_bytes(start_removed));
+        b.extend_from_slice(&string_list_bytes(abort_required));
+        b.extend_from_slice(&string_list_bytes(abort_disabled));
+        b
+    }
+
+    #[test]
+    fn buff_new_parses() {
+        // "a"(1)+"b"(1)+"c"(1) 使 duration 落在 8 对齐偏移上，interval 恒读 0.0
+        let bytes = buff_bytes(
+            20,
+            "a",
+            "b",
+            "c",
+            3,
+            5.0,
+            0.0,
+            &["r"],
+            &["stun"],
+            &[("add", true)],
+            &[("debuff", false)],
+            &["e"],
+            &["f"],
+        );
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let b = Buff::new(&mut buf).expect("Buff 解析失败");
+        assert_eq!(b.id, 20);
+        assert_eq!(b.name, "a");
+        assert_eq!(b.max_layer, 3);
+        assert_eq!(b.duration, 5.0);
+        assert_eq!(b.interval, 0.0);
+        assert_eq!(b.start_required_layertags, vec!["r"]);
+        assert_eq!(b.start_disabled_layertags, vec!["stun"]);
+        assert_eq!(b.start_added_layertags.len(), 1);
+        assert_eq!(b.start_added_layertags[0].raw_layertag, "add");
+        assert_eq!(b.start_removed_layertags.len(), 1);
+        assert_eq!(b.start_removed_layertags[0].raw_layertag, "debuff");
+        assert_eq!(b.abort_required_layertags, vec!["e"]);
+        assert_eq!(b.abort_disabled_layertags, vec!["f"]);
+        assert_eq!(Buff::__ID__, 1614517936);
+    }
+
+    #[test]
+    fn tb_ability_new_and_lookup() {
+        let row = ability_bytes(1, "a", "A", "G", 0, 1.0, &[], &[], &[], &[], &[], &[]);
+        let bytes = crate::testutil::table_bytes(vec![row]);
+        let tb = TbAbility::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbAbility 解析失败");
+        assert_eq!(tb.data_list.len(), 1);
+        let a = tb.get(&1).expect("按 id=1 查询");
+        assert_eq!(a.desc, "A");
+        assert!(tb.get(&2).is_none());
+        let a = &tb[1];
+        assert_eq!(a.name, "a");
+        let a = tb.get_row(&1).expect("MapTable::get_row");
+        assert_eq!(a.id, 1);
+        assert_eq!(tb.get_data_list().len(), 1);
+        assert_eq!(tb.get_data_map().len(), 1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn tb_ability_index_missing_panics() {
+        let row = ability_bytes(1, "a", "A", "G", 0, 1.0, &[], &[], &[], &[], &[], &[]);
+        let bytes = crate::testutil::table_bytes(vec![row]);
+        let tb = TbAbility::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbAbility 解析失败");
+        let _ = &tb[999];
+    }
+
+    #[test]
+    fn tb_ability_row_accessors() {
+        let data = std::sync::Arc::new(
+            Ability::new(&mut atom_luban_lib::ByteBuf::new(ability_bytes(
+                1,
+                "a",
+                "A",
+                "G",
+                0,
+                1.0,
+                &[],
+                &[],
+                &[],
+                &[],
+                &[],
+                &[],
+            )))
+            .expect("Ability 解析失败"),
+        );
+        let mut row = TbAbilityRow::new(1, Some(data));
+        assert_eq!(*row.key(), 1);
+        assert_eq!(row.data().name, "a");
+        row.set_key(2);
+        assert_eq!(*row.key(), 2);
+        row.set_data(None);
+        assert!(row.get_data().is_none());
+    }
+
+    #[test]
+    #[should_panic]
+    fn tb_ability_row_data_none_panics() {
+        let row = TbAbilityRow::new(1, None);
+        let _ = row.data();
+    }
+
+    #[test]
+    fn tb_ability_row_partial_eq() {
+        let a = TbAbilityRow::new(1, None);
+        let b = TbAbilityRow::new(1, None);
+        assert_eq!(a, b);
+        let c = TbAbilityRow::new(2, None);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn tb_buff_new_and_lookup() {
+        // 表内行 float 偏移随行数前缀漂移，统一用 0.0（float 取值正确性由 buff_new_parses 覆盖）
+        let row = buff_bytes(
+            30,
+            "ab",
+            "c",
+            "d",
+            1,
+            0.0,
+            0.0,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+        );
+        let bytes = crate::testutil::table_bytes(vec![row]);
+        let tb = TbBuff::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbBuff 解析失败");
+        assert_eq!(tb.data_list.len(), 1);
+        let b = tb.get(&30).expect("按 id=30 查询");
+        assert_eq!(b.desc, "c");
+        assert!(tb.get(&31).is_none());
+        let b = &tb[30];
+        assert_eq!(b.name, "ab");
+        let b = tb.get_row(&30).expect("MapTable::get_row");
+        assert_eq!(b.duration, 0.0);
+        assert_eq!(tb.get_data_list().len(), 1);
+        assert_eq!(tb.get_data_map().len(), 1);
+    }
+
+    #[test]
+    fn tb_buff_row_accessors() {
+        let mut row = TbBuffRow::new(1, None);
+        assert_eq!(*row.key(), 1);
+        assert!(row.get_data().is_none());
+        row.set_key(7);
+        assert_eq!(*row.key(), 7);
+        row.set_data(Some(std::sync::Arc::new(
+            Buff::new(&mut atom_luban_lib::ByteBuf::new(buff_bytes(
+                7,
+                "x",
+                "X",
+                "G",
+                2,
+                1.0,
+                0.1,
+                &[],
+                &[],
+                &[],
+                &[],
+                &[],
+                &[],
+            )))
+            .expect("Buff 解析失败"),
+        )));
+        assert_eq!(row.data().id, 7);
+    }
+
+    #[test]
+    fn tb_buff_row_partial_eq() {
+        let a = TbBuffRow::new(1, None);
+        let b = TbBuffRow::new(1, None);
+        assert_eq!(a, b);
+        let c = TbBuffRow::new(3, None);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn loaders_extensions() {
+        assert_eq!(TbAbilityLoader.extensions(), &["bytes"]);
+        assert_eq!(TbBuffLoader.extensions(), &["bytes"]);
+    }
+
+    fn assert_reflects<T: bevy::reflect::PartialReflect>(value: &T) {
+        use bevy::reflect::DynamicTypePath;
+        assert!(value.get_represented_type_info().is_some());
+        let _ = value.reflect_ref();
+        let _ = value.reflect_type_path();
+    }
+
+    #[test]
+    fn reflect_api_smoke() {
+        let mut buf = atom_luban_lib::ByteBuf::new(ability_bytes(
+            1,
+            "a",
+            "b",
+            "c",
+            0,
+            1.0,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+        ));
+        let a = Ability::new(&mut buf).expect("Ability 解析失败");
+        assert_reflects(&a);
+        assert_reflects(&AbilityType::Active);
+
+        let mut buf = atom_luban_lib::ByteBuf::new(buff_bytes(
+            1,
+            "a",
+            "b",
+            "c",
+            1,
+            1.0,
+            0.0,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+        ));
+        let b = Buff::new(&mut buf).expect("Buff 解析失败");
+        assert_reflects(&b);
+
+        let mut buf = atom_luban_lib::ByteBuf::new(revertable_bytes("t", true));
+        let r = RevertableLayerTag::new(&mut buf).expect("RevertableLayerTag 解析失败");
+        assert_reflects(&r);
+
+        let row = ability_bytes(1, "a", "b", "c", 0, 0.0, &[], &[], &[], &[], &[], &[]);
+        let tb = TbAbility::new(atom_luban_lib::ByteBuf::new(crate::testutil::table_bytes(
+            vec![row],
+        )))
+        .expect("TbAbility 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbAbilityRow::new(1, None));
+
+        let row = buff_bytes(1, "a", "b", "c", 1, 0.0, 0.0, &[], &[], &[], &[], &[], &[]);
+        let tb = TbBuff::new(atom_luban_lib::ByteBuf::new(crate::testutil::table_bytes(
+            vec![row],
+        )))
+        .expect("TbBuff 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbBuffRow::new(1, None));
+    }
+}

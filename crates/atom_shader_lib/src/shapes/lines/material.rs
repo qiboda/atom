@@ -89,3 +89,60 @@ impl Material for LineMaterial {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::color::ColorToComponents;
+
+    #[test]
+    fn shader_settings_default() {
+        let settings = LineShaderSettings::default();
+        assert!((settings.line_size - 1.).abs() < 1e-6);
+        assert_eq!(settings.color.to_f32_array(), [1., 1., 1., 1.]);
+    }
+
+    #[test]
+    fn material_default() {
+        let material = LineMaterial::default();
+        assert!((material.settings.line_size - 1.).abs() < 1e-6);
+        assert!(!material.use_vertex_color);
+    }
+
+    #[test]
+    fn key_from_material_maps_flag() {
+        let enabled = LineMaterial {
+            settings: LineShaderSettings::default(),
+            use_vertex_color: true,
+        };
+        let key = LineMaterialKey::from(&enabled);
+        assert!(key.use_vertex_color);
+
+        let key = LineMaterialKey::from(&LineMaterial::default());
+        assert!(!key.use_vertex_color);
+    }
+
+    #[test]
+    fn key_equality_and_hash() {
+        let key_a = LineMaterialKey::from(&LineMaterial {
+            use_vertex_color: true,
+            ..LineMaterial::default()
+        });
+        let key_b = LineMaterialKey::from(&LineMaterial {
+            use_vertex_color: true,
+            ..LineMaterial::default()
+        });
+        assert_eq!(key_a.use_vertex_color, key_b.use_vertex_color);
+        assert_eq!(hash_of(&key_a), hash_of(&key_b));
+
+        let key_c = LineMaterialKey::from(&LineMaterial::default());
+        assert_ne!(key_a.use_vertex_color, key_c.use_vertex_color);
+    }
+
+    fn hash_of<T: std::hash::Hash>(value: &T) -> u64 {
+        use std::hash::Hasher;
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        value.hash(&mut hasher);
+        hasher.finish()
+    }
+}
