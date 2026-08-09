@@ -310,3 +310,29 @@
 1. **TENSIONS.md 已记录**：agent 卡死判定、RED 测试生命周期 bug、BoxReflect reflect-ignore+default 陷阱、headless GPU 冒烟限制（4 条）。
 2. **kb/bsn.md 已更新**：6 个已验证 BSN 迁移模式（模板函数/组件注入三选一/spawn_scene/Box<dyn Reflect> 处理/effect 接入）。
 3. **建议**：后台实现任务委派前确认 agent 分类可用（本次 C2 卡死无先兆）；deep agent prompt 应含"无产出超时"自检。
+
+## 2026-08-09 — #14 编译警告拦截 hook + Bevy fork 分支依赖切换
+
+**What was done**: pre-commit hook 增加 `cargo check` 警告拦截（增量编译下本次修改引入的警告随重编译输出即被检出，替代拖到 pre-push clippy）；本地 Bevy 补丁（nightly `cfg_select` ×2 + rustfmt + `bevy_ui_widgets` irrefutable pattern 修复）提交到 `qiboda/bevy` 新分支 `atom-patches`（基于 v0.19.0），`[patch.crates-io]` 从 path 改为 git 分支引用，`atom_terrain` 删除显式 `bevy_camera` 依赖改用 `bevy::camera` re-export。
+
+**User corrections**:
+1. 「`bevy_camera = "0.19"` 这里不对」→ 确认选项「不该显式写 bevy_camera 依赖」——bevy 主 crate 已 re-export（`bevy::camera`），应删除该依赖并改代码前缀，而非保留显式依赖。
+
+**What went wrong**:
+1. **python3 内联脚本语法错误重复 6 次**：`cargo metadata` 解析脚本用 `python3 -c` 单行（`p = pkgs.get(name) if p: print(...)`）多次 SyntaxError，直到改用 heredoc/独立文件才成功——内联 Python 易错，应直接写文件或 heredoc。
+2. **`cargo metadata --no-deps` 空输出未即时识别**：`--no-deps` 只含 workspace 成员，8 个 bevy crate 全查不到，首查空输出后未立即换 `--no-deps` 去掉，浪费一轮。
+3. **提交被 fmt 门禁拦截一次**：`bevy::camera` import 顺序未先跑 `cargo fmt` 即 commit，pre-commit 拒绝后 `cargo fmt` 补过——提交前应先 fmt（同类摩擦在 #7 反思已记录，重复出现）。
+4. **patch 列表多加了 `bevy_camera` 行**：误以为需显式 patch 每个被直接依赖的子 crate，实际 patch 根 `bevy = { git = ... }` 指向 workspace 根时所有成员自动覆盖（bevy_winit/bevy_ui_widgets 未列出也解析到新分支），`bevy_camera` 行属冗余，被用户纠正触发移除。
+
+**Lessons learned**:
+1. **Bevy patch 根机制**：`[patch.crates-io]` 的 `bevy = { git/path = 指向 workspace 根 }` 会自动覆盖整个 Bevy workspace 所有成员 crate，无需逐个显式列出被直接依赖的子 crate——直接依赖子 crate 时按普通版本依赖声明即可（或改用 bevy 主 crate 的 re-export，如 `bevy::camera`）。
+2. **提交前先 `cargo fmt`**（#7 教训的重复落实）：import/格式变更后 commit 前必跑 fmt，避免 pre-commit 拦截二次提交。
+3. **复杂脚本用文件/heredoc 不用内联 `-c`**：多行逻辑（含条件语句）的 Python 脚本写入临时文件再执行，避免引号/语法反复失败。
+
+**Process improvements**:
+1. **已落实（AGENTS.md）**：无新增规则——「提交前 cargo fmt」已隐含在 pre-commit hook 门禁中（拦截即提示）；「patch 根覆盖 workspace 成员」知识沉淀于本条目，后续改 Bevy 依赖引用时直接参考。
+2. **建议（hook 层）**：无——fmt 门禁已生效，本次拦截即其工作正常的证明。
+
+### Trends (last 10)
+- **fmt 门禁拦截重复出现**：#7（2026-08-08）与本次（#14）均出现「未先 cargo fmt 提交被 pre-commit 拦截」——已两次记录，hook 拦截有效但 agent 提交习惯未变，下次涉及格式变更应先跑 fmt 再提交。
+- **Bevy 外部源码本地补丁模式成型**：#13/#14 系列把本地 Bevy 补丁（cfg_select/警告修复）固化为 fork 分支 `atom-patches` git 引用，替代裸 path 依赖——依赖来源可追踪，后续 Bevy 升级时走 fork 分支 rebase 而非本地打补丁。
