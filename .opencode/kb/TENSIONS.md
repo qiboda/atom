@@ -3,6 +3,10 @@
 > 发现数据与系统设计之间的不一致、工具链问题、或流程阻碍时记录。不要当场解决——只捕获信号。
 > 标题格式：`## YYYY-MM-DD: <主题>`，按日期倒序排列。
 
+## 2026-08-09: sccache 0.16 与 bevy_lint 不兼容
+
+- **2026-08-09**: [tooling] pre-commit 的 bevy_lint 阶段报 `sccache: Compiler not supported`（exit 101）——根因是 `~/.cargo/config.toml` 全局 `rustc-wrapper = "sccache"`，sccache 0.16 无法识别 bevy_lint 的自定义 rustc driver（bevy_lint_driver），探测阶段失败。环境变量 `RUSTC_WRAPPER=`（空值）可覆盖 config 使 bevy_lint 正常通过。处理：本次提交以 `RUSTC_WRAPPER= git commit` 覆盖；根治需调整全局 sccache 配置（如只对 cargo 构建启用、对 bevy_lint 排除）——待用户决定，未当场解决。
+
 ## 2026-08-08: time 0.3.55 编译回归（parse_borrowed 泛型化）
 
 - **2026-08-08**: workspace 迁移后 Cargo.lock 重新解析，`time` 升到 0.3.55 — `time::format_description::parse_borrowed` 增加了 const 泛型 `VERSION` 参数，`atom_core/src/logger.rs:35` 的调用无法推断类型，E0283/E0284 编译失败，阻塞全部依赖 atom_core 的 crate（atom_shader_lib / atom_cel_shader / atom_terrain 等）的 check/clippy/doc。
