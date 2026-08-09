@@ -3,11 +3,11 @@
 //! `TerrainDebugConfig.wireframe` 控制线框显示。
 //! Bevy 内置 FreeCamera: 鼠标旋转，WASD/QE 移动，右键按住锁定光标。
 use atom_terrain::{GlobalTerrainPlugin, debug::TerrainDebugConfig, debug_map};
+use bevy::camera::visibility::RenderLayers;
 use bevy::{
     camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
     prelude::*,
 };
-use bevy_camera::visibility::RenderLayers;
 
 fn main() {
     let mut app = App::new();

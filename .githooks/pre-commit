@@ -13,9 +13,17 @@ if ! cargo fmt --check 2>&1; then
     has_error=1
 fi
 
-echo "pre-commit: cargo check --workspace..."
-if ! cargo check --workspace 2>&1; then
+echo "pre-commit: cargo check --workspace (warnings blocked)..."
+# 增量编译下，本次修改引入的警告必然随重编译输出——捕获输出并检查，
+# 使编译警告（含依赖 crate 的）在提交时即被拦截，而非拖到 pre-push clippy。
+if ! check_log=$(cargo check --workspace 2>&1); then
+    echo "$check_log"
     echo "  ERROR: cargo check found compile errors."
+    has_error=1
+elif grep -qE "^(warning|error): " <<<"$check_log"; then
+    echo "$check_log"
+    echo "  ERROR: cargo check found warnings."
+    echo "  Fix all compiler warnings before committing."
     has_error=1
 fi
 

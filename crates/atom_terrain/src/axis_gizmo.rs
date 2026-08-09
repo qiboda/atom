@@ -6,6 +6,7 @@
 //!
 //! 设计依据：Bevy 0.19 同一 render target 深度冲突无可避免 → 独立纹理根除。
 
+use bevy::camera::{Camera3dDepthLoadOp, visibility::RenderLayers};
 use bevy::render::extract_component::{ExtractComponent, ExtractComponentPlugin};
 use bevy::{
     asset::RenderAssetUsages,
@@ -14,7 +15,6 @@ use bevy::{
     prelude::*,
     render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages},
 };
-use bevy_camera::{Camera3dDepthLoadOp, visibility::RenderLayers};
 
 #[derive(Component, Clone, ExtractComponent)]
 pub(crate) struct GizmoCamera;
@@ -140,7 +140,7 @@ fn sync_gizmo_camera(
 mod tests {
     use super::*;
     use bevy::MinimalPlugins;
-    use bevy_camera::RenderTarget;
+    use bevy::camera::RenderTarget;
 
     fn assert_approx(a: f32, b: f32) {
         assert!(

@@ -12,7 +12,7 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.opencode/kb/bevy/migrati
 | `.opencode/kb/` | **知识库**（Bevy 生态 + 项目知识 + GitHub 约定） |
 | `.opencode/kb/github/` | **GitHub 约定**（labels 标签体系 / comments 评论规范） |
 | `.opencode/skills/` | **Agent 技能**（bevy：Bevy API 检索 + Shader 审查；通用工作流/测试/反思/worktree 用全局 skwy-* skills，见 `~/.config/opencode/skills/`） |
-| `.githooks/` | **git hooks**（commit-msg: ref #N 强制；pre-commit: fmt/check/doc/bevy_lint；pre-push: 全门禁 + ref #N 验证） |
+| `.githooks/` | **git hooks**（commit-msg: ref #N 强制；pre-commit: fmt/check(含警告拦截)/doc/bevy_lint；pre-push: 全门禁 + ref #N 验证） |
 | `.github/` | **CI**（ci.yml：fmt/clippy/doc/nextest 门禁） |
 
 ## 全局 skills 强制加载
