@@ -262,6 +262,25 @@
 - **环境/工具链摩擦重复出现**：#10「bevy lint 不修复了（环境问题）」与本次 sccache/bevy_lint 阻断同一根因（~/.cargo/config.toml 全局 rustc-wrapper=sccache）——TENSIONS 已记录但绕过法需每次手动 RUSTC_WRAPPER=，根治（sccache 排除 bevy_lint）仍未落实，建议用户排期处理。
 - **worktree 管理摩擦重复**：8-08「worktree 分支漂移」与本次「崩溃后未启动 worktree 会话」同属 worktree 生命周期管理疏漏——worktree 会话启动/同步已成为两次教训，恢复流程已沉淀（本次 lessons）。
 
+## 2026-08-09 — #13 将 screenshots 移出 git 跟踪
+
+**What was done**: `.gitignore` 已有 `screenshots/`，但历史误跟踪了 7 个 `screenshots/terrain-*.png`；`git rm --cached screenshots/` 从索引移除（磁盘文件保留），commit 5580fe9 引用 chore issue #13。
+
+**User corrections**: 无（用户选择推荐的「创建 chore issue 并提交」路径）。
+
+**What went wrong**:
+1. **label 库存与文档不一致**：`gh issue create --label "A-CI,C-Chore,D-Trivial"` 失败——`D-Trivial` 在 kb/github/labels.md 有文档但仓库实际不存在该 label（现存 D- 仅 D-Complex/D-Straightforward），重试去掉 D-Trivial 成功。建 issue 前应先 `gh label list` 核对库存。
+2. **多余命令**：`git rm --cached` 已自动暂存删除，我仍执行 `git add -u screenshots/` 报 pathspec 错误——删除类变更无需再 add。
+
+**Lessons learned**:
+1. **建 issue 前核对 label 库存**：`gh label list` 先行，labels.md 文档 ≠ 仓库实际 label，命中不存在的 label 会整体失败。
+2. **`git rm --cached` 自带暂存**：删除跟踪后直接 commit，不需要再 `git add -u`。
+
+**Process improvements**: `None`（一次性教训；labels.md 与仓库 label 差异可后续单独同步）。
+
+### Trends (last 10)
+- **无显著重复模式**（本次为轻量 chore，摩擦均为一次性工具使用细节）。
+
 ## 2026-08-08: BSN 迁移摩擦（issue #7）
 
 - **2026-08-08**: [process] `subagent_type="deep"` 后台任务运行 2h19m 零产出（session 仅原始 prompt 无 assistant 消息，无 cargo/rustc 进程在跑）——判定卡死并 cancel，改由主 agent 直接实现。教训：后台实现任务若长时间无任何 assistant 消息产出即异常，不应静默等待；任务委派前应确认 agent 分类可用。
