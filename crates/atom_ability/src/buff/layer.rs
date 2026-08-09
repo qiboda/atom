@@ -35,3 +35,94 @@ impl BuffLayer {
         self.layer = self.layer.max(0);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_starts_at_one_layer() {
+        let buff_layer = BuffLayer::new(5);
+        assert_eq!(buff_layer.layer, 1);
+        assert_eq!(buff_layer.max_layer, 5);
+    }
+
+    #[test]
+    fn add_layer_increases_below_max() {
+        let mut buff_layer = BuffLayer::new(5);
+        buff_layer.add_layer(2);
+        assert_eq!(buff_layer.layer, 3);
+    }
+
+    #[test]
+    fn add_layer_clamps_at_max() {
+        let mut buff_layer = BuffLayer::new(5);
+        buff_layer.add_layer(2);
+        buff_layer.add_layer(3);
+        assert_eq!(buff_layer.layer, 5);
+        buff_layer.add_layer(1);
+        assert_eq!(buff_layer.layer, 5, "超过上限后不得继续增加");
+    }
+
+    #[test]
+    fn add_layer_multi_shot_reaches_max() {
+        let mut buff_layer = BuffLayer::new(3);
+        buff_layer.add_layer(10);
+        assert_eq!(buff_layer.layer, 3);
+    }
+
+    #[test]
+    fn remove_layer_decreases_above_zero() {
+        let mut buff_layer = BuffLayer::new(10);
+        buff_layer.add_layer(4);
+        assert_eq!(buff_layer.layer, 5);
+
+        buff_layer.remove_layer(2);
+        assert_eq!(buff_layer.layer, 3);
+    }
+
+    #[test]
+    fn remove_layer_clamps_at_zero() {
+        let mut buff_layer = BuffLayer::new(10);
+        buff_layer.remove_layer(5);
+        assert_eq!(buff_layer.layer, 0, "减少层数不得低于 0");
+        buff_layer.remove_layer(1);
+        assert_eq!(buff_layer.layer, 0);
+    }
+
+    #[test]
+    fn add_and_remove_roundtrip_restores_initial() {
+        let mut buff_layer = BuffLayer::new(10);
+        buff_layer.add_layer(3);
+        buff_layer.remove_layer(3);
+        assert_eq!(buff_layer.layer, 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "layer must be greater than 0")]
+    fn add_layer_zero_panics() {
+        let mut buff_layer = BuffLayer::new(5);
+        buff_layer.add_layer(0);
+    }
+
+    #[test]
+    #[should_panic(expected = "layer must be greater than 0")]
+    fn add_layer_negative_panics() {
+        let mut buff_layer = BuffLayer::new(5);
+        buff_layer.add_layer(-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "layer must be greater than 0")]
+    fn remove_layer_zero_panics() {
+        let mut buff_layer = BuffLayer::new(5);
+        buff_layer.remove_layer(0);
+    }
+
+    #[test]
+    #[should_panic(expected = "layer must be greater than 0")]
+    fn remove_layer_negative_panics() {
+        let mut buff_layer = BuffLayer::new(5);
+        buff_layer.remove_layer(-2);
+    }
+}

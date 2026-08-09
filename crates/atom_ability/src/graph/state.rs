@@ -76,3 +76,139 @@ pub fn update_to_despawn_effect_graph(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::node::EffectNodeExecuteState;
+    use bevy::MinimalPlugins;
+
+    #[test]
+    fn effect_graph_state_default_is_inactive() {
+        assert_eq!(EffectGraphState::default(), EffectGraphState::Inactive);
+        assert_ne!(EffectGraphState::Inactive, EffectGraphState::Active);
+        assert_ne!(EffectGraphState::Active, EffectGraphState::ToRemove);
+    }
+
+    #[test]
+    fn effect_graph_tick_state_default_is_ticked() {
+        assert_eq!(
+            EffectGraphTickState::default(),
+            EffectGraphTickState::Ticked
+        );
+        assert_ne!(EffectGraphTickState::Ticked, EffectGraphTickState::Paused);
+    }
+
+    fn spawn_graph_with_state_nodes(app: &mut App, graph_state: EffectGraphState) -> Entity {
+        let world = app.world_mut();
+        let node_a = world.spawn(EffectNodeExecuteState::Idle).id();
+        let node_b = world.spawn(EffectNodeExecuteState::Idle).id();
+        let mut context = EffectGraphContext::new();
+        context.insert_state_node(node_a);
+        context.insert_state_node(node_b);
+        world.spawn((graph_state, context)).id()
+    }
+
+    #[test]
+    fn reset_effect_graph_state_returns_active_to_inactive_when_all_idle() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let graph = spawn_graph_with_state_nodes(&mut app, EffectGraphState::Active);
+        app.add_systems(Update, reset_effect_graph_state);
+
+        app.update();
+
+        assert_eq!(
+            *app.world()
+                .entity(graph)
+                .get::<EffectGraphState>()
+                .expect("图状态应存在"),
+            EffectGraphState::Inactive
+        );
+    }
+
+    #[test]
+    fn reset_effect_graph_state_keeps_active_while_node_busy() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let world = app.world_mut();
+        let busy_node = world.spawn(EffectNodeExecuteState::Active).id();
+        let idle_node = world.spawn(EffectNodeExecuteState::Idle).id();
+        let mut context = EffectGraphContext::new();
+        context.insert_state_node(busy_node);
+        context.insert_state_node(idle_node);
+        let graph = world.spawn((EffectGraphState::Active, context)).id();
+        app.add_systems(Update, reset_effect_graph_state);
+
+        app.update();
+
+        assert_eq!(
+            *app.world()
+                .entity(graph)
+                .get::<EffectGraphState>()
+                .expect("图状态应存在"),
+            EffectGraphState::Active,
+            "存在执行中节点时图不得回到 Inactive"
+        );
+    }
+
+    #[test]
+    fn reset_effect_graph_state_leaves_inactive_and_to_remove_untouched() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let graph = spawn_graph_with_state_nodes(&mut app, EffectGraphState::Inactive);
+        let to_remove = spawn_graph_with_state_nodes(&mut app, EffectGraphState::ToRemove);
+        app.add_systems(Update, reset_effect_graph_state);
+
+        app.update();
+
+        assert_eq!(
+            *app.world()
+                .entity(graph)
+                .get::<EffectGraphState>()
+                .expect("图状态应存在"),
+            EffectGraphState::Inactive
+        );
+        assert_eq!(
+            *app.world()
+                .entity(to_remove)
+                .get::<EffectGraphState>()
+                .expect("图状态应存在"),
+            EffectGraphState::ToRemove
+        );
+    }
+
+    #[test]
+    fn update_to_despawn_effect_graph_despawns_idle_to_remove_graph() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let graph = spawn_graph_with_state_nodes(&mut app, EffectGraphState::ToRemove);
+        app.add_systems(Update, update_to_despawn_effect_graph);
+
+        app.update();
+
+        assert!(
+            app.world().get_entity(graph).is_err(),
+            "全部状态节点空闲的 ToRemove 图应被 despawn"
+        );
+    }
+
+    #[test]
+    fn update_to_despawn_effect_graph_keeps_busy_to_remove_graph() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let world = app.world_mut();
+        let busy_node = world.spawn(EffectNodeExecuteState::Active).id();
+        let mut context = EffectGraphContext::new();
+        context.insert_state_node(busy_node);
+        let graph = world.spawn((EffectGraphState::ToRemove, context)).id();
+        app.add_systems(Update, update_to_despawn_effect_graph);
+
+        app.update();
+
+        assert!(
+            app.world().get_entity(graph).is_ok(),
+            "存在执行中节点时图不得被 despawn"
+        );
+    }
+}

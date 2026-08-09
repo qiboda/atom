@@ -373,3 +373,481 @@ impl EffectGraphContext {
         self.graph_ref
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::node::implement::seq::EffectNodeSeq;
+    use crate::graph::node::pin::{EffectNodeExec, EffectNodeSlot};
+
+    fn slot_pin(node: EffectNodeId, name: &'static str) -> EffectNodeSlotPin {
+        EffectNodeSlotPin {
+            node_id: node,
+            slot: EffectNodeSlot::new::<f32>(name),
+        }
+    }
+
+    fn exec_pin(node: EffectNodeId, name: &'static str) -> EffectNodeExecPin {
+        EffectNodeExecPin {
+            node_id: node,
+            exec: EffectNodeExec { name },
+        }
+    }
+
+    #[test]
+    fn new_context_is_empty() {
+        let context = EffectGraphContext::new();
+        assert!(context.exec_connections.is_empty());
+        assert!(context.slot_connections.is_empty());
+        assert!(context.outputs.is_empty());
+        assert!(context.inputs.is_empty());
+        assert_eq!(context.entry_node, None);
+        assert_eq!(context.graph_ref, None);
+        assert!(context.instant_nodes.is_empty());
+        assert!(context.state_nodes.is_empty());
+        assert!(context.external_context.is_none());
+    }
+
+    #[test]
+    fn default_context_is_empty() {
+        let context = EffectGraphContext::default();
+        assert!(context.exec_connections.is_empty());
+        assert!(context.slot_connections.is_empty());
+        assert!(context.outputs.is_empty());
+        assert!(context.inputs.is_empty());
+        assert_eq!(context.entry_node, None);
+        assert_eq!(context.graph_ref, None);
+    }
+
+    #[test]
+    fn insert_input_value_then_get_roundtrip() {
+        let mut context = EffectGraphContext::new();
+        let key = slot_pin(EffectNodeId::from_entity(None), "damage");
+        context.insert_input_value(key, EffectValue::F32(10.0).into());
+
+        assert_eq!(
+            context.get_input_value(&key),
+            Some(&EffectNodeSlotValue::Value(EffectValue::F32(10.0)))
+        );
+    }
+
+    #[test]
+    fn insert_input_value_overwrites_previous() {
+        let mut context = EffectGraphContext::new();
+        let key = slot_pin(EffectNodeId::from_entity(None), "damage");
+        context.insert_input_value(key, EffectValue::F32(1.0).into());
+        context.insert_input_value(key, EffectValue::F32(2.0).into());
+
+        assert_eq!(
+            context.get_input_value(&key),
+            Some(&EffectNodeSlotValue::Value(EffectValue::F32(2.0)))
+        );
+    }
+
+    #[test]
+    fn get_input_value_missing_returns_none() {
+        let context = EffectGraphContext::new();
+        assert_eq!(
+            context.get_input_value(&slot_pin(Entity::PLACEHOLDER.into(), "x")),
+            None
+        );
+    }
+
+    #[test]
+    fn get_input_value_mut_allows_in_place_update() {
+        let mut context = EffectGraphContext::new();
+        let key = slot_pin(EffectNodeId::from_entity(None), "hp");
+        context.insert_input_value(key, EffectValue::I32(10).into());
+
+        let value = context
+            .get_input_value_mut(&key)
+            .expect("插入后应能取到可变引用");
+        *value = EffectNodeSlotValue::Value(EffectValue::I32(20));
+
+        assert_eq!(
+            context.get_input_value(&key),
+            Some(&EffectNodeSlotValue::Value(EffectValue::I32(20)))
+        );
+    }
+
+    #[test]
+    fn get_input_value_mut_missing_returns_none() {
+        let mut context = EffectGraphContext::new();
+        assert_eq!(
+            context.get_input_value_mut(&slot_pin(Entity::PLACEHOLDER.into(), "x")),
+            None
+        );
+    }
+
+    #[test]
+    fn insert_output_value_then_get_roundtrip() {
+        let mut context = EffectGraphContext::new();
+        let key = slot_pin(EffectNodeId::Uuid(Uuid::nil()), "result");
+        context.insert_output_value(key, EffectValue::String("ok".into()).into());
+
+        assert_eq!(
+            context.get_output_value(&key),
+            Some(&EffectNodeSlotValue::Value(EffectValue::String(
+                "ok".into()
+            )))
+        );
+    }
+
+    #[test]
+    fn insert_output_value_overwrites_previous() {
+        let mut context = EffectGraphContext::new();
+        let key = slot_pin(EffectNodeId::Uuid(Uuid::nil()), "result");
+        context.insert_output_value(key, EffectValue::I32(1).into());
+        context.insert_output_value(key, EffectValue::I32(2).into());
+
+        assert_eq!(
+            context.get_output_value(&key),
+            Some(&EffectNodeSlotValue::Value(EffectValue::I32(2)))
+        );
+    }
+
+    #[test]
+    fn get_output_value_missing_returns_none() {
+        let context = EffectGraphContext::new();
+        assert_eq!(
+            context.get_output_value(&slot_pin(Entity::PLACEHOLDER.into(), "x")),
+            None
+        );
+    }
+
+    #[test]
+    fn get_output_value_mut_allows_in_place_update() {
+        let mut context = EffectGraphContext::new();
+        let key = slot_pin(EffectNodeId::Uuid(Uuid::nil()), "result");
+        context.insert_output_value(key, EffectValue::F32(1.0).into());
+
+        let value = context
+            .get_output_value_mut(&key)
+            .expect("插入后应能取到可变引用");
+        *value = EffectNodeSlotValue::Value(EffectValue::F32(3.5));
+
+        assert_eq!(
+            context.get_output_value(&key),
+            Some(&EffectNodeSlotValue::Value(EffectValue::F32(3.5)))
+        );
+    }
+
+    #[test]
+    fn get_output_value_mut_missing_returns_none() {
+        let mut context = EffectGraphContext::new();
+        assert_eq!(
+            context.get_output_value_mut(&slot_pin(Entity::PLACEHOLDER.into(), "x")),
+            None
+        );
+    }
+
+    #[test]
+    fn get_input_value_type_converts_value() {
+        let mut context = EffectGraphContext::new();
+        let key = EffectNodeSlotPin {
+            node_id: EffectNodeId::Uuid(Uuid::nil()),
+            slot: EffectNodeSlot::new::<String>("message"),
+        };
+        context.insert_input_value(key, EffectValue::String("hello".into()).into());
+
+        let value = context.get_input_value_type::<String>(&key);
+        assert_eq!(value, Some("hello".to_string()));
+    }
+
+    #[test]
+    fn get_input_value_type_resolves_ref() {
+        let mut context = EffectGraphContext::new();
+        let target = EffectNodeSlotPin {
+            node_id: EffectNodeId::Uuid(Uuid::nil()),
+            slot: EffectNodeSlot::new::<String>("source"),
+        };
+        let alias = EffectNodeSlotPin {
+            node_id: EffectNodeId::Uuid(Uuid::nil()),
+            slot: EffectNodeSlot::new::<String>("alias"),
+        };
+        context.insert_input_value(target, EffectValue::String("ref-value".into()).into());
+        context.insert_input_value(alias, EffectNodeSlotValue::Ref(target));
+
+        let value = context.get_input_value_type::<String>(&alias);
+        assert_eq!(value, Some("ref-value".to_string()));
+    }
+
+    #[test]
+    fn get_input_value_type_ref_to_ref_returns_none() {
+        let mut context = EffectGraphContext::new();
+        let inner = EffectNodeSlotPin {
+            node_id: EffectNodeId::Uuid(Uuid::nil()),
+            slot: EffectNodeSlot::new::<String>("inner"),
+        };
+        let outer = EffectNodeSlotPin {
+            node_id: EffectNodeId::Uuid(Uuid::nil()),
+            slot: EffectNodeSlot::new::<String>("outer"),
+        };
+        context.insert_input_value(inner, EffectNodeSlotValue::Ref(outer));
+        context.insert_input_value(outer, EffectNodeSlotValue::Ref(inner));
+
+        let value = context.get_input_value_type::<String>(&inner);
+        assert_eq!(value, None, "Ref 指向 Ref 时必须解析失败");
+    }
+
+    #[test]
+    fn get_input_value_type_missing_returns_none() {
+        let context = EffectGraphContext::new();
+        let key = EffectNodeSlotPin {
+            node_id: EffectNodeId::Uuid(Uuid::nil()),
+            slot: EffectNodeSlot::new::<String>("message"),
+        };
+        let value = context.get_input_value_type::<String>(&key);
+        assert_eq!(value, None);
+    }
+
+    #[test]
+    fn get_input_value_type_wrong_type_returns_none() {
+        let mut context = EffectGraphContext::new();
+        let key = EffectNodeSlotPin {
+            node_id: EffectNodeId::Uuid(Uuid::nil()),
+            slot: EffectNodeSlot::new::<String>("message"),
+        };
+        context.insert_input_value(key, EffectValue::I32(42).into());
+
+        let value = context.get_input_value_type::<String>(&key);
+        assert_eq!(value, None, "I32 值不能转换为 String");
+    }
+
+    #[test]
+    fn add_exec_connection_inserts_new_key() {
+        let mut context = EffectGraphContext::new();
+        let key = exec_pin(Entity::from_bits(1).into(), "finish");
+        let next = exec_pin(Entity::from_bits(2).into(), "start");
+
+        context.add_exec_connection(key, &[next]);
+
+        assert_eq!(
+            context.get_connected_output_exec_pins(&key),
+            Some(&vec![next])
+        );
+    }
+
+    #[test]
+    fn add_exec_connection_appends_to_existing() {
+        let mut context = EffectGraphContext::new();
+        let key = exec_pin(Entity::from_bits(1).into(), "finish");
+        let next_a = exec_pin(Entity::from_bits(2).into(), "start");
+        let next_b = exec_pin(Entity::from_bits(3).into(), "start");
+
+        context.add_exec_connection(key, &[next_a]);
+        context.add_exec_connection(key, &[next_b]);
+
+        assert_eq!(
+            context.get_connected_output_exec_pins(&key),
+            Some(&vec![next_a, next_b])
+        );
+    }
+
+    #[test]
+    fn get_connected_output_exec_pins_missing_returns_none() {
+        let context = EffectGraphContext::new();
+        let key = exec_pin(Entity::from_bits(1).into(), "finish");
+        assert_eq!(context.get_connected_output_exec_pins(&key), None);
+    }
+
+    #[test]
+    fn add_slot_connection_inserts_and_appends() {
+        let mut context = EffectGraphContext::new();
+        let key = slot_pin(Entity::from_bits(1).into(), "out");
+        let next_a = slot_pin(Entity::from_bits(2).into(), "in");
+        let next_b = slot_pin(Entity::from_bits(3).into(), "in");
+
+        context.add_slot_connection(key, &[next_a]);
+        context.add_slot_connection(key, &[next_b]);
+
+        assert_eq!(
+            context.slot_connections.get(&key),
+            Some(&vec![next_a, next_b])
+        );
+    }
+
+    #[test]
+    fn set_and_get_entry_node() {
+        let mut context = EffectGraphContext::new();
+        assert_eq!(context.get_entry_node(), None);
+
+        let node = Entity::from_bits(7);
+        context.set_entry_node(node);
+        assert_eq!(context.get_entry_node(), Some(node));
+
+        let node2 = Entity::from_bits(8);
+        context.set_entry_node(node2);
+        assert_eq!(context.get_entry_node(), Some(node2));
+    }
+
+    #[test]
+    fn set_and_get_graph_ref() {
+        let mut context = EffectGraphContext::new();
+        assert_eq!(context.get_graph_ref(), None);
+
+        let graph_ref = GraphRef::new(Entity::from_bits(9));
+        context.set_graph_ref(graph_ref);
+
+        assert_eq!(context.get_graph_ref(), Some(graph_ref));
+        assert_eq!(graph_ref.get_entity(), Entity::from_bits(9));
+    }
+
+    #[test]
+    fn insert_state_node_dedups_registration() {
+        let mut context = EffectGraphContext::new();
+        let node = Entity::from_bits(1);
+
+        context.insert_state_node(node);
+        context.insert_state_node(Entity::from_bits(2));
+        assert_eq!(context.state_nodes, vec![node, Entity::from_bits(2)]);
+    }
+
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    fn insert_state_node_twice_panics() {
+        let mut context = EffectGraphContext::new();
+        let node = Entity::from_bits(1);
+        context.insert_state_node(node);
+        context.insert_state_node(node);
+    }
+
+    #[test]
+    fn insert_instant_node_registers_uuid() {
+        let mut context = EffectGraphContext::new();
+        let uuid_a = Uuid::new_v4();
+        let uuid_b = Uuid::new_v4();
+
+        context.insert_instant_node(uuid_a);
+        context.insert_instant_node(uuid_b);
+
+        assert_eq!(context.instant_nodes, vec![uuid_a, uuid_b]);
+    }
+
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    fn insert_instant_node_twice_panics() {
+        let mut context = EffectGraphContext::new();
+        let uuid = Uuid::new_v4();
+        context.insert_instant_node(uuid);
+        context.insert_instant_node(uuid);
+    }
+
+    #[test]
+    fn replace_state_entities_rewrites_outputs_and_inputs() {
+        let mut context = EffectGraphContext::new();
+        let old = Entity::from_bits(1);
+        let new = Entity::from_bits(10);
+
+        let output_key = slot_pin(old.into(), "out");
+        let input_key = slot_pin(old.into(), "in");
+        context.insert_output_value(output_key, EffectValue::I32(5).into());
+        context.insert_input_value(input_key, EffectValue::I32(6).into());
+
+        let mut mapping = EntityHashMap::default();
+        mapping.insert(old, new);
+        context.replace_state_entities(mapping);
+
+        let expected_output = slot_pin(new.into(), "out");
+        let expected_input = slot_pin(new.into(), "in");
+        assert_eq!(
+            context.get_output_value(&expected_output),
+            Some(&EffectNodeSlotValue::Value(EffectValue::I32(5)))
+        );
+        assert_eq!(
+            context.get_input_value(&expected_input),
+            Some(&EffectNodeSlotValue::Value(EffectValue::I32(6)))
+        );
+        assert_eq!(context.get_output_value(&output_key), None);
+        assert_eq!(context.get_input_value(&input_key), None);
+    }
+
+    #[test]
+    fn replace_state_entities_rewrites_connections() {
+        let mut context = EffectGraphContext::new();
+        let old_a = Entity::from_bits(1);
+        let old_b = Entity::from_bits(2);
+        let new_a = Entity::from_bits(10);
+        let new_b = Entity::from_bits(20);
+
+        context.add_exec_connection(
+            exec_pin(old_a.into(), "finish"),
+            &[exec_pin(old_b.into(), "start")],
+        );
+        context.add_slot_connection(
+            slot_pin(old_a.into(), "out"),
+            &[slot_pin(old_b.into(), "in")],
+        );
+
+        let mut mapping = EntityHashMap::default();
+        mapping.insert(old_a, new_a);
+        mapping.insert(old_b, new_b);
+        context.replace_state_entities(mapping);
+
+        let expected = vec![exec_pin(new_b.into(), "start")];
+        assert_eq!(
+            context.get_connected_output_exec_pins(&exec_pin(new_a.into(), "finish")),
+            Some(&expected)
+        );
+        let expected_slots = vec![slot_pin(new_b.into(), "in")];
+        assert_eq!(
+            context.slot_connections.get(&slot_pin(new_a.into(), "out")),
+            Some(&expected_slots)
+        );
+        assert_eq!(
+            context.get_connected_output_exec_pins(&exec_pin(old_a.into(), "finish")),
+            None
+        );
+        assert_eq!(
+            context.slot_connections.get(&slot_pin(old_a.into(), "out")),
+            None
+        );
+    }
+
+    #[test]
+    fn replace_state_entities_rewrites_entry_node_and_state_nodes() {
+        let mut context = EffectGraphContext::new();
+        let old = Entity::from_bits(1);
+        let new = Entity::from_bits(10);
+
+        context.set_entry_node(old);
+        context.insert_state_node(old);
+
+        let mut mapping = EntityHashMap::default();
+        mapping.insert(old, new);
+        context.replace_state_entities(mapping);
+
+        assert_eq!(context.get_entry_node(), Some(new));
+        assert_eq!(context.state_nodes, vec![new]);
+    }
+
+    #[test]
+    fn replace_state_entities_keeps_uuid_entries() {
+        let mut context = EffectGraphContext::new();
+        let uuid = Uuid::new_v4();
+        let uuid_key = slot_pin(EffectNodeId::Uuid(uuid), "out");
+        context.insert_output_value(uuid_key, EffectValue::I32(9).into());
+
+        let mut mapping = EntityHashMap::default();
+        mapping.insert(Entity::from_bits(1), Entity::from_bits(2));
+        context.replace_state_entities(mapping);
+
+        assert_eq!(
+            context.get_output_value(&uuid_key),
+            Some(&EffectNodeSlotValue::Value(EffectValue::I32(9)))
+        );
+    }
+
+    #[test]
+    fn instant_node_map_insert_get_roundtrip() {
+        let mut map = InstantEffectNodeMap::default();
+        let node: Arc<dyn InstantEffectNode> = Arc::new(EffectNodeSeq::new());
+        let uuid = node.get_uuid();
+
+        assert!(map.get(uuid).is_none(), "未注册节点应返回 None");
+        map.insert(uuid, node);
+
+        let fetched = map.get(uuid).expect("注册后应能取回节点");
+        assert_eq!(fetched.get_uuid(), uuid);
+    }
+}

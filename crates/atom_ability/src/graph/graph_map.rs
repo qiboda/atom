@@ -91,3 +91,80 @@ impl EffectGraphBuilderMapExt for App {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::context::InstantEffectNodeMap;
+
+    #[test]
+    fn new_graph_map_is_empty() {
+        let map = EffectGraphMap::new();
+        assert!(map.map.is_empty());
+    }
+
+    #[test]
+    fn insert_graph_then_get_roundtrip() {
+        let mut map = EffectGraphMap::new();
+        let graph = GraphRef::new(Entity::from_bits(42));
+
+        assert_eq!(map.get_graph("fireball".to_string()), None);
+        map.insert_graph("fireball".to_string(), graph);
+
+        assert_eq!(map.get_graph("fireball".to_string()), Some(graph));
+    }
+
+    #[test]
+    fn insert_graph_overwrites_previous() {
+        let mut map = EffectGraphMap::new();
+        map.insert_graph("fireball".to_string(), GraphRef::new(Entity::from_bits(1)));
+
+        let replacement = GraphRef::new(Entity::from_bits(2));
+        map.insert_graph("fireball".to_string(), replacement);
+
+        assert_eq!(map.get_graph("fireball".to_string()), Some(replacement));
+    }
+
+    #[test]
+    fn get_graph_missing_class_returns_none() {
+        let map = EffectGraphMap::new();
+        assert_eq!(map.get_graph("nonexistent".to_string()), None);
+    }
+
+    #[derive(Debug, Default)]
+    struct TestGraphBuilder;
+
+    impl EffectGraphBuilder for TestGraphBuilder {
+        fn get_effect_graph_name(&self) -> &'static str {
+            "test_graph"
+        }
+
+        fn build(
+            &self,
+            _commands: &mut Commands,
+            _instant_map: &mut ResMut<InstantEffectNodeMap>,
+        ) -> Entity {
+            Entity::PLACEHOLDER
+        }
+    }
+
+    #[test]
+    fn builder_map_get_returns_registered_builder() {
+        let mut map = EffectGraphBuilderMap::default();
+        map.map.insert(
+            "test_graph".to_string(),
+            Box::new(TestGraphBuilder) as Box<dyn EffectGraphBuilder>,
+        );
+
+        let builder = map
+            .get_effect_graph_builder("test_graph")
+            .expect("已注册的构建器应可查到");
+        assert_eq!(builder.get_effect_graph_name(), "test_graph");
+    }
+
+    #[test]
+    fn builder_map_get_missing_name_returns_none() {
+        let map = EffectGraphBuilderMap::default();
+        assert!(map.get_effect_graph_builder("missing").is_none());
+    }
+}
