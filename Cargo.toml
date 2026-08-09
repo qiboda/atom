@@ -52,10 +52,10 @@ serde = { version = "1.0", features = ["derive"] }
 bitflags = { version = "2.6" }
 
 [patch.crates-io]
-bevy = { path = "/data/codes/Bevy" }
-bevy_app = { path = "/data/codes/Bevy/crates/bevy_app" }
-bevy_asset = { path = "/data/codes/Bevy/crates/bevy_asset" }
-bevy_reflect = { path = "/data/codes/Bevy/crates/bevy_reflect" }
+bevy = { git = "https://github.com/qiboda/bevy", branch = "atom-patches" }
+bevy_app = { git = "https://github.com/qiboda/bevy", branch = "atom-patches" }
+bevy_asset = { git = "https://github.com/qiboda/bevy", branch = "atom-patches" }
+bevy_reflect = { git = "https://github.com/qiboda/bevy", branch = "atom-patches" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"
