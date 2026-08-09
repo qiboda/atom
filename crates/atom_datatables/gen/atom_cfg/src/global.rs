@@ -108,3 +108,88 @@ impl bevy::asset::AssetLoader for TbGlobalLoader {
         &["bytes"]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use atom_luban_lib::table::OneTable;
+    use bevy::asset::AssetLoader;
+
+    fn global_bytes(x1: i32, x2: i32, x3: i32, x4: i32, x5: i32, x6: i32, x7: &[i32]) -> Vec<u8> {
+        let mut b = Vec::new();
+        for x in [x1, x2, x3, x4, x5, x6] {
+            b.extend_from_slice(&crate::testutil::enc_int(x));
+        }
+        b.extend_from_slice(&crate::testutil::list_bytes(
+            x7.iter().copied(),
+            crate::testutil::enc_int,
+        ));
+        b
+    }
+
+    #[test]
+    fn global_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(global_bytes(1, 2, 3, 4, 5, 6, &[10, 20, 30]));
+        let g = Global::new(&mut buf).expect("Global 解析失败");
+        assert_eq!((g.x1, g.x2, g.x3, g.x4, g.x5, g.x6), (1, 2, 3, 4, 5, 6));
+        assert_eq!(g.x7, vec![10, 20, 30]);
+        assert_eq!(Global::__ID__, 1250542702);
+    }
+
+    #[test]
+    fn global_new_empty_vec() {
+        let mut buf = atom_luban_lib::ByteBuf::new(global_bytes(0, 0, 0, 0, 0, 0, &[]));
+        let g = Global::new(&mut buf).expect("Global 空向量解析失败");
+        assert!(g.x7.is_empty());
+    }
+
+    #[test]
+    fn tb_global_new_parses() {
+        let bytes = crate::testutil::table_bytes(vec![global_bytes(7, 8, 9, 10, 11, 12, &[1])]);
+        let tb = TbGlobal::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbGlobal 解析失败");
+        let data = tb.get_data();
+        assert_eq!(data.x1, 7);
+        assert_eq!(data.x7, vec![1]);
+    }
+
+    #[test]
+    fn tb_global_new_rejects_wrong_row_count() {
+        let bytes = crate::testutil::table_bytes(vec![
+            global_bytes(1, 2, 3, 4, 5, 6, &[]),
+            global_bytes(2, 3, 4, 5, 6, 7, &[]),
+        ]);
+        let err = TbGlobal::new(atom_luban_lib::ByteBuf::new(bytes))
+            .expect_err("one 表行数不为 1 应报错");
+        assert!(matches!(err, LubanError::Table(_)));
+    }
+
+    #[test]
+    fn tb_global_one_table_get_data() {
+        let bytes = crate::testutil::table_bytes(vec![global_bytes(1, 2, 3, 4, 5, 6, &[9])]);
+        let tb = TbGlobal::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbGlobal 解析失败");
+        assert_eq!(tb.get_data().x1, 1);
+    }
+
+    #[test]
+    fn tb_global_loader_extensions() {
+        assert_eq!(TbGlobalLoader.extensions(), &["bytes"]);
+    }
+
+    fn assert_reflects<T: bevy::reflect::PartialReflect>(value: &T) {
+        use bevy::reflect::DynamicTypePath;
+        assert!(value.get_represented_type_info().is_some());
+        let _ = value.reflect_ref();
+        let _ = value.reflect_type_path();
+    }
+
+    #[test]
+    fn reflect_api_smoke() {
+        let mut buf = atom_luban_lib::ByteBuf::new(global_bytes(1, 2, 3, 4, 5, 6, &[7]));
+        let g = Global::new(&mut buf).expect("Global 解析失败");
+        assert_reflects(&g);
+
+        let bytes = crate::testutil::table_bytes(vec![global_bytes(1, 2, 3, 4, 5, 6, &[7])]);
+        let tb = TbGlobal::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbGlobal 解析失败");
+        assert_reflects(&tb);
+    }
+}

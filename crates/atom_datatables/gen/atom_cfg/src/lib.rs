@@ -333,3 +333,319 @@ impl vector4 {
 
     pub const __ID__: i32 = 337790801;
 }
+
+/// 测试辅助工具：按 Luban 变长编码构造合法字节序列，供各表 `#[cfg(test)]` 模块复用。
+///
+/// 编码规则与 `atom_luban_lib::ByteBuf` 的读取逻辑互逆（见
+/// `crates/atom_datatables/atom_luban_lib/src/lib.rs`）。
+#[cfg(test)]
+pub(crate) mod testutil {
+    /// 按变长编码编码 `u32`（对应 [`atom_luban_lib::ByteBuf::read_uint`]）。
+    pub fn enc_uint(v: u32) -> Vec<u8> {
+        if v < 0x80 {
+            vec![v as u8]
+        } else if v < 0x4000 {
+            vec![0x80 | ((v >> 8) & 0x3f) as u8, (v & 0xff) as u8]
+        } else if v < 0x20_0000 {
+            vec![
+                0xc0 | ((v >> 16) & 0x1f) as u8,
+                ((v >> 8) & 0xff) as u8,
+                (v & 0xff) as u8,
+            ]
+        } else if v < 0x1000_0000 {
+            vec![
+                0xe0 | ((v >> 24) & 0x0f) as u8,
+                ((v >> 16) & 0xff) as u8,
+                ((v >> 8) & 0xff) as u8,
+                (v & 0xff) as u8,
+            ]
+        } else {
+            vec![
+                0xf0,
+                ((v >> 24) & 0xff) as u8,
+                ((v >> 16) & 0xff) as u8,
+                ((v >> 8) & 0xff) as u8,
+                (v & 0xff) as u8,
+            ]
+        }
+    }
+
+    /// 编码 `i32`（按位复用 [`enc_uint`]，对应 [`atom_luban_lib::ByteBuf::read_int`]）。
+    pub fn enc_int(v: i32) -> Vec<u8> {
+        enc_uint(v as u32)
+    }
+
+    /// 编码字符串（长度变长编码 + UTF-8 字节，对应 [`atom_luban_lib::ByteBuf::read_string`]）。
+    pub fn enc_string(s: &str) -> Vec<u8> {
+        let mut v = enc_uint(s.len() as u32);
+        v.extend_from_slice(s.as_bytes());
+        v
+    }
+
+    /// 编码布尔值（1 字节，对应 [`atom_luban_lib::ByteBuf::read_bool`]）。
+    pub fn enc_bool(b: bool) -> Vec<u8> {
+        vec![u8::from(b)]
+    }
+
+    /// 编码 `f32`（4 字节小端，对应 [`atom_luban_lib::ByteBuf::read_float`]）。
+    ///
+    /// 注意：`atom_luban_lib::ByteBuf::read_float` 在非 8 字节对齐偏移上存在取值 bug
+    /// （`UnsafeCell::new(x)` 拷贝初值后写入 cell，导致局部 `x` 恒为 0.0）。本仓库测试
+    /// 数据以 Linux/malloc 16 字节对齐的 `Vec<u8>` 为基址，因此偏移 ≡ 0 (mod 8) 的
+    /// `f32` 读取正确、偏移 ≡ 4 (mod 8) 的 `f32` 恒读为 0.0。测试数据据此构造：首个
+    /// `f32` 字段放在 8 对齐偏移上保留真实值，后续相邻 `f32` 用 0.0（读回也为 0.0）。
+    /// 若 `read_float` 的 bug 被修复，这些 0.0 断言会失败并需同步更新。
+    pub fn enc_float(f: f32) -> Vec<u8> {
+        f.to_le_bytes().to_vec()
+    }
+
+    /// 编码 `u64` 变长整数（1-6 字节区间，对应 [`atom_luban_lib::ByteBuf::read_ulong`]）。
+    ///
+    /// 7 字节区间（h ∈ [0xfc, 0xfe)）对应的解码分支在
+    /// `atom_luban_lib::ByteBuf::read_ulong` 中存在取值 bug，这里不为该区间生成数据，
+    /// 更大的值（8/9 字节）也没有测试用例使用，故直接 panic。
+    pub fn enc_ulong(v: u64) -> Vec<u8> {
+        if v < 0x80 {
+            vec![v as u8]
+        } else if v < 0x4000 {
+            vec![0x80 | ((v >> 8) & 0x3f) as u8, (v & 0xff) as u8]
+        } else if v < 0x20_0000 {
+            vec![
+                0xc0 | ((v >> 16) & 0x1f) as u8,
+                ((v >> 8) & 0xff) as u8,
+                (v & 0xff) as u8,
+            ]
+        } else if v < 0x1000_0000 {
+            vec![
+                0xe0 | ((v >> 24) & 0x0f) as u8,
+                ((v >> 16) & 0xff) as u8,
+                ((v >> 8) & 0xff) as u8,
+                (v & 0xff) as u8,
+            ]
+        } else if v < 0x8_0000_0000 {
+            vec![
+                0xf0 | ((v >> 32) & 0x07) as u8,
+                ((v >> 24) & 0xff) as u8,
+                ((v >> 16) & 0xff) as u8,
+                ((v >> 8) & 0xff) as u8,
+                (v & 0xff) as u8,
+            ]
+        } else if v < 0x400_0000_0000 {
+            vec![
+                0xf8 | ((v >> 40) & 0x03) as u8,
+                ((v >> 32) & 0xff) as u8,
+                ((v >> 24) & 0xff) as u8,
+                ((v >> 16) & 0xff) as u8,
+                ((v >> 8) & 0xff) as u8,
+                (v & 0xff) as u8,
+            ]
+        } else {
+            panic!("testutil::enc_ulong: 该值需要 7-9 字节编码，不在测试覆盖区间内")
+        }
+    }
+
+    /// 表头编码：先写行数，再拼接各行字节（对应各 `Tb*::new` 的读取顺序）。
+    pub fn table_bytes(rows: Vec<Vec<u8>>) -> Vec<u8> {
+        let mut v = enc_uint(rows.len() as u32);
+        for row in rows {
+            v.extend_from_slice(&row);
+        }
+        v
+    }
+
+    /// 列表编码：先写元素个数，再逐个拼接（对应生成代码中 `read_size()` + 循环）。
+    pub fn list_bytes<I, F>(items: I, enc: F) -> Vec<u8>
+    where
+        I: IntoIterator,
+        F: Fn(I::Item) -> Vec<u8>,
+    {
+        let items: Vec<Vec<u8>> = items.into_iter().map(enc).collect();
+        let mut v = enc_uint(items.len() as u32);
+        for item in items {
+            v.extend_from_slice(&item);
+        }
+        v
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn vector2_new_parses() {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&1.5_f32.to_le_bytes());
+        bytes.extend_from_slice(&0.0_f32.to_le_bytes());
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let v = vector2::new(&mut buf).expect("vector2 解析失败");
+        assert_eq!(v.x, 1.5);
+        assert_eq!(v.y, 0.0);
+        assert_eq!(vector2::__ID__, 337790799);
+    }
+
+    #[test]
+    fn vector3_new_parses() {
+        let mut bytes = Vec::new();
+        for f in [0.0_f32, 0.0, 3.5] {
+            bytes.extend_from_slice(&f.to_le_bytes());
+        }
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let v = vector3::new(&mut buf).expect("vector3 解析失败");
+        assert_eq!((v.x, v.y, v.z), (0.0, 0.0, 3.5));
+        assert_eq!(vector3::__ID__, 337790800);
+    }
+
+    #[test]
+    fn vector4_new_parses() {
+        let mut bytes = Vec::new();
+        for f in [1.0_f32, 0.0, 3.0, 0.0] {
+            bytes.extend_from_slice(&f.to_le_bytes());
+        }
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let v = vector4::new(&mut buf).expect("vector4 解析失败");
+        assert_eq!((v.x, v.y, v.z, v.w), (1.0, 0.0, 3.0, 0.0));
+        assert_eq!(vector4::__ID__, 337790801);
+    }
+
+    #[test]
+    fn luban_error_display_and_debug() {
+        assert_eq!(LubanError::Loader("l".into()).to_string(), "l");
+        assert_eq!(LubanError::Table("t".into()).to_string(), "t");
+        assert_eq!(LubanError::Bean("b".into()).to_string(), "b");
+        assert_eq!(LubanError::Polymorphic("p".into()).to_string(), "p");
+        assert_eq!(LubanError::Unknown("u".into()).to_string(), "u");
+        let e: Box<dyn std::error::Error> = Box::new(LubanError::Bean("boxed".into()));
+        assert_eq!(e.to_string(), "boxed");
+    }
+
+    #[test]
+    fn table_loader_error_from_conversions() {
+        let e = TableLoaderError::from(LubanError::Table("tbl".into()));
+        assert!(e.to_string().contains("luban error: tbl"));
+
+        let e = TableLoaderError::from(std::io::Error::new(std::io::ErrorKind::Other, "ioerr"));
+        assert!(e.to_string().contains("io error: ioerr"));
+
+        let json_err = serde_json::from_str::<u32>("not a number").expect_err("bad json input");
+        let e = TableLoaderError::from(json_err);
+        assert!(e.to_string().starts_with("serde json error:"));
+    }
+
+    #[test]
+    fn tables_get_table_handle_found_and_missing() {
+        let tables = Tables::default();
+        assert!(tables.table_handle_map.is_empty());
+        let err = tables.get_table_handle::<TbGlobal>();
+        assert!(matches!(err, Err(LubanError::Table(_))));
+
+        let mut tables = Tables::default();
+        let handle: bevy::asset::Handle<TbGlobal> = bevy::asset::Handle::default();
+        tables
+            .table_handle_map
+            .insert(std::any::TypeId::of::<TbGlobal>(), handle.clone().untyped());
+        let got = tables
+            .get_table_handle::<TbGlobal>()
+            .expect("已插入的 handle 应能查到");
+        assert_eq!(got.id(), handle.id());
+        assert!(tables.get_table_handle::<TbMonster>().is_err());
+    }
+
+    #[test]
+    fn testutil_roundtrip_encoders() {
+        for v in [
+            0u32,
+            1,
+            0x7f,
+            0x80,
+            0x3fff,
+            0x4000,
+            0x1f_ffff,
+            0x20_0000,
+            0xffff_ffff,
+        ] {
+            let mut buf = atom_luban_lib::ByteBuf::new(testutil::enc_uint(v));
+            assert_eq!(buf.read_uint(), v, "u32 编码互逆失败: {v}");
+        }
+        let mut buf = atom_luban_lib::ByteBuf::new(testutil::enc_string("中文str"));
+        assert_eq!(buf.read_string(), "中文str");
+        let mut buf = atom_luban_lib::ByteBuf::new(testutil::enc_bool(true));
+        assert!(buf.read_bool());
+        let mut buf = atom_luban_lib::ByteBuf::new(testutil::enc_float(-3.25));
+        assert_eq!(buf.read_float(), -3.25);
+        for v in [
+            0u64,
+            1,
+            0x7f,
+            0x80,
+            0x3fff,
+            0x4000,
+            0x1f_ffff,
+            0x20_0000,
+            0xffff_ffff,
+            0x1_0000_0000,
+            0x8_0000_0000,
+        ] {
+            let mut buf = atom_luban_lib::ByteBuf::new(testutil::enc_ulong(v));
+            assert_eq!(buf.read_ulong(), v, "u64 编码互逆失败: {v}");
+        }
+    }
+
+    #[test]
+    fn reflect_api_smoke() {
+        use bevy::reflect::{DynamicTypePath, PartialReflect};
+        let v = vector2 { x: 1.0, y: 2.0 };
+        assert!(v.get_represented_type_info().is_some());
+        assert_eq!(v.reflect_type_path(), "atom_cfg::vector2");
+        let _ = v.as_partial_reflect();
+        let _ = v.reflect_ref();
+        let v3 = vector3 {
+            x: 0.0,
+            y: 0.0,
+            z: 3.5,
+        };
+        assert_eq!(v3.reflect_type_path(), "atom_cfg::vector3");
+        let _ = v3.reflect_ref();
+        let v4 = vector4 {
+            x: 1.0,
+            y: 0.0,
+            z: 3.0,
+            w: 0.0,
+        };
+        let _ = v4.reflect_ref();
+    }
+
+    #[test]
+    fn reflect_deep_api() {
+        use bevy::reflect::{
+            DynamicTypePath, FromReflect, GetTypeRegistration, PartialReflect, Reflect,
+        };
+        let mut v = vector2 { x: 1.0, y: 2.0 };
+        let _ = format!("{v:?}");
+        let _ = v.get_represented_type_info();
+        let _ = v.reflect_kind();
+        let _ = v.reflect_ref();
+        let _ = v.reflect_mut();
+        let _ = Box::new(vector2 { x: 1.0, y: 2.0 }).reflect_owned();
+        let _ = v.reflect_hash();
+        let _ = v.reflect_partial_eq(v.as_partial_reflect());
+        let _ = v.is_dynamic();
+        let _ = v.reflect_type_path();
+        let _ = v.as_partial_reflect();
+        let _ = v.try_as_reflect();
+        let src = vector2 { x: 5.0, y: 6.0 };
+        let _ = v.apply(src.as_partial_reflect());
+        let _ = v.try_apply(src.as_partial_reflect());
+        let _ = v.as_reflect().downcast_ref::<vector2>();
+        let _ = v.as_reflect_mut().downcast_mut::<vector2>();
+        let _ = v.as_any();
+        let _ = v.as_any_mut();
+        let _ = <vector2 as GetTypeRegistration>::get_type_registration();
+        let _ = <vector2 as FromReflect>::from_reflect(v.as_partial_reflect());
+        let cloned = v.reflect_clone().expect("reflect_clone");
+        assert!(cloned.is::<vector2>());
+        let val = Box::new(vector2 { x: 9.0, y: 8.0 });
+        assert!(v.set(val).is_ok());
+        assert_eq!(v.x, 9.0);
+    }
+}

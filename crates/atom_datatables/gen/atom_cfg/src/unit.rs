@@ -674,3 +674,368 @@ impl bevy::asset::AssetLoader for TbRelationShipLoader {
         &["bytes"]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use atom_luban_lib::table::{MapTable, MultiUnionIndexListTable};
+    use bevy::asset::AssetLoader;
+
+    fn monster_bytes(id: i32, name: &str, desc: &str, camp: i32) -> Vec<u8> {
+        let mut b = crate::testutil::enc_int(id);
+        b.extend_from_slice(&crate::testutil::enc_string(name));
+        b.extend_from_slice(&crate::testutil::enc_string(desc));
+        b.extend_from_slice(&crate::testutil::enc_int(camp));
+        b
+    }
+
+    fn npc_bytes(id: i32, name: &str, desc: &str, camp: i32) -> Vec<u8> {
+        monster_bytes(id, name, desc, camp)
+    }
+
+    fn player_bytes(
+        id: i32,
+        name: &str,
+        desc: &str,
+        camp: i32,
+        radius: f32,
+        height: f32,
+    ) -> Vec<u8> {
+        let mut b = monster_bytes(id, name, desc, camp);
+        b.extend_from_slice(&crate::testutil::enc_float(radius));
+        b.extend_from_slice(&crate::testutil::enc_float(height));
+        b
+    }
+
+    fn relationship_bytes(active: i32, passive: i32, rtype: i32) -> Vec<u8> {
+        let mut b = crate::testutil::enc_int(active);
+        b.extend_from_slice(&crate::testutil::enc_int(passive));
+        b.extend_from_slice(&crate::testutil::enc_int(rtype));
+        b
+    }
+
+    #[test]
+    fn monster_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(monster_bytes(7, "goblin", "小怪", 1));
+        let m = Monster::new(&mut buf).expect("Monster 解析失败");
+        assert_eq!(m.id, 7);
+        assert_eq!(m.name, "goblin");
+        assert_eq!(m.desc, "小怪");
+        assert_eq!(m.camp, 1);
+        assert_eq!(Monster::__ID__, 922420560);
+    }
+
+    #[test]
+    fn npc_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(npc_bytes(3, "商人", "merchant", 2));
+        let n = Npc::new(&mut buf).expect("Npc 解析失败");
+        assert_eq!(n.id, 3);
+        assert_eq!(n.name, "商人");
+        assert_eq!(n.desc, "merchant");
+        assert_eq!(n.camp, 2);
+        assert_eq!(Npc::__ID__, -293825705);
+    }
+
+    #[test]
+    fn player_new_parses() {
+        // "he"(2) + "ab"(2) 使 capsule_radius 落在 8 对齐偏移上（见 testutil::enc_float 说明）
+        let mut buf = atom_luban_lib::ByteBuf::new(player_bytes(1, "he", "ab", 0, 0.5, 0.0));
+        let p = Player::new(&mut buf).expect("Player 解析失败");
+        assert_eq!(p.id, 1);
+        assert_eq!(p.name, "he");
+        assert_eq!(p.desc, "ab");
+        assert_eq!(p.camp, 0);
+        assert_eq!(p.capsule_radius, 0.5);
+        assert_eq!(p.capsule_height, 0.0);
+        assert_eq!(Player::__ID__, -164604245);
+    }
+
+    #[test]
+    fn relationship_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(relationship_bytes(1, 2, 2));
+        let r = RelationShip::new(&mut buf).expect("RelationShip 解析失败");
+        assert_eq!(r.active_camp, 1);
+        assert_eq!(r.passive_camp, 2);
+        assert_eq!(r.relationship_type, RelationShipType::Friendly);
+        assert_eq!(RelationShip::__ID__, -746969438);
+    }
+
+    #[test]
+    fn relationship_type_from_i32() {
+        assert_eq!(RelationShipType::from(0), RelationShipType::None);
+        assert_eq!(RelationShipType::from(1), RelationShipType::Hostility);
+        assert_eq!(RelationShipType::from(2), RelationShipType::Friendly);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid value for RelationShipType")]
+    fn relationship_type_from_i32_invalid_panics() {
+        let _ = RelationShipType::from(99);
+    }
+
+    #[test]
+    fn relationship_type_from_enum_from_num_impls() {
+        assert_eq!(RelationShipType::from(1_i64), RelationShipType::Hostility);
+        assert_eq!(RelationShipType::from(0_i16), RelationShipType::None);
+        assert_eq!(RelationShipType::from(2_i8), RelationShipType::Friendly);
+        assert_eq!(RelationShipType::from(1_isize), RelationShipType::Hostility);
+        assert_eq!(RelationShipType::from(2_u64), RelationShipType::Friendly);
+        assert_eq!(RelationShipType::from(0_u32), RelationShipType::None);
+        assert_eq!(RelationShipType::from(1_u16), RelationShipType::Hostility);
+        assert_eq!(RelationShipType::from(2_u8), RelationShipType::Friendly);
+        assert_eq!(RelationShipType::from(0_usize), RelationShipType::None);
+        assert_eq!(RelationShipType::from(2_f64), RelationShipType::Friendly);
+        assert_eq!(RelationShipType::from(1_f32), RelationShipType::Hostility);
+    }
+
+    #[test]
+    fn tb_monster_new_and_lookup() {
+        let bytes = crate::testutil::table_bytes(vec![
+            monster_bytes(1, "a", "A", 0),
+            monster_bytes(2, "b", "B", 1),
+        ]);
+        let tb = TbMonster::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbMonster 解析失败");
+        assert_eq!(tb.data_list.len(), 2);
+        assert_eq!(tb.data_map.len(), 2);
+
+        let m = tb.get(&1).expect("按 id=1 查询");
+        assert_eq!(m.name, "a");
+        assert!(tb.get(&99).is_none());
+
+        let m = &tb[2];
+        assert_eq!(m.id, 2);
+
+        let m = tb.get_row(&1).expect("MapTable::get_row");
+        assert_eq!(m.desc, "A");
+        assert!(tb.get_row(&99).is_none());
+        assert_eq!(tb.get_data_list().len(), 2);
+        assert_eq!(tb.get_data_map().len(), 2);
+    }
+
+    #[test]
+    #[should_panic]
+    fn tb_monster_index_missing_panics() {
+        let bytes = crate::testutil::table_bytes(vec![monster_bytes(1, "a", "A", 0)]);
+        let tb = TbMonster::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbMonster 解析失败");
+        let _ = &tb[999];
+    }
+
+    #[test]
+    fn tb_monster_row_accessors() {
+        let data = std::sync::Arc::new(
+            Monster::new(&mut atom_luban_lib::ByteBuf::new(monster_bytes(
+                5, "x", "X", 1,
+            )))
+            .expect("Monster 解析失败"),
+        );
+        let mut row = TbMonsterRow::new(3, Some(data.clone()));
+        assert_eq!(*row.key(), 3);
+        assert!(row.get_data().is_some());
+        row.set_key(9);
+        assert_eq!(*row.key(), 9);
+        row.set_data(None);
+        assert!(row.get_data().is_none());
+        row.set_data(Some(data.clone()));
+        let arc = row.data();
+        assert_eq!(arc.id, 5);
+        assert_eq!(row.get_data().expect("有数据").name, "x");
+    }
+
+    #[test]
+    #[should_panic]
+    fn tb_monster_row_data_none_panics() {
+        let row = TbMonsterRow::new(1, None);
+        let _ = row.data();
+    }
+
+    #[test]
+    fn tb_monster_row_partial_eq() {
+        let a = TbMonsterRow::new(1, None);
+        let b = TbMonsterRow::new(1, None);
+        assert_eq!(a, b);
+        let c = TbMonsterRow::new(2, None);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn tb_npc_new_and_lookup() {
+        let bytes = crate::testutil::table_bytes(vec![npc_bytes(10, "n1", "N1", 0)]);
+        let tb = TbNpc::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbNpc 解析失败");
+        assert_eq!(tb.data_list.len(), 1);
+        let n = tb.get(&10).expect("按 id=10 查询");
+        assert_eq!(n.desc, "N1");
+        assert!(tb.get(&11).is_none());
+        let n = &tb[10];
+        assert_eq!(n.name, "n1");
+        let n = tb.get_row(&10).expect("MapTable::get_row");
+        assert_eq!(n.id, 10);
+        assert_eq!(tb.get_data_list().len(), 1);
+        assert_eq!(tb.get_data_map().len(), 1);
+    }
+
+    #[test]
+    fn tb_npc_row_accessors() {
+        let data = std::sync::Arc::new(
+            Npc::new(&mut atom_luban_lib::ByteBuf::new(npc_bytes(4, "y", "Y", 0)))
+                .expect("Npc 解析失败"),
+        );
+        let mut row = TbNpcRow::new(4, None);
+        row.set_data(Some(data));
+        assert_eq!(*row.key(), 4);
+        assert_eq!(row.data().id, 4);
+        row.set_key(8);
+        assert_eq!(*row.key(), 8);
+        assert!(row.get_data().is_some());
+        let other = TbNpcRow::new(8, None);
+        assert_eq!(row, other);
+        let diff = TbNpcRow::new(9, None);
+        assert_ne!(row, diff);
+    }
+
+    #[test]
+    fn tb_player_new_and_lookup() {
+        // "ab"(2)+"c"(1) 使 capsule_radius 落在 8 对齐偏移上（行数前缀 1 字节 + 行内前缀 8 字节）
+        let bytes = crate::testutil::table_bytes(vec![player_bytes(100, "ab", "c", 0, 1.0, 0.0)]);
+        let tb = TbPlayer::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbPlayer 解析失败");
+        assert_eq!(tb.data_list.len(), 1);
+        let p = tb.get(&100).expect("按 id=100 查询");
+        assert_eq!(p.capsule_radius, 1.0);
+        assert_eq!(p.capsule_height, 0.0);
+        assert!(tb.get(&0).is_none());
+        let p = &tb[100];
+        assert_eq!(p.name, "ab");
+        let p = tb.get_row(&100).expect("MapTable::get_row");
+        assert_eq!(p.desc, "c");
+        assert_eq!(tb.get_data_list().len(), 1);
+        assert_eq!(tb.get_data_map().len(), 1);
+    }
+
+    #[test]
+    fn tb_player_row_partial_eq_and_accessors() {
+        let a = TbPlayerRow::new(1, None);
+        let b = TbPlayerRow::new(1, None);
+        assert_eq!(a, b);
+        let c = TbPlayerRow::new(2, None);
+        assert_ne!(a, c);
+        let mut row = TbPlayerRow::new(1, None);
+        row.set_key(2);
+        assert_eq!(*row.key(), 2);
+        row.set_data(Some(std::sync::Arc::new(
+            Player::new(&mut atom_luban_lib::ByteBuf::new(player_bytes(
+                2, "he", "ab", 0, 0.5, 0.0,
+            )))
+            .expect("Player 解析失败"),
+        )));
+        assert!(row.get_data().is_some());
+        assert_eq!(row.data().id, 2);
+    }
+
+    #[test]
+    fn tb_relationship_new_and_lookup() {
+        let bytes = crate::testutil::table_bytes(vec![
+            relationship_bytes(1, 2, 2),
+            relationship_bytes(1, 3, 1),
+        ]);
+        let tb = TbRelationShip::new(atom_luban_lib::ByteBuf::new(bytes))
+            .expect("TbRelationShip 解析失败");
+        assert_eq!(tb.data_list.len(), 2);
+        assert_eq!(tb.data_map_union.len(), 2);
+
+        let r = tb.get(&(1, 2)).expect("联合键 (1,2)");
+        assert_eq!(r.relationship_type, RelationShipType::Friendly);
+        assert!(tb.get(&(9, 9)).is_none());
+
+        let r = tb
+            .get_row_by_key(&(1, 3))
+            .expect("MultiUnionIndexListTable");
+        assert_eq!(r.relationship_type, RelationShipType::Hostility);
+        assert!(tb.get_row_by_key(&(0, 0)).is_none());
+        assert_eq!(tb.get_data_list().len(), 2);
+        assert_eq!(tb.get_data_map().len(), 2);
+    }
+
+    #[test]
+    fn tb_relationship_row_partial_eq() {
+        let a = TbRelationShipRow {
+            key: (1, 2),
+            data: None,
+        };
+        let b = TbRelationShipRow {
+            key: (1, 2),
+            data: None,
+        };
+        assert_eq!(a, b);
+        let c = TbRelationShipRow {
+            key: (2, 1),
+            data: None,
+        };
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn loaders_extensions() {
+        assert_eq!(TbMonsterLoader.extensions(), &["bytes"]);
+        assert_eq!(TbNpcLoader.extensions(), &["bytes"]);
+        assert_eq!(TbPlayerLoader.extensions(), &["bytes"]);
+        assert_eq!(TbRelationShipLoader.extensions(), &["bytes"]);
+    }
+
+    fn assert_reflects<T: bevy::reflect::PartialReflect>(value: &T) {
+        use bevy::reflect::DynamicTypePath;
+        assert!(value.get_represented_type_info().is_some());
+        let _ = value.reflect_ref();
+        let _ = value.reflect_type_path();
+    }
+
+    #[test]
+    fn reflect_api_smoke() {
+        let mut buf = atom_luban_lib::ByteBuf::new(monster_bytes(1, "a", "b", 0));
+        let m = Monster::new(&mut buf).expect("Monster 解析失败");
+        assert_reflects(&m);
+        let mut buf = atom_luban_lib::ByteBuf::new(npc_bytes(1, "a", "b", 0));
+        let n = Npc::new(&mut buf).expect("Npc 解析失败");
+        assert_reflects(&n);
+        let mut buf = atom_luban_lib::ByteBuf::new(player_bytes(1, "he", "ab", 0, 0.5, 0.0));
+        let p = Player::new(&mut buf).expect("Player 解析失败");
+        assert_reflects(&p);
+        let mut buf = atom_luban_lib::ByteBuf::new(relationship_bytes(1, 2, 1));
+        let r = RelationShip::new(&mut buf).expect("RelationShip 解析失败");
+        assert_reflects(&r);
+        assert_reflects(&RelationShipType::Hostility);
+
+        let row = monster_bytes(1, "a", "b", 0);
+        let tb = TbMonster::new(atom_luban_lib::ByteBuf::new(crate::testutil::table_bytes(
+            vec![row],
+        )))
+        .expect("TbMonster 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbMonsterRow::new(1, None));
+
+        let row = npc_bytes(1, "a", "b", 0);
+        let tb = TbNpc::new(atom_luban_lib::ByteBuf::new(crate::testutil::table_bytes(
+            vec![row],
+        )))
+        .expect("TbNpc 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbNpcRow::new(1, None));
+
+        let row = player_bytes(1, "he", "ab", 0, 0.0, 0.0);
+        let tb = TbPlayer::new(atom_luban_lib::ByteBuf::new(crate::testutil::table_bytes(
+            vec![row],
+        )))
+        .expect("TbPlayer 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbPlayerRow::new(1, None));
+
+        let row = relationship_bytes(1, 2, 1);
+        let tb = TbRelationShip::new(atom_luban_lib::ByteBuf::new(crate::testutil::table_bytes(
+            vec![row],
+        )))
+        .expect("TbRelationShip 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbRelationShipRow {
+            key: (1, 2),
+            data: None,
+        });
+    }
+}

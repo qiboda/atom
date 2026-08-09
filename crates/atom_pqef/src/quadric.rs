@@ -669,4 +669,365 @@ pub(crate) mod tests {
             "residual should be approximately non-negative"
         );
     }
+
+    #[test]
+    fn test_from_coefficients_roundtrip() {
+        let q = Quadric::from_coefficients(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0);
+        let a = q.a().to_cols_array_2d();
+        assert!((a[0][0] - 1.0).abs() < 1e-6);
+        assert!((a[0][1] - 2.0).abs() < 1e-6);
+        assert!((a[0][2] - 3.0).abs() < 1e-6);
+        assert!((a[1][0] - 2.0).abs() < 1e-6);
+        assert!((a[1][1] - 4.0).abs() < 1e-6);
+        assert!((a[1][2] - 5.0).abs() < 1e-6);
+        assert!((a[2][0] - 3.0).abs() < 1e-6);
+        assert!((a[2][1] - 5.0).abs() < 1e-6);
+        assert!((a[2][2] - 6.0).abs() < 1e-6);
+        assert_eq!(q.b(), Vec3A::new(7.0, 8.0, 9.0));
+        assert!((q.c - 10.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_from_coefficients_matrix_reads_upper_triangle() {
+        // 非对称输入矩阵：只读取上三角（含主对角线），下三角被丢弃。
+        let m = Mat3A::from_cols(
+            Vec3A::new(1.0, 9.0, 8.0),
+            Vec3A::new(2.0, 4.0, 7.0),
+            Vec3A::new(3.0, 5.0, 6.0),
+        );
+        let q = Quadric::from_coefficients_matrix(m, Vec3A::new(1.0, 2.0, 3.0), 4.0);
+        let a = q.a().to_cols_array_2d();
+        // a01 = 9 / a02 = 8 / a12 = 7（来自输入上三角），而不是下三角的 2/3/5。
+        assert!((a[0][0] - 1.0).abs() < 1e-6);
+        assert!((a[0][1] - 9.0).abs() < 1e-6);
+        assert!((a[0][2] - 8.0).abs() < 1e-6);
+        assert!((a[1][0] - 9.0).abs() < 1e-6);
+        assert!((a[1][1] - 4.0).abs() < 1e-6);
+        assert!((a[1][2] - 7.0).abs() < 1e-6);
+        assert!((a[2][0] - 8.0).abs() < 1e-6);
+        assert!((a[2][1] - 7.0).abs() < 1e-6);
+        assert!((a[2][2] - 6.0).abs() < 1e-6);
+        assert_eq!(q.b(), Vec3A::new(1.0, 2.0, 3.0));
+        assert!((q.c - 4.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_default_quadric_is_zero() {
+        let q = Quadric::default();
+        assert_eq!(q.a(), Mat3A::ZERO);
+        assert_eq!(q.b(), Vec3A::ZERO);
+        assert_eq!(q.c, 0.0);
+        assert_eq!(
+            q,
+            Quadric::from_coefficients(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        );
+    }
+
+    #[test]
+    fn test_triangle_quadric_coefficients() {
+        // p=(1,0,0), q=(0,1,0), r=(0,0,1)：
+        // cross_pqr = (1,1,1)，det = 1 → a = outer((1,1,1))，b = (1,1,1)，c = 1。
+        let q = Quadric::triangle_quadric(
+            Vec3A::new(1.0, 0.0, 0.0),
+            Vec3A::new(0.0, 1.0, 0.0),
+            Vec3A::new(0.0, 0.0, 1.0),
+        );
+        let a = q.a().to_cols_array_2d();
+        for row in a {
+            for v in row {
+                assert!((v - 1.0).abs() < 1e-6, "a value = {v}");
+            }
+        }
+        assert_eq!(q.b(), Vec3A::splat(1.0));
+        assert!((q.c - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_triangle_quadric_residual_on_plane() {
+        // 平面 x+y+z=1 上的点（含三个顶点）残差应为 0。
+        let q = Quadric::triangle_quadric(
+            Vec3A::new(1.0, 0.0, 0.0),
+            Vec3A::new(0.0, 1.0, 0.0),
+            Vec3A::new(0.0, 0.0, 1.0),
+        );
+        for p in [
+            Vec3A::new(1.0, 0.0, 0.0),
+            Vec3A::new(0.0, 1.0, 0.0),
+            Vec3A::new(0.0, 0.0, 1.0),
+            Vec3A::new(0.25, 0.25, 0.5),
+            Vec3A::splat(1.0 / 3.0),
+        ] {
+            assert!(
+                q.residual_l2_error(p).abs() < 1e-6,
+                "residual on plane should be 0, got {}",
+                q.residual_l2_error(p)
+            );
+        }
+        // 平面外任意点：E = (n·x − d)² ≥ 0。
+        assert!(q.residual_l2_error(Vec3A::new(2.0, 0.0, 0.0)) > 0.0);
+        assert!(q.residual_l2_error(Vec3A::new(-1.0, -1.0, -1.0)) > 0.0);
+    }
+
+    #[test]
+    fn test_probabilistic_triangle_quadric_zero_stddev_matches_triangle() {
+        let p = Vec3A::new(1.0, 0.0, 0.0);
+        let q = Vec3A::new(0.0, 1.0, 0.0);
+        let r = Vec3A::new(0.0, 0.0, 1.0);
+        assert_eq!(
+            Quadric::triangle_quadric(p, q, r),
+            Quadric::probabilistic_triangle_quadric(p, q, r, 0.0)
+        );
+    }
+
+    #[test]
+    fn test_probabilistic_triangle_quadric_zero_sigma_matches_triangle() {
+        let p = Vec3A::new(1.0, 0.0, 0.0);
+        let q = Vec3A::new(0.0, 1.0, 0.0);
+        let r = Vec3A::new(0.0, 0.0, 1.0);
+        assert_eq!(
+            Quadric::triangle_quadric(p, q, r),
+            Quadric::probabilistic_triangle_quadric_sigma(
+                p,
+                q,
+                r,
+                Mat3A::ZERO,
+                Mat3A::ZERO,
+                Mat3A::ZERO,
+            )
+        );
+    }
+
+    #[test]
+    fn test_probabilistic_triangle_quadric_symmetry_and_residual() {
+        let q = Quadric::probabilistic_triangle_quadric(
+            Vec3A::new(1.0, 0.0, 0.0),
+            Vec3A::new(0.0, 1.0, 0.0),
+            Vec3A::new(0.0, 0.0, 1.0),
+            0.1,
+        );
+        let cols = q.a().to_cols_array_2d();
+        assert!((cols[0][1] - cols[1][0]).abs() < 1e-6);
+        assert!((cols[0][2] - cols[2][0]).abs() < 1e-6);
+        assert!((cols[1][2] - cols[2][1]).abs() < 1e-6);
+        // 概率化是平方误差的期望，残差应非负。
+        for p in [
+            Vec3A::new(1.0, 0.0, 0.0),
+            Vec3A::new(0.0, 1.0, 0.0),
+            Vec3A::new(0.0, 0.0, 1.0),
+            Vec3A::new(0.4, 0.4, 0.4),
+        ] {
+            let e = q.residual_l2_error(p);
+            assert!(e >= -1e-3, "residual {e} < -1e-3");
+        }
+    }
+
+    #[test]
+    fn test_probabilistic_triangle_quadric_sigma_symmetry_and_residual() {
+        let q = Quadric::probabilistic_triangle_quadric_sigma(
+            Vec3A::new(1.0, 0.0, 0.0),
+            Vec3A::new(0.0, 1.0, 0.0),
+            Vec3A::new(0.0, 0.0, 1.0),
+            Mat3A::from_cols(Vec3A::splat(0.01), Vec3A::splat(0.01), Vec3A::splat(0.01)),
+            Mat3A::from_cols(Vec3A::splat(0.01), Vec3A::splat(0.01), Vec3A::splat(0.01)),
+            Mat3A::from_cols(Vec3A::splat(0.01), Vec3A::splat(0.01), Vec3A::splat(0.01)),
+        );
+        let cols = q.a().to_cols_array_2d();
+        assert!((cols[0][1] - cols[1][0]).abs() < 1e-6);
+        assert!((cols[0][2] - cols[2][0]).abs() < 1e-6);
+        assert!((cols[1][2] - cols[2][1]).abs() < 1e-6);
+        let e = q.residual_l2_error(Vec3A::new(1.0, 0.0, 0.0));
+        assert!(e >= -1e-3, "residual {e} < -1e-3");
+    }
+
+    #[test]
+    fn test_minimizer_identity_matrix() {
+        let q = Quadric::from_coefficients_matrix(Mat3A::IDENTITY, Vec3A::new(1.0, 2.0, 3.0), 5.0);
+        let min = q.minimizer();
+        assert!((min.x - 1.0).abs() < 1e-5, "x={}", min.x);
+        assert!((min.y - 2.0).abs() < 1e-5, "y={}", min.y);
+        assert!((min.z - 3.0).abs() < 1e-5, "z={}", min.z);
+    }
+
+    #[test]
+    fn test_minimizer_diagonal_matrix() {
+        // A = diag(2,4,6)，b = (2,4,6) → x = (1,1,1)。
+        let q = Quadric::from_coefficients(2.0, 0.0, 0.0, 4.0, 0.0, 6.0, 2.0, 4.0, 6.0, 0.0);
+        let min = q.minimizer();
+        assert!((min.x - 1.0).abs() < 1e-5, "x={}", min.x);
+        assert!((min.y - 1.0).abs() < 1e-5, "y={}", min.y);
+        assert!((min.z - 1.0).abs() < 1e-5, "z={}", min.z);
+    }
+
+    #[test]
+    fn test_minimizer_point_quadric_returns_point() {
+        let p = Vec3A::new(-2.0, 3.5, 0.25);
+        let min = Quadric::point_quadric(p).minimizer();
+        assert!((min - p).length() < 1e-4, "minimizer={min}, expected ~{p}");
+    }
+
+    #[test]
+    fn test_minimizer_singular_matrix_does_not_panic() {
+        // 单个平面约束 → A 奇异，denom = 1/0 = inf → 结果非有限（但不应 panic）。
+        let q = Quadric::plane_quadric(Vec3A::new(0.0, 5.0, 0.0), Vec3A::new(0.0, 1.0, 0.0));
+        let min = q.minimizer();
+        assert!(
+            !min.is_finite(),
+            "singular minimizer should not be finite: {min}"
+        );
+
+        // 全零 quadric：0 * inf = NaN。
+        assert!(!Quadric::default().minimizer().is_finite());
+    }
+
+    #[test]
+    fn test_residual_matches_manual_formula() {
+        let q = Quadric::from_coefficients(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0);
+        let p = Vec3A::new(0.5, -1.0, 2.0);
+        // E = xᵀAx − 2xᵀb + c（A 对称）。
+        let ax = q.a() * p;
+        let manual = p.dot(ax) - 2.0 * p.dot(q.b()) + q.c;
+        assert!((q.residual_l2_error(p) - manual).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_point_quadric_residual() {
+        let p = Vec3A::new(1.0, 2.0, 3.0);
+        let q = Quadric::point_quadric(p);
+        // E(x) = ||x||² − 2x·p：在 x=p 处 = −||p||²，在 x=0 处 = 0。
+        assert!((q.residual_l2_error(p) + p.length_squared()).abs() < 1e-4);
+        assert!(q.residual_l2_error(Vec3A::ZERO).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_plane_quadric_residual_vanishes_on_plane() {
+        let q = Quadric::plane_quadric(Vec3A::new(0.0, 5.0, 0.0), Vec3A::new(0.0, 1.0, 0.0));
+        // 平面上任意点（y=5）残差为 0；平面外 E = (n·x − d)² ≥ 0。
+        for p in [
+            Vec3A::new(0.0, 5.0, 0.0),
+            Vec3A::new(3.0, 5.0, -2.0),
+            Vec3A::new(-1.0, 5.0, 7.0),
+        ] {
+            assert!(q.residual_l2_error(p).abs() < 1e-5);
+        }
+        assert!(q.residual_l2_error(Vec3A::new(0.0, 6.0, 0.0)) > 0.0);
+    }
+
+    #[test]
+    fn test_add_assign_matches_add() {
+        let q1 = Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        let q2 = Quadric::plane_quadric(Vec3A::new(0.0, 1.0, 0.0), Vec3A::new(0.0, 1.0, 0.0));
+        let mut acc = q1;
+        acc += q2;
+        assert_eq!(acc, q1 + q2);
+    }
+
+    #[test]
+    fn test_sub_assign_matches_sub() {
+        let q1 = Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        let q2 = Quadric::plane_quadric(Vec3A::new(0.0, 1.0, 0.0), Vec3A::new(0.0, 1.0, 0.0));
+        let mut acc = q1;
+        acc -= q2;
+        assert_eq!(acc, q1 - q2);
+    }
+
+    #[test]
+    fn test_mul_assign_matches_mul() {
+        let q = Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        let mut acc = q;
+        acc *= 2.5;
+        assert_eq!(acc, q * 2.5);
+    }
+
+    #[test]
+    fn test_div_assign_matches_div() {
+        let q = Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        let mut acc = q;
+        acc /= 2.5;
+        assert_eq!(acc, q / 2.5);
+    }
+
+    #[test]
+    fn test_scalar_left_mul_commutes() {
+        let q = Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        assert_eq!(2.5 * q, q * 2.5);
+        assert_eq!((-3.0) * q, q * (-3.0));
+    }
+
+    #[test]
+    fn test_neg_flips_all_coefficients() {
+        let q = Quadric::from_coefficients(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0);
+        let neg = -q;
+        let a = neg.a().to_cols_array_2d();
+        assert!((a[0][0] + 1.0).abs() < 1e-6);
+        assert!((a[0][1] + 2.0).abs() < 1e-6);
+        assert!((a[2][2] + 6.0).abs() < 1e-6);
+        assert_eq!(neg.b(), Vec3A::new(-7.0, -8.0, -9.0));
+        assert!((neg.c + 10.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_residual_add_linearity() {
+        // (a + b).eval(p) == a.eval(p) + b.eval(p)。
+        let a = Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        let b = Quadric::probabilistic_plane_quadric(
+            Vec3A::new(0.0, 1.0, 0.0),
+            Vec3A::new(0.0, 1.0, 0.0),
+            0.1,
+            0.1,
+        );
+        for p in [
+            Vec3A::new(0.3, -0.7, 1.2),
+            Vec3A::new(-2.0, 4.0, 0.5),
+            Vec3A::splat(0.1),
+        ] {
+            let lhs = (a + b).residual_l2_error(p);
+            let rhs = a.residual_l2_error(p) + b.residual_l2_error(p);
+            assert!(
+                (lhs - rhs).abs() < 1e-4,
+                "add linearity lhs={lhs} rhs={rhs}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_residual_sub_linearity() {
+        let a = Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        let b = Quadric::plane_quadric(Vec3A::new(0.0, 1.0, 0.0), Vec3A::new(0.0, 1.0, 0.0));
+        let p = Vec3A::new(0.3, -0.7, 1.2);
+        let lhs = (a - b).residual_l2_error(p);
+        let rhs = a.residual_l2_error(p) - b.residual_l2_error(p);
+        assert!(
+            (lhs - rhs).abs() < 1e-4,
+            "sub linearity lhs={lhs} rhs={rhs}"
+        );
+    }
+
+    #[test]
+    fn test_residual_scale_linearity() {
+        let a = Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0));
+        let p = Vec3A::new(0.3, -0.7, 1.2);
+        let s = 2.5;
+        assert!(((a * s).residual_l2_error(p) - s * a.residual_l2_error(p)).abs() < 1e-4);
+        assert!(((a / s).residual_l2_error(p) - a.residual_l2_error(p) / s).abs() < 1e-4);
+        assert!(((-a).residual_l2_error(p) + a.residual_l2_error(p)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_merge_and_normalize_quadrics() {
+        // 合并三个正交平面 quadric 并除以数量（规范化平均），minimizer 应保持在交点。
+        let planes = [
+            Quadric::plane_quadric(Vec3A::new(1.0, 0.0, 0.0), Vec3A::new(1.0, 0.0, 0.0)),
+            Quadric::plane_quadric(Vec3A::new(0.0, 1.0, 0.0), Vec3A::new(0.0, 1.0, 0.0)),
+            Quadric::plane_quadric(Vec3A::new(0.0, 0.0, 1.0), Vec3A::new(0.0, 0.0, 1.0)),
+        ];
+        let mut merged = Quadric::default();
+        for q in planes {
+            merged += q;
+        }
+        let normalized = merged / 3.0;
+        let m = normalized.minimizer();
+        assert!((m.x - 1.0).abs() < 1e-4, "x={}", m.x);
+        assert!((m.y - 1.0).abs() < 1e-4, "y={}", m.y);
+        assert!((m.z - 1.0).abs() < 1e-4, "z={}", m.z);
+    }
 }

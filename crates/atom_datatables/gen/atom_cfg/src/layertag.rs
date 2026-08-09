@@ -175,3 +175,126 @@ impl bevy::asset::AssetLoader for TbLayerTagLoader {
         &["bytes"]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use atom_luban_lib::table::MapTable;
+    use bevy::asset::AssetLoader;
+
+    fn layer_tag_bytes(raw: &str, desc: &str, counter: bool) -> Vec<u8> {
+        let mut b = crate::testutil::enc_string(raw);
+        b.extend_from_slice(&crate::testutil::enc_string(desc));
+        b.push(u8::from(counter));
+        b
+    }
+
+    #[test]
+    fn layer_tag_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(layer_tag_bytes("Gameplay.Buff", "增益", true));
+        let t = LayerTag::new(&mut buf).expect("LayerTag 解析失败");
+        assert_eq!(t.raw_layertag, "Gameplay.Buff");
+        assert_eq!(t.desc, "增益");
+        assert!(t.counter);
+        assert_eq!(LayerTag::__ID__, -690942898);
+    }
+
+    #[test]
+    fn layer_tag_new_parses_false() {
+        let mut buf = atom_luban_lib::ByteBuf::new(layer_tag_bytes("x.y", "z", false));
+        let t = LayerTag::new(&mut buf).expect("LayerTag 解析失败");
+        assert!(!t.counter);
+    }
+
+    #[test]
+    fn tb_layer_tag_new_and_lookup() {
+        let bytes = crate::testutil::table_bytes(vec![
+            layer_tag_bytes("a.b", "A", true),
+            layer_tag_bytes("c.d", "C", false),
+        ]);
+        let tb = TbLayerTag::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbLayerTag 解析失败");
+        assert_eq!(tb.data_list.len(), 2);
+        assert_eq!(tb.data_map.len(), 2);
+
+        let t = tb.get(&"a.b".to_string()).expect("按键 a.b 查询");
+        assert_eq!(t.desc, "A");
+        assert!(tb.get(&"nope".to_string()).is_none());
+
+        let t = &tb["c.d".to_string()];
+        assert!(!t.counter);
+
+        let t = tb.get_row(&"a.b".to_string()).expect("MapTable::get_row");
+        assert!(t.counter);
+        assert!(tb.get_row(&"x".to_string()).is_none());
+        assert_eq!(tb.get_data_list().len(), 2);
+        assert_eq!(tb.get_data_map().len(), 2);
+    }
+
+    #[test]
+    #[should_panic]
+    fn tb_layer_tag_index_missing_panics() {
+        let bytes = crate::testutil::table_bytes(vec![layer_tag_bytes("a.b", "A", true)]);
+        let tb = TbLayerTag::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbLayerTag 解析失败");
+        let _ = &tb["missing".to_string()];
+    }
+
+    #[test]
+    fn tb_layer_tag_row_accessors() {
+        let mut row = TbLayerTagRow::new("a.b".to_string(), None);
+        assert_eq!(row.key(), "a.b");
+        assert!(row.get_data().is_none());
+        row.set_key("z.z".to_string());
+        assert_eq!(row.key(), "z.z");
+        let data = std::sync::Arc::new(
+            LayerTag::new(&mut atom_luban_lib::ByteBuf::new(layer_tag_bytes(
+                "z.z", "Z", true,
+            )))
+            .expect("LayerTag 解析失败"),
+        );
+        row.set_data(Some(data));
+        assert_eq!(row.data().desc, "Z");
+    }
+
+    #[test]
+    #[should_panic]
+    fn tb_layer_tag_row_data_none_panics() {
+        let row = TbLayerTagRow::new("k".to_string(), None);
+        let _ = row.data();
+    }
+
+    #[test]
+    fn tb_layer_tag_row_partial_eq() {
+        let a = TbLayerTagRow::new("k1".to_string(), None);
+        let b = TbLayerTagRow::new("k1".to_string(), None);
+        assert_eq!(a, b);
+        let c = TbLayerTagRow::new("k2".to_string(), None);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn loaders_extensions() {
+        assert_eq!(TbLayerTagLoader.extensions(), &["bytes"]);
+    }
+
+    fn assert_reflects<T: bevy::reflect::PartialReflect>(value: &T) {
+        use bevy::reflect::DynamicTypePath;
+        assert!(value.get_represented_type_info().is_some());
+        let _ = value.reflect_ref();
+        let _ = value.reflect_type_path();
+    }
+
+    #[test]
+    fn reflect_api_smoke() {
+        let mut buf = atom_luban_lib::ByteBuf::new(layer_tag_bytes("a.b", "A", true));
+        let t = LayerTag::new(&mut buf).expect("LayerTag 解析失败");
+        assert_reflects(&t);
+
+        let row = layer_tag_bytes("a.b", "A", true);
+        let tb = TbLayerTag::new(atom_luban_lib::ByteBuf::new(crate::testutil::table_bytes(
+            vec![row],
+        )))
+        .expect("TbLayerTag 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbLayerTagRow::new("k".to_string(), None));
+    }
+}

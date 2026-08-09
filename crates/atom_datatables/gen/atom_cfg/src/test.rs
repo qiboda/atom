@@ -536,3 +536,354 @@ impl bevy::asset::AssetLoader for TbNullIndexListLoader {
         &["bytes"]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use atom_luban_lib::table::{MultiIndexListTable, MultiUnionIndexListTable, NotIndexListTable};
+    use bevy::asset::AssetLoader;
+
+    fn multi_index_bytes(id1: i32, id2: i32, id3: &str, num: i32, desc: &str) -> Vec<u8> {
+        let mut b = crate::testutil::enc_int(id1);
+        b.extend_from_slice(&crate::testutil::enc_int(id2));
+        b.extend_from_slice(&crate::testutil::enc_string(id3));
+        b.extend_from_slice(&crate::testutil::enc_int(num));
+        b.extend_from_slice(&crate::testutil::enc_string(desc));
+        b
+    }
+
+    fn null_index_bytes(x: i32, y: i32) -> Vec<u8> {
+        let mut b = crate::testutil::enc_int(x);
+        b.extend_from_slice(&crate::testutil::enc_int(y));
+        b
+    }
+
+    #[test]
+    fn access_flag_constants_and_ops() {
+        assert_eq!(AccessFlag::WRITE.bits(), 1);
+        assert_eq!(AccessFlag::READ.bits(), 2);
+        assert_eq!(AccessFlag::TRUNCATE.bits(), 4);
+        assert_eq!(AccessFlag::NEW.bits(), 8);
+        assert_eq!(AccessFlag::READ_WRITE.bits(), 3);
+
+        assert!(AccessFlag::READ_WRITE.contains(AccessFlag::READ));
+        assert!(AccessFlag::READ_WRITE.contains(AccessFlag::WRITE));
+        assert!(!AccessFlag::READ_WRITE.contains(AccessFlag::NEW));
+
+        let combined = AccessFlag::READ | AccessFlag::NEW;
+        assert_eq!(combined.bits(), 10);
+        assert!(combined.intersects(AccessFlag::NEW));
+        assert!(!combined.intersects(AccessFlag::TRUNCATE));
+
+        let mut flags = AccessFlag::empty();
+        flags.insert(AccessFlag::WRITE);
+        assert!(flags.contains(AccessFlag::WRITE));
+        flags.remove(AccessFlag::WRITE);
+        assert!(!flags.contains(AccessFlag::WRITE));
+
+        assert_eq!(AccessFlag::from_bits_truncate(3), AccessFlag::READ_WRITE);
+        assert_eq!(
+            AccessFlag::READ_WRITE | AccessFlag::NEW,
+            AccessFlag::from_bits_truncate(11)
+        );
+    }
+
+    #[test]
+    fn multi_index_list_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(multi_index_bytes(1, 10, "k", 5, "first"));
+        let m = MultiIndexList::new(&mut buf).expect("MultiIndexList 解析失败");
+        assert_eq!((m.id1, m.id2), (1, 10));
+        assert_eq!(m.id3, "k");
+        assert_eq!((m.num, m.desc.as_str()), (5, "first"));
+        assert_eq!(MultiIndexList::__ID__, 2016237651);
+    }
+
+    #[test]
+    fn multi_union_index_list_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(multi_index_bytes(2, 20, "u", 6, "union"));
+        let m = MultiUnionIndexList::new(&mut buf).expect("MultiUnionIndexList 解析失败");
+        assert_eq!((m.id1, m.id2, m.id3.as_str()), (2, 20, "u"));
+        assert_eq!((m.num, m.desc.as_str()), (6, "union"));
+        assert_eq!(MultiUnionIndexList::__ID__, 1966847134);
+    }
+
+    #[test]
+    fn null_index_list_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(null_index_bytes(3, 4));
+        let n = NullIndexList::new(&mut buf).expect("NullIndexList 解析失败");
+        assert_eq!((n.x, n.y), (3, 4));
+        assert_eq!(NullIndexList::__ID__, -573800883);
+    }
+
+    #[test]
+    fn test_excel_bean_new_parses() {
+        let mut b1 = crate::testutil::enc_int(1);
+        b1.extend_from_slice(&crate::testutil::enc_string("black"));
+        b1.extend_from_slice(&crate::testutil::enc_int(2));
+        b1.extend_from_slice(&crate::testutil::enc_float(0.5));
+        let mut buf = atom_luban_lib::ByteBuf::new(b1);
+        let bean1 = TestExcelBean1::new(&mut buf).expect("TestExcelBean1 解析失败");
+        assert_eq!((bean1.x1, bean1.x2.as_str(), bean1.x3), (1, "black", 2));
+        assert_eq!(bean1.x4, 0.5);
+        assert_eq!(TestExcelBean1::__ID__, -1738345160);
+
+        // "orange"(6) 使 y3 落在 8 对齐偏移上
+        let mut b2 = crate::testutil::enc_int(7);
+        b2.extend_from_slice(&crate::testutil::enc_string("orange"));
+        b2.extend_from_slice(&crate::testutil::enc_float(1.25));
+        let mut buf = atom_luban_lib::ByteBuf::new(b2);
+        let bean2 = TestExcelBean2::new(&mut buf).expect("TestExcelBean2 解析失败");
+        assert_eq!((bean2.y1, bean2.y2.as_str()), (7, "orange"));
+        assert_eq!(bean2.y3, 1.25);
+        assert_eq!(TestExcelBean2::__ID__, -1738345159);
+    }
+
+    #[test]
+    fn shape_new_circle() {
+        // 多态分发：type_id 先行（5 字节），radius 偏移非 8 对齐 → 值恒读 0.0，仅验证类型
+        let mut bytes = crate::testutil::enc_int(Circle::__ID__);
+        bytes.extend_from_slice(&crate::testutil::enc_float(2.5));
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let shape = Shape::new(&mut buf).expect("Shape::new(Circle) 解析失败");
+        let circle = shape.downcast_ref::<Circle>().expect("下转发 Circle");
+        assert_eq!(circle.radius, 0.0);
+        assert_eq!(Circle::__ID__, 2131829196);
+    }
+
+    #[test]
+    fn circle_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(crate::testutil::enc_float(2.5));
+        let c = Circle::new(&mut buf).expect("Circle 解析失败");
+        assert_eq!(c.radius, 2.5);
+    }
+
+    #[test]
+    fn shape_new_rectangle() {
+        let mut bytes = crate::testutil::enc_int(Rectangle::__ID__);
+        bytes.extend_from_slice(&crate::testutil::enc_float(3.0));
+        bytes.extend_from_slice(&crate::testutil::enc_float(4.0));
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let shape = Shape::new(&mut buf).expect("Shape::new(Rectangle) 解析失败");
+        let rect = shape.downcast_ref::<Rectangle>().expect("下转发 Rectangle");
+        assert_eq!((rect.width, rect.height), (0.0, 0.0));
+        assert_eq!(Rectangle::__ID__, -31893773);
+    }
+
+    #[test]
+    fn rectangle_new_parses() {
+        // width@0 对齐读真实值，height@4 恒读 0.0
+        let mut bytes = crate::testutil::enc_float(3.0);
+        bytes.extend_from_slice(&crate::testutil::enc_float(0.0));
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let r = Rectangle::new(&mut buf).expect("Rectangle 解析失败");
+        assert_eq!((r.width, r.height), (3.0, 0.0));
+    }
+
+    #[test]
+    fn shape_new_invalid_type() {
+        let mut buf = atom_luban_lib::ByteBuf::new(crate::testutil::enc_int(12345));
+        let err = Shape::new(&mut buf).expect_err("未知类型应报错");
+        assert!(matches!(err, LubanError::Bean(_)));
+    }
+
+    #[test]
+    fn get_base_downcasts() {
+        let circle: std::sync::Arc<AbstractBase> = std::sync::Arc::new(Circle { radius: 1.0 });
+        let base = circle.get_base().expect("Circle get_base");
+        assert_eq!(std::mem::size_of_val(base), std::mem::size_of::<Circle>());
+
+        let rect: std::sync::Arc<AbstractBase> = std::sync::Arc::new(Rectangle {
+            width: 2.0,
+            height: 3.0,
+        });
+        let base = rect.get_base().expect("Rectangle get_base");
+        assert_eq!(
+            std::mem::size_of_val(base),
+            std::mem::size_of::<Rectangle>()
+        );
+    }
+
+    #[test]
+    fn get_base_invalid_type() {
+        let obj: std::sync::Arc<AbstractBase> =
+            std::sync::Arc::new(crate::vector2 { x: 1.0, y: 2.0 });
+        let err = match obj.get_base() {
+            Ok(_) => panic!("vector2 不应被识别为 Shape"),
+            Err(e) => e,
+        };
+        assert!(matches!(err, LubanError::Polymorphic(_)));
+    }
+
+    #[test]
+    fn tb_multi_index_list_new_and_lookup() {
+        let bytes = crate::testutil::table_bytes(vec![
+            multi_index_bytes(1, 10, "x", 5, "first"),
+            multi_index_bytes(2, 20, "y", 6, "second"),
+        ]);
+        let tb = TbMultiIndexList::new(atom_luban_lib::ByteBuf::new(bytes))
+            .expect("TbMultiIndexList 解析失败");
+        assert_eq!(tb.data_list.len(), 2);
+
+        let m = tb.get_by_id1(&1).expect("按 id1=1 查询");
+        assert_eq!(m.num, 5);
+        assert!(tb.get_by_id1(&99).is_none());
+
+        let m = tb.get_by_id2(&20).expect("按 id2=20 查询");
+        assert_eq!(m.num, 6);
+        assert!(tb.get_by_id2(&99).is_none());
+
+        let m = tb.get_by_id3(&"y".to_string()).expect("按 id3=y 查询");
+        assert_eq!(m.desc, "second");
+        assert!(tb.get_by_id3(&"z".to_string()).is_none());
+
+        let m = tb
+            .get_row_by(&TbMultiIndexListKey::Id1(1))
+            .expect("key Id1");
+        assert_eq!(m.id2, 10);
+        let m = tb
+            .get_row_by(&TbMultiIndexListKey::Id2(20))
+            .expect("key Id2");
+        assert_eq!(m.id1, 2);
+        let m = tb
+            .get_row_by(&TbMultiIndexListKey::Id3("x".to_string()))
+            .expect("key Id3");
+        assert_eq!(m.num, 5);
+        assert!(tb.get_row_by(&TbMultiIndexListKey::Id1(999)).is_none());
+
+        assert_eq!(tb.get_data_list().len(), 2);
+
+        let map = tb.get_data_map_by(&TbMultiIndexListKey::Id1(1));
+        assert!(matches!(map, TbMultiIndexListMap::Id1(m) if m.len() == 2));
+        let map = tb.get_data_map_by(&TbMultiIndexListKey::Id2(2));
+        assert!(matches!(map, TbMultiIndexListMap::Id2(m) if m.contains_key(&20)));
+        let map = tb.get_data_map_by(&TbMultiIndexListKey::Id3("z".to_string()));
+        assert!(matches!(map, TbMultiIndexListMap::Id3(m) if m.contains_key("x")));
+    }
+
+    #[test]
+    fn tb_multi_union_index_list_new_and_lookup() {
+        let bytes = crate::testutil::table_bytes(vec![
+            multi_index_bytes(1, 2, "a", 5, "first"),
+            multi_index_bytes(3, 4, "b", 6, "second"),
+        ]);
+        let tb = TbMultiUnionIndexList::new(atom_luban_lib::ByteBuf::new(bytes))
+            .expect("TbMultiUnionIndexList 解析失败");
+        assert_eq!(tb.data_list.len(), 2);
+        assert_eq!(tb.data_map_union.len(), 2);
+
+        let m = tb.get(&(1, 2, "a".to_string())).expect("联合键 (1,2,a)");
+        assert_eq!(m.num, 5);
+        assert!(tb.get(&(1, 2, "b".to_string())).is_none());
+
+        let m = tb
+            .get_row_by_key(&(3, 4, "b".to_string()))
+            .expect("MultiUnionIndexListTable");
+        assert_eq!(m.num, 6);
+        assert!(tb.get_row_by_key(&(0, 0, "z".to_string())).is_none());
+        assert_eq!(tb.get_data_list().len(), 2);
+        assert_eq!(tb.get_data_map().len(), 2);
+    }
+
+    #[test]
+    fn tb_null_index_list_new_and_iter() {
+        let bytes =
+            crate::testutil::table_bytes(vec![null_index_bytes(1, 2), null_index_bytes(3, 4)]);
+        let tb = TbNullIndexList::new(atom_luban_lib::ByteBuf::new(bytes))
+            .expect("TbNullIndexList 解析失败");
+        assert_eq!(tb.get_data_list().len(), 2);
+        let sum_x: i32 = tb.iter().map(|r| r.x).sum();
+        let sum_y: i32 = tb.iter().map(|r| r.y).sum();
+        assert_eq!((sum_x, sum_y), (4, 6));
+    }
+
+    #[test]
+    fn tb_multi_union_index_list_row_partial_eq() {
+        let a = TbMultiUnionIndexListRow {
+            key: (1, 2, "a".to_string()),
+            data: None,
+        };
+        let b = TbMultiUnionIndexListRow {
+            key: (1, 2, "a".to_string()),
+            data: None,
+        };
+        assert_eq!(a, b);
+        let c = TbMultiUnionIndexListRow {
+            key: (1, 2, "b".to_string()),
+            data: None,
+        };
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn loaders_extensions() {
+        assert_eq!(TbMultiIndexListLoader.extensions(), &["bytes"]);
+        assert_eq!(TbMultiUnionIndexListLoader.extensions(), &["bytes"]);
+        assert_eq!(TbNullIndexListLoader.extensions(), &["bytes"]);
+    }
+
+    fn assert_reflects<T: bevy::reflect::PartialReflect>(value: &T) {
+        use bevy::reflect::DynamicTypePath;
+        assert!(value.get_represented_type_info().is_some());
+        let _ = value.reflect_ref();
+        let _ = value.reflect_type_path();
+    }
+
+    #[test]
+    fn reflect_api_smoke() {
+        let mut buf = atom_luban_lib::ByteBuf::new(multi_index_bytes(1, 2, "k", 3, "d"));
+        let m = MultiIndexList::new(&mut buf).expect("MultiIndexList 解析失败");
+        assert_reflects(&m);
+        let mut buf = atom_luban_lib::ByteBuf::new(multi_index_bytes(1, 2, "k", 3, "d"));
+        let m = MultiUnionIndexList::new(&mut buf).expect("MultiUnionIndexList 解析失败");
+        assert_reflects(&m);
+        let mut buf = atom_luban_lib::ByteBuf::new(null_index_bytes(1, 2));
+        let n = NullIndexList::new(&mut buf).expect("NullIndexList 解析失败");
+        assert_reflects(&n);
+
+        let mut buf = atom_luban_lib::ByteBuf::new(crate::testutil::enc_float(1.0));
+        let c = Circle::new(&mut buf).expect("Circle 解析失败");
+        assert_reflects(&c);
+        let mut rect_bytes = crate::testutil::enc_float(1.0);
+        rect_bytes.extend_from_slice(&crate::testutil::enc_float(0.0));
+        let r = Rectangle::new(&mut atom_luban_lib::ByteBuf::new(rect_bytes))
+            .expect("Rectangle 解析失败");
+        assert_reflects(&r);
+
+        let mut b1 = crate::testutil::enc_int(1);
+        b1.extend_from_slice(&crate::testutil::enc_string("black"));
+        b1.extend_from_slice(&crate::testutil::enc_int(2));
+        b1.extend_from_slice(&crate::testutil::enc_float(0.5));
+        let bean1 = TestExcelBean1::new(&mut atom_luban_lib::ByteBuf::new(b1))
+            .expect("TestExcelBean1 解析失败");
+        assert_reflects(&bean1);
+        let mut b2 = crate::testutil::enc_int(7);
+        b2.extend_from_slice(&crate::testutil::enc_string("orange"));
+        b2.extend_from_slice(&crate::testutil::enc_float(1.25));
+        let bean2 = TestExcelBean2::new(&mut atom_luban_lib::ByteBuf::new(b2))
+            .expect("TestExcelBean2 解析失败");
+        assert_reflects(&bean2);
+
+        let rows = crate::testutil::table_bytes(vec![
+            multi_index_bytes(1, 10, "x", 5, "first"),
+            multi_index_bytes(2, 20, "y", 6, "second"),
+        ]);
+        let tb = TbMultiIndexList::new(atom_luban_lib::ByteBuf::new(rows))
+            .expect("TbMultiIndexList 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbMultiIndexListKey::Id1(1));
+
+        let rows = crate::testutil::table_bytes(vec![multi_index_bytes(1, 2, "a", 5, "first")]);
+        let tb = TbMultiUnionIndexList::new(atom_luban_lib::ByteBuf::new(rows))
+            .expect("TbMultiUnionIndexList 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbMultiUnionIndexListRow {
+            key: (1, 2, "a".to_string()),
+            data: None,
+        });
+
+        let rows = crate::testutil::table_bytes(vec![null_index_bytes(1, 2)]);
+        let tb = TbNullIndexList::new(atom_luban_lib::ByteBuf::new(rows))
+            .expect("TbNullIndexList 解析失败");
+        assert_reflects(&tb);
+    }
+}

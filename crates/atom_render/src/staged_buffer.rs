@@ -421,3 +421,77 @@ where
         cast_slice::<u8, T>(&mapped_range).to_vec()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 最小测试数据：单个 f32，`min_size` = 4 字节。
+    #[derive(encase::ShaderType)]
+    struct TestData {
+        value: f32,
+    }
+
+    /// wgpu 标准 dynamic buffer offset alignment（测试用对齐值）。
+    const ALIGNMENT: u64 = 256;
+
+    #[test]
+    fn shared_new_initializes_defaults() {
+        let buf = SharedStagedBuffer::<TestData>::new(ALIGNMENT);
+        // CPU 回读 buffer 在 reserve_buffer 之前不存在
+        assert!(buf.get_staged_buffer().is_none());
+        assert!(buf.get_gpu_buffer().is_empty());
+        assert_eq!(buf.get_alignment(), ALIGNMENT);
+    }
+
+    #[test]
+    fn shared_push_value_returns_strided_offsets() {
+        let mut buf = SharedStagedBuffer::<TestData>::new(ALIGNMENT);
+        assert!(buf.get_gpu_buffer().is_empty());
+
+        assert_eq!(buf.push_value(TestData { value: 1.0 }), 0);
+        assert_eq!(buf.push_value(TestData { value: 2.0 }), ALIGNMENT as u32);
+        assert!(!buf.get_gpu_buffer().is_empty());
+    }
+
+    #[test]
+    fn shared_set_stride_rounds_up_to_alignment() {
+        let mut buf = SharedStagedBuffer::<TestData>::new(ALIGNMENT);
+        assert_eq!(buf.get_alignment(), ALIGNMENT);
+
+        // stride 是对齐的整数倍 -> 保持原值
+        buf.set_stride(BufferSize::new(512).expect("Failed to create BufferSize"));
+        assert_eq!(buf.get_alignment(), 512);
+
+        // stride 小于 alignment -> 向上对齐到 alignment
+        buf.set_stride(BufferSize::new(100).expect("Failed to create BufferSize"));
+        assert_eq!(buf.get_alignment(), ALIGNMENT);
+    }
+
+    #[test]
+    fn shared_set_label_prepends_staged_prefix() {
+        let mut buf = SharedStagedBuffer::<TestData>::new(ALIGNMENT);
+        assert_eq!(buf.get_gpu_buffer().get_label(), None);
+
+        buf.set_label("foo");
+        assert_eq!(buf.get_gpu_buffer().get_label(), Some("staged foo"));
+    }
+
+    #[test]
+    fn shared_clear_empties_gpu_scratch_and_resets_offset() {
+        let mut buf = SharedStagedBuffer::<TestData>::new(ALIGNMENT);
+        buf.push_value(TestData { value: 1.0 });
+        assert!(!buf.get_gpu_buffer().is_empty());
+
+        buf.clear();
+        assert!(buf.get_gpu_buffer().is_empty());
+        assert_eq!(buf.push_value(TestData { value: 2.0 }), 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to get cpu buffer")]
+    fn shared_unmap_panics_without_cpu_buffer() {
+        let buf = SharedStagedBuffer::<TestData>::new(ALIGNMENT);
+        buf.unmap();
+    }
+}

@@ -256,3 +256,261 @@ impl bevy::asset::AssetLoader for TbItemLoader {
         &["bytes"]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use atom_luban_lib::table::MapTable;
+    use bevy::asset::AssetLoader;
+
+    fn exchange_bytes(id: i32, num: i32) -> Vec<u8> {
+        let mut b = crate::testutil::enc_int(id);
+        b.extend_from_slice(&crate::testutil::enc_int(num));
+        b
+    }
+
+    fn item_bytes(
+        id: i32,
+        name: &str,
+        desc: &str,
+        price: i32,
+        upgrade_to_item_id: i32,
+        expire_time: Option<u64>,
+        batch_useable: bool,
+        quality: i32,
+        exchange_stream: (i32, i32),
+        exchange_list: &[(i32, i32)],
+        exchange_column: (i32, i32),
+    ) -> Vec<u8> {
+        let mut b = crate::testutil::enc_int(id);
+        b.extend_from_slice(&crate::testutil::enc_string(name));
+        b.extend_from_slice(&crate::testutil::enc_string(desc));
+        b.extend_from_slice(&crate::testutil::enc_int(price));
+        b.extend_from_slice(&crate::testutil::enc_int(upgrade_to_item_id));
+        match expire_time {
+            Some(v) => {
+                b.push(1);
+                b.extend_from_slice(&crate::testutil::enc_ulong(v));
+            }
+            None => b.push(0),
+        }
+        b.push(u8::from(batch_useable));
+        b.extend_from_slice(&crate::testutil::enc_int(quality));
+        b.extend_from_slice(&exchange_bytes(exchange_stream.0, exchange_stream.1));
+        b.extend_from_slice(&crate::testutil::list_bytes(
+            exchange_list.iter().copied(),
+            |(xid, num)| exchange_bytes(xid, num),
+        ));
+        b.extend_from_slice(&exchange_bytes(exchange_column.0, exchange_column.1));
+        b
+    }
+
+    #[test]
+    fn equality_from_i32() {
+        assert_eq!(EQuality::from(1), EQuality::WHITE);
+        assert_eq!(EQuality::from(2), EQuality::BLUE);
+        assert_eq!(EQuality::from(3), EQuality::PURPLE);
+        assert_eq!(EQuality::from(4), EQuality::RED);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid value for EQuality")]
+    fn equality_from_i32_invalid_panics() {
+        let _ = EQuality::from(0);
+    }
+
+    #[test]
+    fn equality_from_enum_from_num_impls() {
+        assert_eq!(EQuality::from(4_i64), EQuality::RED);
+        assert_eq!(EQuality::from(3_i16), EQuality::PURPLE);
+        assert_eq!(EQuality::from(2_i8), EQuality::BLUE);
+        assert_eq!(EQuality::from(1_isize), EQuality::WHITE);
+        assert_eq!(EQuality::from(4_u64), EQuality::RED);
+        assert_eq!(EQuality::from(3_u32), EQuality::PURPLE);
+        assert_eq!(EQuality::from(2_u16), EQuality::BLUE);
+        assert_eq!(EQuality::from(1_u8), EQuality::WHITE);
+        assert_eq!(EQuality::from(4_usize), EQuality::RED);
+        assert_eq!(EQuality::from(2_f64), EQuality::BLUE);
+        assert_eq!(EQuality::from(3_f32), EQuality::PURPLE);
+    }
+
+    #[test]
+    fn item_exchange_new_parses() {
+        let mut buf = atom_luban_lib::ByteBuf::new(exchange_bytes(100, 5));
+        let e = ItemExchange::new(&mut buf).expect("ItemExchange 解析失败");
+        assert_eq!((e.id, e.num), (100, 5));
+        assert_eq!(ItemExchange::__ID__, 1814660465);
+    }
+
+    #[test]
+    fn item_new_parses_with_expire() {
+        let bytes = item_bytes(
+            1000,
+            "药水",
+            "potion",
+            50,
+            1001,
+            Some(3600),
+            true,
+            2,
+            (200, 3),
+            &[(201, 1), (202, 2)],
+            (203, 4),
+        );
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let it = Item::new(&mut buf).expect("Item 解析失败");
+        assert_eq!(it.id, 1000);
+        assert_eq!(it.name, "药水");
+        assert_eq!(it.desc, "potion");
+        assert_eq!(it.price, 50);
+        assert_eq!(it.upgrade_to_item_id, 1001);
+        assert_eq!(it.expire_time, Some(3600));
+        assert!(it.batch_useable);
+        assert_eq!(it.quality, EQuality::BLUE);
+        assert_eq!(it.exchange_stream.id, 200);
+        assert_eq!(it.exchange_stream.num, 3);
+        assert_eq!(it.exchange_list.len(), 2);
+        assert_eq!(it.exchange_list[1].id, 202);
+        assert_eq!(it.exchange_column.num, 4);
+        assert_eq!(Item::__ID__, 2107285806);
+    }
+
+    #[test]
+    fn item_new_parses_without_expire() {
+        let bytes = item_bytes(
+            1001,
+            "剑",
+            "sword",
+            100,
+            0,
+            None,
+            false,
+            4,
+            (0, 0),
+            &[],
+            (0, 0),
+        );
+        let mut buf = atom_luban_lib::ByteBuf::new(bytes);
+        let it = Item::new(&mut buf).expect("Item 解析失败");
+        assert_eq!(it.id, 1001);
+        assert!(it.expire_time.is_none());
+        assert!(!it.batch_useable);
+        assert_eq!(it.quality, EQuality::RED);
+        assert!(it.exchange_list.is_empty());
+        assert_eq!(it.exchange_stream.num, 0);
+        assert_eq!(it.exchange_column.id, 0);
+    }
+
+    #[test]
+    fn tb_item_new_and_lookup() {
+        let row = item_bytes(1, "a", "A", 10, 0, None, true, 1, (0, 0), &[], (0, 0));
+        let bytes = crate::testutil::table_bytes(vec![row]);
+        let tb = TbItem::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbItem 解析失败");
+        assert_eq!(tb.data_list.len(), 1);
+        let it = tb.get(&1).expect("按 id=1 查询");
+        assert_eq!(it.name, "a");
+        assert!(tb.get(&2).is_none());
+        let it = &tb[1];
+        assert_eq!(it.quality, EQuality::WHITE);
+        let it = tb.get_row(&1).expect("MapTable::get_row");
+        assert_eq!(it.desc, "A");
+        assert_eq!(tb.get_data_list().len(), 1);
+        assert_eq!(tb.get_data_map().len(), 1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn tb_item_index_missing_panics() {
+        let row = item_bytes(1, "a", "A", 10, 0, None, true, 1, (0, 0), &[], (0, 0));
+        let bytes = crate::testutil::table_bytes(vec![row]);
+        let tb = TbItem::new(atom_luban_lib::ByteBuf::new(bytes)).expect("TbItem 解析失败");
+        let _ = &tb[999];
+    }
+
+    #[test]
+    fn tb_item_row_accessors() {
+        let mut row = TbItemRow::new(1, None);
+        assert_eq!(*row.key(), 1);
+        row.set_key(5);
+        assert_eq!(*row.key(), 5);
+        let data = std::sync::Arc::new(
+            Item::new(&mut atom_luban_lib::ByteBuf::new(item_bytes(
+                5,
+                "x",
+                "X",
+                1,
+                0,
+                None,
+                false,
+                1,
+                (0, 0),
+                &[],
+                (0, 0),
+            )))
+            .expect("Item 解析失败"),
+        );
+        row.set_data(Some(data));
+        assert_eq!(row.data().id, 5);
+        assert!(row.get_data().is_some());
+    }
+
+    #[test]
+    #[should_panic]
+    fn tb_item_row_data_none_panics() {
+        let row = TbItemRow::new(1, None);
+        let _ = row.data();
+    }
+
+    #[test]
+    fn tb_item_row_partial_eq() {
+        let a = TbItemRow::new(1, None);
+        let b = TbItemRow::new(1, None);
+        assert_eq!(a, b);
+        let c = TbItemRow::new(2, None);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn loaders_extensions() {
+        assert_eq!(TbItemLoader.extensions(), &["bytes"]);
+    }
+
+    fn assert_reflects<T: bevy::reflect::PartialReflect>(value: &T) {
+        use bevy::reflect::DynamicTypePath;
+        assert!(value.get_represented_type_info().is_some());
+        let _ = value.reflect_ref();
+        let _ = value.reflect_type_path();
+    }
+
+    #[test]
+    fn reflect_api_smoke() {
+        let mut buf = atom_luban_lib::ByteBuf::new(item_bytes(
+            1,
+            "a",
+            "b",
+            1,
+            0,
+            None,
+            true,
+            1,
+            (0, 0),
+            &[],
+            (0, 0),
+        ));
+        let it = Item::new(&mut buf).expect("Item 解析失败");
+        assert_reflects(&it);
+        assert_reflects(&EQuality::RED);
+
+        let mut buf = atom_luban_lib::ByteBuf::new(exchange_bytes(1, 2));
+        let e = ItemExchange::new(&mut buf).expect("ItemExchange 解析失败");
+        assert_reflects(&e);
+
+        let row = item_bytes(1, "a", "b", 1, 0, None, true, 1, (0, 0), &[], (0, 0));
+        let tb = TbItem::new(atom_luban_lib::ByteBuf::new(crate::testutil::table_bytes(
+            vec![row],
+        )))
+        .expect("TbItem 解析失败");
+        assert_reflects(&tb);
+        assert_reflects(&TbItemRow::new(1, None));
+    }
+}

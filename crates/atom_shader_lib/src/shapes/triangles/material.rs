@@ -60,3 +60,24 @@ impl Material for TriangleMaterial {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::color::ColorToComponents;
+
+    #[test]
+    fn shader_settings_default() {
+        let settings = TriangleShaderSettings::default();
+        assert_eq!(settings.color.to_f32_array(), [0., 1., 0., 1.]);
+    }
+
+    #[test]
+    fn material_default_uses_default_settings() {
+        let material = TriangleMaterial::default();
+        assert_eq!(
+            material.settings.color.to_f32_array(),
+            TriangleShaderSettings::default().color.to_f32_array()
+        );
+    }
+}
