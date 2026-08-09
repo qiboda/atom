@@ -26,6 +26,7 @@ pub mod ability;
 pub mod attribute;
 pub mod buff;
 pub mod bundle;
+pub mod config;
 pub mod effect;
 pub mod graph;
 pub mod stateset;
