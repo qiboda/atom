@@ -215,3 +215,28 @@
 - **2026-08-08**: [门禁冲突] RED 契约测试文件（tests/config_data.rs + tests/bundle.rs，禁止修改）未按仓库格式提交且含 `assert_eq!(x, true/false)`——`cargo clippy --all-targets -D warnings` 与 `cargo fmt --check` 直接失败。处理：workspace lints 增加 `bool_assert_comparison = "allow"`（测试契约断言风格，失败时 Debug 输出比 assert! 可诊断）；rustfmt.toml `ignore` 排除两文件（字节原样）。两处例外均已注释说明。
 - **2026-08-08**: [spike 结论] `DataTable<T>` 全格式加载边界——review 实证 `Deserialize` 走 `deserialize_any`（lib.rs），**postcard 必然失败**（postcard 的 `deserialize_any` 恒返回 `Err(Error::WontImplement)`）；**csv 结构性不兼容**（bevy_common_assets 0.17 `CsvAssetLoader` 产出 `LoadedCsv<A>` 逐行资产容器，无法反序列化整张 `DataTable<T>`）。json/ron/toml 已验证；yaml/msgpack/cbor/xml 为自描述格式理论可行未逐格式验证。处置：Q3 文档收敛为「已验证 json/ron/toml + 自描述格式理论可行 + postcard/csv 不保证」，使用非验证格式前自行验证。教训：声明「9 格式全支持」前必须逐格式实证，feature 开启 ≠ 可用。
 - **2026-08-08**: [push 阻塞] pre-push hook `cargo deny check` 拦截——`atomic-polyfill 1.0.3`（RUSTSEC-2023-0089，unmaintained）经 `heapless → postcard` 依赖链进入，来源是 bevy_common_assets 的 **postcard feature**（atom_data 开启）。而 postcard 本身经 review 实证不可用（`DataTable<T>` 的 `Deserialize` 走 `deserialize_any`，postcard 对非自描述格式必失败 `Err(WontImplement)`）——开启一个不可用且引入 unmaintained advisory 的 feature 是纯负担。处置：**移除 postcard feature**（bevy_common_assets features 8 项），同步 plan/lib.rs Q3 声明收敛为「8 格式，postcard 不启用」。教训：引入 feature 时若它实际不可用，应立即移除而非保留——开启即承担 advisory 风险；「能用但没用」的依赖克制同样适用于 feature。
+## 2026-08-09 — #11 AGENTS.md 全局 skills 强制加载清单 + screenshots 忽略
+
+**What was done**: 崩溃后恢复 bsn-migration worktree 会话（open-worktrees.sh 启动）；清理两个无用 worktree（agent-sidecar 已合并 main、gpu-indirect-draw 核心已合并，用户确认删除）；AGENTS.md 新增「全局 skills 强制加载」章节（9 个全局 skill 清单 + 触发场景），.gitignore 忽略 screenshots/。
+
+**User corrections**:
+1. 「没有切换worktree？」——崩溃恢复后我仅在主 session 用 workdir 参数操作 worktree 文件，未真正运行 open-worktrees.sh 启动 worktree 会话；用户指出后才启动。
+2. 「那些全局的skills 在agents.md 中引用，要求强制加载。」——AGENTS.md 引用的全局 skills 需显式强制加载（skill 工具），不依赖 opencode 自动注入；我据此写入 AGENTS.md「全局 skills 强制加载」章节。
+3. 「agents.md 的改变提交。」——要求把 skills 强制加载规则改动落 commit（建 issue #11，docs 提交引用主题相关 open issue）。
+4. 「 screenshots 忽略。」——screenshots 目录加入 .gitignore。
+
+**What went wrong**:
+1. **worktree 会话恢复遗漏**：用户第一次说"打开worktree，继续"，我只做了只读勘察（cargo check/测试/diff 分析）而未启动 worktree 会话，直到用户追问「没有切换worktree？」才运行 open-worktrees.sh——worktree 会话启动是恢复的第一动作，不是可选项。
+2. **已知摩擦重复试错**：pre-commit bevy_lint 被 sccache 阻断（TENSIONS 2026-08-09 已记录，绕过法 RUSTC_WRAPPER= 覆盖），我前两次 commit 失败后才套用已知记录——应先查 TENSIONS 命中已知摩擦直接套用。
+
+**Lessons learned**:
+1. **崩溃恢复流程**：worktree 恢复 = 读 handoff → 立即 open-worktrees.sh 启动会话 → 勘察现状；勘察可以在会话启动后由 worktree agent 做，主 session 不越俎代庖。
+2. **已知摩擦先查 TENSIONS**：任何命令失败先 grep TENSIONS/reflections 命中已知摩擦与绕过法，避免重复试错（本次 sccache/bevy_lint 是第二次遇到同类场景）。
+3. **docs commit 引用主题相关 open issue**：AGENTS.md 流程规则变更建 C-Docs issue（#11）承载，符合先例（#8/#10 均流程类 docs issue）。
+
+**Process improvements**:
+1. **AGENTS.md「全局 skills 强制加载」章节新增**（本次 commit 9eef60c 落地）：9 个全局 skill 清单 + 触发场景，强制 skill 工具加载。
+
+### Trends (last 10)
+- **环境/工具链摩擦重复出现**：#10「bevy lint 不修复了（环境问题）」与本次 sccache/bevy_lint 阻断同一根因（~/.cargo/config.toml 全局 rustc-wrapper=sccache）——TENSIONS 已记录但绕过法需每次手动 RUSTC_WRAPPER=，根治（sccache 排除 bevy_lint）仍未落实，建议用户排期处理。
+- **worktree 管理摩擦重复**：8-08「worktree 分支漂移」与本次「崩溃后未启动 worktree 会话」同属 worktree 生命周期管理疏漏——worktree 会话启动/同步已成为两次教训，恢复流程已沉淀（本次 lessons）。
