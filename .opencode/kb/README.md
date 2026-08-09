@@ -8,7 +8,6 @@ Bevy 源码 (`/data/codes/Bevy`) 是权威参考，本目录记录已验证的�
 kb/
 ├── README.md                    — 本文件
 ├── ARCHITECTURE.md              — 架构不变量 + ADR
-├── TENSIONS.md                  — 摩擦日志
 ├── bevy/                        — Bevy + 生态（外部依赖）
 │   ├── migration-index.md       — 快速查表: "X 变了 → 改成 Y"
 │   ├── bsn.md                   — Bevy Scene Notation 参考
@@ -21,6 +20,7 @@ kb/
 │   ├── labels.md                — Issue/PR 标签分类（C-/A-/D-/P-/S-）
 │   └── comments.md              — 评论规范（永远追加）
 └── project/                     — Atom 项目知识
+    ├── reflections.md           — 实施后反思 + 历史摩擦归档
     └── game/
         └── README.md            — 游戏系统（待填充）
 ```

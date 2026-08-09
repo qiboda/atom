@@ -8,10 +8,9 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.opencode/kb/bevy/migrati
 
 | 位置 | 内容 |
 | `.opencode/kb/ARCHITECTURE.md` | 架构不变量（数据流/管线/约束）+ ADR |
-| `.opencode/kb/TENSIONS.md` | 摩擦日志（发现不一致时记录，不立即解决） |
+| `.opencode/kb/project/reflections.md` | 实施后反思日志 + 历史摩擦归档（全局 `skwy-reflect` skill 追加条目，含 User corrections + 流程改进） |
 | `.opencode/kb/` | **知识库**（Bevy 生态 + 项目知识 + GitHub 约定） |
 | `.opencode/kb/github/` | **GitHub 约定**（labels 标签体系 / comments 评论规范） |
-| `.opencode/kb/project/reflections.md` | 实施后反思日志（全局 `skwy-reflect` skill 追加条目，含 User corrections + 流程改进） |
 | `.opencode/skills/` | **Agent 技能**（bevy：Bevy API 检索 + Shader 审查；通用工作流/测试/反思/worktree 用全局 skwy-* skills，见 `~/.config/opencode/skills/`） |
 | `.githooks/` | **git hooks**（commit-msg: ref #N 强制；pre-commit: fmt/check/doc/bevy_lint；pre-push: 全门禁 + ref #N 验证） |
 | `.github/` | **CI**（ci.yml：fmt/clippy/doc/nextest 门禁） |
@@ -38,7 +37,7 @@ ref #26
 
 - **重大决策先 grill-me（强制）**：架构方向变更、库选型/替换、数据流变更、2+ 模块的改造、范围模糊的需求——动手前必须先触发 `grill-me` skill 逐项确认决策树（一次一问、带推荐答案、深度优先走完所有分支），达成 shared understanding 后才允许实施。禁止凭单条消息直接开做。触发词示例：「代替」「替换」「迁移」「重构」「引入」「方案」+ 影响面超出单文件的描述。完整规则见 `grill-me` skill。
 - 代码不行就重构，不要留着凑合；设计不对就推翻，不要叠加补丁
-- **问题处理闭环（强制）**：执行中遇到**任何**异常，禁止静默绕过或静默降级。依次完成感知 → 诊断 → 处理 → 记录（沉淀到 `.opencode/kb/TENSIONS.md`）。完整规则见 `skwy-workflow` skill §1——绕行本身就是违规。
+- **问题处理闭环（强制）**：执行中遇到**任何**异常，禁止静默绕过或静默降级。依次完成感知 → 诊断 → 处理 → 记录（沉淀到 `.opencode/kb/project/reflections.md`）。完整规则见 `skwy-workflow` skill §1——绕行本身就是违规。
 - **agent 可自行完善项目书**：发现重复摩擦或可预防的失误时，agent 有权在 AGENTS.md / `.opencode/kb/` 中添加或修订规则以改善自身行为——规则变更随当次 commit 提交并在 commit message 中说明理由。
 - **测试先行**：feature/bugfix 变更从失败测试开始（RED），再做修复（GREEN）。先写修复再写失败测试是反模式。测试设计与约定见全局 `skwy-requirement-test` / `skwy-adversarial-test` skills。
 - **测试覆盖率硬门槛 80%**：总行覆盖率 < 80% 视为不达标（`just coverage` 或 CI 的 `cargo llvm-cov nextest --workspace --release --fail-under-lines 80`）。当前基线 27.54%，新增测试逐步提升；覆盖率不达标时 CI 红属预期，先补测试再合并。
@@ -50,7 +49,7 @@ ref #26
 2. **"我更新了相关 kb/ 文件吗？"** — 没有就对照「kb 映射表」确定文件并更新。
 3. **"公共 API 有 `///` 文档吗？"** — 新增 pub 项时先验证 `#[deny(missing_docs)]` 合规（见「Rustdoc 合规」）。
 4. **"当前工作在正确的分支/worktree 上吗？"** — 存在活跃 worktree 时（`git worktree list`），实现工作必须在 worktree 内进行；main 只允许 docs/lint/typo/反思类提交直推。不确认分支归属就不开始。
-5. **"发现摩擦/不一致了吗？"** — 有就先记 `.opencode/kb/TENSIONS.md`，再处理。不跳过信号采集直接修复。
+5. **"发现摩擦/不一致了吗？"** — 有就先记 `.opencode/kb/project/reflections.md`，再处理。不跳过信号采集直接修复。
 
 ## Worktree 纪律
 
@@ -61,7 +60,7 @@ PR/功能分支开发使用 git worktree，位于 `.worktrees/<name>/`（gitigno
 - **创建时机（强制）**：需求经 grill-me 确认是需要 worktree 的工作（feature/epic、2+ 模块、将产出 `.omo/plans/*.md` 或 `.omo/designs/*.md`）时，**grill 共识达成后立即创建并切换**；单文件修复/纯文档不需要。判断口诀：**一旦确定"这次要产出 .omo 文件"→ 先开 worktree 再写文件**（untracked 文件不会跨 checkout 迁移）。
 - **主 session 移交（强制）**：创建后主 session 只做两件事——写 `.worktrees/<name>/.omo/handoff.md`（用途 + issue URL + 已锁定决策），然后运行 `~/.config/opencode/skills/skwy-worktree/scripts/open-worktrees.sh <name>` 自动启动（新终端 + setsid 脱离进程组）。剩余工作全部移交 worktree 内 agent，主 session 不再参与。
 - **会话启动规则（强制）**：worktree 内 opencode 会话启动后第一步必须读取 `.omo/handoff.md` 获取上下文契约，之后才允许开始任何工作。
-- **强制规则**：worktree 一旦创建，后续实现工作必须在 worktree 内完成；main 只允许 docs/lint/typo/反思类提交直推。存在活跃 worktree 时实现类提交落在 main 即流程违规，在 TENSIONS.md 记录。
+- **强制规则**：worktree 一旦创建，后续实现工作必须在 worktree 内完成；main 只允许 docs/lint/typo/反思类提交直推。存在活跃 worktree 时实现类提交落在 main 即流程违规，记入 reflections.md。
 - 完整流程、命令与清理（含 `--close` 终止进程 + 删 worktree）见全局 `skwy-worktree` skill。
 
 ## 决策记录
@@ -80,7 +79,7 @@ atom_shader_lib、atom_utils（Bevy 0.19 workspace 迁移后全部迁回；成�
 - `atom_ability`：技能系统，数据访问层已迁移到 atom_data（issue #5）——原子表类型定义于
   `atom_ability::config`（`AbilityConfig`/`BuffConfig`/`LayerTagConfig` + `#[data_ref]` 跨表引用），
   查询经 `DataRegistry`；`AbilityBundle`/`BuffBundle` 携带 `AbilityConfigData`/`BuffConfigData`
-  组件（observer 数据源，须先于标记组件声明——见 TENSIONS.md）。
+  组件（observer 数据源，须先于标记组件声明——见 reflections.md 历史摩擦归档）。
 - 数据文件目录约定：`assets/datatables/<表类型名>.json`（文件名 = 行类型名，扩展名定格式）。
 
 **重要**: Bevy debug 构建极慢（~19s 启动，30s+ 出首帧）。运行/测试必须用 `--release`。
@@ -115,7 +114,7 @@ toolchain 为 nightly-2026-01-22（bevy_lint v0.6.0 + cfg_select feature）。
 | Bevy API / ECS / 渲染管线变更 | `kb/bevy/migration-index.md` + `kb/bevy/0-19/patterns.md` |
 | 新发现的 API 陷阱 | `kb/bevy/migration-index.md`（grep 命中则更新对应行） |
 | 架构决策、数据流、ADR | `kb/ARCHITECTURE.md`（ADR 章节，what + why + why-not） |
-| 问题排查、工具链摩擦 | `kb/TENSIONS.md`（格式 `- **YYYY-MM-DD**: <问题>`，只捕获信号不解决） |
+| 问题排查、工具链摩擦 | `kb/project/reflections.md`（历史摩擦归档区，只捕获信号不解决） |
 | 游戏系统实现 | `kb/project/game/README.md` |
 | 项目级约定 | `AGENTS.md`（索引——一句话摘要，绝不重复内容） |
 | 新 skill / 插件 / workflow | `AGENTS.md`（文档索引 + skills 列表） |
