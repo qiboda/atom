@@ -1,6 +1,6 @@
 //! 反序列化 + 全格式等价性集成测试（纯 serde，不启动 Bevy App）。
 //!
-//! spec 依据：`.omo/plans/atom-data.md` §4.4——反序列化（JSON 数组 → `DataTable<T>`，id/name 字段
+//! spec 依据：`.dsh/plans/atom-data.md` §4.4——反序列化（JSON 数组 → `DataTable<T>`，id/name 字段
 //! 正确）、全格式等价性（json/ron/toml 同数据 → 相同查询结果）；D1（`DataTable<T>` Deserialize 手动
 //! impl：`Vec<T>` → 构建索引，B1-3）。
 //!

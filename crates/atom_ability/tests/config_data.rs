@@ -1,6 +1,6 @@
 //! 原子表类型数据层测试（纯逻辑，不启动 Bevy App）。
 //!
-//! spec 依据：`.omo/plans/atom-data.md` §6（issue #5 Batch 3）——
+//! spec 依据：`.dsh/plans/atom-data.md` §6（issue #5 Batch 3）——
 //! - §6.4「AbilityConfig/BuffConfig/LayerTagConfig 反序列化 + 索引查询」
 //! - §6.4「layertag 跨表引用解析（Ability 引用 LayerTagConfig）」
 //! - B3-1（serde 结构体 + `#[derive(DataAsset)]` 定义原子表类型）

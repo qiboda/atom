@@ -8,7 +8,7 @@ Bevy 后必须 commit + push 到 `atom-patches`，确保查到的源码 = 编译
 ## 结构
 
 ```
-.opencode/kb/bevy/
+.dsh/kb/bevy/
   README.md              — 本文件
   migration-index.md     — 快速查表: "X 变了 → 改成 Y"
   0-19/

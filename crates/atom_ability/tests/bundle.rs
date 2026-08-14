@@ -1,6 +1,6 @@
 //! Bundle 重构（B3-3）与行为回归测试。
 //!
-//! spec 依据：`.omo/plans/atom-data.md` §6（issue #5 Batch 3）——
+//! spec 依据：`.dsh/plans/atom-data.md` §6（issue #5 Batch 3）——
 //! - §6.4「Bundle 构造：能力/增益 spawn 后数据正确（graph_class、layertag 解析）」
 //! - B3-3「`TbAbilityRow`/`TbBuffRow`（key+data 分离组件）删除 → 数据直接 + 索引；
 //!   `AbilityBundle`/`BuffBundle` 改为携带行数据/键」（handoff 锁定）

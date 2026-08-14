@@ -1,6 +1,6 @@
 //! load/unload/reload 生命周期集成测试（启动 Bevy App + AssetServer 加载真实文件）。
 //!
-//! spec 依据：`.omo/plans/atom-data.md` §5（issue #4 Batch 2）——
+//! spec 依据：`.dsh/plans/atom-data.md` §5（issue #4 Batch 2）——
 //! - 验收「文档与测试覆盖 load/unload/reload 生命周期」「底层走 AssetServer + AssetEvent」
 //! - §5.4「单表 get/load/unload/is_loaded 生命周期」
 //! - B2-4「unload 后失效」

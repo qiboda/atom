@@ -1,6 +1,6 @@
 <!--
   Attach at least one A- and one C- label.
-  See .opencode/kb/github/labels.md for the full taxonomy.
+  See .dsh/kb/github/labels.md for the full taxonomy.
   Labels: A-Terrain / A-Compute / A-Render / A-Game / A-Agent / A-CI / A-Docs
            C-Bug / C-Feature / C-Code-Quality / C-Performance / C-Docs / C-Question / C-Chore
 -->

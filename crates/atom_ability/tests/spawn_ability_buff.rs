@@ -1,6 +1,6 @@
 //! RED 回归测试：Bundle → BSN 迁移（issue #7）后模板函数的场景产物断言。
 //!
-//! 对应计划 `.omo/plans/bsn-migration.md` §4.2（ability 侧）/§4.3（buff 侧）与验收 §5。
+//! 对应计划 `.dsh/plans/bsn-migration.md` §4.2（ability 侧）/§4.3（buff 侧）与验收 §5。
 //! 迁移前 `AbilityBundle::new`/`BuffBundle::new` 构造出的实体组件集合必须与
 //! `spawn_ability`/`spawn_buff` 场景产物**完全一致**——本文件把这些行为固化为回归测试。
 //!

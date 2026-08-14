@@ -1,6 +1,6 @@
 //! RED 集成测试（核心交付）：grant_effect 节点重建后的反射调度全链路。
 //!
-//! 对应计划 `.omo/plans/bsn-migration.md` §4.4（Q2 修订：保留 `EffectBundleTrait`
+//! 对应计划 `.dsh/plans/bsn-migration.md` §4.4（Q2 修订：保留 `EffectBundleTrait`
 //! 反射调度 + 新架构重建 grant_effect）与 §6 测试策略。
 //!
 //! 链路：`EffectValue::BoxReflect(bundle)` → 输入 pin → `EffectNodeExecEvent` →

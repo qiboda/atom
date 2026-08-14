@@ -6,7 +6,7 @@ labels: C-Feature
 assignees: qiboda
 ---
 
-<!-- ⚠️ Add an A- label before submitting: A-Terrain / A-Compute / A-Render / A-Game / A-Agent / A-CI / A-Docs. See .opencode/kb/github/labels.md. -->
+<!-- ⚠️ Add an A- label before submitting: A-Terrain / A-Compute / A-Render / A-Game / A-Agent / A-CI / A-Docs. See .dsh/kb/github/labels.md. -->
 
 ## Problem
 
@@ -30,6 +30,6 @@ assignees: qiboda
 <!-- Leave empty for standalone issues. -->
 
 > **Parent**: #<epic-N>
-> **Plan**: .omo/plans/<epic-name>.md
+> **Plan**: .dsh/plans/<epic-name>.md
 > **Batch**: <N>
 > **Depends on**: #<sub-X> (or "—" if none)

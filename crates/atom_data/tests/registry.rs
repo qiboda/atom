@@ -1,6 +1,6 @@
 //! DataRegistry 生命周期集成测试（纯逻辑，不启动 Bevy App）。
 //!
-//! spec 依据：`.omo/plans/atom-data.md` §5（issue #4 Batch 2）——
+//! spec 依据：`.dsh/plans/atom-data.md` §5（issue #4 Batch 2）——
 //! - §5.4「单表 get/load/unload/is_loaded 生命周期」
 //! - §5.4「重复 load 幂等性」
 //! - §5.3 验收「`data.get::<T>(id)` 惰性：未加载 None，加载后可查」「`load`/`unload` 显式

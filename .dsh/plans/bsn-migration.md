@@ -1,7 +1,7 @@
 # BSN 迁移计划 — atom_ability Bundle → BSN (issue #7)
 
 > 本计划在 worktree `feat/bsn-migration` 内创建，随实现 PR 提交。
-> 上下文契约：`.omo/handoff.md`（grill-me 锁定决策）+ 本计划（Q2 修订版）。
+> 上下文契约：`.dsh/plans/handoff.md`（grill-me 锁定决策）+ 本计划（Q2 修订版）。
 
 ## 1. 目标
 

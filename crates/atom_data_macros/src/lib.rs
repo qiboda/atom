@@ -1,6 +1,6 @@
 //! `atom_data` 的 derive 宏：`DataAsset` —— 为行类型（Bean）生成索引系统。
 //!
-//! 权威 spec：`.omo/plans/atom-data.md` §4（issue #3 Batch 1，任务 B1-4）+ §5（issue #4
+//! 权威 spec：`.dsh/plans/atom-data.md` §4（issue #3 Batch 1，任务 B1-4）+ §5（issue #4
 //! Batch 2，任务 B2-2）。关键决策：D1（行类型 + `DataTable<T>` 泛型表容器）、D2（索引形态表）、
 //! D3（`data_ref` 跨表引用）。
 //!

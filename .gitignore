@@ -9,10 +9,6 @@ tools/Multi-Channel-Image-Tool
 screenshots/
 
 # AI tooling
-.omo/*
-!.omo/plans/
-!.omo/designs/
-!.omo/evidence/
 .worktrees/
 config.json
 logs/

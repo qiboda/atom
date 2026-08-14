@@ -1,24 +1,24 @@
 # Atom Terrain Engine
 
 基于 Bevy 0.19 的体素平滑地形（GPU Dual Contouring + QEF）。
-Bevy API 变更频繁，遇到不确定的 API 先查 `.opencode/kb/bevy/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。
-架构导航: 高层见 `.opencode/kb/ARCHITECTURE.md`（架构不变量 + ADR），符号级见 `cargo doc --open`。
+Bevy API 变更频繁，遇到不确定的 API 先查 `.dsh/kb/bevy/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。
+架构导航: 高层见 `.dsh/kb/ARCHITECTURE.md`（架构不变量 + ADR），符号级见 `cargo doc --open`。
 
 ## 文档索引
 
 | 位置 | 内容 |
-| `.opencode/kb/ARCHITECTURE.md` | 架构不变量（数据流/管线/约束）+ ADR |
-| `.opencode/kb/project/reflections.md` | 实施后反思日志 + 历史摩擦归档（全局 `skwy-reflect` skill 追加条目，含 User corrections + 流程改进） |
-| `.opencode/kb/` | **知识库**（Bevy 生态 + 项目知识 + GitHub 约定） |
-| `.opencode/kb/github/` | **GitHub 约定**（labels 标签体系 / comments 评论规范） |
-| `.opencode/skills/` | **Agent 技能**（bevy：Bevy API 检索 + Shader 审查；通用工作流/测试/反思/worktree 用全局 skwy-* skills，见 `~/.config/opencode/skills/`） |
+| `.dsh/kb/ARCHITECTURE.md` | 架构不变量（数据流/管线/约束）+ ADR |
+| `.dsh/kb/project/reflections.md` | 实施后反思日志 + 历史摩擦归档（全局 `skwy-reflect` skill 追加条目，含 User corrections + 流程改进） |
+| `.dsh/kb/` | **知识库**（Bevy 生态 + 项目知识 + GitHub 约定） |
+| `.dsh/kb/github/` | **GitHub 约定**（labels 标签体系 / comments 评论规范） |
+| `.dsh/skills/` | **Agent 技能**（bevy：Bevy API 检索 + Shader 审查；通用工作流/测试/反思/worktree 用全局 skwy-* skills，见 `~/.dsh/skills/`） |
 | `.githooks/` | **git hooks**（commit-msg: ref #N 强制；pre-commit: fmt/check(含警告拦截)/doc/bevy_lint；pre-push: 全门禁 + ref #N 验证） |
 | `.github/` | **CI**（ci.yml：fmt/clippy/doc/nextest 门禁） |
 
 ## 全局 skills 强制加载
 
-AGENTS.md 引用的全局 skills（`~/.config/opencode/skills/`）在对应场景**强制加载**（`skill` 工具），
-不依赖 opencode 自动注入。清单与触发场景：
+AGENTS.md 引用的全局 skills（`~/.dsh/skills/`，DSH skill catalog 按名加载）在对应场景**强制加载**（`skill` 工具），
+不依赖任何自动注入。清单与触发场景：
 
 | Skill | 强制加载场景 |
 |---|---|
@@ -46,7 +46,7 @@ ref #26
 - 使用 `ref #N`，**不使用** `fixes #N` / `closes #N`（避免自动关闭 issue）
 - issue 只在 push 成功到达 `origin/main` 后手动关闭（skwy-workflow 第 6 步）
 - feature/bugfix 工作强制走全局 `skwy-workflow` skill 的预实现门禁
-- 完整规则见全局 `skwy-workflow` skill（`~/.config/opencode/skills/skwy-workflow/SKILL.md`）
+- 完整规则见全局 `skwy-workflow` skill（`~/.dsh/skills/skwy-workflow/SKILL.md`）
 
 ## 品质准则
 
@@ -54,8 +54,8 @@ ref #26
 
 - **重大决策先 grill-me（强制）**：架构方向变更、库选型/替换、数据流变更、2+ 模块的改造、范围模糊的需求——动手前必须先触发 `grill-me` skill 逐项确认决策树（一次一问、带推荐答案、深度优先走完所有分支），达成 shared understanding 后才允许实施。禁止凭单条消息直接开做。触发词示例：「代替」「替换」「迁移」「重构」「引入」「方案」+ 影响面超出单文件的描述。完整规则见 `grill-me` skill。
 - 代码不行就重构，不要留着凑合；设计不对就推翻，不要叠加补丁
-- **问题处理闭环（强制）**：执行中遇到**任何**异常，禁止静默绕过或静默降级。依次完成感知 → 诊断 → 处理 → 记录（沉淀到 `.opencode/kb/project/reflections.md`）。完整规则见 `skwy-workflow` skill §1——绕行本身就是违规。
-- **agent 可自行完善项目书**：发现重复摩擦或可预防的失误时，agent 有权在 AGENTS.md / `.opencode/kb/` 中添加或修订规则以改善自身行为——规则变更随当次 commit 提交并在 commit message 中说明理由。
+- **问题处理闭环（强制）**：执行中遇到**任何**异常，禁止静默绕过或静默降级。依次完成感知 → 诊断 → 处理 → 记录（沉淀到 `.dsh/kb/project/reflections.md`）。完整规则见 `skwy-workflow` skill §1——绕行本身就是违规。
+- **agent 可自行完善项目书**：发现重复摩擦或可预防的失误时，agent 有权在 AGENTS.md / `.dsh/kb/` 中添加或修订规则以改善自身行为——规则变更随当次 commit 提交并在 commit message 中说明理由。
 - **测试先行**：feature/bugfix 变更从失败测试开始（RED），再做修复（GREEN）。先写修复再写失败测试是反模式。测试设计与约定见全局 `skwy-requirement-test` / `skwy-adversarial-test` skills。
 - **测试覆盖率硬门槛 80%**：总行覆盖率 < 80% 视为不达标（`just coverage` 或 CI 的 `cargo llvm-cov nextest --workspace --release --fail-under-lines 80`）。当前基线 27.54%，新增测试逐步提升；覆盖率不达标时 CI 红属预期，先补测试再合并。
 
@@ -66,7 +66,7 @@ ref #26
 2. **"我更新了相关 kb/ 文件吗？"** — 没有就对照「kb 映射表」确定文件并更新。
 3. **"公共 API 有 `///` 文档吗？"** — 新增 pub 项时先验证 `#[deny(missing_docs)]` 合规（见「Rustdoc 合规」）。
 4. **"当前工作在正确的分支/worktree 上吗？"** — 存在活跃 worktree 时（`git worktree list`），实现工作必须在 worktree 内进行；main 只允许 docs/lint/typo/反思类提交直推。不确认分支归属就不开始。
-5. **"发现摩擦/不一致了吗？"** — 有就先记 `.opencode/kb/project/reflections.md`，再处理。不跳过信号采集直接修复。
+5. **"发现摩擦/不一致了吗？"** — 有就先记 `.dsh/kb/project/reflections.md`，再处理。不跳过信号采集直接修复。
 
 ## Worktree 纪律
 
@@ -74,15 +74,15 @@ PR/功能分支开发使用 git worktree，位于 `.worktrees/<name>/`（gitigno
 
 - **分支同步一律 rebase，不用 merge**：worktree 分支同步 main 用 `git rebase origin/main`；PR 合并用 rebase/squash（GitHub 侧配置）；绝不用 `git merge` 引入合并提交（保持线性历史）。
 
-- **创建时机（强制）**：需求经 grill-me 确认是需要 worktree 的工作（feature/epic、2+ 模块、将产出 `.omo/plans/*.md` 或 `.omo/designs/*.md`）时，**grill 共识达成后立即创建并切换**；单文件修复/纯文档不需要。判断口诀：**一旦确定"这次要产出 .omo 文件"→ 先开 worktree 再写文件**（untracked 文件不会跨 checkout 迁移）。
-- **主 session 移交（强制）**：创建后主 session 只做两件事——写 `.worktrees/<name>/.omo/handoff.md`（用途 + issue URL + 已锁定决策），然后运行 `~/.config/opencode/skills/skwy-worktree/scripts/open-worktrees.sh <name>` 自动启动（新终端 + setsid 脱离进程组）。剩余工作全部移交 worktree 内 agent，主 session 不再参与。
-- **会话启动规则（强制）**：worktree 内 opencode 会话启动后第一步必须读取 `.omo/handoff.md` 获取上下文契约，之后才允许开始任何工作。
+- **创建时机（强制）**：需求经 grill-me 确认是需要 worktree 的工作（feature/epic、2+ 模块、将产出 `.dsh/plans/*.md` 或 `.dsh/designs/*.md`）时，**grill 共识达成后立即创建并切换**；单文件修复/纯文档不需要。判断口诀：**一旦确定"这次要产出 .dsh/plans 文件"→ 先开 worktree 再写文件**（untracked 文件不会跨 checkout 迁移）。
+- **主 session 移交（强制）**：创建后主 session 只做两件事——写 `.worktrees/<name>/.dsh/plans/handoff.md`（用途 + issue URL + 已锁定决策），然后运行 `~/.dsh/skills/skwy-worktree/scripts/open-worktrees.sh <name>` 自动启动（新终端 + setsid 脱离进程组）。剩余工作全部移交 worktree 内 agent，主 session 不再参与。
+- **会话启动规则（强制）**：worktree 内 DSH 会话启动后第一步必须读取 `.dsh/plans/handoff.md` 获取上下文契约，之后才允许开始任何工作。
 - **强制规则**：worktree 一旦创建，后续实现工作必须在 worktree 内完成；main 只允许 docs/lint/typo/反思类提交直推。存在活跃 worktree 时实现类提交落在 main 即流程违规，记入 reflections.md。
 - 完整流程、命令与清理（含 `--close` 终止进程 + 删 worktree）见全局 `skwy-worktree` skill。
 
 ## 决策记录
 
-架构级决策（跨子系统约束、库选型、数据流变更）必须记录到 `.opencode/kb/ARCHITECTURE.md` 的 ADR 章节——自包含记录 **what + why + why-not**。格式见该文件 ADR 模板。
+架构级决策（跨子系统约束、库选型、数据流变更）必须记录到 `.dsh/kb/ARCHITECTURE.md` 的 ADR 章节——自包含记录 **what + why + why-not**。格式见该文件 ADR 模板。
 
 ## Workspace 当前状态
 

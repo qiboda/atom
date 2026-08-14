@@ -1,6 +1,6 @@
 //! atom_data — 声明式数据表框架（bevy_common_assets 驱动，全面替代 Luban 二进制 datatables 体系）。
 //!
-//! 权威 spec：`.omo/plans/atom-data.md`（issue #3 Batch 1 + issue #4 Batch 2）。
+//! 权威 spec：`.dsh/plans/atom-data.md`（issue #3 Batch 1 + issue #4 Batch 2）。
 //! 关键决策：
 //! - **D1**（设计）：行类型 + 表容器分离——`#[derive(DataAsset)]` 用于**行类型**（Bean），
 //!   只要求 `serde::Deserialize + DataIndexed`；表 Asset 是泛型容器 [`DataTable<T>`]

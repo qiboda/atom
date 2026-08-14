@@ -6,7 +6,7 @@ labels: C-Bug
 assignees: qiboda
 ---
 
-<!-- ⚠️ Add an A- label before submitting: A-Terrain / A-Compute / A-Render / A-Game / A-Agent / A-CI / A-Docs. See .opencode/kb/github/labels.md. -->
+<!-- ⚠️ Add an A- label before submitting: A-Terrain / A-Compute / A-Render / A-Game / A-Agent / A-CI / A-Docs. See .dsh/kb/github/labels.md. -->
 
 ## Description
 

@@ -1,6 +1,6 @@
 //! data_ref 跨表引用集成测试（纯逻辑，不启动 Bevy App）。
 //!
-//! spec 依据：`.omo/plans/atom-data.md` §5（issue #4 Batch 2）——
+//! spec 依据：`.dsh/plans/atom-data.md` §5（issue #4 Batch 2）——
 //! - §5.3 验收「`#[data_ref]` 字段生成解析方法，目标表未加载返回 None」
 //! - §5.4「两表跨表引用：引用方先加载、被引用方后加载 → 解析仍成功（惰性解析时机）」
 //! - §5.4「data_ref 键不存在 → 跳过/None（行为实现时定，测试锁定 skip）」

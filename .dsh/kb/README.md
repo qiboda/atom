@@ -30,7 +30,7 @@ kb/
 
 ## 使用方式
 
-Bevy API 检索与 shader 审查走 `bevy` skill（`.opencode/skills/bevy/SKILL.md`）——它定义了完整的查找链（migration-index → patterns → Bevy 源码 → 示例）。本文件不重复。
+Bevy API 检索与 shader 审查走 `bevy` skill（`.dsh/skills/bevy/SKILL.md`）——它定义了完整的查找链（migration-index → patterns → Bevy 源码 → 示例）。本文件不重复。
 
 快速入口：
 
