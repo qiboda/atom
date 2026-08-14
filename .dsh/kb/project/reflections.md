@@ -360,3 +360,32 @@
 ### Trends (last 10)
 - **用户纠正多为"我做了什么"的归属误读**：本次「product/ui-designer 归属」与 #10「bevy lint 环境归属」同型——用户指出我对某物归属（谁拥有/谁负责/是否已存在）的判断错误。教训：不确定归属时先向用户确认，不自行推断。
 - **标签库存核对缺位**：本次 `D-Trivial` 不存在被拒——项目 label 是 Bevy 分类法的子集（只有 D-Straightforward/D-Complex、P-High），创建 issue 前核对库存应成为惯例。
+
+## 2026-08-15 — #16 opencode → DSH 配置迁移（review 闭环）
+
+**What was done**: opencode 配置完全迁移到 DSH：项目级 `.opencode/kb`、`.opencode/skills/bevy`、`.omo/plans` → 项目 `.dsh/`（git mv 保留 rename 历史）；删除 `.opencode/`、`.omo/` 与全局 `~/.config/opencode/`；AGENTS.md（16 处）、crates doc 注释（12 处）、.github 模板（4 处）、kb 内部（3 文件）、全局 4 个 skwy-* 技能（.omo→.dsh 约定）引用全部更新，两轮 subagent_review 闭环后提交 e7f6448（ref #16）。
+
+**User corrections**:
+1. 「是迁移到当前项目的.dsh 目录。。。」——我推荐全局 `~/.dsh/projects/atom/`，用户纠正目标为**项目 `.dsh/`**（迁移层级误判）。
+2. 「也迁移，移动到 .dsh 内部。.omo 中的内容也迁移到.dsh内部的一个目录中」——我推荐 kb 保留原位，用户纠正 kb 与 .omo 也迁移。
+3. 「omo里面的plans 需要迁移过去，其他不需要」——范围细化：只迁 plans，run-continuation 缓存不迁。
+
+**What went wrong**:
+1. **grep 工具 hidden 盲区**：验证"全仓无残留"用 grep 工具（ripgrep 系），默认跳过 `.dsh/`、`.github/` 等 hidden 目录 → 误报干净；第一轮 review 抓到 10 处真实残留（bevy/review skill 内部 6 处 + .github 模板 4 处）。
+2. **rmdir 静默吞错**：清理 `.opencode/` 时 `rmdir 2>/dev/null` 吞掉"目录非空"错误 → 2 个被跟踪孤儿文件（command/just.md、plugins/trash-rm.ts）残留，第二轮 review 才抓出。
+3. **git mv 嵌套**：预先 mkdir 目标目录后 git mv 把源移入其下（`.dsh/kb/kb/`），需二次修正——git mv 到已存在目录 = 嵌套移动。
+4. bash 执行器两次内部故障（`Cannot read properties of undefined (reading 'config')`），临时改用 glob/read 探查（环境摩擦）。
+
+**Lessons learned**:
+1. **残留验证必须覆盖 hidden 目录**：grep 工具默认跳过隐藏目录；全仓搜索验证用 `grep -rn`（bash）或 `rg --hidden`，不轻信 grep 工具的"无结果"。
+2. **清理命令禁止静默吞错**：rmdir/rm 的 `2>/dev/null` 会把"没删干净"伪装成"删完了"；清理后必须 `git ls-files` + `ls` 双重验证。
+3. **git mv 前不预建目标目录**；move 后立即 `git status` 核对无路径嵌套。
+4. **review 兜底验证**：subagent_review 的 bash grep 覆盖 hidden 目录，与主会话 grep 工具行为不同——大迁移后 review 是残留的最后防线。
+
+**Process improvements**:
+1. **已落实（AGENTS.md）**：「命令/术语全仓搜索」新增强制小节——搜索必须覆盖 hidden 目录（`.dsh/`、`.github/`），用 bash `grep -rn` 或 `rg --hidden`（本条目教训直接落为规则）。
+2. 其余为一次性教训（None）。
+
+### Trends (last 10)
+- **"全仓验证"方式反复踩坑**：#15「grep 全仓超时（.opencode/node_modules）」与本次「grep hidden 盲区」同型——验证手段不当导致漏检/超时；本次已落实 AGENTS.md 规则，模式应退役。
+- **用户纠正多为范围/层级判断**：#15 归属误读（product vs ui-designer）、本次迁移目标层级（全局 vs 项目 .dsh）——涉及"迁到哪/属于谁"先确认再动手。

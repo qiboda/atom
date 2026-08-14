@@ -139,6 +139,8 @@ toolchain 为 nightly-2026-01-22（bevy_lint v0.6.0 + cfg_select feature）。
 
 **命令/术语全仓搜索（强制）**：变更涉及命令、API 名称、组件路径、crate 名等被其他文档引用的标识符时，必须全仓 grep 找全所有引用点逐一核对，不能只更新"主要"文件。
 
+**搜索必须覆盖 hidden 目录（强制）**：`.dsh/`、`.github/`、`.opencode/` 等隐藏目录中的引用，grep 工具（ripgrep 系）**默认跳过**——残留/引用验证必须用 `grep -rn`（bash）或 `rg --hidden`，不能以 grep 工具的"无结果"判定干净（#16 教训：两轮 review 各抓到 10 处/2 处被漏检的残留）。
+
 **kb 维护纪律**：不创建新 kb/ 文件（优先并入现有文件）；无代码变更上下文不修改 kb/；AGENTS.md 是索引，kb/ 是唯一数据源；不硬编码版本号。
 
 ## 工作习惯
