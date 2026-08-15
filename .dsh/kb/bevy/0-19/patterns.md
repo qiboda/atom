@@ -129,17 +129,19 @@ mesh.insert_indices(Indices::U32(indices));
 
 ## Render World 资源管理 (0.19 已验证)
 
-`ExtractResourcePlugin` 在 0.19 pipelined rendering 中不可用。render world 资源直接 insert：
+`ExtractResourcePlugin::<T>::default()` 在 0.19 仍可用于把 main world 的 `ExtractResource` 资源同步到 render world（项目中 `TerrainObserver`、`ChunkLoadRequest`、`TerrainDebugConfig` 等均在使用）。
 
 ```rust
-// ❌ 不工作: ExtractResourcePlugin::<T>::default()
-// ✅ 直接插入到 render world
+// ✅ main world 资源 → render world（需要 derive ExtractResource）
+app.add_plugins(ExtractResourcePlugin::<TerrainObserver>::default());
+
+// ✅ render world 本地资源直接 insert（不跨 world 同步）
 let render_app = app.sub_app_mut(RenderApp);
 render_app.insert_resource(TerrainSetting::default());
 render_app.init_resource::<TerrainChunkMeshBuffers>();
 ```
 
-已在 compute pipeline 中验证。
+注意：`ExtractResource` 是 `Resource` 的 subtrait，只有 main world 中实现了 `ExtractResource` 的资源才能被该插件提取；render world 内部独有资源直接用 `insert_resource` / `init_resource`。
 
 ## WGSL Storage Buffer 访问修饰符 (0.19 已验证)
 

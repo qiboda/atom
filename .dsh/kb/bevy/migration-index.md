@@ -44,7 +44,7 @@
 
 | 0.18 / 旧 | 0.19 | 备注 |
 |------|------|------|
-| — | `bevy_common_assets 0.17.0` | 原生兼容 Bevy 0.19（依赖 bevy_app/bevy_asset/bevy_reflect ^0.19）；9 格式 feature 全开（json/ron/toml/yaml/csv/msgpack/cbor/xml/postcard），0 默认 feature |
+| — | `bevy_common_assets 0.17.0` | 原生兼容 Bevy 0.19（依赖 bevy_app/bevy_asset/bevy_reflect ^0.19）；8 格式 feature 开启（json/ron/toml/yaml/csv/msgpack/cbor/xml），postcard 不启用，0 默认 feature |
 | — | `XxxAssetPlugin::<A>::new(&["json"])` | 泛型插件：`A: for<'de> Deserialize<'de> + Asset`；同类型可注册多格式插件（扩展名路由）；plugin build 内部自带 `init_asset::<A>()` |
 | — | `AssetLoader` trait 含 `TypePath` supertrait | 0.18 新增；loader 类型需实现 TypePath |
 | `LoadContext::load_direct` / `NestedLoader` | `LoadContext::load_builder()` | 子资产加载 API 重构（0.18） |
