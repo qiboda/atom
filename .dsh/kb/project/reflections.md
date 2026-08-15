@@ -389,3 +389,26 @@
 ### Trends (last 10)
 - **"全仓验证"方式反复踩坑**：#15「grep 全仓超时（.opencode/node_modules）」与本次「grep hidden 盲区」同型——验证手段不当导致漏检/超时；本次已落实 AGENTS.md 规则，模式应退役。
 - **用户纠正多为范围/层级判断**：#15 归属误读（product vs ui-designer）、本次迁移目标层级（全局 vs 项目 .dsh）——涉及"迁到哪/属于谁"先确认再动手。
+
+## 2026-08-15 — #17 知识库与代码同步
+
+**What was done**: 更新 `.dsh/kb/ARCHITECTURE.md`（三条地形管线、真实 GPU 参数、Voronoi+FBM 噪声、atom_data Batch 2 ADR）、`.dsh/kb/bevy/0-19/patterns.md`（ExtractResourcePlugin 用法）、`.dsh/kb/bevy/migration-index.md`（bevy_common_assets 8 格式，postcard 不启用），使知识库与当前代码一致；创建 issue #17 并提交 d5431ed（ref #17）。
+
+**User corrections**:
+1. 「创建issue再提交。这不是workflow规定的吗？为什么还会问？是没有加载到吗？」——commit 前不应反问是否需要 issue；每个 commit（含 docs）都必须引用 open issue，直接创建即可。
+2. 「不需要可执行，那就提交push了吧 它需要可执行吗」——最终确认恢复 `.githooks/commit-msg` 可执行位，不提交权限变更。
+
+**What went wrong**:
+1. **commit 前反问是否建 issue**：在用户明确要提交时，我因 skwy-github-workflow 中“docs 跳过 issue 创建”的表述犹豫，反问用户；违反 AGENTS.md「每个 commit 必须引用 open issue，无例外」的强制规则。
+2. **SSH fetch 失败**：`git fetch origin main` 报 `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` Bad owner/permissions（系统级 SSH 配置问题）；用 `GIT_SSH_COMMAND='ssh -F "$HOME/.ssh/config"'` 绕过系统配置后成功。
+
+**Lessons learned**:
+1. **docs/chores 同样先建 issue 再 commit**：不要因为“文档类”就跳过 issue 创建或反问用户；commit-msg hook 的 `ref #N` 是硬门槛。
+2. **本环境 SSH 远程操作统一加前缀**：遇到系统 ssh_config 权限错误时，用 `GIT_SSH_COMMAND='ssh -F "$HOME/.ssh/config"'` 执行 git fetch/push。
+
+**Process improvements**:
+1. **已落实（AGENTS.md）**：工作习惯新增「SSH 远程操作（fetch/push）」条目，记录系统 ssh_config 权限错误的绕过方式。
+2. **已记录（本条目）**：docs 也必须 issue-driven，后续不再反问。
+
+### Trends (last 10)
+- **流程强制项被“文档例外”误导**：#17 本次因 docs 例外表述犹豫反问；#16/#15 也有流程/范围误判——凡 AGENTS.md 用“无例外”强调的规则，不因其他 skill 的例外描述而打折。
