@@ -155,6 +155,8 @@ toolchain 为 nightly-2026-01-22（bevy_lint v0.6.0 + cfg_select feature）。
 
 **SSH 远程操作（fetch/push）**：如遇 `/etc/ssh/ssh_config.d/*` 权限错误，用 `GIT_SSH_COMMAND='ssh -F "$HOME/.ssh/config"' git ...` 绕过系统 SSH 配置。
 
+**cargo deny 在只读 `CARGO_HOME` 下失败**：本环境 `~/.cargo` 为只读，pre-push 的 `cargo deny check` 无法写 advisory-dbs 锁；用可写 `CARGO_HOME` 覆盖层执行 push（symlink registry/git + 拷贝 advisory-dbs 到 `/tmp/cargo-home`）。
+
 **subagent 编译权限分级（强制）。** 委派 subagent 时，允许其运行 `cargo check -p <负责的 crate>` 和 `cargo check --tests -p <负责的 crate>` 自验代码（含测试代码）编译通过；禁止其运行 `cargo test`/`clippy`/`build`/`llvm-cov`/`run` 等重型编译命令——它们需链接或插桩，在共享 `target/` 上长时间锁竞争、拖慢并行。测试行为验证与重型门禁由主 session 在收集全部 subagent 结果后集中执行；失败用 `task(task_id)` 续会话回传修复。完整策略见全局 skill `subagent-compile`。
 
 ## Agent 能力边界

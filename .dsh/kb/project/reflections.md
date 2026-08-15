@@ -401,14 +401,17 @@
 **What went wrong**:
 1. **commit 前反问是否建 issue**：在用户明确要提交时，我因 skwy-github-workflow 中“docs 跳过 issue 创建”的表述犹豫，反问用户；违反 AGENTS.md「每个 commit 必须引用 open issue，无例外」的强制规则。
 2. **SSH fetch 失败**：`git fetch origin main` 报 `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` Bad owner/permissions（系统级 SSH 配置问题）；用 `GIT_SSH_COMMAND='ssh -F "$HOME/.ssh/config"'` 绕过系统配置后成功。
+3. **cargo deny 因只读 CARGO_HOME 失败**：pre-push 的 `cargo deny check` 报 `failed to acquire advisory database lock ... read-only path`；根因 `~/.cargo` 为只读文件系统。用可写 `CARGO_HOME=/tmp/cargo-home` 覆盖层（symlink registry/git + 拷贝 advisory-dbs）后 `cargo deny check` 通过。
 
 **Lessons learned**:
 1. **docs/chores 同样先建 issue 再 commit**：不要因为“文档类”就跳过 issue 创建或反问用户；commit-msg hook 的 `ref #N` 是硬门槛。
 2. **本环境 SSH 远程操作统一加前缀**：遇到系统 ssh_config 权限错误时，用 `GIT_SSH_COMMAND='ssh -F "$HOME/.ssh/config"'` 执行 git fetch/push。
+3. **只读 CARGO_HOME 下 cargo deny 需可写覆盖层**：push 前若 `cargo deny` 报 advisory db 锁只读，用 `/tmp/cargo-home` 覆盖层（symlink registry/git + 拷贝 advisory-dbs）再执行 push。
 
 **Process improvements**:
 1. **已落实（AGENTS.md）**：工作习惯新增「SSH 远程操作（fetch/push）」条目，记录系统 ssh_config 权限错误的绕过方式。
-2. **已记录（本条目）**：docs 也必须 issue-driven，后续不再反问。
+2. **已落实（AGENTS.md）**：工作习惯新增「cargo deny 在只读 CARGO_HOME 下失败」条目，记录覆盖层绕过方式。
+3. **已记录（本条目）**：docs 也必须 issue-driven，后续不再反问。
 
 ### Trends (last 10)
 - **流程强制项被“文档例外”误导**：#17 本次因 docs 例外表述犹豫反问；#16/#15 也有流程/范围误判——凡 AGENTS.md 用“无例外”强调的规则，不因其他 skill 的例外描述而打折。
