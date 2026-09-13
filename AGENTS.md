@@ -12,8 +12,26 @@ Bevy API 变更频繁，遇到不确定的 API 先查 `.dsh/kb/bevy/migration-in
 | `.dsh/kb/` | **知识库**（Bevy 生态 + 项目知识 + GitHub 约定） |
 | `.dsh/kb/github/` | **GitHub 约定**（labels 标签体系 / comments 评论规范） |
 | `.dsh/skills/` | **Agent 技能**（bevy：Bevy API 检索 + Shader 审查；通用工作流/测试/反思/worktree 用全局 skwy-* skills，见 `~/.dsh/skills/`） |
-| `.githooks/` | **git hooks**（commit-msg: ref #N 强制；pre-commit: fmt/check(含警告拦截)/doc/bevy_lint；pre-push: 全门禁 + ref #N 验证） |
+| `.githooks/` | **git hooks**（commit-msg: ref #N 强制；pre-commit: fmt/check(含警告拦截)/doc/bevy_lint；pre-push: 全门禁 + ref #N 验证）——**需一次性接线，见下节** |
 | `.github/` | **CI**（ci.yml：fmt/clippy/doc/nextest 门禁） |
+| `rust-toolchain.toml` | **toolchain pin**（唯一数据源，与 CI 的 `RUST_TOOLCHAIN` 一致） |
+
+## Git hooks 接线（新克隆必做一次）
+
+`.githooks/` 下的三道门禁不会被 git 自动加载——`core.hooksPath` 是**本地** config，无法入库，
+每个新克隆必须手动接线一次：
+
+```sh
+just git-hooks        # 等价于 git config core.hooksPath .githooks
+```
+
+未接线时 `git rev-parse --git-path hooks` 指向 `.git/hooks`（只有 `*.sample`），
+三道门禁（含 `ref #N` 强制校验）全部静默失效。验证接线：`just git-hooks` 应输出
+`core.hooksPath = .githooks`。
+
+`.githooks/` 内的 `gh` 查询自带安装路径兜底（PATH 查找失败时回退
+`/c/Program Files/GitHub CLI/gh.exe`），但 `gh` 仍需**已登录**（`gh auth login`），
+否则 issue 状态查询会失败并明确报错。
 
 ## 全局 skills 强制加载
 
@@ -103,7 +121,8 @@ atom_shader_lib、atom_utils（Bevy 0.19 workspace 迁移后全部迁回；成�
 地形验证: `cargo run -p atom_terrain --example chunk_loader --release`（超时 30s）。
 数据表示例: `cargo run -p atom_data --example full_formats --release`。
 直接跑二进制需先 `ln -sf $(pwd)/assets target/release/examples/assets`（Bevy 从 exe 目录找 assets）。
-toolchain 为 nightly-2026-01-22（bevy_lint v0.6.0 + cfg_select feature）。
+toolchain 由根部 `rust-toolchain.toml` pin（与 CI 的 `RUST_TOOLCHAIN` 同为 nightly；
+bevy_lint v0.6.0 + cfg_select feature 依赖 nightly）。**不要硬编码版本号，以该文件为准。**
 
 ## 编码规范
 
@@ -114,6 +133,8 @@ toolchain 为 nightly-2026-01-22（bevy_lint v0.6.0 + cfg_select feature）。
 - 代码模式以 `crates/atom_terrain/src/` 实际代码为准
 - **构建门禁**（何时跑、失败怎么处理）见全局 `skwy-workflow` skill §6-7。项目命令链：
   - `cargo check --workspace`；`cargo clippy --workspace -- -A dead_code -D warnings`；`cargo nextest run --workspace`（nextest 未装回退 `cargo test`）
+  - `nextest`/`cargo-deny`/`bevy_lint` 未安装时门禁会打印 WARN 并跳过——本地"全绿"不代表 CI 全绿，push 前核对 hook 输出无 WARN
+  - 链接器：Windows 用工具链自带的 `rust-lld.exe`（`.cargo/config.toml` 配置，无需额外安装）；Linux 需 `clang` + `mold`（CI 每个 job 内 `apt-get install mold`，见 `.github/workflows/ci.yml`）
   - 单测试快速验证（RED 阶段）：`cargo nextest run -p atom_terrain <test-name>`；RUSTDOC 门禁见下节
   - GPU/Shader 变更必须 `--release` 实跑冒烟（`cargo run -p atom_terrain --example chunk_loader --release`，超时 30s）——编译通过 ≠ 渲染正确，测试只覆盖 CPU 逻辑
   - 测试组织：单测在源文件底部 `#[cfg(test)] mod tests`；集成在 `tests/`；基准在 `benches/`

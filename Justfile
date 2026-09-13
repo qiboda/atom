@@ -5,6 +5,12 @@
 list:
     @just --list
 
+# 接线 git hooks（新克隆必做一次；core.hooksPath 是本地 config，无法入库）
+git-hooks:
+    git config core.hooksPath .githooks
+    @echo "core.hooksPath = $(git config --get core.hooksPath)"
+    @echo "已启用：commit-msg(ref #N) / pre-commit(fmt+check+doc) / pre-push(全门禁)"
+
 # 快速检查（编译，不生成二进制）
 check:
     cargo check --workspace

@@ -1,0 +1,12 @@
+# Rust toolchain pin — 与 .github/workflows/ci.yml 的 RUST_TOOLCHAIN 保持一致。
+#
+# 为什么必须 pin：Bevy `atom-patches` 分支在 bevy_app 顶层写了 `#![feature(cfg_select)]`，
+# 会被 stable 编译器以 E0554 拒绝（`#![feature]` may not be used on the stable release
+# channel）。没有本文件时裸 `cargo` 解析到 rustup 默认（stable），于是
+# `.githooks/pre-commit` 与 `.githooks/pre-push` 里的裸 `cargo` 调用必然 exit 101。
+#
+# 依赖版本以本文件为唯一数据源，勿在文档里硬编码。
+[toolchain]
+channel = "nightly-2026-01-22"
+# pre-commit hook 需要 rustfmt（cargo fmt --check）与 clippy（pre-push 门禁）
+components = ["rustfmt", "clippy"]

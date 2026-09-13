@@ -34,3 +34,45 @@
 *.webp filter=lfs diff=lfs merge=lfs -text
 *.avif filter=lfs diff=lfs merge=lfs -text
 *.apng filter=lfs diff=lfs merge=lfs -text
+# --- Text files: force LF (repo convention, see rustfmt.toml newline_style) ---
+# Without this rule, core.autocrlf=true (system default on Windows) checks out CRLF
+# into the worktree, which conflicts with rustfmt newline_style=Unix and makes
+# .githooks/pre-commit "cargo fmt --check" fail on every commit.
+# Binary/asset types above are already marked -text by the LFS rules.
+* text=auto eol=lf
+# Binary/asset types: keep them out of text normalization (LFS rules above set -text;
+# this block restores -text AFTER the global '* text=auto' rule, whose later position
+# in the file would otherwise override it and let git normalize LFS content).
+*.tracy -text
+*.png -text
+*.jpeg -text
+*.exe -text
+*.obj -text
+*.mtl -text
+*.bin -text
+*.gltf -text
+*.zip -text
+*.ktx2 -text
+*.ktx -text
+*.basis -text
+*.svg -text
+*.bmp -text
+*.jpg -text
+*.tif -text
+*.gif -text
+*.pcx -text
+*.tga -text
+*.exif -text
+*.fpx -text
+*.psd -text
+*.cdr -text
+*.pcd -text
+*.dxf -text
+*.ufo -text
+*.eps -text
+*.ai -text
+*.raw -text
+*.WMF -text
+*.webp -text
+*.avif -text
+*.apng -text
