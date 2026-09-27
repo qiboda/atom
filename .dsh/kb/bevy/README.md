@@ -1,8 +1,8 @@
 # Bevy 知识库
 
 编译用的 Bevy 来自 `qiboda/bevy` 的 `atom-patches` 分支（`[patch.crates-io]` git 引用，
-见根 Cargo.toml）。本地源码 `/data/codes/Bevy` 是**与分支同步的 checkout**——修改本地
-Bevy 后必须 commit + push 到 `atom-patches`，确保查到的源码 = 编译的源码。
+见根 Cargo.toml；git 地址 `https://github.com/qiboda/bevy`）。本地 checkout 必须与该分支
+同步——修改本地 Bevy 后必须 commit + push 到 `atom-patches`，确保查到的源码 = 编译的源码。
 本目录记录已验证的 API 差异模式和迁移要点。每次踩坑后增补，避免重复查源码。
 
 ## 结构
@@ -22,4 +22,4 @@ Bevy 后必须 commit + push 到 `atom-patches`，确保查到的源码 = 编译
 1. 遇到不认识的 API → 先查 `migration-index.md` 
 2. 需要代码示例 → 查 `0-19/patterns.md`
 3. 需要背景原因 → 查 `0-19/release-notes.md`
-4. 以上都没有 → 读 `/data/codes/Bevy` 源码，**然后补一条到对应文件**
+4. 以上都没有 → 读 `qiboda/bevy`（`atom-patches`）源码，**然后补一条到对应文件**

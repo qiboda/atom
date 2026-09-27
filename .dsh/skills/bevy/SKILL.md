@@ -38,26 +38,27 @@ grep -i "<关键词>" .dsh/kb/bevy/0-19/patterns.md
 
 ### 3. 查 Bevy 源码（30 秒）
 
-用 `Grep` 工具在 `/data/codes/Bevy/crates/` 中搜索类型定义/使用位置。
+在 bevy fork checkout 的 `crates/` 中搜索类型定义/使用位置。源码 git 地址：`https://github.com/qiboda/bevy`（分支 `atom-patches`）；无本地 checkout 时先 `git clone --depth 1 --branch atom-patches https://github.com/qiboda/bevy`。以下命令在 checkout 根目录执行。
 
 > ⚠️ **源码一致性**：编译用的 Bevy 来自 `qiboda/bevy` 的 `atom-patches` 分支
-> （`[patch.crates-io]` git 引用，见根 Cargo.toml）。本地 `/data/codes/Bevy`
-> 必须保持在该分支上（`git -C /data/codes/Bevy branch --show-current` 应为
-> `atom-patches`）且未提交的本地修改已 push——否则查到的源码 ≠ 编译的源码。
-> 修改本地 Bevy 后必须 commit + push 到 `atom-patches`，再以 git 分支状态为准。
+> （`[patch.crates-io]` git 引用，见根 Cargo.toml）。本地 checkout 必须保持在该
+> 分支上（`git branch --show-current` 应为 `atom-patches`）且未提交的本地修改已
+> push——否则查到的源码 ≠ 编译的源码。修改本地 Bevy 后必须 commit + push 到
+> `atom-patches`，再以 git 分支状态为准。
 
 ```bash
-# 找 trait 定义
-grep -rn "pub trait $TRAIT" /data/codes/Bevy/crates/
+# 找 trait 定义（在 bevy checkout 根目录执行）
+grep -rn "pub trait $TRAIT" crates/
 
 # 找方法签名
-grep -rn "fn $METHOD" /data/codes/Bevy/crates/
+grep -rn "fn $METHOD" crates/
 ```
 
 ### 4. 查 Bevy 示例（20 秒）
 
 ```bash
-find /data/codes/Bevy/examples -name "*.rs" | xargs grep -l "$KEYWORD"
+# 在 bevy checkout 根目录执行
+find examples -name "*.rs" | xargs grep -l "$KEYWORD"
 ```
 
 ### 5. 查 release-notes

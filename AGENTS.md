@@ -1,8 +1,20 @@
 # Atom Terrain Engine
 
 基于 Bevy 0.19 的体素平滑地形（GPU Dual Contouring + QEF）。
-Bevy API 变更频繁，遇到不确定的 API 先查 `.dsh/kb/bevy/migration-index.md`，没有再读 `/data/codes/Bevy` 源码。
+Bevy API 变更频繁，遇到不确定的 API 先查 `.dsh/kb/bevy/migration-index.md`，没有再读 bevy fork 源码（引用方式见下节）。
 架构导航: 高层见 `.dsh/kb/ARCHITECTURE.md`（架构不变量 + ADR），符号级见 `cargo doc --open`。
+
+## Bevy 源码引用（平台无关约定）
+
+编译用的 Bevy 来自 fork `qiboda/bevy` 的 `atom-patches` 分支（根 `Cargo.toml` 的 `[patch.crates-io]` git 引用），git 地址：
+
+```
+https://github.com/qiboda/bevy    # 分支 atom-patches
+```
+
+- **引用方式**：本文档与 `.dsh/kb/`、`.dsh/skills/` 一律用上述 git 地址 + 分支名指向 Bevy 源码，**不写本地目录、也不写平台相关的绝对路径**；仓库内路径（如 `crates/bevy_app/src/lib.rs`）相对该仓库根解析。
+- **查源码**：按需 clone 到任意位置（`git clone --depth 1 --branch atom-patches https://github.com/qiboda/bevy`），或直接在 GitHub 上按仓库内路径查阅。
+- **同步**：存在本地 checkout 时，它必须位于 `atom-patches` 分支且改动已 push——**查到的源码必须等于编译的源码**；改完须 commit + push 到该分支。
 
 ## 文档索引
 
@@ -120,7 +132,7 @@ atom_shader_lib、atom_utils（Bevy 0.19 workspace 迁移后全部迁回；成�
 **重要**: Bevy debug 构建极慢（~19s 启动，30s+ 出首帧）。运行/测试必须用 `--release`。
 地形验证: `cargo run -p atom_terrain --example chunk_loader --release`（超时 30s）。
 数据表示例: `cargo run -p atom_data --example full_formats --release`。
-直接跑二进制需先 `ln -sf $(pwd)/assets target/release/examples/assets`（Bevy 从 exe 目录找 assets）。
+直接跑编译产物时，需把 `assets/` 暴露到可执行文件同级目录（Bevy 从 exe 目录找 assets）：POSIX 用 `ln -sf $(pwd)/assets target/release/examples/assets`，Windows 用 `cmd /c mklink /J target\release\examples\assets assets`（或直接拷贝目录）。用 `cargo run` 时由 Cargo 提供工作目录，无需手动链接。
 toolchain 由根部 `rust-toolchain.toml` pin（与 CI 的 `RUST_TOOLCHAIN` 同为 nightly；
 bevy_lint v0.6.0 + cfg_select feature 依赖 nightly）。**不要硬编码版本号，以该文件为准。**
 
@@ -134,7 +146,7 @@ bevy_lint v0.6.0 + cfg_select feature 依赖 nightly）。**不要硬编码版�
 - **构建门禁**（何时跑、失败怎么处理）见全局 `skwy-workflow` skill §6-7。项目命令链：
   - `cargo check --workspace`；`cargo clippy --workspace -- -A dead_code -D warnings`；`cargo nextest run --workspace`（nextest 未装回退 `cargo test`）
   - `nextest`/`cargo-deny`/`bevy_lint` 未安装时门禁会打印 WARN 并跳过——本地"全绿"不代表 CI 全绿，push 前核对 hook 输出无 WARN
-  - 链接器：Windows 用工具链自带的 `rust-lld.exe`（`.cargo/config.toml` 配置，无需额外安装）；Linux 需 `clang` + `mold`（CI 每个 job 内 `apt-get install mold`，见 `.github/workflows/ci.yml`）
+  - 链接器：以 `.cargo/config.toml` 的 `[target.<triple>]` 段为准（已按平台分段，无需改文档）——Windows 用工具链自带的 `rust-lld.exe`；Linux 用 `clang` + `mold`（CI 每个 job 内安装，见 `.github/workflows/ci.yml`）
   - 单测试快速验证（RED 阶段）：`cargo nextest run -p atom_terrain <test-name>`；RUSTDOC 门禁见下节
   - GPU/Shader 变更必须 `--release` 实跑冒烟（`cargo run -p atom_terrain --example chunk_loader --release`，超时 30s）——编译通过 ≠ 渲染正确，测试只覆盖 CPU 逻辑
   - 测试组织：单测在源文件底部 `#[cfg(test)] mod tests`；集成在 `tests/`；基准在 `benches/`
@@ -166,7 +178,7 @@ bevy_lint v0.6.0 + cfg_select feature 依赖 nightly）。**不要硬编码版�
 
 ## 工作习惯
 
-**先读 AGENTS.md → 查 kb/ → 查 `/data/codes/Bevy` 源码 → 再动手。** 复用项目既有模式，不凭空设计。
+**先读 AGENTS.md → 查 kb/ → 查 bevy fork 源码（`https://github.com/qiboda/bevy` @ `atom-patches`）→ 再动手。** 复用项目既有模式，不凭空设计。
 
 **Shader 改后必须 `--release` 实际运行验证。** 编译通过 ≠ 渲染正确。WGSL 没有 borrow checker。
 
@@ -174,9 +186,9 @@ bevy_lint v0.6.0 + cfg_select feature 依赖 nightly）。**不要硬编码版�
 
 **依赖克制。** 能不用就不加。新引入需过四关：stdlib 有？→ workspace 有？→ Bevy 生态有？→ 自实现 < 1 周？
 
-**SSH 远程操作（fetch/push）**：如遇 `/etc/ssh/ssh_config.d/*` 权限错误，用 `GIT_SSH_COMMAND='ssh -F "$HOME/.ssh/config"' git ...` 绕过系统 SSH 配置。
+**SSH 远程操作（fetch/push）**：Linux 上如遇系统级 SSH 配置（`/etc/ssh/ssh_config.d/*`）权限/属主错误，用 `GIT_SSH_COMMAND='ssh -F "$HOME/.ssh/config"' git ...` 绕过系统配置；其他平台按其自身 SSH 配置处理。
 
-**cargo deny 在只读 `CARGO_HOME` 下失败**：本环境 `~/.cargo` 为只读，pre-push 的 `cargo deny check` 无法写 advisory-dbs 锁；用可写 `CARGO_HOME` 覆盖层执行 push（symlink registry/git + 拷贝 advisory-dbs 到 `/tmp/cargo-home`）。
+**cargo deny 在只读 `CARGO_HOME` 下失败**：若 `CARGO_HOME`（如只读挂载的 `~/.cargo`）不可写，pre-push 的 `cargo deny check` 无法写 advisory-dbs 锁；改用可写 `CARGO_HOME` 覆盖层执行 push（把 registry / git / advisory-dbs 链接或拷贝到任意可写目录）。
 
 **subagent 编译权限分级（强制）。** 委派 subagent 时，允许其运行 `cargo check -p <负责的 crate>` 和 `cargo check --tests -p <负责的 crate>` 自验代码（含测试代码）编译通过；禁止其运行 `cargo test`/`clippy`/`build`/`llvm-cov`/`run` 等重型编译命令——它们需链接或插桩，在共享 `target/` 上长时间锁竞争、拖慢并行。测试行为验证与重型门禁由主 session 在收集全部 subagent 结果后集中执行；失败用 `task(task_id)` 续会话回传修复。完整策略见全局 skill `subagent-compile`。
 

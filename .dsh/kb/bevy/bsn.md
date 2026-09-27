@@ -190,7 +190,7 @@ bevy_scene   →  bevy::scene（新 crate，BSN）
 
 ## 参考
 
-- `/data/codes/Bevy/examples/scene/bsn.rs` — 基础示例
-- `/data/codes/Bevy/release-content/release-notes/` — 0.19 release notes
-- `/data/codes/Bevy/crates/bevy_scene/` — 源码
+- `https://github.com/qiboda/bevy/blob/atom-patches/examples/scene/bsn.rs` — 基础示例
+- `https://github.com/qiboda/bevy/tree/atom-patches/release-content/release-notes/` — 0.19 release notes
+- `https://github.com/qiboda/bevy/tree/atom-patches/crates/bevy_scene/` — 源码
 - `https://docs.rs/bevy/0.19.0/bevy/scene/macros/macro.bsn.html`

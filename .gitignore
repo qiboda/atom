@@ -12,3 +12,12 @@ screenshots/
 .worktrees/
 config.json
 logs/
+
+# 非源码图片：产物 / 归档附件，已解除跟踪（#20）
+# 这些对象的 LFS 属性与入库内容不一致，会让任何 clone 永久显示为「已修改」。
+/crates/atom_shader_lib/open_simplex.png
+/doc/_archive/技术/AI/attachmen/11215219abed50042172fecaf02dca42_MD5.jpg
+/doc/_archive/技术/AI/attachmen/137312a5a05b80eb37f9a5daed6fba2a_MD5.jpg
+/doc/_archive/技术/AI/attachmen/e17405e4a060eca65207f383225bb0d8_MD5.jpg
+/doc/_archive/技术/地形/attachmen/Pasted image 20240907112150.png
+/doc/_archive/技术/地形/attachmen/cd47f3d47be4c615a15526def7cf3729_MD5.jpeg

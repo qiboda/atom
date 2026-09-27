@@ -32,7 +32,7 @@ whenToUse: 执行任何代码审查时（subagent_review 启动的审查子代�
    - 依赖克制：stdlib → workspace → Bevy 生态 → 自实现（<1 周），新依赖需四关
    - worktree 纪律：实现工作是否在 `.worktrees/` 内、分支同步是否 rebase（禁 merge）
    - Shader 变更是否必须 `--release` 实跑冒烟（`cargo run -p atom_terrain --example chunk_loader --release`，超时 30s）
-   - Bevy API 不确定处：先查 `.dsh/kb/bevy/migration-index.md`，再读 `/data/codes/Bevy` 源码
+   - Bevy API 不确定处：先查 `.dsh/kb/bevy/migration-index.md`，再读 bevy fork 源码（`https://github.com/qiboda/bevy` @ `atom-patches`）
 3. **设计/API**：公共 API 签名与文档、模块边界、数据流清晰度、过度/欠设计、架构不变量
    （`.dsh/kb/ARCHITECTURE.md` 的 ADR）是否被破坏。
 4. **性能与安全**：热路径分配、GPU buffer 处理、未定义行为、输入校验、数据表/Asset 加载路径。
